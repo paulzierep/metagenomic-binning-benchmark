@@ -1,4 +1,4 @@
-<!--AGENT-STATUS--> **Agent status** `2026-09-23T14:33:53Z UTC` · alive=`yes` · Staging dependency install into /vol/data/envs/comebin (scanpy tier solving; hnswlib + checkm-genome queued). Then: BAM index check -> baseline COMEBin run -> CheckM2/CheckM eval -> README table + PROGRESS.md update.
+<!--AGENT-STATUS--> 🟢 **Agent status** · ⏱ `2026-09-23T14:36:32Z UTC` · **now:** Baseline COMEBin run started (unmodified 987db95, -t 32, dataset=comebin demo). Watching runs/baseline_unmodified/comebin_run.log — augmentation -> coverage -> FragGeneScan -> training -> clustering.
 # metagenomic-binning-benchmark
 
 Benchmarking metagenomic genome binners, starting with
