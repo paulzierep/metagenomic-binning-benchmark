@@ -6746,3 +6746,110 @@ Index: /vol/data/repos/metagenomic-binning-benchmark/scripts/run_comebin_fix.sh
    [ -n "$MCMD" ] && echo "cmd_train_py: $MCMD" >> "$RUNDIR/run_meta.txt" ) &
  
 
+> build · space-bunny-free
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/scripts/run_comebin_fix.sh
+Index: /vol/data/repos/metagenomic-binning-benchmark/scripts/run_comebin_fix.sh
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/scripts/run_comebin_fix.sh
++++ /vol/data/repos/metagenomic-binning-benchmark/scripts/run_comebin_fix.sh
+@@ -121,13 +121,8 @@
+   echo "wall_s:     $((END-START))"
+   echo "finished:   $(date -Is)"
+ } | tee -a "$RUNDIR/run_meta.txt"
+ 
+-if [ "$RC" -eq 0 ] && [ -f "$ACTIVE" ]; then
+-  read -r current_pid _ < "$ACTIVE" || true
+-  [ "${current_pid:-}" = "$$" ] && rm -f "$ACTIVE"
+-fi
+-
+ if [ "$RC" -eq 0 ]; then
+   BINS="$RUNDIR/comebin_out/comebin_res/comebin_res_bins"
+   if [ -d "$BINS" ]; then
+     echo "bins: $(ls "$BINS" | wc -l)  -> $BINS" | tee -a "$RUNDIR/run_meta.txt"
+
+> build · space-bunny-free
+[0m✱ [0mGrep "now_utc" [90min /vol/data/repos/metagenomic-binning-benchmark/scripts · 1 match[0m
+> build · space-bunny-free
+[0m$ [0mset -e
+for f in scripts/*.sh; do bash -n "$f"; done
+git diff --check
+for f in agent-watchdog.sh benchmark-watchdog.sh meta-watchdog.sh status-heartbeat.sh; do
+  cp "scripts/$f" "/vol/data/benchmark/bin/.$f.supervisor-new"
+  chmod 755 "/vol/data/benchmark/bin/.$f.supervisor-new"
+  mv "/vol/data/benchmark/bin/.$f.supervisor-new" "/vol/data/benchmark/bin/$f"
+  cmp -s "scripts/$f" "/vol/data/benchmark/bin/$f"
+done
+echo 'syntax, whitespace, and installed-copy checks passed'
+syntax, whitespace, and installed-copy checks passed
+> build · space-bunny-free
+[0m$ [0mMETA_WATCHDOG_LOCK=/tmp/meta-watchdog-supervisor-verify-2.lock META_WATCHDOG_NO_LLM=1 bash scripts/meta-watchdog.sh; rc=$?; echo "meta verification rc=$rc"; cat /vol/data/benchmark/meta/checks.tsv; tail -n 4 /vol/data/benchmark/logs/meta-watchdog.log
+meta verification rc=0
+C1_cron	ok	all 4 exact jobs present; scripts executable; cron active
+C2_service	ok	pid 5551; service status + /api/info healthy
+C3_agent	ok	run_alive=1 driver=1 hb=5s transcript=3s
+C4_ratelimit	ok	failed-launch markers=1 in 360min window
+C5_github	ok	HEAD=origin/main e4a76dfb1d2e; status artifacts clean; last commit 22s
+C6_benchmark	ok	pid 19182 mode=baseline alive, log 0s fresh
+C7_disk	ok	380 GiB free
+C8_issues	broken	new/updated: #5 (I updated the comebin fork) updated=2026-09-23T18:56:47Z #4 (Why agent often broken) updated=2026-09-23T18:56:47Z #2 (Can you try to create a small benchmark dataset for comebin ?) updated=2026-09-23T18:56:47Z
+C9_repo_publish	ok	meta artifacts committed and HEAD=origin/main
+2026-09-23T19:03:44+00:00 [meta] verification run: unresolved checks present but LLM escalation disabled
+2026-09-23T19:03:44+00:00 tick done: fixes=0 broken=1 degraded=0 escalated=1
+2026-09-23T19:09:10+00:00 [meta] verification run: unresolved checks present but LLM escalation disabled
+2026-09-23T19:09:10+00:00 tick done: fixes=0 broken=1 degraded=0 escalated=1
+> build · space-bunny-free
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/scripts/agent-watchdog.sh
+Index: /vol/data/repos/metagenomic-binning-benchmark/scripts/agent-watchdog.sh
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/scripts/agent-watchdog.sh
++++ /vol/data/repos/metagenomic-binning-benchmark/scripts/agent-watchdog.sh
+@@ -38,8 +38,9 @@
+ WINDOW_MIN=360         # crash-loop rate-limit window
+ MAX_ATTEMPTS=6         # max driver LAUNCHES per window
+ MAX_TURNS=200          # hard cap per driver (avoids a runaway forever-loop)
+ MAX_RUNTIME_S=28800    # hard cap per driver: 8 h; next cron tick relaunches
++TURN_TIMEOUT_S=3600    # hard cap for one opencode turn; prevents a hung child
+ TURN_GAP_S=30          # pause between turns
+ IDLE_GAP_S=600         # longer pause when the agent says it is waiting/idle
+ QUOTA_RETRIES=3        # consecutive quota-limited runs before giving up to cron
+ 
+
+> build · space-bunny-free
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/scripts/agent-watchdog.sh
+Index: /vol/data/repos/metagenomic-binning-benchmark/scripts/agent-watchdog.sh
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/scripts/agent-watchdog.sh
++++ /vol/data/repos/metagenomic-binning-benchmark/scripts/agent-watchdog.sh
+@@ -129,9 +129,9 @@
+ CONT_PPT="Continue the metagenomic-binning-benchmark task you were working on; you may have been interrupted. First read /vol/data/benchmark/PROGRESS.md, verify the 'Current state' section against what is actually on disk, then check NEW/updated issues with: gh issue list -R paulzierep/metagenomic-binning-benchmark --state open --json number,title,updatedAt and gh issue list -R paulzierep/COMEBin --state open --json number,title,updatedAt. Triage and comment on actionable updates without duplicating an existing response. Resume from the first unfinished step. Update PROGRESS.md and /vol/data/benchmark/.activity, touch /vol/data/benchmark/.heartbeat in shell commands while active, and append one timestamped line per meaningful action to /vol/data/repos/metagenomic-binning-benchmark/status/agent-activity.log. Never overlap the registered benchmark run. If /vol/data/benchmark/TASK_COMPLETE exists, do nothing and exit."
+ FRESH_PPT="You are resuming the metagenomic-binning-benchmark project after an agent restart (the previous session may have crashed, run out of context, or exhausted model tokens). Read /vol/data/benchmark/PROGRESS.md FIRST, then check NEW/updated issues in paulzierep/metagenomic-binning-benchmark and paulzierep/COMEBin with gh issue list --state open --json number,title,updatedAt; triage and comment without duplicating an existing response. Verify state on disk and continue from the first unfinished step. Update PROGRESS.md and /vol/data/benchmark/.activity, touch /vol/data/benchmark/.heartbeat in shell commands while active, and append one timestamped line per meaningful action to /vol/data/repos/metagenomic-binning-benchmark/status/agent-activity.log. Never overlap the registered benchmark run. If /vol/data/benchmark/TASK_COMPLETE exists, do nothing and exit."
+ 
+ run_driver() {
+-    local turns=0 start rc=0 quota_hits=0 before after
++    local turns=0 start rc=0 quota_hits=0 healthy_turns=0 before after
+     start=$(date +%s)
+     while :; do
+         [ $(date +%s) -ge $(( start + MAX_RUNTIME_S )) ] && { log "driver hit ${MAX_RUNTIME_S}s runtime cap"; break; }
+         [ "$turns" -ge "$MAX_TURNS" ] && { log "driver hit turns cap ($MAX_TURNS)"; break; }
+
+> build · space-bunny-free
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/scripts/agent-watchdog.sh
+Index: /vol/data/repos/metagenomic-binning-benchmark/scripts/agent-watchdog.sh
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/scripts/agent-watchdog.sh
++++ /vol/data/repos/metagenomic-binning-benchmark/scripts/agent-watchdog.sh
+@@ -146,10 +146,11 @@
+         [ -f "$FORCE_MODEL" ] || MODEL_ARGS=()
+ 
+         before=$(wc -c < "$AGENT_LOG" 2>/dev/null || echo 0)
+         log "driver turn #$((turns+1)): model=${MODEL_ARGS[*]:-default} | opencode run ${sargs[*]:-fresh}"
+-        opencode run --auto "${sargs[@]}" "${MODEL_ARGS[@]}" --title "watchdog-restart" \
+-            "$prompt" >>"$AGENT_LOG" 2>&1
++        timeout --foreground --kill-after=30s "${TURN_TIMEOUT_S}s" \
++            opencode run --auto "${sargs[@]}" "${MODEL_ARGS[@]}" --title "watchdog-restart" \
++            "$prompt" >>"$AGENT_LOG" 2>&1 9>&-
+         rc=$?
+         after=$(wc -c < "$AGENT_LOG" 2>/dev/null || echo 0)
+         log "driver turn #$((turns+1)) exited rc=$rc (transcript ${before}->${after}B)"
+         turns=$((turns + 1))
+

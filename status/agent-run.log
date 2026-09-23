@@ -5197,3 +5197,36 @@ extraction started pid 104706 (whole stream must decompress; ~2-5 min)
 While extraction runs, writing the marine prep + run scripts:
 [0m← [0mWrite /vol/data/repos/metagenomic-binning-benchmark/scripts/prep_cami2_marine.sh
 Created file successfully: /vol/data/repos/metagenomic-binning-benchmark/scripts/prep_cami2_marine.sh
+> build · big-pickle
+[0m$ [0mecho "=== sentinel ==="
+ls /vol/data/benchmark/TASK_COMPLETE 2>/dev/null || echo "no TASK_COMPLETE - continuing"
+echo "=== baseline run ==="
+RUN=/vol/data/benchmark/runs/baseline_unmodified
+ps -eo pid,pcpu,etime,args | grep -E '[m]ain.py train' | head -1
+echo "epochs: $(grep -c '^DEBUG:root:Epoch' "$RUN/comebin_out/comebin_res/training.log" 2>/dev/null)"
+echo "run_meta exit?: $(grep -c '^exit' "$RUN/run_meta.txt" 2>/dev/null) / bins?: $(grep -o 'bins:' "$RUN/run_meta.txt" 2>/dev/null | head -1)"
+echo "=== marine reads extraction ==="
+ls /vol/data/datasets/cami_II/marine_reads/reads_0/simulation_short_read/2018.08.15_09.49.32_sample_0/reads/ 2>/dev/null
+cat /tmp/opencode/tar_reads.log 2>/dev/null | tail -2
+ls -la --block-size=M /vol/data/datasets/cami_II/marine_reads/marmgCAMI2_sample_0_reads.tar.gz 2>/dev/null
+echo "=== activity / last status ==="
+tail -1 /vol/data/repos/metagenomic-binning-benchmark/status/status.log 2>/dev/null
+echo "=== now ==="
+date -u +"now UTC: %H:%M"
+touch /vol/data/benchmark/.heartbeat
+=== sentinel ===
+no TASK_COMPLETE - continuing
+=== baseline run ===
+  21545 3125    04:25:28 python main.py train --data /vol/data/benchmark/runs/baseline_unmodified/comebin_out/data_augmentation --temperature 0.15 --emb_szs_forcov 2048 --batch_size 1024 --emb_szs 2048 --n_views 6 --add_model_for_coverage --output_path /vol/data/benchmark/runs/baseline_unmodified/comebin_out/comebin_res --earlystop --addvars --vars_sqrt --num_threads 32
+epochs: 114
+run_meta exit?: 0 / bins?: 
+=== marine reads extraction ===
+anonymous_reads.fq.gz
+reads_mapping.tsv.gz
+-rw-rw-r-- 1 ubuntu ubuntu 5293M Jun 22  2021 /vol/data/datasets/cami_II/marine_reads/marmgCAMI2_sample_0_reads.tar.gz
+=== activity / last status ===
+2026-09-23T21:08 CEST	alive=yes	mem=7429/64295 MB	load=33.73 32.69 32.28	transcript=340238B	watchdog=3360B	model=big-pickle	epoch=113/200	loss=2.945946455001831	acc=97.44465637207031	Baseline training epoch ~109/200 (~2.4 min/epoch, ETA ~22:35 UTC unless early-stop); next: baseline eval (run_eval.sh) → issue #2 small-dataset test → v1.1.0 fix run
+=== now ===
+now UTC: 19:09
+> build · big-pickle
+Baseline healthy at **epoch 114/200** (~3.4h left); the live status tick now even shows `epoch=113/200 loss=... acc=...` (the live probe got upgraded — good). Reads extraction finished. Let me verify the reads/mapping formats to finalize the prep script:
