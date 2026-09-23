@@ -150,6 +150,10 @@ included; fixes land on branch `comebin-optimizations` in this repo.
 - [ ] README performance table: after EVERY benchmark run, add/update its row in
       `README.md` → "Benchmark runs — performance" (wall time, peak RAM, bins,
       CheckM2/CheckM means) and push — user requirement.
+- [x] Status heartbeat: cron `scripts/status-heartbeat.sh` every 10 min pushes
+      `README.md` **line 1** (status banner: time+date+current work) +
+      `status/current.md` + appends `status/status.log`; agent keeps
+      `/vol/data/benchmark/.activity` up to date (user requirement)
 - [ ] **← CURRENT: env deps solve** (`scanpy/igraph/leidenalg/hnswlib/checkm-genome` on py3.10;
       running since 14:12, still "Resolving" — if >15 min total, kill and split:
       (a) scanpy-tier, (b) checkm-genome + hnswlib, detailed in docs/00-setup.md)

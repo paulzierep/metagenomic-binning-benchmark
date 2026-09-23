@@ -112,6 +112,23 @@ done and documenting it in this repo (`docs/03-fixes.md` for code changes,
 `docs/01-datasets.md` for datasets, `results/` for benchmarks), then updates
 `PROGRESS.md`.
 
+## GitHub status heartbeat (every 10 min)
+
+`scripts/status-heartbeat.sh` (cron `*/10 * * * *`) pushes the agent's liveness and
+**current activity** to GitHub so the user can monitor it without the agent spamming
+issue comments:
+
+- `status/current.md` — overwritten each tick; `status/status.log` — append-only timeline.
+- **`README.md` line 1** — the same update is injected as the README's first line
+  (marker `<!--AGENT-STATUS-->` gets replaced, so the line never duplicates).
+- Liveness is read from the real heartbeat (`.heartbeat`): fresh ⇒ `alive: yes` +
+  contents of `/vol/data/benchmark/.activity` (the agent updates this file whenever
+  its current step changes); stale ⇒ reports "dead — watchdog will restart"; `TASK_COMPLETE`
+  ⇒ "done".
+- Uses `flock` + retry so it never corrupts a concurrent git operation.
+- Agent contract: keep `/vol/data/benchmark/.activity` current (one line: what you are
+  doing right now) — the heartbeat then tells the story on GitHub.
+
 ## Operational notes
 
 - **Disable / finish**: `touch /vol/data/benchmark/TASK_COMPLETE`.
