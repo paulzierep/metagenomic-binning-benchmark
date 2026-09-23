@@ -4354,3 +4354,1697 @@ Index: /vol/data/repos/metagenomic-binning-benchmark/docs/01-datasets.md
  | | |
  |---|---|
 
+> build · space-bunny-free
+[0m→ [0mRead /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md [90m[offset=224, limit=70][0m
+> build · space-bunny-free
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md
+Index: /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md
++++ /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md
+@@ -237,13 +237,14 @@
+       the SAME session turn-after-turn; crash-guard markers only count FAILED
+       launches; **model in use is now logged** (watchdog.log `model=…` per turn;
+       status/current.md + status.log `model=` from the transcript; supervisor
+       meta-watchdog layer added). All committed @ `ec41276`
+-- [x] **Issue #2 new directives recorded** (docs/08): (a) functional tests
+-      ALWAYS on the small dataset, full benchmarks only after MAJOR commits;
+-      (b) dataset/disk-space plan incl. human host-associated CAMI II datasets
+-      (Multisample HMP / Toy Human Microbiome 5 body sites); 391 GB free, plan ≤
+-      ~100 GB future → OK. Replies posted
++- [x] **Issue #2 directives recorded** (docs/08): (a) functional tests start
++      on the 94 MB small real-data set; (b) only after that end-to-end run
++      passes, build a medium derived set (target 3,000 contigs, hard cap 5 GB);
++      (c) large benchmarks only after major commits; (d) dataset/space plan
++      includes human host-associated CAMI II (Multisample HMP / Toy Human
++      Microbiome), 391 GB free, planned data ≤ ~105 GB. Replies posted.
+ - [~] **← CURRENT: baseline demo run in progress** (started 14:36 UTC, commit
+       987db95d8d399f30b7c82a5f5f40ed6bfdc906c7, `-t 32`): training epoch ~110/200
+       (~2.4 min/epoch → ETA ~22:30 UTC worst case; `--earlystop` may cut short;
+       banner shows LIVE epoch each 10 min) —
+
+> build · space-bunny-free
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md
+Index: /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md
++++ /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md
+@@ -251,12 +251,14 @@
+       watch `runs/baseline_unmodified/comebin_run.log`
+ - [ ] When baseline done: CheckM2 + CheckM v1 eval (`scripts/run_eval.sh`) → README
+       performance row (wall time per stage, peak RAM from resources.tsv, bins,
+       CheckM2/CheckM means) with linked commit → push
+-- [ ] Small-dataset test run (`scripts/run_small_test.sh runs/small_test`) on
+-      baseline source → issue #2 GitHub comment with dataset location + results
++- [ ] After baseline: small end-to-end COMEBin + CheckM2/CheckM run via
++      `scripts/run_small_test.sh` (runner now overlap-guarded and resource-logged)
++- [ ] After the small run passes: build/run the medium 3,000-contig derivative
++      (≤5 GB), record provenance + measured size, then evaluate
+ - [ ] Fix batch run on v1.1.0 base (`runs/fix_v11`, worktree COMEBin-v11) →
+-      full benchmark + eval (major commit) → README row
++      full large benchmark + eval (major commit) → README row
+ - [ ] CAMI II marine sample 0 benchmark run → human host-associated sample →
+       CAMI III
+ 
+ ## Watchdog / restart
+
+> build · space-bunny-free
+[0m$ [0mbash scripts/run_small_test.sh /vol/data/benchmark/runs/should_not_start 1; rc=$?; echo "runner refusal rc=$rc"; exit 0
+ERROR: another benchmark launch holds /tmp/benchmark-start.lock
+runner refusal rc=1
+[0m$ [0mfor f in scripts/agent-watchdog.sh scripts/benchmark-watchdog.sh scripts/meta-watchdog.sh scripts/status-heartbeat.sh scripts/run_small_test.sh scripts/run_comebin_fix.sh; do bash -n "$f" && echo "syntax ok: $f" || echo "SYNTAX FAIL: $f"; done; stat -c '%a %n' scripts/*.sh | sort
+syntax ok: scripts/agent-watchdog.sh
+syntax ok: scripts/benchmark-watchdog.sh
+syntax ok: scripts/meta-watchdog.sh
+syntax ok: scripts/status-heartbeat.sh
+syntax ok: scripts/run_small_test.sh
+syntax ok: scripts/run_comebin_fix.sh
+664 scripts/benchmark-watchdog.sh
+664 scripts/make_small_dataset.sh
+775 scripts/agent-watchdog.sh
+775 scripts/meta-watchdog.sh
+775 scripts/run_comebin_baseline.sh
+775 scripts/run_comebin_fix.sh
+775 scripts/run_eval.sh
+775 scripts/run_small_test.sh
+775 scripts/status-heartbeat.sh
+[0m$ [0mgit diff --check; git status --short --branch; git diff --stat; git diff -- scripts/meta-watchdog.sh | sed -n '1,320p'
+## main...origin/main
+ M PROGRESS.md
+ M docs/01-datasets.md
+ M docs/06-benchmark-commands.md
+ M docs/07-fix-batches.md
+ M docs/08-dataset-space-plan.md
+ M scripts/agent-watchdog.sh
+ M scripts/benchmark-watchdog.sh
+ M scripts/meta-watchdog.sh
+ M scripts/run_comebin_fix.sh
+ M scripts/run_small_test.sh
+ M scripts/status-heartbeat.sh
+ PROGRESS.md                   |  19 ++-
+ docs/01-datasets.md           |  18 +-
+ docs/06-benchmark-commands.md |  29 +++-
+ docs/07-fix-batches.md        |  12 +-
+ docs/08-dataset-space-plan.md |  42 +++--
+ scripts/agent-watchdog.sh     |  15 +-
+ scripts/benchmark-watchdog.sh |  70 ++++++--
+ scripts/meta-watchdog.sh      | 380 +++++++++++++++++++++++++++---------------
+ scripts/run_comebin_fix.sh    |  59 +++++--
+ scripts/run_small_test.sh     | 135 +++++++++++++--
+ scripts/status-heartbeat.sh   |  24 ++-
+ 11 files changed, 572 insertions(+), 231 deletions(-)
+diff --git a/scripts/meta-watchdog.sh b/scripts/meta-watchdog.sh
+index 81ef130..34def6d 100755
+--- a/scripts/meta-watchdog.sh
++++ b/scripts/meta-watchdog.sh
+@@ -1,20 +1,9 @@
+ #!/usr/bin/env bash
+ # meta-watchdog.sh — supervisor of the whole automation (cron every 10 min).
+-#   Watches the WATCHERS. Runs deterministic health checks against the
+-#   automation architecture (cron jobs, opencode service, agent driver,
+-#   watchdog rate-limiter, GitHub push, benchmark run, disk, GitHub issues).
+-#   It auto-fixes the cheap deterministic breakages and, when something needs
+-#   judgement (or a fix failed), escalates to an LLM supervisor agent
+-#   (`opencode run --auto --title supervisor-fix`), whose transcript is logged
+-#   and pushed to GitHub.
+-#
+-# Check results are pushed to the repo under status/meta/ (checks.tsv +
+-# last.txt + issues.tsv), so the whole ops history is public on GitHub.
+-#
+-# Issues checking: every open issue is compared against
+-#   $BENCH/meta/.issues_seen/<number>   (epoch of last known updatedAt)
+-# A NEW or UPDATED issue triggers an LLM escalation (triage / respond). The
+-# marker is refreshed after escalation so the same issue is not re-fired.
++# Runs deterministic health checks, performs safe automatic repairs, publishes
++# status/meta, and escalates unresolved broken/degraded checks to an LLM.
++# A NEW/updated issue is marked handled only after a successful supervisor run;
++# this prevents a failed/over-budget escalation from being silently lost.
+ set -u
+ export HOME=/home/ubuntu
+ export PATH=/home/ubuntu/.opencode/bin:/home/ubuntu/.local/bin:/usr/local/bin:/usr/bin:/bin
+@@ -27,18 +16,21 @@ SEEN="$META/.issues_seen"
+ ESCAL="$META/.escalations"
+ LOG="$BENCH/logs/meta-watchdog.log"
+ SUPLOG="$BENCH/logs/supervisor-run.log"
+-LOCK=/tmp/meta-watchdog.lock
+-REPO_LOCK=/tmp/bench-repo.lock
++LOCK=${META_WATCHDOG_LOCK:-/tmp/meta-watchdog.lock}
++AGENT_LOCK=/tmp/agent-watchdog.lock
++REPO_LOCK=${BENCH_REPO_LOCK:-/tmp/bench-repo.lock}
+ COMPLETE="$BENCH/TASK_COMPLETE"
+ REPO_URL=paulzierep/metagenomic-binning-benchmark
++SESSION_ID=ses_f31799c77ffeTq9gcYgqc4hBhg
+ 
+ STALE_S=900
+ RATE_WINDOW_MIN=360
+-MAX_ESCAL=3          # LLM escalations per window (cost guard)
+-ISSUE_ESCAL_MIN=120  # don't re-escalate the same issue update within 2 h
++MAX_ESCAL=3
+ HANG_S=2400
++# Test hook: run every health check but never launch an LLM.
++NO_LLM=${META_WATCHDOG_NO_LLM:-0}
+ 
+-mkdir -p "$META" "$SEEN" "$ESCAL" "$META" "$REPO/status/meta"
++mkdir -p "$META" "$SEEN" "$ESCAL" "$REPO/status/meta"
+ log() { echo "$(date -Is) [meta] $*" >>"$LOG"; }
+ 
+ exec 9>"$LOCK"
+@@ -47,173 +39,287 @@ flock -n 9 || exit 0
+ 
+ now=$(date +%s)
+ now_utc=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+-: > "$META/checks.tsv"   # name<TAB>ok|degraded|broken<TAB>evidence
+-
++: > "$META/checks.tsv"
+ check() { printf '%s\t%s\t%s\n' "$1" "$2" "$3" >> "$META/checks.tsv"; }
+-
+ fixes=0
+-note_fix() { fixes=$((fixes+1)); log "AUTO-FIX: $*"; }
+-
+-# ---- C1: cron jobs installed ----------------------------------------------- #
+-missing=()
+-for job in agent-watchdog.sh status-heartbeat.sh benchmark-watchdog.sh meta-watchdog.sh; do
+-    crontab -l 2>/dev/null | grep -q "$job" || missing+=("$job")
+-done
+-if [ "${#missing[@]}" -eq 0 ]; then
+-    check C1_cron ok "all 4 jobs present"
++note_fix() { fixes=$((fixes + 1)); log "AUTO-FIX: $*"; }
++
++service_pid() {
++  local info pid
++  opencode service status >/dev/null 2>&1 || return 1
++  info=$(opencode api get /api/info 2>/dev/null) || return 1
++  pid=$(printf '%s' "$info" | sed -n 's/.*"pid":\([0-9][0-9]*\).*/\1/p')
++  [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null || return 1
++  printf '%s' "$pid"
++}
++
++# ---- C1: exact cron jobs + executable installed scripts --------------------- #
++cron_bad=""
++cron_text=$(crontab -l 2>/dev/null || true)
++while IFS='|' read -r expected job; do
++  count=$(printf '%s\n' "$cron_text" | grep -Fxc -- "$expected" || true)
++  count=${count:-0}
++  [ "$count" -eq 1 ] || cron_bad="$cron_bad $job(cron=$count)"
++  [ -x "/vol/data/benchmark/bin/$job" ] || cron_bad="$cron_bad $job(not-executable)"
++done <<'EOF'
++*/5 * * * * /vol/data/benchmark/bin/agent-watchdog.sh|agent-watchdog.sh
++*/10 * * * * /vol/data/benchmark/bin/status-heartbeat.sh|status-heartbeat.sh
++*/5 * * * * /vol/data/benchmark/bin/benchmark-watchdog.sh|benchmark-watchdog.sh
++3,13,23,33,43,53 * * * * /vol/data/benchmark/bin/meta-watchdog.sh|meta-watchdog.sh
++EOF
++if ! systemctl is-active --quiet cron.service; then cron_bad="$cron_bad cron.service(inactive)"; fi
++if [ -z "$cron_bad" ]; then
++  check C1_cron ok "all 4 exact jobs present; scripts executable; cron active"
+ else
+-    check C1_cron broken "missing: ${missing[*]}"
+-    # idempotent reinstall (drops stale duplicate lines first)
+-    { crontab -l 2>/dev/null | grep -vE 'agent-watchdog\.sh|status-heartbeat\.sh|benchmark-watchdog\.sh|meta-watchdog\.sh'
+-      echo '*/5 * * * * /vol/data/benchmark/bin/agent-watchdog.sh'
+-      echo '*/10 * * * * /vol/data/benchmark/bin/status-heartbeat.sh'
+-      echo '*/5 * * * * /vol/data/benchmark/bin/benchmark-watchdog.sh'
+-      echo '3,13,23,33,43,53 * * * * /vol/data/benchmark/bin/meta-watchdog.sh'
+-    } | crontab -
+-    [ $? -eq 0 ] && note_fix "reinstalled cron jobs (${missing[*]})"
++  { printf '%s\n' "$cron_text" | grep -vE 'agent-watchdog\.sh|status-heartbeat\.sh|benchmark-watchdog\.sh|meta-watchdog\.sh' || true
++    echo '*/5 * * * * /vol/data/benchmark/bin/agent-watchdog.sh'
++    echo '*/10 * * * * /vol/data/benchmark/bin/status-heartbeat.sh'
++    echo '*/5 * * * * /vol/data/benchmark/bin/benchmark-watchdog.sh'
++    echo '3,13,23,33,43,53 * * * * /vol/data/benchmark/bin/meta-watchdog.sh'
++  } | crontab -
++  cron_rc=$?
++  systemctl is-active --quiet cron.service || sudo -n systemctl restart cron.service
++  if [ "$cron_rc" -eq 0 ] && systemctl is-active --quiet cron.service; then
++    note_fix "reinstalled cron jobs and verified cron.service (was:$cron_bad)"
++    check C1_cron ok "reinstalled: 4 exact jobs, cron active"
++  else
++    check C1_cron broken "cron repair failed (was:$cron_bad)"
++  fi
+ fi
+ 
+-# ---- C2: opencode service alive -------------------------------------------- #
+-if pgrep -f "opencode serve --service" >/dev/null 2>&1; then
+-    check C2_service ok "pid $(pgrep -f 'opencode serve --service' | head -1)"
++# ---- C2: OpenCode service status + real API health -------------------------- #
++if service_pid=$(service_pid); then
++  check C2_service ok "pid $service_pid; service status + /api/info healthy"
+ else
+-    check C2_service broken "no 'opencode serve --service' process"
+-    opencode service start >/dev/null 2>&1 || opencode service restart >/dev/null 2>&1
+-    sleep 3
+-    pgrep -f "opencode serve --service" >/dev/null 2>&1 && note_fix "restarted opencode service"
++  opencode service restart >/dev/null 2>&1 || true
++  sleep 3
++  if service_pid=$(service_pid); then
++    note_fix "restarted unhealthy OpenCode service (pid $service_pid)"
++    check C2_service ok "restarted; API healthy (pid $service_pid)"
++  else
++    check C2_service broken "service status/API unhealthy after restart"
++  fi
+ fi
+ 
+-# ---- C3: agent driver / agent activity ------------------------------------- #
+-run_alive=0; pgrep -f "[o]pencode run --auto" >/dev/null 2>&1 && run_alive=1
+-drv_alive=0; pgrep -f "[a]gent-watchdog.sh" >/dev/null 2>&1 && drv_alive=1
+-hb_age=999999; [ -f "$BENCH/.heartbeat" ] && hb_age=$(( now - $(stat -c %Y "$BENCH/.heartbeat") ))
+-tl_age=999999; [ -f "$BENCH/logs/agent-run.log" ] && tl_age=$(( now - $(stat -c %Y "$BENCH/logs/agent-run.log") ))
+-if [ "$run_alive" = "1" ] || [ "$hb_age" -lt "$STALE_S" ] || [ "$tl_age" -lt "$STALE_S" ]; then
+-    check C3_agent ok "run_alive=$run_alive hb=${hb_age}s transcript=${tl_age}s"
+-elif [ "$drv_alive" = "1" ]; then
+-    check C3_agent degraded "driver alive but between turns (hb=${hb_age}s transcript=${tl_age}s)"
++# ---- C3: primary agent driver / scoped run / heartbeat ---------------------- #
++run_alive=0
++if ps -eo args= | awk -v p="opencode run --auto --session $SESSION_ID" 'index($0,p)==1{found=1} END{exit !found}'; then
++  run_alive=1
++fi
++drv_alive=0
++# A busy lock is the authoritative signal that a driver owns the flock.
++if ! flock -n "$AGENT_LOCK" -c true 2>/dev/null; then drv_alive=1; fi
++hb_age=999999; [ -f "$BENCH/.heartbeat" ] && hb_age=$((now - $(stat -c %Y "$BENCH/.heartbeat")))
++tl_age=999999; [ -f "$BENCH/logs/agent-run.log" ] && tl_age=$((now - $(stat -c %Y "$BENCH/logs/agent-run.log")))
++if [ "$run_alive" -eq 1 ] || [ "$drv_alive" -eq 1 ] || [ "$hb_age" -lt "$STALE_S" ] || [ "$tl_age" -lt "$STALE_S" ]; then
++  check C3_agent ok "run_alive=$run_alive driver=$drv_alive hb=${hb_age}s transcript=${tl_age}s"
+ else
+-    check C3_agent broken "no driver; hb=${hb_age}s transcript=${tl_age}s"
+-    bash "$BENCH/bin/agent-watchdog.sh" >/dev/null 2>&1 &
+-    note_fix "agent idle with no driver -> relaunched agent-watchdog.sh"
++  bash "$BENCH/bin/agent-watchdog.sh" >/dev/null 2>&1 &
++  launched=$!
++  sleep 2
++  if kill -0 "$launched" 2>/dev/null || ! flock -n "$AGENT_LOCK" -c true 2>/dev/null; then
++    run_alive=0; drv_alive=1
++    note_fix "agent idle with no driver -> relaunched agent-watchdog.sh (pid $launched)"
++    check C3_agent ok "auto-relaunched driver pid $launched"
++  else
++    check C3_agent broken "agent idle and driver relaunch failed"
++  fi
+ fi
+ 
+-# ---- C4: watchdog not rate-locked ------------------------------------------ #
++# ---- C4: crash-guard is not deadlocked ------------------------------------- #
+ attempts=$(find "$BENCH/.watchdog_attempts" -type f -mmin "-$RATE_WINDOW_MIN" 2>/dev/null | wc -l)
+ if [ "$attempts" -ge 6 ]; then
+-    if [ "$run_alive" = "1" ] || [ "$drv_alive" = "1" ]; then
+-        check C4_ratelimit degraded "attempts=$attempts but a driver/run is alive"
++  find "$BENCH/.watchdog_attempts" -type f -delete 2>/dev/null || true
++  note_fix "cleared $attempts stale crash-guard markers (healthy launch markers no longer count)"
++  if [ "$run_alive" -eq 1 ] || [ "$drv_alive" -eq 1 ]; then
++    check C4_ratelimit ok "cleared stale markers=$attempts; driver/run alive"
++  else
++    bash "$BENCH/bin/agent-watchdog.sh" >/dev/null 2>&1 &
++    sleep 2
++    if ! flock -n "$AGENT_LOCK" -c true 2>/dev/null; then
++      drv_alive=1
++      check C4_ratelimit ok "cleared deadlock markers=$attempts; driver relaunched"
+     else
+-        check C4_ratelimit broken "attempts=$attempts and nothing running -> deadlock"
+-        rm -f "$BENCH/.watchdog_attempts"/*
+-        note_fix "cleared crash-guard markers ($attempts) with no driver alive"
+-        bash "$BENCH/bin/agent-watchdog.sh" >/dev/null 2>&1 &
++      check C4_ratelimit broken "markers cleared but driver did not launch"
+     fi
++  fi
+ else
+-    check C4_ratelimit ok "attempts=$attempts in ${RATE_WINDOW_MIN}min window"
++  check C4_ratelimit ok "failed-launch markers=$attempts in ${RATE_WINDOW_MIN}min window"
+ fi
+ 
+-# ---- C5: GitHub push freshness --------------------------------------------- #
+-push_age=$(( now - $(git -C "$REPO" log -1 --format=%ct 2>/dev/null || echo "$now") ))
+-if [ "$push_age" -lt 1500 ]; then
+-    check C5_github ok "last push ${push_age}s ago"
++# ---- C5: actual local/origin parity and pending status sync ----------------- #
++fetch_ok=0
++git -C "$REPO" fetch -q origin main && fetch_ok=1
++head_sha=$(git -C "$REPO" rev-parse HEAD 2>/dev/null || echo none)
++remote_sha=$(git -C "$REPO" rev-parse refs/remotes/origin/main 2>/dev/null || echo none)
++pending=$(git -C "$REPO" status --porcelain -- README.md status runs 2>/dev/null || true)
++last_age=$((now - $(git -C "$REPO" log -1 --format=%ct 2>/dev/null || echo "$now")))
++if [ "$fetch_ok" -eq 1 ] && [ "$head_sha" = "$remote_sha" ] && [ -z "$pending" ]; then
++  check C5_github ok "HEAD=origin/main ${head_sha:0:12}; status artifacts clean; last commit ${last_age}s"
+ else
+-    check C5_github broken "last push ${push_age}s ago"
+-    bash "$BENCH/bin/status-heartbeat.sh" >/dev/null 2>&1 &
+-    note_fix "github push stale -> ran status-heartbeat.sh"
++  bash "$BENCH/bin/status-heartbeat.sh" >/dev/null 2>&1 || true
++  git -C "$REPO" fetch -q origin main || true
++  head_sha=$(git -C "$REPO" rev-parse HEAD 2>/dev/null || echo none)
++  remote_sha=$(git -C "$REPO" rev-parse refs/remotes/origin/main 2>/dev/null || echo none)
++  pending=$(git -C "$REPO" status --porcelain -- README.md status runs 2>/dev/null || true)
++  if [ "$head_sha" = "$remote_sha" ] && [ -z "$pending" ]; then
++    note_fix "GitHub/status sync repaired (HEAD=origin/main ${head_sha:0:12})"
++    check C5_github ok "auto-repaired local/origin parity and pending status files"
++  else
++    check C5_github broken "HEAD=${head_sha:0:12} origin=${remote_sha:0:12}; pending=$(printf '%s' "$pending" | wc -l) file(s)"
++  fi
+ fi
+ 
+-# ---- C6: benchmark run alive & progressing --------------------------------- #
++# ---- C6: registered benchmark alive, correct process, and progressing ------- #
+ if [ -f "$BENCH/.active_run" ]; then
+-    read -r bid bpgid blog bdir bstart < "$BENCH/.active_run"
+-    b_alive=0; [ -n "${bid:-}" ] && kill -0 "$bid" 2>/dev/null && b_alive=1
+-    b_age=999999
+-    [ -f "${blog:-}" ] && b_age=$(( now - $(stat -c %Y "$blog") ))
+-    if [ "$b_alive" = "1" ] && [ "$b_age" -lt "$HANG_S" ]; then
+-        check C6_benchmark ok "pid $bid alive, log ${b_age}s fresh"
+-    elif [ "$b_alive" = "1" ]; then
+-        check C6_benchmark broken "pid $bid alive but hung ${b_age}s"
+-        bash "$BENCH/bin/benchmark-watchdog.sh" >/dev/null 2>&1 &
+-        note_fix "benchmark run hung -> invoked benchmark-watchdog.sh"
++  read -r bid bpgid blog bdir bstart bmode bsource < "$BENCH/.active_run" || true
++  b_alive=0
++  b_stat=$(ps -o stat= -p "${bid:-0}" 2>/dev/null | tr -d ' ' || true)
++  b_cmd=""
++  if [ -n "$b_stat" ] && kill -0 "${bid:-0}" 2>/dev/null && [[ "$b_stat" != Z* ]]; then
++    b_alive=1
++    b_cmd=$(tr '\0' ' ' < "/proc/${bid:-0}/cmdline" 2>/dev/null || true)
++  fi
++  b_age=999999; [ -n "${blog:-}" ] && [ -f "$blog" ] && b_age=$((now - $(stat -c %Y "$blog")))
++  runner_ok=0
++  case "$b_cmd" in *run_comebin_baseline.sh*|*run_comebin_fix.sh*|*run_small_test.sh*) runner_ok=1 ;; esac
++  if [ "$b_alive" -eq 1 ] && [ "$runner_ok" -eq 1 ] && [ "$b_age" -lt "$HANG_S" ]; then
++    check C6_benchmark ok "pid $bid mode=${bmode:-baseline} alive, log ${b_age}s fresh"
++  elif [ "$b_alive" -eq 1 ] && [ "$runner_ok" -eq 0 ]; then
++    check C6_benchmark broken "pid $bid alive but command is not a registered COMEBin runner; refusing kill"
++  else
++    bash "$BENCH/bin/benchmark-watchdog.sh" >/dev/null 2>&1 &
++    sleep 3
++    new_bid=0
++    [ -f "$BENCH/.active_run" ] && read -r new_bid _ < "$BENCH/.active_run" || true
++    if [ -n "$new_bid" ] && [ "$new_bid" != "${bid:-0}" ] && kill -0 "$new_bid" 2>/dev/null; then
++      note_fix "benchmark absent/hung -> watchdog registered replacement pid $new_bid"
++      check C6_benchmark ok "auto-restarted benchmark as pid $new_bid"
+     else
+-        check C6_benchmark broken "pid $bid gone"
+-        bash "$BENCH/bin/benchmark-watchdog.sh" >/dev/null 2>&1 &
+-        note_fix "benchmark pid gone -> invoked benchmark-watchdog.sh"
++      check C6_benchmark broken "benchmark pid ${bid:-?} gone/hung; restart not verified"
+     fi
++  fi
+ else
+-    check C6_benchmark ok "no active run (idle is fine)"
++  check C6_benchmark ok "no active run (idle is fine)"
+ fi
+ 
+ # ---- C7: disk ---------------------------------------------------------------- #
+ avail_kb=$(df -Pk /vol/data 2>/dev/null | awk 'NR==2{print $4}')
+ if [ -n "${avail_kb:-0}" ] && [ "$avail_kb" -gt 5242880 ]; then
+-    check C7_disk ok "$(( avail_kb / 1024 / 1024 )) GiB free"
++  check C7_disk ok "$((avail_kb / 1024 / 1024)) GiB free"
+ else
+-    check C7_disk broken "$(( avail_kb / 1024 / 1024 )) GiB free on /vol/data"
++  check C7_disk broken "$(( ${avail_kb:-0} / 1024 / 1024 )) GiB free on /vol/data"
+ fi
+ 
+-# ---- C8: GitHub issues (new / updated?) -------------------------------------- #
++# ---- C8: GitHub issues (new/updated; markers advance only after triage) ----- #
++: > "$META/issues.tsv"
+ new_issue=""
+-gh issue list -R "$REPO_URL" --state open --json number,title,updatedAt \
+-    -q '.[] | [.number, .title, .updatedAt] | @tsv' 2>/dev/null > "$META/issues.tsv"
+-while IFS=$'\t' read -r num title updated; do
++issue_list_ok=0
++if gh issue list -R "$REPO_URL" --state open --json number,title,updatedAt \
++    -q '.[] | [.number, .title, .updatedAt] | @tsv' > "$META/issues.tsv" 2>/dev/null; then
++  issue_list_ok=1
++fi
++candidate_nums=()
++if [ "$issue_list_ok" -eq 1 ]; then
++  while IFS=$'\t' read -r num title updated; do
+     [ -n "${num:-}" ] || continue
+[0m$ [0mbash scripts/run_comebin_fix.sh /vol/data/benchmark/runs/should_not_start; rc=$?; echo "fix runner refusal rc=$rc"; exit 0
+ERROR: benchmark already active: pid=19182 dir=/vol/data/benchmark/runs/baseline_unmodified mode=baseline
+fix runner refusal rc=1
+> build · space-bunny-free
+[0m$ [0mset -e
+chmod 755 scripts/benchmark-watchdog.sh scripts/make_small_dataset.sh
+for f in agent-watchdog.sh benchmark-watchdog.sh meta-watchdog.sh status-heartbeat.sh; do
+  cp "scripts/$f" "/vol/data/benchmark/bin/.$f.supervisor-new"
+  chmod 755 "/vol/data/benchmark/bin/.$f.supervisor-new"
+  mv "/vol/data/benchmark/bin/.$f.supervisor-new" "/vol/data/benchmark/bin/$f"
+done
+for f in agent-watchdog.sh benchmark-watchdog.sh meta-watchdog.sh status-heartbeat.sh; do
+  cmp -s "scripts/$f" "/vol/data/benchmark/bin/$f"
+  echo "deployed identical: $f"
+done
+stat -c '%a %y %n' /vol/data/benchmark/bin/*.sh
+deployed identical: agent-watchdog.sh
+deployed identical: benchmark-watchdog.sh
+deployed identical: meta-watchdog.sh
+deployed identical: status-heartbeat.sh
+755 2026-09-23 19:03:36.791000000 +0000 /vol/data/benchmark/bin/agent-watchdog.sh
+755 2026-09-23 19:03:36.805000000 +0000 /vol/data/benchmark/bin/benchmark-watchdog.sh
+755 2026-09-23 19:03:36.818000000 +0000 /vol/data/benchmark/bin/meta-watchdog.sh
+755 2026-09-23 19:03:36.827000000 +0000 /vol/data/benchmark/bin/status-heartbeat.sh
+> build · space-bunny-free
+[0m$ [0mMETA_WATCHDOG_LOCK=/tmp/meta-watchdog-supervisor-verify.lock META_WATCHDOG_NO_LLM=1 bash scripts/meta-watchdog.sh; rc=$?; echo "meta dry-run rc=$rc"; cat /vol/data/benchmark/meta/checks.tsv; tail -n 8 /vol/data/benchmark/logs/meta-watchdog.log
+meta dry-run rc=0
+C1_cron	ok	all 4 exact jobs present; scripts executable; cron active
+C2_service	ok	pid 5551; service status + /api/info healthy
+C3_agent	ok	run_alive=1 driver=1 hb=77s transcript=75s
+C4_ratelimit	ok	failed-launch markers=1 in 360min window
+C5_github	ok	HEAD=origin/main 8e1131f38bd6; status artifacts clean; last commit 40s
+C6_benchmark	ok	pid 19182 mode=baseline alive, log 2s fresh
+C7_disk	ok	385 GiB free
+C8_issues	broken	new/updated: #5 (I updated the comebin fork) updated=2026-09-23T18:56:47Z #4 (Why agent often broken) updated=2026-09-23T18:56:47Z #2 (Can you try to create a small benchmark dataset for comebin ?) updated=2026-09-23T18:56:47Z
+C9_repo_publish	ok	meta artifacts committed and HEAD=origin/main
+2026-09-23T18:45:59+00:00 tick done: fixes=0 broken=0 escalated=0
+2026-09-23T18:53:04+00:00 [meta] escalating to LLM supervisor (esc #1/3): /vol/data/benchmark/meta/escalate-1790189584.txt
+2026-09-23T19:03:44+00:00 [meta] verification run: unresolved checks present but LLM escalation disabled
+2026-09-23T19:03:44+00:00 tick done: fixes=0 broken=1 degraded=0 escalated=1
+> build · space-bunny-free
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/docs/05-agent-restart.md
+Index: /vol/data/repos/metagenomic-binning-benchmark/docs/05-agent-restart.md
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/docs/05-agent-restart.md
++++ /vol/data/repos/metagenomic-binning-benchmark/docs/05-agent-restart.md
+@@ -43,10 +43,10 @@
+ 
+ ```
+ TASK_COMPLETE exists?                       -> exit (task done)
+ another driver holds the flock?             -> exit (only ONE driver at a time)
+-run/`opencode run --auto` alive, heartbeat or transcript < 15 min old? -> exit (working)
+-launches in last 6h >= 6?                   -> exit (crash-loop guard)
++primary-session `opencode run` alive, or heartbeat/transcript < 15 min old? -> exit
++failed driver launches in last 6h >= 6?     -> exit (crash-loop guard)
+ 
+ start driver (this cron invocation IS the driver, it runs for hours):
+   while (not TASK_COMPLETE, turns < 200, runtime < 8h):
+     turn:  opencode run --auto [--session ses_...] --title watchdog-restart "$CONTINUE_PROMPT"
+
+> build · space-bunny-free
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/docs/05-agent-restart.md
+Index: /vol/data/repos/metagenomic-binning-benchmark/docs/05-agent-restart.md
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/docs/05-agent-restart.md
++++ /vol/data/repos/metagenomic-binning-benchmark/docs/05-agent-restart.md
+@@ -126,9 +126,12 @@
+ - Liveness is read from the real heartbeat (`.heartbeat`): fresh ⇒ `alive: yes` +
+   contents of `/vol/data/benchmark/.activity` (the agent updates this file whenever
+   its current step changes); stale ⇒ reports "dead — watchdog will restart"; `TASK_COMPLETE`
+   ⇒ "done".
+-- Uses `flock` + retry so it never corrupts a concurrent git operation.
++- Uses a per-script `flock` plus the shared `/tmp/bench-repo.lock`, and commits
++  only heartbeat-owned paths with `git commit --only`; it verifies
++  `HEAD=origin/main` after push instead of mistaking a recent local commit for a
++  successful GitHub push.
+ - Agent contract: keep `/vol/data/benchmark/.activity` current (one line: what you are
+   doing right now) — the heartbeat then tells the story on GitHub.
+ 
+ ## Benchmark hang watchdog (independent of the agent)
+
+> build · space-bunny-free
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/docs/05-agent-restart.md
+Index: /vol/data/repos/metagenomic-binning-benchmark/docs/05-agent-restart.md
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/docs/05-agent-restart.md
++++ /vol/data/repos/metagenomic-binning-benchmark/docs/05-agent-restart.md
+@@ -141,14 +141,18 @@
+ is dead/broken:
+ 
+ - Tracks the run registered in `/vol/data/benchmark/.active_run`
+   (written by `run_comebin_baseline.sh`: pid, pgid, log file, rundir, start ts).
+-- **Hung** (process alive, log silent > 40 min) → kills the process group and restarts.
++- **Hung** (verified COMEBin runner alive, log silent > 40 min) → kills only
++  its registered process group/wrapper; it refuses to kill a reused or
++  unrelated PID and never uses broad `pkill -f`.
+ - **Crashed** (process gone, no `exit_code: 0` in run_meta.txt) → restarts.
+ - **Done** (`exit_code: 0`) → clears `.active_run`.
+-- Restarts go into fresh `runs/<run>_autorestartN/` dirs (raw artifacts preserved per
+-  attempt); max **3 auto-restarts per run per 24 h**; `flock`-protected; logs to
+-  `logs/benchmark-watchdog.log` and stops when `TASK_COMPLETE` exists.
++- Restarts preserve the registered mode/source (`baseline`, `fix`, or `small`),
++  use a stable pre-autorestart name for the rolling 24 h budget, and write to a
++  fresh `runs/<run>_autorestartN/` directory. Legacy five-field registrations
++  default safely to the pristine baseline. `flock`-protected; logs to
++  `logs/benchmark-watchdog.log`; stops when `TASK_COMPLETE` exists.
+ 
+ This is belt-and-braces on top of the agent watchdog: agent broken → agent restarts;
+ benchmark hung → benchmark restarts. Both are cron-driven and terminal-independent.
+ 
+
+> build · space-bunny-free
+[0m✱ [0mGrep "meta-watchdog|supervisor|issue.*seen|escalat" [90min /vol/data/repos/metagenomic-binning-benchmark/docs · 4 matches[0m
+> build · space-bunny-free
+[0m→ [0mRead /vol/data/repos/metagenomic-binning-benchmark/docs/05-agent-restart.md [90m[offset=100, limit=100][0m
+> build · space-bunny-free
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/docs/05-agent-restart.md
+Index: /vol/data/repos/metagenomic-binning-benchmark/docs/05-agent-restart.md
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/docs/05-agent-restart.md
++++ /vol/data/repos/metagenomic-binning-benchmark/docs/05-agent-restart.md
+@@ -139,10 +139,11 @@
+ `scripts/benchmark-watchdog.sh` (cron `*/5 * * * *`, installed at
+ `/vol/data/benchmark/bin/`) keeps the **active benchmark run** alive even if the agent
+ is dead/broken:
+ 
+-- Tracks the run registered in `/vol/data/benchmark/.active_run`
+-  (written by `run_comebin_baseline.sh`: pid, pgid, log file, rundir, start ts).
++- Tracks the run registered in `/vol/data/benchmark/.active_run`: pid, pgid,
++  log file, rundir, start timestamp, mode and source repo. Legacy baseline
++  entries contain the first five fields and default to mode `baseline`.
+ - **Hung** (verified COMEBin runner alive, log silent > 40 min) → kills only
+   its registered process group/wrapper; it refuses to kill a reused or
+   unrelated PID and never uses broad `pkill -f`.
+ - **Crashed** (process gone, no `exit_code: 0` in run_meta.txt) → restarts.
+
+> build · space-bunny-free
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/docs/05-agent-restart.md
+Index: /vol/data/repos/metagenomic-binning-benchmark/docs/05-agent-restart.md
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/docs/05-agent-restart.md
++++ /vol/data/repos/metagenomic-binning-benchmark/docs/05-agent-restart.md
+@@ -156,8 +156,22 @@
+ 
+ This is belt-and-braces on top of the agent watchdog: agent broken → agent restarts;
+ benchmark hung → benchmark restarts. Both are cron-driven and terminal-independent.
+ 
++## Meta-supervisor and issue updates
++
++`scripts/meta-watchdog.sh` runs at minutes 3/13/23/33/43/53. It validates the
++four exact cron entries and executable scripts, checks `opencode service status`
++plus `/api/info`, uses the agent-driver flock and a primary-session-scoped process
++match, checks real `HEAD=origin/main` parity, validates the registered benchmark
++command/log, and records issue updates under `status/meta/`.
++
++An issue's `updatedAt` marker advances **only after a successful supervisor
++triage**. Failed or over-budget escalations therefore remain pending. After a
++successful response, the marker is refreshed to the issue's latest timestamp,
++so the agent's own GitHub comment does not create an endless self-escalation
++loop. `META_WATCHDOG_NO_LLM=1` provides a checks-only verification mode.
++
+ ## Operational notes
+ 
+ - **Disable / finish**: `touch /vol/data/benchmark/TASK_COMPLETE`.
+ - **Force an immediate restart** (testing): `touch -d '30 min ago' /vol/data/benchmark/.heartbeat`
+
+> build · space-bunny-free
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/docs/05-agent-restart.md
+Index: /vol/data/repos/metagenomic-binning-benchmark/docs/05-agent-restart.md
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/docs/05-agent-restart.md
++++ /vol/data/repos/metagenomic-binning-benchmark/docs/05-agent-restart.md
+@@ -178,6 +178,6 @@
+   then wait ≤5 min or run `/vol/data/benchmark/bin/agent-watchdog.sh` manually.
+ - **Rate limit**: 6 restarts / 6 h. Raise `MAX_ATTEMPTS` in the script if needed.
+ - Restarts run with `opencode run --auto` (permissions auto-approved) so the agent can
+   work unattended — acceptable here because the task is confined to this machine/repo.
+-- After editing `scripts/agent-watchdog.sh` in this repo, redeploy:
+-  `cp scripts/agent-watchdog.sh /vol/data/benchmark/bin/agent-watchdog.sh && chmod +x ...`.
++- After editing watchdog/heartbeat sources, deploy all four atomically and
++  verify byte identity with their `/vol/data/benchmark/bin/` copies before push.
+
+> build · space-bunny-free
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/CHANGELOG.md
+Index: /vol/data/repos/metagenomic-binning-benchmark/CHANGELOG.md
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/CHANGELOG.md
++++ /vol/data/repos/metagenomic-binning-benchmark/CHANGELOG.md
+@@ -82,5 +82,23 @@
+ - Cleared the stale `.watchdog_attempts` markers left over from the
+   single-turn era (they were blocking restarts until ~21:30 UTC).
+ - Baseline unmodified COMEBin run: training resumed/verified healthy
+   (epoch 99+/200 reached, `main.py` at ~3100% CPU, logs advancing every few
+-  seconds).
+\ No newline at end of file
++  seconds).
++
++### Supervisor hardening (2026-09-23 19:xx UTC)
++
++- Scoped agent liveness to the primary session/driver lock so a supervisor's
++  `opencode run` can no longer masquerade as the coding agent.
++- Issue `updatedAt` markers now advance only after successful triage; a
++  successful supervisor refreshes them after posting, preventing self-triggering
++  comment loops while retaining failed/over-budget updates for retry.
++- Replaced process-name and recent-local-commit heuristics with OpenCode's
++  documented service/API checks, exact `HEAD=origin/main` parity, verified runner
++  command matching, and shared repository locking (`git commit --only`).
++- Benchmark restarts now preserve baseline/fix/small mode + source, keep the
++  restart budget keyed to a stable run name, and kill only the registered process
++  group (no broad `pkill -f`).
++- Small-test runner now refuses overlap/overwrite, supports baseline or v1.1.0
++  source, uses small-data CPU/seed parameters, and records the promised resource
++  timeline. Issue #2's medium stage is documented (3,000 contigs, 5 GB cap) but
++  correctly remains gated on the end-to-end small run.
+\ No newline at end of file
+
+> build · space-bunny-free
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/CHANGELOG.md
+Index: /vol/data/repos/metagenomic-binning-benchmark/CHANGELOG.md
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/CHANGELOG.md
++++ /vol/data/repos/metagenomic-binning-benchmark/CHANGELOG.md
+@@ -84,9 +84,9 @@
+ - Baseline unmodified COMEBin run: training resumed/verified healthy
+   (epoch 99+/200 reached, `main.py` at ~3100% CPU, logs advancing every few
+   seconds).
+ 
+-### Supervisor hardening (2026-09-23 19:xx UTC)
++### Supervisor hardening (2026-09-23 19:03 UTC)
+ 
+ - Scoped agent liveness to the primary session/driver lock so a supervisor's
+   `opencode run` can no longer masquerade as the coding agent.
+ - Issue `updatedAt` markers now advance only after successful triage; a
+
+> build · space-bunny-free
+[0m→ [0mRead /vol/data/benchmark/logs/status-heartbeat.log [90m[offset=1, limit=30][0m
+[0m$ [0mgit status --short --branch; git log -6 --oneline --decorate; ps -eo pid,ppid,etime,stat,args | awk '/opencode run --auto --session ses_f31799c77ffeTq9gcYgqc4hBhg|agent-watchdog\.sh/ {print}'; tail -n 100 /vol/data/benchmark/logs/agent-run.log
+## main...origin/main
+ M CHANGELOG.md
+ M PROGRESS.md
+ M docs/01-datasets.md
+ M docs/05-agent-restart.md
+ M docs/06-benchmark-commands.md
+ M docs/07-fix-batches.md
+ M docs/08-dataset-space-plan.md
+ M scripts/agent-watchdog.sh
+ M scripts/benchmark-watchdog.sh
+ M scripts/make_small_dataset.sh
+ M scripts/meta-watchdog.sh
+ M scripts/run_comebin_fix.sh
+ M scripts/run_small_test.sh
+ M scripts/status-heartbeat.sh
+bd89752 (HEAD -> main, origin/main) meta: supervise tick 2026-09-23T19:03:40Z — 0 fix(es)
+8e1131f status: yes — baseline_unmodified epoch 110/200 (97.74739074707031%) model big-pickle — Baseline training epoch ~109/200 (~2.4 m
+630d0cc status: yes — comebin_out epoch 110/200 (97.74739074707031%) model big-pickle — Baseline training epoch ~109/200 (~2.4 m
+bbec5d4 status: yes — agent epoch —/— (—%) model big-pickle — Baseline training epoch ~109/200 (~2.4 m
+656d322 status: yes — Baseline training epoch ~109/200 (~2.4 min/epoch, ETA ~22:35
+d0610f2 heartbeat: model reporting + live epoch probe (restored), .activity refreshed
+  93421       1       22:55 Ss   bash /vol/data/benchmark/bin/agent-watchdog.sh
+  99876   93421       07:25 Sl   opencode run --auto --session ses_f31799c77ffeTq9gcYgqc4hBhg --title watchdog-restart Continue the metagenomic-binning-benchmark task you were working on; you may have been interrupted. First read /vol/data/benchmark/PROGRESS.md, verify the 'Current state' section against what is actually on disk, then resume from the first unfinished step. Update PROGRESS.md as you go, touch /vol/data/benchmark/.heartbeat in your shell commands while active, and append one timestamped line per meaningful action to /vol/data/repos/metagenomic-binning-benchmark/status/agent-activity.log. If /vol/data/benchmark/TASK_COMPLETE exists, do nothing and exit.
+ 103505    5551       00:00 Ss   /bin/bash -c git status --short --branch; git log -6 --oneline --decorate; ps -eo pid,ppid,etime,stat,args | awk '/opencode run --auto --session ses_f31799c77ffeTq9gcYgqc4hBhg|agent-watchdog\.sh/ {print}'; tail -n 100 /vol/data/benchmark/logs/agent-run.log
+ 103512  103505       00:00 S    awk /opencode run --auto --session ses_f31799c77ffeTq9gcYgqc4hBhg|agent-watchdog\.sh/ {print}
+> build · big-pickle
+All clear: `origin/main` = `656d322` includes my `d0610f2` (the rejection was just the cron heartbeat racing my push — nothing lost, local == remote now).
+
+Since the baseline has ~3.5h to go, let me do the remaining CPU-free prep: **pre-download the marine sample-0 reads** (network-only, saves hours later) and pre-write the CAMI II prep/run scripts. Checking the ground-truth format first + starting the download:
+[0m$ [0mecho "=== binning_gs.tsv data rows (names used for ground truth) ==="
+grep -v '^@' /vol/data/datasets/cami_II/marine_reads/contigs_0/simulation_short_read/2018.08.15_09.49.32_sample_0/contigs/binning_gs.tsv 2>/dev/null | head -4 || zcat /vol/data/datasets/cami_II/marine_reads/contigs_0/simulation_short_read/2018.08.15_09.49.32_sample_0/contigs/binning_gs.tsv | grep -v '^@' | head -4
+echo "=== gsa_mapping sample (S0C* <-> real names) ==="
+zcat /vol/data/datasets/cami_II/marine_reads/contigs_0/simulation_short_read/2018.08.15_09.49.32_sample_0/contigs/gsa_mapping.tsv.gz 2>/dev/null | head -3
+echo "=== marine/pooled short assembly header (first contig name) ==="
+head -1 /vol/data/datasets/cami_II/marine/pooled/short/Megahit_v1.1.2_Contigs.fasta 2>/dev/null
+zcat /vol/data/datasets/cami_II/marine/pooled/short/metaSPAdes_v3.13.0_contigs.fasta.gz 2>/dev/null | head -1
+touch /vol/data/benchmark/.heartbeat
+=== binning_gs.tsv data rows (names used for ground truth) ===
+
+
+S0C878739	Otu255	62322	653
+S0C700632	Otu229.0	300231	879
+=== gsa_mapping sample (S0C* <-> real names) ===
+#anonymous_contig_id	genome_id	tax_id	contig_id	number_reads	start_position	end_position
+S0C878739	Otu255	62322	CP001252.1	6	3310773	3311425
+S0C700632	Otu229.0	300231	CP003060.1	16	646432	647310
+=== marine/pooled short assembly header (first contig name) ===
+>k131_15 flag=0 multi=1.9752 len=534
+> build · big-pickle
+Ground truth uses `S0C*` contig names (binning_gs.tsv) — so the cleanest COMEBin input is the **gsa contigs + mapped reads** (direct ground-truth comparison). Starting the sample-0 reads download (background, network-only) and checking the gsa contig set:
+[0m$ [0mcd /vol/data/datasets/cami_II/marine_reads
+nohup wget -c -q "https://frl.publisso.de/data/frl:6425521/marine/short_read/marmgCAMI2_sample_0_reads.tar.gz" -O marmgCAMI2_sample_0_reads.tar.gz > /tmp/opencode/wget_reads.log 2>&1 &
+echo "download started pid $!"
+echo "=== gsa contigs in sample-0 fasta ==="
+GSA=contigs_0/simulation_short_read/2018.08.15_09.49.32_sample_0/contigs/anonymous_gsa.fasta.gz
+zcat "$GSA" | grep -c '^>'
+zcat "$GSA" | awk '/^>/{next}{s+=length($0)}END{printf "bases: %.1f M\n", s/1e6}'
+ls -la --block-size=M "$GSA"
+echo "=== gsa contig names sample ==="
+zcat "$GSA" | grep '^>' | head -3
+touch /vol/data/benchmark/.heartbeat
+download started pid 102142
+=== gsa contigs in sample-0 fasta ===
+1475972
+bases: 909.5 M
+-rw-r--r-- 1 ubuntu ubuntu 314M Aug 17  2018 contigs_0/simulation_short_read/2018.08.15_09.49.32_sample_0/contigs/anonymous_gsa.fasta.gz
+=== gsa contig names sample ===
+>S0C0
+>S0C1
+>S0C2
+> build · big-pickle
+Important discovery: `anonymous_gsa.fasta.gz` = **1,475,972 contigs / 909 Mbp** — far too large for COMEBin training as-is (the demo was 29k contigs). I need to pick a feasible, correct input. Let me map out what the marine dataset actually offers (per-sample assemblies? reads structure?) to make the right call:
+[0m$ [0mecho "=== marine tree (2 levels) ==="
+find /vol/data/datasets/cami_II/marine -maxdepth 2 -type d | head -20
+echo ""
+echo "=== anything like per-sample assembly fasta? ==="
+find /vol/data/datasets/cami_II/marine -name '*.fasta*' -o -name '*.fa' -o -name '*.fna' 2>/dev/null | head -10
+echo ""
+echo "=== bams_0 full listing (file types + sizes) ==="
+find /vol/data/datasets/cami_II/marine_reads/bams_0 -type f | head -8
+echo "... total files: $(find /vol/data/datasets/cami_II/marine_reads/bams_0 -type f | wc -l)"
+echo "=== sample_0 dirs in marine/single/short_read if any ==="
+find /vol/data/datasets/cami_II/marine -maxdepth 4 -type d -name '*sample_0*' 2>/dev/null | head
+echo "=== reads download progress ==="
+ls -la --block-size=M /vol/data/datasets/cami_II/marine_reads/marmgCAMI2_sample_0_reads.tar.gz 2>/dev/null
+tail -1 /tmp/opencode/wget_reads.log 2>/dev/null
+touch /vol/data/benchmark/.heartbeat
+=== marine tree (2 levels) ===
+/vol/data/datasets/cami_II/marine
+/vol/data/datasets/cami_II/marine/pooled
+/vol/data/datasets/cami_II/marine/pooled/long
+/vol/data/datasets/cami_II/marine/pooled/short
+/vol/data/datasets/cami_II/marine/pooled/hybrid
+/vol/data/datasets/cami_II/marine/single
+/vol/data/datasets/cami_II/marine/single/long
+/vol/data/datasets/cami_II/marine/single/short
+/vol/data/datasets/cami_II/marine/single/hybrid
+
+=== anything like per-sample assembly fasta? ===
+/vol/data/datasets/cami_II/marine/pooled/long/Flye_assembly.fasta
+/vol/data/datasets/cami_II/marine/pooled/short/Megahit_v1.1.4-2.fa
+/vol/data/datasets/cami_II/marine/pooled/short/HipMer_Metagenome_final_assembly.fa
+/vol/data/datasets/cami_II/marine/pooled/short/Ray-Meta_marine_pooled.ray.scaffolds.fa
+/vol/data/datasets/cami_II/marine/pooled/short/metaSPAdes_v3.13.0_contigs.fasta.gz
+/vol/data/datasets/cami_II/marine/pooled/short/Megahit_V1.2.7-inhouse_marine_pooled.megahit.scaffolds.fa
+/vol/data/datasets/cami_II/marine/pooled/short/ABySS_marine_pooled.abyss.scaffolds.fa
+/vol/data/datasets/cami_II/marine/pooled/short/Megahit_v1.1.2_Contigs.fasta
+/vol/data/datasets/cami_II/marine/pooled/short/metaSPAdes_v3.13.1_contigs.fasta.gz
+/vol/data/datasets/cami_II/marine/pooled/short/metaSPAdes_v3.13.1-inhouse_marine_pooled.metaspades.scaffolds.fa
+
+=== bams_0 full listing (file types + sizes) ===
+/vol/data/datasets/cami_II/marine_reads/bams_0/simulation_short_read/2018.08.15_09.49.32_sample_0/bam/Otu230.0.bam.bai
+/vol/data/datasets/cami_II/marine_reads/bams_0/simulation_short_read/2018.08.15_09.49.32_sample_0/bam/RNODE_342_length_1543_cov_10.88823.bam
+/vol/data/datasets/cami_II/marine_reads/bams_0/simulation_short_read/2018.08.15_09.49.32_sample_0/bam/RNODE_225_length_25884_cov_6.69550.bam
+/vol/data/datasets/cami_II/marine_reads/bams_0/simulation_short_read/2018.08.15_09.49.32_sample_0/bam/Otu526.bam
+/vol/data/datasets/cami_II/marine_reads/bams_0/simulation_short_read/2018.08.15_09.49.32_sample_0/bam/Otu2290.0.bam.bai
+/vol/data/datasets/cami_II/marine_reads/bams_0/simulation_short_read/2018.08.15_09.49.32_sample_0/bam/RNODE_415_length_2147_cov_6.45506.bam.bai
+/vol/data/datasets/cami_II/marine_reads/bams_0/simulation_short_read/2018.08.15_09.49.32_sample_0/bam/Otu2.0.bam
+/vol/data/datasets/cami_II/marine_reads/bams_0/simulation_short_read/2018.08.15_09.49.32_sample_0/bam/Otu2233.0.bam
+... total files: 1180
+=== sample_0 dirs in marine/single/short_read if any ===
+=== reads download progress ===
+-rw-rw-r-- 1 ubuntu ubuntu 5293M Jun 22  2021 /vol/data/datasets/cami_II/marine_reads/marmgCAMI2_sample_0_reads.tar.gz
+> build · big-pickle
+Reads download **already finished** (5293M). No per-sample assemblies exist (pooled only), and per-genome BAMs have no companion fasta → the feasible path is the **CAMI-official pooled MEGAHIT assembly + mapped sample-0 reads**. Checking that assembly's size + the reads archive layout:
+[0m$ [0mfor f in scripts/*.sh; do bash -n "$f" || exit; done; git diff --check; echo checks-ok; stat -c '%y %s %n' /vol/data/benchmark/runs/baseline_unmodified/comebin_run.log; ps -o pid,etime,stat,%cpu,%mem,cmd -p 19182,21545
+checks-ok
+2026-09-23 19:04:41.022000000 +0000 201501 /vol/data/benchmark/runs/baseline_unmodified/comebin_run.log
+    PID     ELAPSED STAT %CPU %MEM CMD
+  19182    04:28:39 S     0.0  0.0 bash /vol/data/repos/metagenomic-binning-benchmark/scripts/run_comebin_baseline.sh
+  21545    04:21:11 Rl   3127  4.9 python main.py train --data /vol/data/benchmark/runs/baseline_unmodified/comebin_out/data_augmentation --temperature 0.15 --emb_szs_forcov 2048 --batch_size 1024 --emb_szs 2048 --n_views 6 --add_model_for_coverage --output_path /vol/data/benchmark/runs/baseline_unmodified/comebin_out/comebin_res --earlystop --addvars --vars_sqrt --num_threads 32
+> build · space-bunny-free
+[0m$ [0mgit show HEAD:scripts/status-heartbeat.sh | nl -ba | sed -n '1,230p'; git diff -- scripts/status-heartbeat.sh
+1	#!/usr/bin/env bash
+     2	# status-heartbeat.sh — push "agent is alive + what it is doing right now"
+     3	# to GitHub every 10 minutes (cron */10). Outputs, all pushed:
+     4	#   1. README.md line 1      — status banner (marker-replaced, never duplicates)
+     5	#   2. status/current.md     — overwritten each tick
+     6	#   3. status/status.log     — 1-line-per-tick liveness + mem/load timeline
+     7	#   4. status/agent-activity.log — VERBOSE agent action log (agent appends lines)
+     8	#   +  runs/<run>/           — per-run detailed logs synced from /vol/data/benchmark/runs/
+     9	#   +  status/agent-run.log  — FULL transcript of every `opencode run` (all agent
+    10	#                              commands, tool results, "Turn complete" summaries)
+    11	#   +  status/watchdog.log   — agent/watchdog restart history
+    12	#
+    13	# Honesty rule: liveness is read from the REAL agent heartbeat, not assumed.
+    14	#   - heartbeat fresh            -> "alive: yes" + /vol/data/benchmark/.activity
+    15	#   - heartbeat stale            -> "alive: no — watchdog will restart within ~5 min"
+    16	#   - TASK_COMPLETE exists       -> "alive: no — task done"
+    17	# Concurrency: flock + retry; if the repo is mid-commit elsewhere, skip this
+    18	# tick and try next (10 min later).
+    19	set -u
+    20	export HOME=/home/ubuntu
+    21	cd /vol/data/repos/metagenomic-binning-benchmark || exit 1
+    22	
+    23	BENCH=/vol/data/benchmark
+    24	HB="$BENCH/.heartbeat"
+    25	ACT="$BENCH/.activity"
+    26	COMPLETE="$BENCH/TASK_COMPLETE"
+    27	LOCK=/tmp/status-heartbeat.lock
+    28	SLOG="$BENCH/logs/status-heartbeat.log"
+    29	STALE_S=900
+    30	MARKER='<!--AGENT-STATUS-->'
+    31	
+    32	exec 9>"$LOCK"
+    33	flock -n 9 || { echo "$(date -Is) skipped: lock held" >>"$SLOG"; exit 0; }
+    34	mkdir -p status
+    35	
+    36	now_utc=$(date -u +%Y-%m-%dT%H:%M:%SZ)   # full precision, UTC (internal/log)
+    37	now=$(TZ=Europe/Berlin date +'%Y-%m-%dT%H:%M %Z')   # German local time, minute precision (display)
+    38	lastcommit=$(git log --oneline -1 2>/dev/null | cut -c1-80)
+    39	
+    40	if [ -f "$COMPLETE" ]; then
+    41	    alive=no; text="TASK COMPLETE — benchmark done, sentinel present"
+    42	elif [ -f "$HB" ]; then
+    43	    age=$(( $(date +%s) - $(stat -c %Y "$HB") ))
+    44	    if [ "$age" -lt "$STALE_S" ]; then
+    45	        alive=yes
+    46	        text=$(cat "$ACT" 2>/dev/null || echo "working (no activity note set)")
+    47	    else
+    48	        alive=no; text="heartbeat stale ${age}s — agent dead/idle, watchdog should restart within ~5 min"
+    49	    fi
+    50	else
+    51	    alive=no; text="no heartbeat file — agent not started"
+    52	fi
+    53	
+    54	# ---- mirror full agent transcript + watchdog + supervisor logs into repo ---- #
+    55	# agent-run.log = stdout/stderr of every `opencode run` (whole turns: prompts,
+    56	# every $ command, tool output, "Turn complete" summaries); watchdog.log =
+    57	# restart decisions; supervisor-run.log = meta-watchdog escalations. Must run
+    58	# BEFORE current.md/status.log because those report the sizes.
+    59	sync_agent_logs() {
+    60	    mkdir -p status status/meta
+    61	    cp "$BENCH/logs/agent-run.log"      status/agent-run.log      2>/dev/null || true
+    62	    cp "$BENCH/logs/watchdog.log"       status/watchdog.log       2>/dev/null || true
+    63	    cp "$BENCH/logs/supervisor-run.log" status/supervisor-run.log 2>/dev/null || true
+    64	    cp "$BENCH/meta/"*.txt "$BENCH/meta/"*.jsonl status/meta/ 2>/dev/null || true
+    65	}
+    66	sync_agent_logs
+    67	tsize=$(wc -c < status/agent-run.log 2>/dev/null || echo 0)
+    68	wsize=$(wc -c < status/watchdog.log 2>/dev/null || echo 0)
+    69	
+    70	# ---- model of the (last) agent turn + live run progress --------------------- #
+    71	# Model: parsed from the transcript's "> <agent> · <model>" lines (latest turn);
+    72	# fallback to opencode's recorded default. Live run: epoch/batch probe so the
+    73	# banner never looks frozen (issue #3 regression fix).
+    74	last_model=$(grep -aoE '^> [^·]+ · [^ ]+' status/agent-run.log 2>/dev/null \
+    75	             | tail -1 | sed -E 's/^> [^·]+ · //')
+    76	if [ -z "$last_model" ]; then
+    77	    last_model=$(sed -n 's/.*"modelID":"\([^"]*\)".*/\1/p' \
+    78	                 /home/ubuntu/.local/state/opencode/model.json 2>/dev/null | head -1)
+    79	fi
+    80	last_model="${last_model:-unknown}"
+    81	if [ -f "$BENCH/.active_run" ]; then
+    82	    ardir=$(awk '{print $4}' "$BENCH/.active_run" 2>/dev/null)
+    83	    if [ -n "$ardir" ] && [ -f "$ardir/comebin_out/comebin_res/training.log" ]; then
+    84	        epoch=$(grep -c '^DEBUG:root:Epoch' "$ardir/comebin_out/comebin_res/training.log" 2>/dev/null || echo 0)
+    85	        epoch=${epoch:-0}
+    86	        [ "$epoch" -gt 0 ] 2>/dev/null \
+    87	            && text="$text · run: epoch $epoch/200 · $(tail -c 300 "$ardir/comebin_run.log" 2>/dev/null | tr '\r' '\n' | grep -oE '[0-9]+/[0-9]+' | tail -1) batches"
+    88	    fi
+    89	fi
+    90	
+    91	# ---- 1. README first line: status banner (marker-replaced) ----------------- #
+    92	case "$alive" in
+    93	  yes) dot="🟢"; state="running" ;;
+    94	  no)  if [ -f "$COMPLETE" ]; then dot="✅"; state="done"; else dot="🔴"; state="stopped (watchdog will restart)"; fi ;;
+    95	esac
+    96	# Banner block (L1 invisible marker, L3 visible status line, per user spec):
+    97	#   <!--AGENT-STATUS-->
+    98	#   (blank)
+    99	#   > 🟢 Agent status: running · ⏱ 2026-... CEST (Europe/Berlin) · [status.log](status/status.log)
+   100	# Strip any existing banner: canonical 4-line block at top AND any legacy
+   101	# inline line (marker + text on one line) anywhere else.
+   102	if [ "$(head -1 README.md)" = "$MARKER" ]; then
+   103	    sed '1,4d' README.md > README.tmp
+   104	else
+   105	    cp README.md README.tmp
+   106	fi
+   107	grep -v "^$MARKER" README.tmp > README.new || true
+   108	rm -f README.tmp
+   109	{
+   110	  echo "$MARKER"
+   111	  echo
+   112	  echo "> $dot **Agent status:** \`$state\` · ⏱ \`$now\` · [status.log](status/status.log)"
+   113	  echo
+   114	  cat README.new
+   115	} > README.staged && mv README.staged README.md
+   116	rm -f README.new README.staged
+   117	
+   118	# ---- 2. status/current.md -------------------------------------------------- #
+   119	load=$(cut -d' ' -f1-3 /proc/loadavg)
+   120	mem=$(free -m | awk '/Mem:/{printf "%d/%d MB", $3, $2}')
+   121	upt=$(uptime -p 2>/dev/null | sed 's/^up //')
+   122	session="ses_f31799c77ffeTq9gcYgqc4hBhg"
+   123	{
+   124	  echo "# 🤖 Agent status"
+   125	  echo
+   126	  echo "| | |"
+   127	  echo "|---|---|"
+   128	  echo "| Status | $dot \`$state\` |"
+   129	  echo "| ⏱ Updated (Europe/Berlin) | \`$now\` |"
+   130	  echo "| 📌 Current work | $text |"
+   131	  echo "| ⚙️ Load · uptime | \`$load\` · $upt — 32 cores, 62 GiB, no GPU |"
+   132	  echo "| 💾 RAM used/total | \`$mem\` |"
+   133	  echo "| 🤖 Model | \`$last_model\` (last turn; watchdog rotates to free models on quota) |"
+   134	  echo "| 🔗 Session | \`$session\` |"
+   135	  echo "| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push \`$lastcommit\` |"
+   136	  echo "| 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · \`${tsize} B\` — every run, command & tool result |"
+   137	  echo "| 📈 Timeline | [status/status.log](status/status.log) |"
+   138	} > status/current.md
+   139	
+   140	# ---- 3. timeline ----------------------------------------------------------- #
+   141	printf '%s\talive=%s\tmem=%s\tload=%s\ttranscript=%sB\twatchdog=%sB\tmodel=%s\t%s\n' "$now" "$alive" "$mem" "$load" "$tsize" "$wsize" "$last_model" "$text" >> status/status.log
+   142	
+   143	# ---- 4. sync per-run detailed logs into the repo (small files only) ------- #
+   144	sync_run_logs() {
+   145	    for d in /vol/data/benchmark/runs/*/; do
+   146	        [ -d "$d" ] || continue
+   147	        name=$(basename "$d")
+   148	        m() { mkdir -p "runs/$name/$(dirname "$1")" && cp "$d/$2" "runs/$name/$1"; }
+   149	        m run_meta.txt run_meta.txt 2>/dev/null
+   150	        m comebin_run.log comebin_run.log 2>/dev/null
+   151	        m logs/resources.tsv logs/resources.tsv 2>/dev/null
+   152	        m logs/sampler.out logs/sampler.out 2>/dev/null
+   153	        m comebin_res/comebin.log comebin_out/comebin_res/comebin.log 2>/dev/null
+   154	        m comebin_res/training.log comebin_out/comebin_res/training.log 2>/dev/null
+   155	        m comebin_res/config.yml comebin_out/comebin_res/config.yml 2>/dev/null
+   156	    done
+   157	}
+   158	sync_run_logs
+   159	
+   160	ok=0
+   161	for i in 1 2 3; do
+   162	    git add README.md status/current.md status/status.log status/agent-activity.log runs
+   163	    [ -e status/agent-run.log ] && git add status/agent-run.log
+   164	    [ -e status/watchdog.log ] && git add status/watchdog.log
+   165	    [ -e status/supervisor-run.log ] && git add status/supervisor-run.log
+   166	    [ -n "$(find status/meta -maxdepth 1 -type f 2>/dev/null | head -1)" ] && git add status/meta
+   167	    git commit -q -m "status: $alive — $(echo "$text" | cut -c1-60)"
+   168	    if git push -q; then ok=1; break; fi
+   169	    sleep 3
+   170	done
+   171	[ "$ok" = "1" ] || echo "$(date -Is) push failed after 3 tries" >>"$SLOG"
+   172	echo "$(date -Is) alive=$alive text='$text' pushed=$ok" >>"$SLOG"
+   173	exit 0
+diff --git a/scripts/status-heartbeat.sh b/scripts/status-heartbeat.sh
+index 316d789..825bb69 100755
+--- a/scripts/status-heartbeat.sh
++++ b/scripts/status-heartbeat.sh
+@@ -24,13 +24,18 @@ BENCH=/vol/data/benchmark
+ HB="$BENCH/.heartbeat"
+ ACT="$BENCH/.activity"
+ COMPLETE="$BENCH/TASK_COMPLETE"
+-LOCK=/tmp/status-heartbeat.lock
++LOCK=${STATUS_HEARTBEAT_LOCK:-/tmp/status-heartbeat.lock}
++REPO_LOCK=${BENCH_REPO_LOCK:-/tmp/bench-repo.lock}
+ SLOG="$BENCH/logs/status-heartbeat.log"
+ STALE_S=900
+ MARKER='<!--AGENT-STATUS-->'
+ 
+ exec 9>"$LOCK"
+-flock -n 9 || { echo "$(date -Is) skipped: lock held" >>"$SLOG"; exit 0; }
++flock -n 9 || { echo "$(date -Is) skipped: status lock held" >>"$SLOG"; exit 0; }
++# Serialize all generated-file writes and git operations with meta-watchdog.
++# This lock is separate from the per-script lock above.
++exec 8>"$REPO_LOCK"
++flock -n 8 || { echo "$(date -Is) skipped: repository lock held" >>"$SLOG"; exit 0; }
+ mkdir -p status
+ 
+ now_utc=$(date -u +%Y-%m-%dT%H:%M:%SZ)   # full precision, UTC (internal/log)
+@@ -164,8 +169,19 @@ for i in 1 2 3; do
+     [ -e status/watchdog.log ] && git add status/watchdog.log
+     [ -e status/supervisor-run.log ] && git add status/supervisor-run.log
+     [ -n "$(find status/meta -maxdepth 1 -type f 2>/dev/null | head -1)" ] && git add status/meta
+-    git commit -q -m "status: $alive — $(echo "$text" | cut -c1-60)"
+-    if git push -q; then ok=1; break; fi
++    ready=0
++    if git diff --cached --quiet -- README.md status runs; then
++        ready=1
++    elif git commit -q --only -m "status: $alive — $(echo "$text" | cut -c1-60)" -- README.md status runs; then
++        ready=1
++    fi
++    [ "$ready" = "1" ] || { sleep 3; continue; }
++    if git push -q; then
++        head=$(git rev-parse HEAD)
++        remote=$(git rev-parse refs/remotes/origin/main 2>/dev/null || echo none)
++        [ "$head" = "$remote" ] && ok=1
++        [ "$ok" = "1" ] && break
++    fi
+     sleep 3
+ done
+ [ "$ok" = "1" ] || echo "$(date -Is) push failed after 3 tries" >>"$SLOG"
+[0m$ [0mgit log --oneline --stat d0610f2..HEAD -- scripts/status-heartbeat.sh scripts/agent-watchdog.sh scripts/run_small_test.sh docs/05-agent-restart.md | head -200
+{"exit":0,"truncated":false,"output":"","status":"completed"}
+[0m$ [0mgit show HEAD:scripts/agent-watchdog.sh | nl -ba | sed -n '1,240p'; git diff -- scripts/agent-watchdog.sh
+1	#!/usr/bin/env bash
+     2	# agent-watchdog.sh — keep the OpenCode agent working on the benchmark task.
+     3	#
+     4	# WHY THIS FILE EXISTS / WHAT CHANGED (2026-09-23):
+     5	#   `opencode run --auto` is a SINGLE-TURN command in v2: it sends the prompt,
+     6	#   the agent completes ONE assistant turn, prints "Turn complete" and exits 0.
+     7	#   The old design launched one run per cron tick and then waited for the
+     8	#   heartbeat to go stale — so the agent effectively never got more than one
+     9	#   turn per ~20 min, and after 6 launches it hit the crash-loop rate limit
+    10	#   and stayed stopped for hours ("agent is always stopped").
+    11	#
+    12	#   Now the watchdog drives a PERSISTENT LOOP (see run_driver below): each
+    13	#   cron invocation that finds the agent idle starts a driver that keeps
+    14	#   calling `opencode run --auto --session <id>` — one turn per call, same
+    15	#   session, so context carries over — until the task is done, the agent
+    16	#   crashes, or a hard time/turn budget is hit. A flock guarantees only ONE
+    17	#   driver exists at a time; the next cron tick just skips while it's alive.
+    18	#
+    19	# Full documentation: docs/05-agent-restart.md
+    20	# Design doc / resume state: /vol/data/benchmark/PROGRESS.md
+    21	set -u
+    22	export HOME=/home/ubuntu
+    23	export PATH=/home/ubuntu/.opencode/bin:/home/ubuntu/.local/bin:/usr/local/bin:/usr/bin:/bin
+    24	cd /home/ubuntu || exit 1
+    25	
+    26	BENCH=/vol/data/benchmark
+    27	HEARTBEAT="$BENCH/.heartbeat"
+    28	LOG="$BENCH/logs/watchdog.log"
+    29	AGENT_LOG="$BENCH/logs/agent-run.log"   # stdout/stderr of `opencode run` attempts
+    30	ATTDIR="$BENCH/.watchdog_attempts"
+    31	STATUS="$BENCH/.watchdog_last_status"
+    32	MODELIX="$BENCH/.watchdog_model_ix"
+    33	FORCE_MODEL="$BENCH/.watchdog_force_model"
+    34	COMPLETE="$BENCH/TASK_COMPLETE"
+    35	LOCK=/tmp/agent-watchdog.lock
+    36	SESSION_ID="ses_f31799c77ffeTq9gcYgqc4hBhg"
+    37	STALE_S=900            # heartbeat/transcript older than 15 min => agent presumed idle
+    38	RUN_STALE_S=1500       # ...and no `opencode run` process alive
+    39	WINDOW_MIN=360         # crash-loop rate-limit window
+    40	MAX_ATTEMPTS=6         # max driver LAUNCHES per window
+    41	MAX_TURNS=200          # hard cap per driver (avoids a runaway forever-loop)
+    42	MAX_RUNTIME_S=28800    # hard cap per driver: 8 h; next cron tick relaunches
+    43	TURN_GAP_S=30          # pause between turns
+    44	IDLE_GAP_S=600         # longer pause when the agent says it is waiting/idle
+    45	QUOTA_RETRIES=3        # consecutive quota-limited runs before giving up to cron
+    46	
+    47	# Free models, tried in order when the default model is quota-limited.
+    48	FREE_MODELS=(
+    49	  "opencode/mimo-v2.6-flash-free"
+    50	  "opencode/muse-spark-1.3-contributor-free"
+    51	  "opencode/ling-3.0-flash-fin-free"
+    52	  "opencode/nemotron-3.5-lightning-free"
+    53	)
+    54	
+    55	mkdir -p "$BENCH/logs" "$ATTDIR"
+    56	log() { echo "$(date -Is) [watchdog] $*" >>"$LOG"; }
+    57	
+    58	[ -f "$COMPLETE" ] && exit 0
+    59	
+    60	# ---- single driver at a time ---------------------------------------------- #
+    61	exec 9>"$LOCK"
+    62	flock -n 9 || { log "skipped: another driver holds the lock"; exit 0; }
+    63	
+    64	# ---- is the agent already alive? ------------------------------------------ #
+    65	hb_age=999999
+    66	[ -f "$HEARTBEAT" ] && hb_age=$(( $(date +%s) - $(stat -c %Y "$HEARTBEAT") ))
+    67	tl_age=999999
+    68	[ -f "$AGENT_LOG" ] && tl_age=$(( $(date +%s) - $(stat -c %Y "$AGENT_LOG") ))
+    69	run_alive=0
+    70	pgrep -f "opencode run --auto" >/dev/null 2>&1 && run_alive=1
+    71	
+    72	alive=0
+    73	[ "$run_alive" = "1" ] && alive=1
+    74	[ "$hb_age" -lt "$STALE_S" ] && alive=1
+    75	[ "$tl_age" -lt "$STALE_S" ] && alive=1
+    76	[ "$alive" = "1" ] && exit 0   # agent working (or a run in flight), nothing to do
+    77	
+    78	# ---- crash-loop guard (counts DRIVER LAUNCHES, not turns) ------------------- #
+    79	n=$(find "$ATTDIR" -type f -mmin "-$WINDOW_MIN" 2>/dev/null | wc -l)
+    80	if [ "$n" -ge "$MAX_ATTEMPTS" ]; then
+    81	    log "rate-limited: $n launches in last ${WINDOW_MIN}min, not restarting"
+    82	    exit 0
+    83	fi
+    84	
+    85	# ---- classify the previous run's failure (if any) -------------------------- #
+    86	last=0
+    87	[ -f "$STATUS" ] && last=$(cat "$STATUS" 2>/dev/null || echo 0)
+    88	quota=0
+    89	if [ "$last" != "0" ] && [ -f "$AGENT_LOG" ]; then
+    90	    if tail -c 200000 "$AGENT_LOG" 2>/dev/null | grep -Eiq \
+    91	        'rate.?limit|quota|too many requests|429|token[s]? (are |is )?(exhausted|exceeded)|context.{0,20}(length|window).{0,20}(exceed|too long)|insufficient.{0,10}credit'; then
+    92	        quota=1
+    93	        log "previous failure looks like quota/context exhaustion"
+    94	    fi
+    95	fi
+    96	
+    97	# ---- pick start model ------------------------------------------------------- #
+    98	MODEL_ARGS=()
+    99	if [ "$quota" = "1" ]; then
+   100	    ix=0
+   101	    [ -f "$MODELIX" ] && ix=$(cat "$MODELIX" 2>/dev/null || echo 0)
+   102	    pick="${FREE_MODELS[$(( ix % ${#FREE_MODELS[@]} ))]}"
+   103	    echo $(( (ix + 1) % ${#FREE_MODELS[@]} )) >"$MODELIX"
+   104	    MODEL_ARGS=(--model "$pick")
+   105	    touch "$FORCE_MODEL"
+   106	    log "forcing free model: $pick"
+   107	elif [ "$last" = "0" ]; then
+   108	    rm -f "$FORCE_MODEL"   # healthy run -> default model
+   109	elif [ -f "$FORCE_MODEL" ]; then
+   110	    ix=0
+   111	    [ -f "$MODELIX" ] && ix=$(cat "$MODELIX" 2>/dev/null || echo 0)
+   112	    pick="${FREE_MODELS[$(( ix % ${#FREE_MODELS[@]} ))]}"
+   113	    echo $(( (ix + 1) % ${#FREE_MODELS[@]} )) >"$MODELIX"
+   114	    MODEL_ARGS=(--model "$pick")
+   115	    log "rotating free model after failure: $pick"
+   116	fi
+   117	
+   118	# ---- launch ONE driver (it loops turns itself) ------------------------------ #
+   119	# Count a launch toward the crash-loop budget only after a FAILED run, so
+   120	# healthy steady-state relaunches never accumulate markers (issue #4 fix).
+   121	[ "$last" = "0" ] || touch "$ATTDIR/$(date +%s)"
+   122	age=$(( hb_age < tl_age ? hb_age : tl_age ))
+   123	log "agent idle (hb ${hb_age}s, transcript ${tl_age}s, run_alive=$run_alive) -> launching driver (model_args='${MODEL_ARGS[*]:-default}')"
+   124	
+   125	CONT_PPT="Continue the metagenomic-binning-benchmark task you were working on; you may have been interrupted. First read /vol/data/benchmark/PROGRESS.md, verify the 'Current state' section against what is actually on disk, then resume from the first unfinished step. Update PROGRESS.md as you go, touch /vol/data/benchmark/.heartbeat in your shell commands while active, and append one timestamped line per meaningful action to /vol/data/repos/metagenomic-binning-benchmark/status/agent-activity.log. If /vol/data/benchmark/TASK_COMPLETE exists, do nothing and exit."
+   126	FRESH_PPT="You are resuming the metagenomic-binning-benchmark project after an agent restart (the previous session may have crashed, run out of context, or exhausted model tokens). Read /vol/data/benchmark/PROGRESS.md FIRST — it contains the full task definition and current state — then verify state on disk and continue from the first unfinished step. Update PROGRESS.md as you go, touch /vol/data/benchmark/.heartbeat in your shell commands while active, and append one timestamped line per meaningful action to /vol/data/repos/metagenomic-binning-benchmark/status/agent-activity.log. If /vol/data/benchmark/TASK_COMPLETE exists, do nothing and exit."
+   127	
+   128	run_driver() {
+   129	    local turns=0 start secs rc=0 quota_hits=0 before after
+   130	    start=$(date +%s)
+   131	    while :; do
+   132	        [ $(date +%s) -ge $(( start + MAX_RUNTIME_S )) ] && { log "driver hit ${MAX_RUNTIME_S}s runtime cap"; break; }
+   133	        [ "$turns" -ge "$MAX_TURNS" ] && { log "driver hit turns cap ($MAX_TURNS)"; break; }
+   134	        [ -f "$COMPLETE" ] && { log "driver: TASK_COMPLETE present, exiting"; break; }
+   135	
+   136	        # first iteration after a previous failure starts a fresh session once
+   137	        if [ "$turns" = "0" ] && [ "$last" != "0" ]; then
+   138	            prompt="$FRESH_PPT"; sargs=()
+   139	        else
+   140	            prompt="$CONT_PPT"; sargs=(--session "$SESSION_ID")
+   141	        fi
+   142	        [ -f "$FORCE_MODEL" ] || MODEL_ARGS=()
+   143	
+   144	        before=$(wc -c < "$AGENT_LOG" 2>/dev/null || echo 0)
+   145	        log "driver turn #$((turns+1)): model=${MODEL_ARGS[*]:-default} | opencode run ${sargs[*]:-fresh}"
+   146	        opencode run --auto "${sargs[@]}" "${MODEL_ARGS[@]}" --title "watchdog-restart" \
+   147	            "$prompt" >>"$AGENT_LOG" 2>&1
+   148	        rc=$?
+   149	        after=$(wc -c < "$AGENT_LOG" 2>/dev/null || echo 0)
+   150	        log "driver turn #$((turns+1)) exited rc=$rc (transcript ${before}->${after}B)"
+   151	        turns=$((turns + 1))
+   152	
+   153	        # a successful turn cleared the forced-model flag so the default model resumes
+   154	        [ "$rc" = "0" ] && rm -f "$FORCE_MODEL"
+   155	
+   156	        if [ "$rc" = "0" ]; then
+   157	            [ "$after" -gt "$before" ] && quota_hits=0
+   158	            # done with a turn that made progress — keep going (next turn shortly)
+   159	            # if the agent ended the turn saying it is waiting, back off longer
+   160	            gap=$TURN_GAP_S
+   161	            if tail -c 6000 "$AGENT_LOG" | grep -Eiq 'nothing (else )?(to do|left)|waiting for|just waiting|idle until|no new (issues|work)|nothing pending'; then
+   162	                gap=$IDLE_GAP_S
+   163	            fi
+   164	            log "driver turn #$((turns+1)) healthy; next turn in ${gap}s"
+   165	            sleep "$gap"
+   166	            continue
+   167	        else
+   168	            # classify: quota/context exhaustion -> rotate model and retry a bit
+   169	            if tail -c 200000 "$AGENT_LOG" 2>/dev/null | grep -Eiq \
+   170	                'rate.?limit|quota|too many requests|429|token[s]? (are |is )?(exhausted|exceeded)|context.{0,20}(length|window).{0,20}(exceed|too long)|insufficient.{0,10}credit'; then
+   171	                quota_hits=$((quota_hits + 1))
+   172	                ix=0; [ -f "$MODELIX" ] && ix=$(cat "$MODELIX" 2>/dev/null || echo 0)
+   173	                pick="${FREE_MODELS[$(( ix % ${#FREE_MODELS[@]} ))]}"
+   174	                echo $(( (ix + 1) % ${#FREE_MODELS[@]} )) >"$MODELIX"
+   175	                MODEL_ARGS=(--model "$pick")
+   176	                touch "$FORCE_MODEL"
+   177	                log "turn rc=$rc looks quota-limited -> rotate to $pick (hit $quota_hits/$QUOTA_RETRIES)"
+   178	                if [ "$quota_hits" -ge "$QUOTA_RETRIES" ]; then
+   179	                    log "driver giving up after $quota_hits quota-limited runs; cron will retry"
+   180	                    break
+   181	                fi
+   182	                continue
+   183	            fi
+   184	            log "driver: run failed rc=$rc; stopping, cron will relaunch"
+   185	            break
+   186	        fi
+   187	
+   188	        sleep "$TURN_GAP_S"
+   189	    done
+   190	    # a driver that survived several turns proved the pipeline works: reset the
+   191	    # crash-guard markers so healthy restarts are never rate-limited by history
+   192	    if [ "$turns" -ge 2 ]; then
+   193	        find "$ATTDIR" -type f -delete 2>/dev/null
+   194	        log "driver healthy after $turns turns: crash-guard markers cleared"
+   195	    fi
+   196	    echo "$rc" >"$STATUS"
+   197	    log "driver ended after $turns turns (rc=$rc)"
+   198	}
+   199	
+   200	run_driver
+   201	exit 0
+diff --git a/scripts/agent-watchdog.sh b/scripts/agent-watchdog.sh
+index 4d5ab71..1a82a52 100755
+--- a/scripts/agent-watchdog.sh
++++ b/scripts/agent-watchdog.sh
+@@ -32,10 +32,9 @@ STATUS="$BENCH/.watchdog_last_status"
+ MODELIX="$BENCH/.watchdog_model_ix"
+ FORCE_MODEL="$BENCH/.watchdog_force_model"
+ COMPLETE="$BENCH/TASK_COMPLETE"
+-LOCK=/tmp/agent-watchdog.lock
++LOCK=${AGENT_WATCHDOG_LOCK:-/tmp/agent-watchdog.lock}
+ SESSION_ID="ses_f31799c77ffeTq9gcYgqc4hBhg"
+ STALE_S=900            # heartbeat/transcript older than 15 min => agent presumed idle
+-RUN_STALE_S=1500       # ...and no `opencode run` process alive
+ WINDOW_MIN=360         # crash-loop rate-limit window
+ MAX_ATTEMPTS=6         # max driver LAUNCHES per window
+ MAX_TURNS=200          # hard cap per driver (avoids a runaway forever-loop)
+@@ -67,7 +66,11 @@ hb_age=999999
+ tl_age=999999
+ [ -f "$AGENT_LOG" ] && tl_age=$(( $(date +%s) - $(stat -c %Y "$AGENT_LOG") ))
+ run_alive=0
+-pgrep -f "opencode run --auto" >/dev/null 2>&1 && run_alive=1
++# Match only the primary session's argv prefix. A broad "opencode run --auto"
++# search also matches supervisor runs and can falsely suppress the agent driver.
++if ps -eo args= | awk -v p="opencode run --auto --session $SESSION_ID" 'index($0,p)==1{found=1} END{exit !found}'; then
++    run_alive=1
++fi
+ 
+ alive=0
+ [ "$run_alive" = "1" ] && alive=1
+@@ -122,11 +125,11 @@ fi
+ age=$(( hb_age < tl_age ? hb_age : tl_age ))
+ log "agent idle (hb ${hb_age}s, transcript ${tl_age}s, run_alive=$run_alive) -> launching driver (model_args='${MODEL_ARGS[*]:-default}')"
+ 
+-CONT_PPT="Continue the metagenomic-binning-benchmark task you were working on; you may have been interrupted. First read /vol/data/benchmark/PROGRESS.md, verify the 'Current state' section against what is actually on disk, then resume from the first unfinished step. Update PROGRESS.md as you go, touch /vol/data/benchmark/.heartbeat in your shell commands while active, and append one timestamped line per meaningful action to /vol/data/repos/metagenomic-binning-benchmark/status/agent-activity.log. If /vol/data/benchmark/TASK_COMPLETE exists, do nothing and exit."
+-FRESH_PPT="You are resuming the metagenomic-binning-benchmark project after an agent restart (the previous session may have crashed, run out of context, or exhausted model tokens). Read /vol/data/benchmark/PROGRESS.md FIRST — it contains the full task definition and current state — then verify state on disk and continue from the first unfinished step. Update PROGRESS.md as you go, touch /vol/data/benchmark/.heartbeat in your shell commands while active, and append one timestamped line per meaningful action to /vol/data/repos/metagenomic-binning-benchmark/status/agent-activity.log. If /vol/data/benchmark/TASK_COMPLETE exists, do nothing and exit."
++CONT_PPT="Continue the metagenomic-binning-benchmark task you were working on; you may have been interrupted. First read /vol/data/benchmark/PROGRESS.md, verify the 'Current state' section against what is actually on disk, then check NEW/updated issues with: gh issue list -R paulzierep/metagenomic-binning-benchmark --state open --json number,title,updatedAt and gh issue list -R paulzierep/COMEBin --state open --json number,title,updatedAt. Triage and comment on actionable updates without duplicating an existing response. Resume from the first unfinished step. Update PROGRESS.md and /vol/data/benchmark/.activity, touch /vol/data/benchmark/.heartbeat in shell commands while active, and append one timestamped line per meaningful action to /vol/data/repos/metagenomic-binning-benchmark/status/agent-activity.log. Never overlap the registered benchmark run. If /vol/data/benchmark/TASK_COMPLETE exists, do nothing and exit."
++FRESH_PPT="You are resuming the metagenomic-binning-benchmark project after an agent restart (the previous session may have crashed, run out of context, or exhausted model tokens). Read /vol/data/benchmark/PROGRESS.md FIRST, then check NEW/updated issues in paulzierep/metagenomic-binning-benchmark and paulzierep/COMEBin with gh issue list --state open --json number,title,updatedAt; triage and comment without duplicating an existing response. Verify state on disk and continue from the first unfinished step. Update PROGRESS.md and /vol/data/benchmark/.activity, touch /vol/data/benchmark/.heartbeat in shell commands while active, and append one timestamped line per meaningful action to /vol/data/repos/metagenomic-binning-benchmark/status/agent-activity.log. Never overlap the registered benchmark run. If /vol/data/benchmark/TASK_COMPLETE exists, do nothing and exit."
+ 
+ run_driver() {
+-    local turns=0 start secs rc=0 quota_hits=0 before after
++    local turns=0 start rc=0 quota_hits=0 before after
+     start=$(date +%s)
+     while :; do
+         [ $(date +%s) -ge $(( start + MAX_RUNTIME_S )) ] && { log "driver hit ${MAX_RUNTIME_S}s runtime cap"; break; }
+[0m$ [0mgit show HEAD:scripts/run_small_test.sh | nl -ba | sed -n '1,180p'; git diff -- scripts/run_small_test.sh | sed -n '1,260p'
+1	#!/usr/bin/env bash
+     2	# run_small_test.sh — issue #2 correctness test: run COMEBin (PRISTINE baseline
+     3	# source) on the small benchmark dataset (/vol/data/datasets/comebin_small), with
+     4	# the same run bookkeeping as a full benchmark run. Minutes, not hours.
+     5	# Usage: bash scripts/run_small_test.sh [rundir] [threads]
+     6	set -euo pipefail
+     7	
+     8	MM=/vol/data/tools/bin/micromamba
+     9	ENV=/vol/data/envs/comebin
+    10	SRC=/vol/data/repos/COMEBin          # pristine baseline source on purpose
+    11	DATA=/vol/data/datasets/comebin_small
+    12	CONTIGS="$DATA/contigs.fa"
+    13	BAMDIR="$DATA/bamfiles"
+    14	RUNDIR=${1:-/vol/data/benchmark/runs/small_test}
+    15	THREADS=${2:-32}
+    16	
+    17	mkdir -p "$RUNDIR"
+    18	COMMIT=$(git -C "$SRC" rev-parse HEAD)
+    19	DIRTY=$(git -C "$SRC" status --porcelain | wc -l)
+    20	echo "source commit: $COMMIT (dirty files: $DIRTY) — small-dataset test run"
+    21	[ "$DIRTY" -eq 0 ] || { echo "REFUSING: baseline source is modified; use pristine upstream"; exit 1; }
+    22	{
+    23	  echo "run:        $RUNDIR"
+    24	  echo "date:       $(date -Is)"
+    25	  echo "commit:     $COMMIT"
+    26	  echo "contigs:    $CONTIGS  ($(grep -c '^>' "$CONTIGS") contigs, $(du -h "$CONTIGS" | cut -f1))"
+    27	  echo "bamdir:     $BAMDIR"
+    28	  echo "threads:    $THREADS"
+    29	  echo "host:       $(nproc) cores, $(free -g | awk '/Mem:/{print $2}')G RAM"
+    30	  echo "cmd_wrapper: bash run_comebin.sh -a $CONTIGS -p $BAMDIR -o $RUNDIR/comebin_out -n 6 -t $THREADS  # via: micromamba run -p $ENV"
+    31	} | tee "$RUNDIR/run_meta.txt"
+    32	
+    33	export MAMBA_ROOT_PREFIX=/vol/data/envs/.mamba
+    34	cd "$SRC/COMEBin"
+    35	
+    36	printf '%s %s %s %s %s\n' "$$" "$(ps -o pgid= -p $$ | tr -d ' ')" "$RUNDIR/comebin_run.log" "$RUNDIR" "$(date +%s)" > /vol/data/benchmark/.active_run
+    37	
+    38	( sleep 12; MCMD=$(pgrep -af 'main.py' 2>/dev/null | head -1 | cut -d' ' -f2-); \
+    39	  [ -n "$MCMD" ] && echo "cmd_train_py: $MCMD" >> "$RUNDIR/run_meta.txt" ) &
+    40	
+    41	START=$(date +%s)
+    42	set +e
+    43	CUDA_VISIBLE_DEVICES= "$MM" run -p "$ENV" bash run_comebin.sh \
+    44	  -a "$CONTIGS" -p "$BAMDIR" -o "$RUNDIR/comebin_out" \
+    45	  -n 6 -t "$THREADS" 2>&1 | tee "$RUNDIR/comebin_run.log"
+    46	RC=${PIPESTATUS[0]}
+    47	set -e
+    48	END=$(date +%s)
+    49	{
+    50	  echo "exit_code:  $RC"
+    51	  echo "wall_s:     $((END-START))"
+    52	  echo "finished:   $(date -Is)"
+    53	} | tee -a "$RUNDIR/run_meta.txt"
+    54	
+    55	if [ "$RC" -eq 0 ]; then
+    56	  BINS="$RUNDIR/comebin_out/comebin_res/comebin_res_bins"
+    57	  [ -d "$BINS" ] && echo "bins: $(ls "$BINS" | wc -l)  -> $BINS" | tee -a "$RUNDIR/run_meta.txt"
+    58	fi
+    59	grep -aE 'run_FragGeneScan|hmmsearch' "$RUNDIR/comebin_run.log" 2>/dev/null | head -2 \
+    60	  | sed 's/^/cmd_from_log: /' | tee -a "$RUNDIR/run_meta.txt" >/dev/null || true
+    61	exit "$RC"
+diff --git a/scripts/run_small_test.sh b/scripts/run_small_test.sh
+index 7a5cdc8..9f7f6bd 100755
+--- a/scripts/run_small_test.sh
++++ b/scripts/run_small_test.sh
+@@ -1,48 +1,151 @@
+ #!/usr/bin/env bash
+-# run_small_test.sh — issue #2 correctness test: run COMEBin (PRISTINE baseline
+-# source) on the small benchmark dataset (/vol/data/datasets/comebin_small), with
+-# the same run bookkeeping as a full benchmark run. Minutes, not hours.
+-# Usage: bash scripts/run_small_test.sh [rundir] [threads]
++# run_small_test.sh — issue #2 correctness test: run COMEBin's real pipeline on
++# /vol/data/datasets/comebin_small with the same bookkeeping as a benchmark.
++# It refuses to overlap another registered benchmark and is intentionally
++# non-interactive. Usage:
++#   bash scripts/run_small_test.sh [rundir] [threads]
++# Environment:
++#   SRC_COMEBIN=/path/to/repo-root   COMEBin checkout/worktree to test
++#   SEED=42                          optional reproducible seed (supported CLIs)
++#   BATCH_SIZE=256 EMB_SIZE=512      small-data training defaults
+ set -euo pipefail
+ 
+ MM=/vol/data/tools/bin/micromamba
+ ENV=/vol/data/envs/comebin
+-SRC=/vol/data/repos/COMEBin          # pristine baseline source on purpose
++SRC=${SRC_COMEBIN:-/vol/data/repos/COMEBin}
+ DATA=/vol/data/datasets/comebin_small
+ CONTIGS="$DATA/contigs.fa"
+ BAMDIR="$DATA/bamfiles"
+ RUNDIR=${1:-/vol/data/benchmark/runs/small_test}
+-THREADS=${2:-32}
++THREADS=${2:-8}
++BATCH_SIZE=${BATCH_SIZE:-256}
++EMB_SIZE=${EMB_SIZE:-512}
++SEED=${SEED:-}
++START_LOCK=/tmp/benchmark-start.lock
++ACTIVE=/vol/data/benchmark/.active_run
+ 
+-mkdir -p "$RUNDIR"
++[ -f "$CONTIGS" ] || { echo "ERROR: missing small contigs: $CONTIGS"; exit 1; }
++[ -f "$BAMDIR/reads.bam" ] || { echo "ERROR: missing small BAM: $BAMDIR/reads.bam"; exit 1; }
++[ -f "$SRC/COMEBin/run_comebin.sh" ] || { echo "ERROR: SRC_COMEBIN is not a COMEBin repo root: $SRC"; exit 1; }
++
++# Serialize new launches and refuse overlap with the independently tracked run.
++# Checking .active_run is essential: the already-running baseline predates this lock.
++exec 9>"$START_LOCK"
++flock -n 9 || { echo "ERROR: another benchmark launch holds $START_LOCK"; exit 1; }
++if [ -f "$ACTIVE" ]; then
++  read -r active_pid active_pgid active_log active_dir active_start active_mode active_src < "$ACTIVE" || true
++  active_state=$(ps -o stat= -p "${active_pid:-0}" 2>/dev/null | tr -d ' ' || true)
++  if [ -n "${active_pid:-}" ] && kill -0 "$active_pid" 2>/dev/null && [[ "$active_state" != Z* ]]; then
++    echo "ERROR: benchmark already active: pid=$active_pid dir=$active_dir mode=${active_mode:-baseline}"
++    echo "Small functional tests and full benchmarks must never overlap; try again after that run finishes."
++    exit 1
++  fi
++  old_rc=$(grep -m1 '^exit_code:' "${active_dir:-/nonexistent}/run_meta.txt" 2>/dev/null | awk '{print $2}' || true)
++  if [ "${old_rc:-}" != "0" ]; then
++    echo "ERROR: stale failed active run is registered: pid=$active_pid dir=$active_dir"
++    echo "Run /vol/data/benchmark/bin/benchmark-watchdog.sh to triage/restart it; not starting a second run."
++    exit 1
++  fi
++  echo "clearing completed stale active-run registration for $active_dir"
++  rm -f "$ACTIVE"
++fi
++
++if [ -f "$RUNDIR/run_meta.txt" ] || [ -d "$RUNDIR/comebin_out" ]; then
++  echo "ERROR: refusing to overwrite an existing run directory: $RUNDIR"
++  echo "Choose a fresh rundir (autorestart directories are created by benchmark-watchdog)."
++  exit 1
++fi
++
++mkdir -p "$RUNDIR/logs"
+ COMMIT=$(git -C "$SRC" rev-parse HEAD)
+-DIRTY=$(git -C "$SRC" status --porcelain | wc -l)
+-echo "source commit: $COMMIT (dirty files: $DIRTY) — small-dataset test run"
+-[ "$DIRTY" -eq 0 ] || { echo "REFUSING: baseline source is modified; use pristine upstream"; exit 1; }
++BRANCH=$(git -C "$SRC" branch --show-current)
++# Ignore generated caches such as __pycache__, but reject every tracked edit.
++DIRTY=$(git -C "$SRC" status --porcelain --untracked-files=no | wc -l)
++echo "source commit: $COMMIT branch=$BRANCH (tracked dirty files: $DIRTY) — small-dataset test run"
++[ "$DIRTY" -eq 0 ] || { echo "REFUSING: source has tracked changes; commit or clean it first"; exit 1; }
++COMEBIN_ARGS=(
++  -a "$CONTIGS" -p "$BAMDIR" -o "$RUNDIR/comebin_out"
++  -n 6 -t "$THREADS" -b "$BATCH_SIZE" -e "$EMB_SIZE" -c "$EMB_SIZE"
++)
++# v1.1.0+ defaults to CUDA; this VM is CPU-only. Older CLIs do not know -d.
++if grep -q -- '-d STR.*device' "$SRC/COMEBin/run_comebin.sh"; then
++  COMEBIN_ARGS+=(-d cpu)
++fi
++if [ -n "$SEED" ] && grep -q -- '-s INT.*seed' "$SRC/COMEBin/run_comebin.sh"; then
++  COMEBIN_ARGS+=(-s "$SEED")
++fi
++CMD_TEXT=$(printf '%q ' "$MM" run -p "$ENV" bash run_comebin.sh "${COMEBIN_ARGS[@]}")
++
+ {
+   echo "run:        $RUNDIR"
+   echo "date:       $(date -Is)"
++  echo "source:     $SRC"
++  echo "branch:     $BRANCH"
+   echo "commit:     $COMMIT"
+   echo "contigs:    $CONTIGS  ($(grep -c '^>' "$CONTIGS") contigs, $(du -h "$CONTIGS" | cut -f1))"
+   echo "bamdir:     $BAMDIR"
+   echo "threads:    $THREADS"
++  echo "batch_size: $BATCH_SIZE"
++  echo "emb_size:   $EMB_SIZE"
++  echo "seed:       ${SEED:-unset}"
+   echo "host:       $(nproc) cores, $(free -g | awk '/Mem:/{print $2}')G RAM"
+-  echo "cmd_wrapper: bash run_comebin.sh -a $CONTIGS -p $BAMDIR -o $RUNDIR/comebin_out -n 6 -t $THREADS  # via: micromamba run -p $ENV"
++  echo "cmd_wrapper: $CMD_TEXT"
+ } | tee "$RUNDIR/run_meta.txt"
+ 
+ export MAMBA_ROOT_PREFIX=/vol/data/envs/.mamba
+ cd "$SRC/COMEBin"
+ 
+-printf '%s %s %s %s %s\n' "$$" "$(ps -o pgid= -p $$ | tr -d ' ')" "$RUNDIR/comebin_run.log" "$RUNDIR" "$(date +%s)" > /vol/data/benchmark/.active_run
++# Fields: pid pgid logfile rundir start_epoch mode source_repo. Older baseline
++# registrations have five fields and are treated as mode=baseline.
++printf '%s %s %s %s %s %s %s\n' "$$" "$(ps -o pgid= -p $$ | tr -d ' ')" \
++  "$RUNDIR/comebin_run.log" "$RUNDIR" "$(date +%s)" small "$SRC" > "$ACTIVE"
++
++SAMPLER_PID=""
++cleanup() {
++  rc=$?
++  trap - EXIT
++  if [ -n "$SAMPLER_PID" ] && kill -0 "$SAMPLER_PID" 2>/dev/null; then
++    kill "$SAMPLER_PID" 2>/dev/null || true
++    wait "$SAMPLER_PID" 2>/dev/null || true
++  fi
++  # A failed run stays registered so benchmark-watchdog can apply its restart
++  # budget. Only a successful run clears its own registration.
++  if [ "$rc" -eq 0 ] && [ -f "$ACTIVE" ]; then
++    read -r current_pid _ < "$ACTIVE" || true
++    [ "${current_pid:-}" = "$$" ] && rm -f "$ACTIVE"
++  fi
++  exit "$rc"
++}
++trap cleanup EXIT
++trap 'exit 130' INT TERM
++
++sample_resources() {
++  printf 'timestamp\tpids\tcpu_pct\trss_gb\tsystem_mem_mb\n'
++  while :; do
++    read -r pids cpu_pct rss_kb <<<"$(ps -eo pid=,pcpu=,rss=,args= | awk -v out="$RUNDIR/comebin_out" '
++      index($0, out) && $4 !~ /^awk/ {
++        p = p ? p "," $1 : $1; c += $2; r += $3
++      }
++      END { printf "%s %.1f %.0f", p, c, r }
++    ')"
++    system_mem_mb=$(free -m | awk '/Mem:/{print $3}')
++    printf '%s\t%s\t%s\t%.3f\t%s\n' "$(date -Is)" "${pids:-none}" \
++      "${cpu_pct:-0}" "$(awk -v kb="${rss_kb:-0}" 'BEGIN{print kb/1048576}')" "$system_mem_mb"
++    sleep 30 & wait $!
++  done
++}
++sample_resources > "$RUNDIR/logs/resources.tsv" 2> "$RUNDIR/logs/sampler.out" &
++SAMPLER_PID=$!
+ 
+-( sleep 12; MCMD=$(pgrep -af 'main.py' 2>/dev/null | head -1 | cut -d' ' -f2-); \
++# No other registered benchmark can exist (checked above), so the first training
++# process found is necessarily this run. Failure to capture it is non-fatal.
++( sleep 12; MCMD=$(pgrep -af 'main.py train' 2>/dev/null | head -1 | cut -d' ' -f2-); \
+   [ -n "$MCMD" ] && echo "cmd_train_py: $MCMD" >> "$RUNDIR/run_meta.txt" ) &
+ 
+ START=$(date +%s)
+ set +e
+ CUDA_VISIBLE_DEVICES= "$MM" run -p "$ENV" bash run_comebin.sh \
+-  -a "$CONTIGS" -p "$BAMDIR" -o "$RUNDIR/comebin_out" \
+-  -n 6 -t "$THREADS" 2>&1 | tee "$RUNDIR/comebin_run.log"
++  "${COMEBIN_ARGS[@]}" 2>&1 | tee "$RUNDIR/comebin_run.log"
+ RC=${PIPESTATUS[0]}
+ set -e
+ END=$(date +%s)
+@@ -54,7 +157,7 @@ END=$(date +%s)
+ 
+ if [ "$RC" -eq 0 ]; then
+   BINS="$RUNDIR/comebin_out/comebin_res/comebin_res_bins"
+-  [ -d "$BINS" ] && echo "bins: $(ls "$BINS" | wc -l)  -> $BINS" | tee -a "$RUNDIR/run_meta.txt"
++  [ -d "$BINS" ] && echo "bins: $(find "$BINS" -maxdepth 1 -type f | wc -l)  -> $BINS" | tee -a "$RUNDIR/run_meta.txt"
+ fi
+ grep -aE 'run_FragGeneScan|hmmsearch' "$RUNDIR/comebin_run.log" 2>/dev/null | head -2 \
+   | sed 's/^/cmd_from_log: /' | tee -a "$RUNDIR/run_meta.txt" >/dev/null || true
+[0m$ [0mgit show HEAD:scripts/benchmark-watchdog.sh | nl -ba | sed -n '1,180p'; git diff -- scripts/benchmark-watchdog.sh
+1	#!/usr/bin/env bash
+     2	# benchmark-watchdog.sh — keep the ACTIVE benchmark run alive INDEPENDENTLY of the
+     3	# coding agent (cron */5). If the agent is broken or the run hangs forever, this
+     4	# still restarts it.
+     5	#
+     6	# Rules (conservative, safety-first):
+     7	#   - only acts on the run recorded in /vol/data/benchmark/.active_run
+     8	#   - HEALTHY  = process alive AND run log written within the last $HANG_S
+     9	#   - HUNG     = process alive but log silent for > $HANG_S           -> kill + restart
+    10	#   - CRASHED  = process gone, run_meta.txt has no exit_code:0         -> restart
+    11	#   - DONE     = run_meta.txt exit_code:0                              -> clear .active_run
+    12	#   - rate limit: max $MAX_PER_RUN restarts per run per rolling 24 h
+    13	#   - flock-protected; exits immediately on TASK_COMPLETE
+    14	set -u
+    15	export HOME=/home/ubuntu
+    16	BENCH=/vol/data/benchmark
+    17	ACTIVE="$BENCH/.active_run"        # "<pid> <pgid> <logfile> <rundir> <start_ts>"
+    18	SLOG="$BENCH/logs/benchmark-watchdog.log"
+    19	LOCK=/tmp/benchmark-watchdog.lock
+    20	HANG_S=2400                         # 40 min without new log output => hung
+    21	MAX_PER_RUN=3                       # max automatic restarts per run
+    22	log() { echo "$(date -Is) [bm-watchdog] $*" >>"$SLOG"; }
+    23	
+    24	exec 9>"$LOCK"
+    25	flock -n 9 || exit 0
+    26	[ -f "$BENCH/TASK_COMPLETE" ] && exit 0
+    27	[ -f "$ACTIVE" ] || exit 0
+    28	
+    29	read -r pid pgid logfile rundir start < "$ACTIVE"
+    30	name=$(basename "$rundir")
+    31	
+    32	# log age = silence of the run
+    33	[ -f "$logfile" ] || logfile="$rundir/comebin_run.log"
+    34	if [ -f "$logfile" ]; then
+    35	    age=$(( $(date +%s) - $(stat -c %Y "$logfile") ))
+    36	else
+    37	    age=999999
+    38	fi
+    39	
+    40	alive=0
+    41	[ -n "${pid:-}" ] && kill -0 "$pid" 2>/dev/null && alive=1
+    42	
+    43	# finished successfully?
+    44	rc_done=$(grep -m1 '^exit_code:' "$rundir/run_meta.txt" 2>/dev/null | awk '{print $2}')
+    45	if [ "$rc_done" = "0" ]; then
+    46	    rm -f "$ACTIVE"
+    47	    log "$name finished rc=0 — active-run cleared"
+    48	    exit 0
+    49	fi
+    50	
+    51	# healthy?
+    52	[ "$alive" = "1" ] && [ "$age" -lt "$HANG_S" ] && exit 0
+    53	
+    54	# budget check (rolling 24 h)
+    55	restarts=$(find "$BENCH" -maxdepth 1 -name ".hang_restarts.$name.*" -mmin -1440 2>/dev/null | wc -l)
+    56	if [ "$restarts" -ge "$MAX_PER_RUN" ]; then
+    57	    log "$name needs restart but budget exhausted ($restarts/$MAX_PER_RUN) — leaving to agent"
+    58	    exit 0
+    59	fi
+    60	
+    61	# kill old tree (best effort)
+    62	if [ "$alive" = "1" ]; then
+    63	    log "$name HUNG: log silent ${age}s -> killing pid $pid pgid ${pgid:-?}"
+    64	    [ -n "${pgid:-}" ] && kill -9 -- -"$pgid" 2>/dev/null
+    65	    kill -9 "$pid" 2>/dev/null
+    66	    pkill -9 -f "$name" 2>/dev/null
+    67	    sleep 3
+    68	fi
+    69	
+    70	# restart into a fresh runs/ dir (keeps raw baseline artifacts per attempt intact)
+    71	touch "$BENCH/.hang_restarts.$name.$(date +%s)"
+    72	new="${name}_autorestart$((restarts+1))"
+    73	newdir="$BENCH/runs/$new"
+    74	nohup bash /vol/data/repos/metagenomic-binning-benchmark/scripts/run_comebin_baseline.sh "$newdir" \
+    75	    >"$BENCH/logs/$new.launch.log" 2>&1 &
+    76	log "$name restart #$((restarts+1)) -> $newdir (launcher pid $!; run script re-registers .active_run)"
+    77	exit 0
+diff --git a/scripts/benchmark-watchdog.sh b/scripts/benchmark-watchdog.sh
+old mode 100644
+new mode 100755
+index b0988aa..bcbebfb
+--- a/scripts/benchmark-watchdog.sh
++++ b/scripts/benchmark-watchdog.sh
+@@ -14,11 +14,12 @@
+ set -u
+ export HOME=/home/ubuntu
+ BENCH=/vol/data/benchmark
+-ACTIVE="$BENCH/.active_run"        # "<pid> <pgid> <logfile> <rundir> <start_ts>"
++ACTIVE="$BENCH/.active_run"        # pid pgid logfile rundir start_ts [mode source]
+ SLOG="$BENCH/logs/benchmark-watchdog.log"
+-LOCK=/tmp/benchmark-watchdog.lock
+-HANG_S=2400                         # 40 min without new log output => hung
+-MAX_PER_RUN=3                       # max automatic restarts per run
++LOCK=${BENCH_WATCHDOG_LOCK:-/tmp/benchmark-watchdog.lock}
++HANG_S=${BENCH_HANG_S:-2400}       # 40 min without new log output => hung
++MAX_PER_RUN=${BENCH_MAX_RESTARTS:-3}
++REPO=/vol/data/repos/metagenomic-binning-benchmark
+ log() { echo "$(date -Is) [bm-watchdog] $*" >>"$SLOG"; }
+ 
+ exec 9>"$LOCK"
+@@ -26,8 +27,16 @@ flock -n 9 || exit 0
+ [ -f "$BENCH/TASK_COMPLETE" ] && exit 0
+ [ -f "$ACTIVE" ] || exit 0
+ 
+-read -r pid pgid logfile rundir start < "$ACTIVE"
++read -r pid pgid logfile rundir start mode source < "$ACTIVE"
+ name=$(basename "$rundir")
++root_name=${name%%_autorestart*}
++mode=${mode:-baseline}
++source=${source:-/vol/data/repos/COMEBin}
++
++case "$pid:$pgid" in
++  *[!0-9:]*|:*|*:) log "invalid active-run pid/pgid '${pid:-}/${pgid:-}'; refusing process action"; exit 0 ;;
++esac
++[ "$pgid" -gt 1 ] || { log "unsafe active-run pgid $pgid; refusing process action"; exit 0; }
+ 
+ # log age = silence of the run
+ [ -f "$logfile" ] || logfile="$rundir/comebin_run.log"
+@@ -38,7 +47,14 @@ else
+ fi
+ 
+ alive=0
+-[ -n "${pid:-}" ] && kill -0 "$pid" 2>/dev/null && alive=1
++pid_stat=$(ps -o stat= -p "$pid" 2>/dev/null | tr -d ' ' || true)
++if [ -n "$pid_stat" ] && kill -0 "$pid" 2>/dev/null && [[ "$pid_stat" != Z* ]]; then
++    pid_cmd=$(tr '\0' ' ' < "/proc/$pid/cmdline" 2>/dev/null || true)
++    case "$pid_cmd" in
++      *run_comebin_baseline.sh*|*run_comebin_fix.sh*|*run_small_test.sh*) alive=1 ;;
++      *) log "pid $pid is alive but is not a registered COMEBin runner; refusing kill/restart: $pid_cmd" ; exit 0 ;;
++    esac
++fi
+ 
+ # finished successfully?
+ rc_done=$(grep -m1 '^exit_code:' "$rundir/run_meta.txt" 2>/dev/null | awk '{print $2}')
+@@ -51,27 +67,45 @@ fi
+ # healthy?
+ [ "$alive" = "1" ] && [ "$age" -lt "$HANG_S" ] && exit 0
+ 
+-# budget check (rolling 24 h)
+-restarts=$(find "$BENCH" -maxdepth 1 -name ".hang_restarts.$name.*" -mmin -1440 2>/dev/null | wc -l)
++# budget check (rolling 24 h), keyed to the stable pre-autorestart run name
++restarts=$(find "$BENCH" -maxdepth 1 -name ".hang_restarts.$root_name.*" -mmin -1440 2>/dev/null | wc -l)
+ if [ "$restarts" -ge "$MAX_PER_RUN" ]; then
+     log "$name needs restart but budget exhausted ($restarts/$MAX_PER_RUN) — leaving to agent"
+     exit 0
+ fi
+ 
+-# kill old tree (best effort)
++# Kill only the registered process group and wrapper. Never use pkill -f on a
++# run name: prompts and status commands may contain that text too.
+ if [ "$alive" = "1" ]; then
+-    log "$name HUNG: log silent ${age}s -> killing pid $pid pgid ${pgid:-?}"
+-    [ -n "${pgid:-}" ] && kill -9 -- -"$pgid" 2>/dev/null
+-    kill -9 "$pid" 2>/dev/null
+-    pkill -9 -f "$name" 2>/dev/null
++    log "$name HUNG: log silent ${age}s -> killing pid $pid pgid $pgid"
++    kill -9 -- -"$pgid" 2>/dev/null || true
++    kill -9 "$pid" 2>/dev/null || true
+     sleep 3
+ fi
+ 
+-# restart into a fresh runs/ dir (keeps raw baseline artifacts per attempt intact)
+-touch "$BENCH/.hang_restarts.$name.$(date +%s)"
+-new="${name}_autorestart$((restarts+1))"
++# Restart into a fresh directory (keeps every attempt's raw artifacts). New
++# registrations carry mode + source; legacy five-field baseline registrations
++# default to mode=baseline above.
++touch "$BENCH/.hang_restarts.$root_name.$(date +%s)"
++new="${root_name}_autorestart$((restarts+1))"
+ newdir="$BENCH/runs/$new"
+-nohup bash /vol/data/repos/metagenomic-binning-benchmark/scripts/run_comebin_baseline.sh "$newdir" \
++# The replacement runner registers its own PID. Remove the dead/hung
++# registration first; guarded runners intentionally refuse stale state.
++rm -f "$ACTIVE"
++case "$mode" in
++  baseline)
++    launch=(bash "$REPO/scripts/run_comebin_baseline.sh" "$newdir")
++    ;;
++  fix)
++    launch=(bash "$REPO/scripts/run_comebin_fix.sh" "$newdir")
++    ;;
++  small)
++    launch=(bash "$REPO/scripts/run_small_test.sh" "$newdir")
++    ;;
++  *)
++    log "cannot restart $name: unsupported mode '$mode'"; exit 0 ;;
++esac
++nohup env SRC_COMEBIN="$source" "${launch[@]}" \
+     >"$BENCH/logs/$new.launch.log" 2>&1 &
+-log "$name restart #$((restarts+1)) -> $newdir (launcher pid $!; run script re-registers .active_run)"
++log "$name restart #$((restarts+1)) mode=$mode source=$source -> $newdir (launcher pid $!; run script re-registers .active_run)"
+ exit 0
+\ No newline at end of file
+> build · space-bunny-free

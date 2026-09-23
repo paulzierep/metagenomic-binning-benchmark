@@ -5085,3 +5085,57 @@ bases: 909.5 M
 >S0C1
 >S0C2
 > build · big-pickle
+Important discovery: `anonymous_gsa.fasta.gz` = **1,475,972 contigs / 909 Mbp** — far too large for COMEBin training as-is (the demo was 29k contigs). I need to pick a feasible, correct input. Let me map out what the marine dataset actually offers (per-sample assemblies? reads structure?) to make the right call:
+[0m$ [0mecho "=== marine tree (2 levels) ==="
+find /vol/data/datasets/cami_II/marine -maxdepth 2 -type d | head -20
+echo ""
+echo "=== anything like per-sample assembly fasta? ==="
+find /vol/data/datasets/cami_II/marine -name '*.fasta*' -o -name '*.fa' -o -name '*.fna' 2>/dev/null | head -10
+echo ""
+echo "=== bams_0 full listing (file types + sizes) ==="
+find /vol/data/datasets/cami_II/marine_reads/bams_0 -type f | head -8
+echo "... total files: $(find /vol/data/datasets/cami_II/marine_reads/bams_0 -type f | wc -l)"
+echo "=== sample_0 dirs in marine/single/short_read if any ==="
+find /vol/data/datasets/cami_II/marine -maxdepth 4 -type d -name '*sample_0*' 2>/dev/null | head
+echo "=== reads download progress ==="
+ls -la --block-size=M /vol/data/datasets/cami_II/marine_reads/marmgCAMI2_sample_0_reads.tar.gz 2>/dev/null
+tail -1 /tmp/opencode/wget_reads.log 2>/dev/null
+touch /vol/data/benchmark/.heartbeat
+=== marine tree (2 levels) ===
+/vol/data/datasets/cami_II/marine
+/vol/data/datasets/cami_II/marine/pooled
+/vol/data/datasets/cami_II/marine/pooled/long
+/vol/data/datasets/cami_II/marine/pooled/short
+/vol/data/datasets/cami_II/marine/pooled/hybrid
+/vol/data/datasets/cami_II/marine/single
+/vol/data/datasets/cami_II/marine/single/long
+/vol/data/datasets/cami_II/marine/single/short
+/vol/data/datasets/cami_II/marine/single/hybrid
+
+=== anything like per-sample assembly fasta? ===
+/vol/data/datasets/cami_II/marine/pooled/long/Flye_assembly.fasta
+/vol/data/datasets/cami_II/marine/pooled/short/Megahit_v1.1.4-2.fa
+/vol/data/datasets/cami_II/marine/pooled/short/HipMer_Metagenome_final_assembly.fa
+/vol/data/datasets/cami_II/marine/pooled/short/Ray-Meta_marine_pooled.ray.scaffolds.fa
+/vol/data/datasets/cami_II/marine/pooled/short/metaSPAdes_v3.13.0_contigs.fasta.gz
+/vol/data/datasets/cami_II/marine/pooled/short/Megahit_V1.2.7-inhouse_marine_pooled.megahit.scaffolds.fa
+/vol/data/datasets/cami_II/marine/pooled/short/ABySS_marine_pooled.abyss.scaffolds.fa
+/vol/data/datasets/cami_II/marine/pooled/short/Megahit_v1.1.2_Contigs.fasta
+/vol/data/datasets/cami_II/marine/pooled/short/metaSPAdes_v3.13.1_contigs.fasta.gz
+/vol/data/datasets/cami_II/marine/pooled/short/metaSPAdes_v3.13.1-inhouse_marine_pooled.metaspades.scaffolds.fa
+
+=== bams_0 full listing (file types + sizes) ===
+/vol/data/datasets/cami_II/marine_reads/bams_0/simulation_short_read/2018.08.15_09.49.32_sample_0/bam/Otu230.0.bam.bai
+/vol/data/datasets/cami_II/marine_reads/bams_0/simulation_short_read/2018.08.15_09.49.32_sample_0/bam/RNODE_342_length_1543_cov_10.88823.bam
+/vol/data/datasets/cami_II/marine_reads/bams_0/simulation_short_read/2018.08.15_09.49.32_sample_0/bam/RNODE_225_length_25884_cov_6.69550.bam
+/vol/data/datasets/cami_II/marine_reads/bams_0/simulation_short_read/2018.08.15_09.49.32_sample_0/bam/Otu526.bam
+/vol/data/datasets/cami_II/marine_reads/bams_0/simulation_short_read/2018.08.15_09.49.32_sample_0/bam/Otu2290.0.bam.bai
+/vol/data/datasets/cami_II/marine_reads/bams_0/simulation_short_read/2018.08.15_09.49.32_sample_0/bam/RNODE_415_length_2147_cov_6.45506.bam.bai
+/vol/data/datasets/cami_II/marine_reads/bams_0/simulation_short_read/2018.08.15_09.49.32_sample_0/bam/Otu2.0.bam
+/vol/data/datasets/cami_II/marine_reads/bams_0/simulation_short_read/2018.08.15_09.49.32_sample_0/bam/Otu2233.0.bam
+... total files: 1180
+=== sample_0 dirs in marine/single/short_read if any ===
+=== reads download progress ===
+-rw-rw-r-- 1 ubuntu ubuntu 5293M Jun 22  2021 /vol/data/datasets/cami_II/marine_reads/marmgCAMI2_sample_0_reads.tar.gz
+> build · big-pickle
+Reads download **already finished** (5293M). No per-sample assemblies exist (pooled only), and per-genome BAMs have no companion fasta → the feasible path is the **CAMI-official pooled MEGAHIT assembly + mapped sample-0 reads**. Checking that assembly's size + the reads archive layout:
