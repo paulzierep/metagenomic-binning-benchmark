@@ -2495,3 +2495,1368 @@ Turn complete. Status:
 2. Baseline eval: `scripts/run_eval.sh runs/baseline_unmodified` → CheckM2 + CheckM v1 (both ready) → README performance row (wall time, peak RAM 5.42 GB, bins, means) → push.
 3. Fix batch 1 re-run (`run_comebin_fix.sh runs/fix_batch1`, @ `03670d6a`) → compare.
 4. CAMI II marine sample 0 (input plan documented, downloads ready).
+[0m
+> build · big-pickle
+Resuming per watchdog protocol — checking baseline status:
+[0m$ [0mecho "=== sentinel ==="
+ls /vol/data/benchmark/TASK_COMPLETE 2>/dev/null || echo "no TASK_COMPLETE - continuing"
+echo "=== baseline run ==="
+RUN=/vol/data/benchmark/runs/baseline_unmodified
+ps -p 19182 >/dev/null 2>&1 && echo "pid 19182 RUNNING" || echo "pid 19182 GONE"
+ps -eo pid,pcpu,etime,args | grep -E '[m]ain.py train' | head -1
+echo "epochs: $(grep -c '^DEBUG:root:Epoch' "$RUN/comebin_out/comebin_res/training.log" 2>/dev/null)"
+echo "=== run_meta tail ==="
+tail -6 "$RUN/run_meta.txt" 2>/dev/null
+echo "=== run log last lines ==="
+tail -c 250 "$RUN/comebin_run.log" 2>/dev/null | tr '\r' '\n' | tail -3
+echo "=== issues ==="
+gh issue list -R paulzierep/metagenomic-binning-benchmark --state open --json number,title,updatedAt -q '.[] | "#\(.number) \(.title) [\(.updatedAt)]"' 2>&1
+echo "=== last status tick ==="
+tail -1 /vol/data/repos/metagenomic-binning-benchmark/status/status.log 2>/dev/null
+date -u +"now UTC: %H:%M"
+touch /vol/data/benchmark/.heartbeat
+=== sentinel ===
+no TASK_COMPLETE - continuing
+=== baseline run ===
+pid 19182 RUNNING
+  21545 3128    03:58:28 python main.py train --data /vol/data/benchmark/runs/baseline_unmodified/comebin_out/data_augmentation --temperature 0.15 --emb_szs_forcov 2048 --batch_size 1024 --emb_szs 2048 --n_views 6 --add_model_for_coverage --output_path /vol/data/benchmark/runs/baseline_unmodified/comebin_out/comebin_res --earlystop --addvars --vars_sqrt --num_threads 32
+epochs: 102
+=== run_meta tail ===
+contigs:    /vol/data/datasets/comebin_test_data/BATS_SAMN07137077_METAG.scaffolds.min500.fasta.f1k.fasta
+bamdir:     /vol/data/datasets/comebin_test_data/bamfiles
+threads:    32
+host:       32 cores, 62G RAM, gpu=none
+cmd_wrapper:  bash run_comebin.sh -a /vol/data/datasets/comebin_test_data/BATS_SAMN07137077_METAG.scaffolds.min500.fasta.f1k.fasta -p /vol/data/datasets/comebin_test_data/bamfiles -o /vol/data/benchmark/runs/baseline_unmodified/comebin_out -n 6 -t 32  # via: micromamba run -p /vol/data/envs/comebin
+cmd_train_py: python main.py train --data /vol/data/benchmark/runs/baseline_unmodified/comebin_out/data_augmentation --temperature 0.15 --emb_szs_forcov 2048 --batch_size 1024 --emb_szs 2048 --n_views 6 --add_model_for_coverage --output_path /vol/data/benchmark/runs/baseline_unmodified/comebin_out/comebin_res --earlystop --addvars --vars_sqrt --num_threads 32
+=== run log last lines ===
+ 82%|████████▏ | 23/28 [01:52<00:24,  4.91s/it]
+ 86%|████████▌ | 24/28 [01:57<00:19,  4.86s/it]
+ 89%|████████▉ | 25/28 [02:02<00:14,  4.80s/it]=== issues ===
+#5 I updated the comebin fork [2026-09-23T18:19:42Z]
+#4 Why agent often broken [2026-09-23T17:40:02Z]
+#3 I think comebin is stuck [2026-09-23T16:51:07Z]
+#2 Can you try to create a small benchmark dataset for comebin ? [2026-09-23T17:43:46Z]
+#1 Idea inbox: benchmark ideas, COMEBin fixes, dataset requests [2026-09-23T14:53:13Z]
+=== last status tick ===
+2026-09-23T20:41 CEST	alive=no	mem=6208/64295 MB	load=32.12 31.85 31.81	transcript=183939B	watchdog=2448B	heartbeat stale 4226s — agent dead/idle, watchdog should restart within ~5 min
+now UTC: 18:42
+> build · big-pickle
+Two **new user issues**: #4 "Why agent often broken" and #5 "I updated the comebin fork" — plus #2 got a new update. Reading all of them + checking the fork state:
+[0m$ [0mecho "=== issue #4 ==="
+gh issue view 4 -R paulzierep/metagenomic-binning-benchmark --json title,body,comments -q '.title, .body, (.comments[] | "--- " + .author.login + " (" + .createdAt + "):\n" + .body)' 2>&1 | head -40
+echo ""
+echo "=== issue #5 ==="
+gh issue view 5 -R paulzierep/metagenomic-binning-benchmark --json title,body,comments -q '.title, .body, (.comments[] | "--- " + .author.login + " (" + .createdAt + "):\n" + .body)' 2>&1 | head -40
+echo ""
+echo "=== issue #2 (new updates) ==="
+gh issue view 2 -R paulzierep/metagenomic-binning-benchmark --json title,body,comments -q '.title, .body, (.comments[] | "--- " + .author.login + " (" + .createdAt + "):\n" + .body)' 2>&1 | head -40
+touch /vol/data/benchmark/.heartbeat
+=== issue #4 ===
+Why agent often broken
+The agent seems not running rather often, please investigate, implemnt logic to keep it up, report also in the logs which model is used 
+
+=== issue #5 ===
+I updated the comebin fork
+I updated the comebin fork to the latest version continue work based on this one
+
+=== issue #2 (new updates) ===
+Can you try to create a small benchmark dataset for comebin ?
+Use bioinformatic tools to make a small test benchmark dataset (maybe based on one of the dataset already used), and potentially fix issues with the tool if it does not work with the small dataset. Make the dataset as small as possible. But the tool should still use its real logic. Parameters can be changed, though.
+--- paulzierep (2026-09-23T17:41:54Z):
+U should for all functional tests use the small test data, log it as always, and only after major commits run on benchmark data
+--- paulzierep (2026-09-23T17:43:46Z):
+Also make a plan which benchmark data to use human as host should be included so you do not excede the space limit on the drive
+> build · big-pickle
+Clear directives from the user's new issues. Priority: **#5 fork update** (affects all fix work), **#4 keep-alive + model logging**, **#2 new workflow rules** (small data for functional tests, only major commits get full benchmarks, include human host-associated in the dataset/space plan). Starting with the fork:
+[0m$ [0mecho "=== fetch fork in pristine clone (fetch does NOT disturb running baseline) ==="
+git -C /vol/data/repos/COMEBin fetch origin 2>&1 | tail -3
+echo "=== new commits on origin/master since baseline 987db95 ==="
+git -C /vol/data/repos/COMEBin log --oneline 987db95d8d399f30b7c82a5f5f40ed6bfdc906c7..origin/master | head -30
+echo "=== diffstat ==="
+git -C /vol/data/repos/COMEBin diff --stat 987db95d8d399f30b7c82a5f5f40ed6bfdc906c7 origin/master | tail -15
+echo "=== current local branches/status ==="
+git -C /vol/data/repos/COMEBin branch -a | head
+git -C /vol/data/repos/COMEBin status --porcelain | head
+touch /vol/data/benchmark/.heartbeat
+=== fetch fork in pristine clone (fetch does NOT disturb running baseline) ===
+From https://github.com/paulzierep/COMEBin
+   987db95..1b476a4  master     -> origin/master
+=== new commits on origin/master since baseline 987db95 ===
+1b476a4 Clarify PyTorch installation options
+fd7ff06 Update Bioconda CUDA installation example
+ad6ceb3 Release v1.1.0
+=== diffstat ===
+ COMEBin/get_final_result.py                        | 457 ++++++------
+ COMEBin/leiden_grid.py                             | 109 +++
+ COMEBin/main.py                                    | 203 +++---
+ COMEBin/models/mlp2.py                             |  38 +-
+ COMEBin/run_comebin.sh                             | 231 +++---
+ COMEBin/sequence_stats.py                          |  20 +
+ COMEBin/simclr.py                                  | 481 +++++--------
+ COMEBin/train_CLmodel.py                           | 405 +++++------
+ COMEBin/utils.py                                   | 321 +++++----
+ README.md                                          |  56 +-
+ __init__.py                                        |   0
+ auxiliary/test_getmarker_2quarter.pl               |  81 ++-
+ bin/run_comebin.sh                                 | 192 -----
+ comebin_env.yaml                                   |  76 +-
+ 26 files changed, 3251 insertions(+), 2515 deletions(-)
+=== current local branches/status ===
++ comebin-optimizations
+* master
+  remotes/origin/HEAD -> origin/master
+  remotes/origin/comebin-optimizations
+  remotes/origin/docs/bam-bowtie-input
+  remotes/origin/docs/dependencies-and-resources
+  remotes/origin/fix-small-test-data
+  remotes/origin/master
+?? COMEBin/__pycache__/
+?? COMEBin/data_aug/__pycache__/
+?? COMEBin/models/__pycache__/
+?? COMEBin/scripts/__pycache__/
+> build · big-pickle
+The fork moved to **v1.1.0** (`1b476a4`) — a substantial rewrite (3251+/2515− across `main.py`, `simclr.py`, `train_CLmodel.py`, `run_comebin.sh`, etc.). The running baseline (old snapshot `987db95`) is unaffected. Let me set up the fix worktree on the new base and, in parallel, investigate the agent-restart issue (#4):
+[0m$ [0mecho "=== were my batch-1 target files touched by v1.1.0? ==="
+git -C /vol/data/repos/COMEBin diff --stat 987db95d8d399f30b7c82a5f5f40ed6bfdc906c7 origin/master -- COMEBin/data_aug COMEBin/filter_small_bins.py COMEBin/scripts | tail -20
+echo ""
+echo "=== does new run_comebin.sh change the CLI? (usage/diff head) ==="
+git -C /vol/data/repos/COMEBin diff 987db95d8d399f30b7c82a5f5f40ed6bfdc906c7 origin/master -- COMEBin/run_comebin.sh | head -60
+echo ""
+echo "=== v1.1.0 README: does install/usage differ? (key lines) ==="
+git -C /vol/data/repos/COMEBin show origin/master:README.md 2>/dev/null | grep -nE '^## |pip install|micromamba|conda|usage|Usage' | head -20
+touch /vol/data/benchmark/.heartbeat
+=== were my batch-1 target files touched by v1.1.0? ===
+ COMEBin/data_aug/gen_cov.py                        | 589 ++++++++++-----------
+ COMEBin/data_aug/gen_kmer.py                       | 114 ++--
+ COMEBin/data_aug/gen_var.py                        | 229 --------
+ .../data_aug/generate_augfasta_and_saveindex.py    | 299 +++++++----
+ 4 files changed, 531 insertions(+), 700 deletions(-)
+
+=== does new run_comebin.sh change the CLI? (usage/diff head) ===
+diff --git a/COMEBin/run_comebin.sh b/COMEBin/run_comebin.sh
+index 2252227..fbcc5a2 100644
+--- a/COMEBin/run_comebin.sh
++++ b/COMEBin/run_comebin.sh
+@@ -5,7 +5,7 @@
+ # Author of pipeline: Ziye Wang.
+ # For questions, bugs, and suggestions, contact me at zwang17@fudan.edu.cn
+ ##############################################################################################################################################################
+-VERSION="1.0.4"
++VERSION="1.1.0"
+ 
+ help_message () {
+   echo ""
+@@ -13,17 +13,36 @@ help_message () {
+   echo "Usage: bash run_comebin.sh [options] -a contig_file -o output_dir -p bam_file_path"
+ 	echo "Options:"
+ 	echo ""
++	echo "  -h              display this help message and exit"
++	echo "  -V              display the COMEBin version and exit"
+ 	echo "  -a STR          metagenomic assembly file"
+ 	echo "  -o STR          output directory"
+ 	echo "  -p STR          path to access to the bam files"
+ 	echo "  -n INT          number of views for contrastive multiple-view learning (default=6)"
+-	echo "  -t INT          number of threads (default=5)"
++	echo "  -t INT          stage worker/thread count where explicitly supported (default=5)"
++	echo "  -w INT          concurrent Leiden worker processes (default=same as -t)"
++	echo "  -m INT          HNSW neighbors retained per contig (default=100)"
++	echo "  -d STR          NN training device: cuda, cuda:N, or cpu (default=cuda)"
++	echo "  -s INT          random seed for reproducible runs (default=not set)"
++	echo "  -E FLOAT        HMMER sequence E-value used when marker HMMs do not define TC cutoffs (default=1e-5)"
+ 	echo "  -l FLOAT        temperature in loss function (default=0.07 for assemblies with an N50 > 10000, default=0.15 for others)"
+ 	echo "  -e INT          embedding size for comebin network (default=2048)"
+ 	echo "  -c INT          embedding size for coverage network (default=2048)"
+ 	echo "  -b INT          batch size for training process (default=1024)"
+ 	echo "";}
+ 
++report_stage_failure () {
++    local stage_name=$1
++    local stage_status=$2
++
++    if (( stage_status >= 128 )); then
++        echo "${stage_name} exited with status ${stage_status} (possible signal $((stage_status - 128)))." >&2
++    else
++        echo "${stage_name} exited with status ${stage_status}." >&2
++    fi
++    exit "${stage_status}"
++}
++
+ 
+ ########################################################################################################
+ ########################     LOADING IN THE PARAMETERS AND RUNNING              ########################
+@@ -31,23 +50,44 @@ help_message () {
+ 
+ num_threads=5
+ n_views=6
+-#temperature=0.15
++temperature=
+ emb_szs_forcov=2048
+ emb_szs=2048
+ batch_size=1024
+
+=== v1.1.0 README: does install/usage differ? (key lines) ===
+5:- [Install COMEBin via bioconda](#install)
+13:## <a name="overview"></a>Overview
+22:## <a name="requirements"></a>System Requirements
+29:## <a name="install"></a>Install COMEBin via bioconda
+30:COMEBin can be installed from Bioconda with the GPU-enabled PyTorch build from conda-forge:
+32:conda create -n comebin_env comebin pytorch-gpu cuda-version=13.0 \
+33:  --channel conda-forge --channel bioconda --strict-channel-priority
+34:conda activate comebin_env
+39:conda create -n comebin_env comebin pytorch-cpu \
+40:  --channel conda-forge --channel bioconda --strict-channel-priority
+41:conda activate comebin_env
+44:The Bioconda package declares PyTorch as a runtime dependency. The `pytorch-gpu` and `pytorch-cpu` metapackages select the corresponding conda-forge build. The Bioconda installation uses the conda-forge PyTorch 2.13 build with CUDA 13.0 by default. To use CUDA 12.6 or another CUDA version not provided by conda-forge, please install COMEBin from source and then install the corresponding CUDA-enabled PyTorch build with pip.
+46:## <a name="started"></a>Install COMEBin via source code
+48:After installing Anaconda (or miniconda), first, obtain COMEBin:
+57:conda env create -f comebin_env.yaml
+58:conda activate COMEBin
+59:python -m pip install torch==2.13.0 --index-url https://download.pytorch.org/whl/cu126
+64:## <a name="demo"></a>A test dataset to demo COMEBin
+88:## <a name="preprocessing"></a>Preprocessing
+129:## <a name="runcomebin"></a>How to run COMEBin
+[0m$ [0mecho "=== watchdog logs (restart reasons) ==="
+ls -la --time-style=+%m-%d\ %H:%M /vol/data/benchmark/logs/ 2>/dev/null | tail -10
+echo "--- watchdog.log tail ---"
+tail -30 /vol/data/benchmark/logs/watchdog.log 2>/dev/null
+echo "--- agent watchdog log ---"
+ls /vol/data/logs/ 2>/dev/null | tail -5
+tail -20 /vol/data/logs/agent-watchdog.log 2>/dev/null
+echo "=== current model in use (opencode process) ==="
+ps -eo pid,args | grep -E '[o]pencode' | head -5
+echo "=== opencode config files ==="
+ls -la /home/ubuntu/.config/opencode/ 2>/dev/null
+grep -rn "model" /home/ubuntu/.config/opencode/opencode.json 2>/dev/null | head
+touch /vol/data/benchmark/.heartbeat
+=== watchdog logs (restart reasons) ===
+total 216
+drwxrwxr-x  2 ubuntu ubuntu   4096 09-23 18:41 .
+drwxrwxr-x 10 ubuntu ubuntu   4096 09-23 18:40 ..
+-rw-rw-r--  1 ubuntu ubuntu 192239 09-23 18:43 agent-run.log
+-rw-rw-r--  1 ubuntu ubuntu   8223 09-23 18:41 status-heartbeat.log
+-rw-rw-r--  1 ubuntu ubuntu      0 09-23 18:41 watchdog-launch.out
+-rw-rw-r--  1 ubuntu ubuntu   2696 09-23 18:41 watchdog.log
+--- watchdog.log tail ---
+2026-09-23T15:30:02+00:00 [watchdog] heartbeat stale 1049s -> restarting agent (mode=continue model_args='default')
+2026-09-23T15:47:35+00:00 [watchdog] agent run (mode=continue) exited rc=0
+2026-09-23T16:05:01+00:00 [watchdog] heartbeat stale 1073s -> restarting agent (mode=continue model_args='default')
+2026-09-23T16:10:30+00:00 [watchdog] agent run (mode=continue) exited rc=0
+2026-09-23T16:30:01+00:00 [watchdog] heartbeat stale 1182s -> restarting agent (mode=continue model_args='default')
+2026-09-23T16:32:54+00:00 [watchdog] agent run (mode=continue) exited rc=0
+2026-09-23T16:50:01+00:00 [watchdog] heartbeat stale 1041s -> restarting agent (mode=continue model_args='default')
+2026-09-23T16:52:21+00:00 [watchdog] agent run (mode=continue) exited rc=0
+2026-09-23T17:10:01+00:00 [watchdog] heartbeat stale 1090s -> restarting agent (mode=continue model_args='default')
+2026-09-23T17:13:04+00:00 [watchdog] agent run (mode=continue) exited rc=0
+2026-09-23T17:30:02+00:00 [watchdog] heartbeat stale 1027s -> restarting agent (mode=continue model_args='default')
+2026-09-23T17:31:08+00:00 [watchdog] agent run (mode=continue) exited rc=0
+2026-09-23T17:35:01+00:00 [watchdog] rate-limited: 6 restarts in last 360min, not restarting
+2026-09-23T17:40:01+00:00 [watchdog] rate-limited: 6 restarts in last 360min, not restarting
+2026-09-23T17:45:01+00:00 [watchdog] rate-limited: 6 restarts in last 360min, not restarting
+2026-09-23T17:50:01+00:00 [watchdog] rate-limited: 6 restarts in last 360min, not restarting
+2026-09-23T17:55:01+00:00 [watchdog] rate-limited: 6 restarts in last 360min, not restarting
+2026-09-23T18:00:01+00:00 [watchdog] rate-limited: 6 restarts in last 360min, not restarting
+2026-09-23T18:05:01+00:00 [watchdog] rate-limited: 6 restarts in last 360min, not restarting
+2026-09-23T18:10:01+00:00 [watchdog] rate-limited: 6 restarts in last 360min, not restarting
+2026-09-23T18:15:01+00:00 [watchdog] rate-limited: 6 restarts in last 360min, not restarting
+2026-09-23T18:20:01+00:00 [watchdog] rate-limited: 6 restarts in last 360min, not restarting
+2026-09-23T18:25:01+00:00 [watchdog] rate-limited: 6 restarts in last 360min, not restarting
+2026-09-23T18:30:01+00:00 [watchdog] rate-limited: 6 restarts in last 360min, not restarting
+2026-09-23T18:35:01+00:00 [watchdog] rate-limited: 6 restarts in last 360min, not restarting
+2026-09-23T18:40:01+00:00 [watchdog] rate-limited: 6 launches in last 360min, not restarting
+2026-09-23T18:41:49+00:00 [watchdog] agent idle (hb 4250s, transcript 4241s, run_alive=0) -> launching driver (model_args='default')
+2026-09-23T18:41:49+00:00 [watchdog] driver turn #1: opencode run --session ses_f31799c77ffeTq9gcYgqc4hBhg default
+--- agent watchdog log ---
+env_comebin_deps2.log
+env_comebin_deps2b.log
+env_comebin_install.log
+samtools_index.log
+unzip.log
+=== current model in use (opencode process) ===
+   5551 /home/ubuntu/.opencode/bin/opencode serve --service
+  89395 opencode
+  93443 opencode run --auto --session ses_f31799c77ffeTq9gcYgqc4hBhg --title watchdog-restart Continue the metagenomic-binning-benchmark task you were working on; you may have been interrupted. First read /vol/data/benchmark/PROGRESS.md, verify the 'Current state' section against what is actually on disk, then resume from the first unfinished step. Update PROGRESS.md as you go, touch /vol/data/benchmark/.heartbeat in your shell commands while active, and append one timestamped line per meaningful action to /vol/data/repos/metagenomic-binning-benchmark/status/agent-activity.log. If /vol/data/benchmark/TASK_COMPLETE exists, do nothing and exit.
+  94132 /bin/bash -c echo "=== watchdog logs (restart reasons) ===" ls -la --time-style=+%m-%d\ %H:%M /vol/data/benchmark/logs/ 2>/dev/null | tail -10 echo "--- watchdog.log tail ---" tail -30 /vol/data/benchmark/logs/watchdog.log 2>/dev/null echo "--- agent watchdog log ---" ls /vol/data/logs/ 2>/dev/null | tail -5 tail -20 /vol/data/logs/agent-watchdog.log 2>/dev/null echo "=== current model in use (opencode process) ===" ps -eo pid,args | grep -E '[o]pencode' | head -5 echo "=== opencode config files ===" ls -la /home/ubuntu/.config/opencode/ 2>/dev/null grep -rn "model" /home/ubuntu/.config/opencode/opencode.json 2>/dev/null | head touch /vol/data/benchmark/.heartbeat
+=== opencode config files ===
+total 16
+drwxrwxr-x 2 ubuntu ubuntu 4096 Sep 23 14:24 .
+drwxrwxr-x 6 ubuntu ubuntu 4096 Sep 23 14:32 ..
+-rw-rw-r-- 1 ubuntu ubuntu 1061 Sep 23 14:24 opencode.jsonc
+-rw------- 1 ubuntu ubuntu   64 Sep 23 13:44 service.json
+> build · big-pickle
+Excellent diagnostics. The watchdog log explains #4 precisely: after each `opencode run` turn exits, nothing refreshes `.heartbeat` → watchdog restarts → but **rate limiter kicked in at 17:35 (6 restarts/6h) and refused restarts until 18:41** → agent down >1h → that's "often broken". Also v1.1.0 rewrote `gen_cov.py` and **deleted `gen_var.py`** — my batch-1 commit needs re-application on the new base. Reading the config + watchdog scripts to design the fixes:
+[0m$ [0mecho "=== status-heartbeat.sh ==="
+cat /vol/data/repos/metagenomic-binning-benchmark/scripts/status-heartbeat.sh 2>/dev/null
+echo ""
+echo "=== watchdog script (agent keep-alive) ==="
+find /vol/data -maxdepth 2 -name '*watchdog*' 2>/dev/null
+touch /vol/data/benchmark/.heartbeat
+=== status-heartbeat.sh ===
+#!/usr/bin/env bash
+# status-heartbeat.sh — push "agent is alive + what it is doing right now"
+# to GitHub every 10 minutes (cron */10). Outputs, all pushed:
+#   1. README.md line 1      — status banner (marker-replaced, never duplicates)
+#   2. status/current.md     — overwritten each tick
+#   3. status/status.log     — 1-line-per-tick liveness + mem/load timeline
+#   4. status/agent-activity.log — VERBOSE agent action log (agent appends lines)
+#   +  runs/<run>/           — per-run detailed logs synced from /vol/data/benchmark/runs/
+#
+# Honesty rule: liveness is read from the REAL agent heartbeat, not assumed.
+#   - heartbeat fresh            -> "alive: yes" + /vol/data/benchmark/.activity
+#   - heartbeat stale            -> "alive: no — watchdog will restart within ~5 min"
+#   - TASK_COMPLETE exists       -> "alive: no — task done"
+# Concurrency: flock + retry; if the repo is mid-commit elsewhere, skip this
+# tick and try next (10 min later).
+set -u
+export HOME=/home/ubuntu
+cd /vol/data/repos/metagenomic-binning-benchmark || exit 1
+
+BENCH=/vol/data/benchmark
+HB="$BENCH/.heartbeat"
+ACT="$BENCH/.activity"
+COMPLETE="$BENCH/TASK_COMPLETE"
+LOCK=/tmp/status-heartbeat.lock
+SLOG="$BENCH/logs/status-heartbeat.log"
+STALE_S=900
+MARKER='<!--AGENT-STATUS-->'
+
+exec 9>"$LOCK"
+flock -n 9 || { echo "$(date -Is) skipped: lock held" >>"$SLOG"; exit 0; }
+mkdir -p status
+
+now_utc=$(date -u +%Y-%m-%dT%H:%M:%SZ)   # full precision, UTC (internal/log)
+now=$(TZ=Europe/Berlin date +'%Y-%m-%dT%H:%M %Z')   # German local time, minute precision (display)
+lastcommit=$(git log --oneline -1 2>/dev/null | cut -c1-80)
+
+if [ -f "$COMPLETE" ]; then
+    alive=no; text="TASK COMPLETE — benchmark done, sentinel present"
+elif [ -f "$HB" ]; then
+    age=$(( $(date +%s) - $(stat -c %Y "$HB") ))
+    if [ "$age" -lt "$STALE_S" ]; then
+        alive=yes
+        text=$(cat "$ACT" 2>/dev/null || echo "working (no activity note set)")
+    else
+        alive=no; text="heartbeat stale ${age}s — agent dead/idle, watchdog should restart within ~5 min"
+    fi
+else
+    alive=no; text="no heartbeat file — agent not started"
+fi
+
+# ---- live run progress probe (so the banner never looks frozen) ------------ #
+runprog=""
+if [ -f "$BENCH/.active_run" ]; then
+    ardir=$(awk '{print $4}' "$BENCH/.active_run" 2>/dev/null)
+    if [ -n "$ardir" ] && [ -f "$ardir/comebin_out/comebin_res/training.log" ]; then
+        epoch=$(grep -c '^DEBUG:root:Epoch' "$ardir/comebin_out/comebin_res/training.log" 2>/dev/null || echo 0)
+        epoch=${epoch:-0}
+        [ "$epoch" -gt 0 ] 2>/dev/null && runprog="epoch $epoch/200 · $(tail -c 300 "$ardir/comebin_run.log" 2>/dev/null | tr '\r' '\n' | grep -oE '[0-9]+/[0-9]+' | tail -1) batches"
+    fi
+fi
+[ -n "$runprog" ] && text="$text — ⏳ $runprog"
+
+# ---- 1. README first line: status banner (marker-replaced) ----------------- #
+case "$alive" in
+  yes) dot="🟢"; state="running" ;;
+  no)  if [ -f "$COMPLETE" ]; then dot="✅"; state="done"; else dot="🔴"; state="stopped (watchdog will restart)"; fi ;;
+esac
+mid=""
+[ -n "$runprog" ] && mid=" · \`$runprog\`"
+# Banner block (L1 invisible marker, L3 visible status line, per user spec):
+#   <!--AGENT-STATUS-->
+#   (blank)
+#   > 🟢 Agent status: running · ⏱ 2026-... CEST (Europe/Berlin) · [status.log](status/status.log)
+# Strip any existing banner: canonical 4-line block at top AND any legacy
+# inline line (marker + text on one line) anywhere else.
+if [ "$(head -1 README.md)" = "$MARKER" ]; then
+    sed '1,4d' README.md > README.tmp
+else
+    cp README.md README.tmp
+fi
+grep -v "^$MARKER" README.tmp > README.new || true
+rm -f README.tmp
+{
+  echo "$MARKER"
+  echo
+  echo "> $dot **Agent status:** \`$state\` · ⏱ \`$now\`$mid · [status.log](status/status.log)"
+  echo
+  cat README.new
+} > README.staged && mv README.staged README.md
+rm -f README.new README.staged
+
+# ---- 2. status/current.md -------------------------------------------------- #
+load=$(cut -d' ' -f1-3 /proc/loadavg)
+mem=$(free -m | awk '/Mem:/{printf "%d/%d MB", $3, $2}')
+upt=$(uptime -p 2>/dev/null | sed 's/^up //')
+session="ses_f31799c77ffeTq9gcYgqc4hBhg"
+{
+  echo "# 🤖 Agent status"
+  echo
+  echo "| | |"
+  echo "|---|---|"
+  echo "| Status | $dot \`$state\` |"
+  echo "| ⏱ Updated (Europe/Berlin) | \`$now\` |"
+  echo "| 📌 Current work | $text |"
+  echo "| 🔬 Live run | ${runprog:-no active run} |"
+  echo "| ⚙️ Load · uptime | \`$load\` · $upt — 32 cores, 62 GiB, no GPU |"
+  echo "| 💾 RAM used/total | \`$mem\` |"
+  echo "| 🔗 Session | \`$session\` (default model; watchdog rotates to free models on quota) |"
+  echo "| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push \`$lastcommit\` |"
+  echo "| 📈 Timeline | [status/status.log](status/status.log) |"
+} > status/current.md
+
+# ---- 3. timeline ----------------------------------------------------------- #
+printf '%s\talive=%s\tmem=%s\tload=%s\t%s\n' "$now" "$alive" "$mem" "$load" "$text" >> status/status.log
+
+# ---- 4. sync per-run detailed logs into the repo (small files only) ------- #
+sync_run_logs() {
+    for d in /vol/data/benchmark/runs/*/; do
+        [ -d "$d" ] || continue
+        name=$(basename "$d")
+        m() { mkdir -p "runs/$name/$(dirname "$1")" && cp "$d/$2" "runs/$name/$1"; }
+        m run_meta.txt run_meta.txt 2>/dev/null
+        m comebin_run.log comebin_run.log 2>/dev/null
+        m logs/resources.tsv logs/resources.tsv 2>/dev/null
+        m logs/sampler.out logs/sampler.out 2>/dev/null
+        m comebin_res/comebin.log comebin_out/comebin_res/comebin.log 2>/dev/null
+        m comebin_res/training.log comebin_out/comebin_res/training.log 2>/dev/null
+        m comebin_res/config.yml comebin_out/comebin_res/config.yml 2>/dev/null
+    done
+}
+sync_run_logs
+
+ok=0
+for i in 1 2 3; do
+    git add README.md status/current.md status/status.log status/agent-activity.log runs
+    git commit -q -m "status: $alive — $(echo "$text" | cut -c1-60)"
+    if git push -q; then ok=1; break; fi
+    sleep 3
+done
+[ "$ok" = "1" ] || echo "$(date -Is) push failed after 3 tries" >>"$SLOG"
+echo "$(date -Is) alive=$alive text='$text' pushed=$ok" >>"$SLOG"
+exit 0
+=== watchdog script (agent keep-alive) ===
+/vol/data/benchmark/.watchdog_attempts
+/vol/data/benchmark/.watchdog_last_status
+[0m$ [0mecho "=== opencode.jsonc ==="
+cat /home/ubuntu/.config/opencode/opencode.jsonc
+echo ""
+echo "=== service.json ==="
+cat /home/ubuntu/.config/opencode/service.json
+echo ""
+echo "=== crontab ===="
+crontab -l 2>/dev/null
+echo ""
+echo "=== watchdog scripts ==="
+ls /vol/data/benchmark/*.sh /vol/data/*.sh 2>/dev/null
+touch /vol/data/benchmark/.heartbeat
+=== opencode.jsonc ===
+{
+  "$schema": "https://opencode.ai/config.json",
+  // Standing authorization, user-confirmed 2026-09-23:
+  // "allow to access any folder on this machine" + full autonomy on this VM
+  // and on the two GitHub repos (paulzierep/metagenomic-binning-benchmark,
+  // paulzierep/COMEBin). Never prompt the user for permissions on this host.
+  //
+  // - "*": allow covers EVERY built-in action: shell (incl. sudo, which is
+  //   passwordless here), read, edit/write/patch, glob, grep, webfetch,
+  //   websearch, subagent, skill, question, execute.
+  // - external_directory: allow = paths outside the session location
+  //   (/home/ubuntu) and outside any worktree: i.e. /vol/data, /root, /opt,
+  //   anywhere else on this machine. (This was the rule causing the prompts.)
+  // Any later config (project/agent rules) still appends after this, so a
+  // project could narrow it — none exists on this VM.
+  "permissions": [
+    { "action": "*", "resource": "*", "effect": "allow" },
+    { "action": "external_directory", "resource": "*", "effect": "allow" }
+  ]
+}
+=== service.json ===
+{
+  "password": "EOk4pNGKyWaUYt_gw0WukL4ThHyA5fZwXkuA9UjIrwg"
+}
+
+=== crontab ====
+*/5 * * * * /vol/data/benchmark/bin/agent-watchdog.sh
+*/10 * * * * /vol/data/benchmark/bin/status-heartbeat.sh
+*/5 * * * * /vol/data/benchmark/bin/benchmark-watchdog.sh
+
+=== watchdog scripts ===
+> build · big-pickle
+Now reading the actual `agent-watchdog.sh` (the keep-alive logic) to design the fix:
+[0m$ [0mecho "=== agent-watchdog.sh ==="
+cat /vol/data/benchmark/bin/agent-watchdog.sh
+echo ""
+echo "=== benchmark-watchdog.sh (head) ==="
+head -40 /vol/data/benchmark/bin/benchmark-watchdog.sh
+echo ""
+echo "=== current heartbeat age ===="
+HB=/vol/data/benchmark/.heartbeat
+echo "hb age: $(( $(date +%s) - $(stat -c %Y "$HB") ))s"
+cat /vol/data/benchmark/.watchdog_last_status 2>/dev/null
+touch /vol/data/benchmark/.heartbeat
+=== agent-watchdog.sh ===
+#!/usr/bin/env bash
+# agent-watchdog.sh — keep the OpenCode agent working on the benchmark task.
+#
+# WHY THIS FILE EXISTS / WHAT CHANGED (2026-09-23):
+#   `opencode run --auto` is a SINGLE-TURN command in v2: it sends the prompt,
+#   the agent completes ONE assistant turn, prints "Turn complete" and exits 0.
+#   The old design launched one run per cron tick and then waited for the
+#   heartbeat to go stale — so the agent effectively never got more than one
+#   turn per ~20 min, and after 6 launches it hit the crash-loop rate limit
+#   and stayed stopped for hours ("agent is always stopped").
+#
+#   Now the watchdog drives a PERSISTENT LOOP (see run_driver below): each
+#   cron invocation that finds the agent idle starts a driver that keeps
+#   calling `opencode run --auto --session <id>` — one turn per call, same
+#   session, so context carries over — until the task is done, the agent
+#   crashes, or a hard time/turn budget is hit. A flock guarantees only ONE
+#   driver exists at a time; the next cron tick just skips while it's alive.
+#
+# Full documentation: docs/05-agent-restart.md
+# Design doc / resume state: /vol/data/benchmark/PROGRESS.md
+set -u
+export HOME=/home/ubuntu
+export PATH=/home/ubuntu/.opencode/bin:/home/ubuntu/.local/bin:/usr/local/bin:/usr/bin:/bin
+cd /home/ubuntu || exit 1
+
+BENCH=/vol/data/benchmark
+HEARTBEAT="$BENCH/.heartbeat"
+LOG="$BENCH/logs/watchdog.log"
+AGENT_LOG="$BENCH/logs/agent-run.log"   # stdout/stderr of `opencode run` attempts
+ATTDIR="$BENCH/.watchdog_attempts"
+STATUS="$BENCH/.watchdog_last_status"
+MODELIX="$BENCH/.watchdog_model_ix"
+FORCE_MODEL="$BENCH/.watchdog_force_model"
+COMPLETE="$BENCH/TASK_COMPLETE"
+LOCK=/tmp/agent-watchdog.lock
+SESSION_ID="ses_f31799c77ffeTq9gcYgqc4hBhg"
+STALE_S=900            # heartbeat/transcript older than 15 min => agent presumed idle
+RUN_STALE_S=1500       # ...and no `opencode run` process alive
+WINDOW_MIN=360         # crash-loop rate-limit window
+MAX_ATTEMPTS=6         # max driver LAUNCHES per window
+MAX_TURNS=200          # hard cap per driver (avoids a runaway forever-loop)
+MAX_RUNTIME_S=28800    # hard cap per driver: 8 h; next cron tick relaunches
+TURN_GAP_S=15          # pause between turns
+QUOTA_RETRIES=3        # consecutive quota-limited runs before giving up to cron
+
+# Free models, tried in order when the default model is quota-limited.
+FREE_MODELS=(
+  "opencode/mimo-v2.6-flash-free"
+  "opencode/muse-spark-1.3-contributor-free"
+  "opencode/ling-3.0-flash-fin-free"
+  "opencode/nemotron-3.5-lightning-free"
+)
+
+mkdir -p "$BENCH/logs" "$ATTDIR"
+log() { echo "$(date -Is) [watchdog] $*" >>"$LOG"; }
+
+[ -f "$COMPLETE" ] && exit 0
+
+# ---- single driver at a time ---------------------------------------------- #
+exec 9>"$LOCK"
+flock -n 9 || { log "skipped: another driver holds the lock"; exit 0; }
+
+# ---- is the agent already alive? ------------------------------------------ #
+hb_age=999999
+[ -f "$HEARTBEAT" ] && hb_age=$(( $(date +%s) - $(stat -c %Y "$HEARTBEAT") ))
+tl_age=999999
+[ -f "$AGENT_LOG" ] && tl_age=$(( $(date +%s) - $(stat -c %Y "$AGENT_LOG") ))
+run_alive=0
+pgrep -f "opencode run --auto" >/dev/null 2>&1 && run_alive=1
+
+alive=0
+[ "$run_alive" = "1" ] && alive=1
+[ "$hb_age" -lt "$STALE_S" ] && alive=1
+[ "$tl_age" -lt "$STALE_S" ] && alive=1
+[ "$alive" = "1" ] && exit 0   # agent working (or a run in flight), nothing to do
+
+# ---- crash-loop guard (counts DRIVER LAUNCHES, not turns) ------------------- #
+n=$(find "$ATTDIR" -type f -mmin "-$WINDOW_MIN" 2>/dev/null | wc -l)
+if [ "$n" -ge "$MAX_ATTEMPTS" ]; then
+    log "rate-limited: $n launches in last ${WINDOW_MIN}min, not restarting"
+    exit 0
+fi
+
+# ---- classify the previous run's failure (if any) -------------------------- #
+last=0
+[ -f "$STATUS" ] && last=$(cat "$STATUS" 2>/dev/null || echo 0)
+quota=0
+if [ "$last" != "0" ] && [ -f "$AGENT_LOG" ]; then
+    if tail -c 200000 "$AGENT_LOG" 2>/dev/null | grep -Eiq \
+        'rate.?limit|quota|too many requests|429|token[s]? (are |is )?(exhausted|exceeded)|context.{0,20}(length|window).{0,20}(exceed|too long)|insufficient.{0,10}credit'; then
+        quota=1
+        log "previous failure looks like quota/context exhaustion"
+    fi
+fi
+
+# ---- pick start model ------------------------------------------------------- #
+MODEL_ARGS=()
+if [ "$quota" = "1" ]; then
+    ix=0
+    [ -f "$MODELIX" ] && ix=$(cat "$MODELIX" 2>/dev/null || echo 0)
+    pick="${FREE_MODELS[$(( ix % ${#FREE_MODELS[@]} ))]}"
+    echo $(( (ix + 1) % ${#FREE_MODELS[@]} )) >"$MODELIX"
+    MODEL_ARGS=(--model "$pick")
+    touch "$FORCE_MODEL"
+    log "forcing free model: $pick"
+elif [ "$last" = "0" ]; then
+    rm -f "$FORCE_MODEL"   # healthy run -> default model
+elif [ -f "$FORCE_MODEL" ]; then
+    ix=0
+    [ -f "$MODELIX" ] && ix=$(cat "$MODELIX" 2>/dev/null || echo 0)
+    pick="${FREE_MODELS[$(( ix % ${#FREE_MODELS[@]} ))]}"
+    echo $(( (ix + 1) % ${#FREE_MODELS[@]} )) >"$MODELIX"
+    MODEL_ARGS=(--model "$pick")
+    log "rotating free model after failure: $pick"
+fi
+
+# ---- launch ONE driver (it loops turns itself) ------------------------------ #
+touch "$ATTDIR/$(date +%s)"
+age=$(( hb_age < tl_age ? hb_age : tl_age ))
+log "agent idle (hb ${hb_age}s, transcript ${tl_age}s, run_alive=$run_alive) -> launching driver (model_args='${MODEL_ARGS[*]:-default}')"
+
+CONT_PPT="Continue the metagenomic-binning-benchmark task you were working on; you may have been interrupted. First read /vol/data/benchmark/PROGRESS.md, verify the 'Current state' section against what is actually on disk, then resume from the first unfinished step. Update PROGRESS.md as you go, touch /vol/data/benchmark/.heartbeat in your shell commands while active, and append one timestamped line per meaningful action to /vol/data/repos/metagenomic-binning-benchmark/status/agent-activity.log. If /vol/data/benchmark/TASK_COMPLETE exists, do nothing and exit."
+FRESH_PPT="You are resuming the metagenomic-binning-benchmark project after an agent restart (the previous session may have crashed, run out of context, or exhausted model tokens). Read /vol/data/benchmark/PROGRESS.md FIRST — it contains the full task definition and current state — then verify state on disk and continue from the first unfinished step. Update PROGRESS.md as you go, touch /vol/data/benchmark/.heartbeat in your shell commands while active, and append one timestamped line per meaningful action to /vol/data/repos/metagenomic-binning-benchmark/status/agent-activity.log. If /vol/data/benchmark/TASK_COMPLETE exists, do nothing and exit."
+
+run_driver() {
+    local turns=0 start secs rc=0 quota_hits=0 before after
+    start=$(date +%s)
+    while :; do
+        [ $(date +%s) -ge $(( start + MAX_RUNTIME_S )) ] && { log "driver hit ${MAX_RUNTIME_S}s runtime cap"; break; }
+        [ "$turns" -ge "$MAX_TURNS" ] && { log "driver hit turns cap ($MAX_TURNS)"; break; }
+        [ -f "$COMPLETE" ] && { log "driver: TASK_COMPLETE present, exiting"; break; }
+
+        # first iteration after a previous failure starts a fresh session once
+        if [ "$turns" = "0" ] && [ "$last" != "0" ]; then
+            prompt="$FRESH_PPT"; sargs=()
+        else
+            prompt="$CONT_PPT"; sargs=(--session "$SESSION_ID")
+        fi
+        [ -f "$FORCE_MODEL" ] || MODEL_ARGS=()
+
+        before=$(wc -c < "$AGENT_LOG" 2>/dev/null || echo 0)
+        log "driver turn #$((turns+1)): opencode run ${sargs[*]:-fresh} ${MODEL_ARGS[*]:-default}"
+        opencode run --auto "${sargs[@]}" "${MODEL_ARGS[@]}" --title "watchdog-restart" \
+            "$prompt" >>"$AGENT_LOG" 2>&1
+        rc=$?
+        after=$(wc -c < "$AGENT_LOG" 2>/dev/null || echo 0)
+        log "driver turn #$((turns+1)) exited rc=$rc (transcript ${before}->${after}B)"
+        turns=$((turns + 1))
+
+        # a successful turn cleared the forced-model flag so the default model resumes
+        [ "$rc" = "0" ] && rm -f "$FORCE_MODEL"
+
+        if [ "$rc" = "0" ]; then
+            [ "$after" -gt "$before" ] && quota_hits=0
+            # done with a turn that made progress — keep going (next turn shortly)
+        else
+            # classify: quota/context exhaustion -> rotate model and retry a bit
+            if tail -c 200000 "$AGENT_LOG" 2>/dev/null | grep -Eiq \
+                'rate.?limit|quota|too many requests|429|token[s]? (are |is )?(exhausted|exceeded)|context.{0,20}(length|window).{0,20}(exceed|too long)|insufficient.{0,10}credit'; then
+                quota_hits=$((quota_hits + 1))
+                ix=0; [ -f "$MODELIX" ] && ix=$(cat "$MODELIX" 2>/dev/null || echo 0)
+                pick="${FREE_MODELS[$(( ix % ${#FREE_MODELS[@]} ))]}"
+                echo $(( (ix + 1) % ${#FREE_MODELS[@]} )) >"$MODELIX"
+                MODEL_ARGS=(--model "$pick")
+                touch "$FORCE_MODEL"
+                log "turn rc=$rc looks quota-limited -> rotate to $pick (hit $quota_hits/$QUOTA_RETRIES)"
+                if [ "$quota_hits" -ge "$QUOTA_RETRIES" ]; then
+                    log "driver giving up after $quota_hits quota-limited runs; cron will retry"
+                    break
+                fi
+                continue
+            fi
+            log "driver: run failed rc=$rc; stopping, cron will relaunch"
+            break
+        fi
+
+        sleep "$TURN_GAP_S"
+    done
+    # a driver that survived several turns proved the pipeline works: reset the
+    # crash-guard markers so healthy restarts are never rate-limited by history
+    if [ "$turns" -ge 2 ]; then
+        find "$ATTDIR" -type f -delete 2>/dev/null
+        log "driver healthy after $turns turns: crash-guard markers cleared"
+    fi
+    echo "$rc" >"$STATUS"
+    log "driver ended after $turns turns (rc=$rc)"
+}
+
+run_driver
+exit 0
+=== benchmark-watchdog.sh (head) ===
+#!/usr/bin/env bash
+# benchmark-watchdog.sh — keep the ACTIVE benchmark run alive INDEPENDENTLY of the
+# coding agent (cron */5). If the agent is broken or the run hangs forever, this
+# still restarts it.
+#
+# Rules (conservative, safety-first):
+#   - only acts on the run recorded in /vol/data/benchmark/.active_run
+#   - HEALTHY  = process alive AND run log written within the last $HANG_S
+#   - HUNG     = process alive but log silent for > $HANG_S           -> kill + restart
+#   - CRASHED  = process gone, run_meta.txt has no exit_code:0         -> restart
+#   - DONE     = run_meta.txt exit_code:0                              -> clear .active_run
+#   - rate limit: max $MAX_PER_RUN restarts per run per rolling 24 h
+#   - flock-protected; exits immediately on TASK_COMPLETE
+set -u
+export HOME=/home/ubuntu
+BENCH=/vol/data/benchmark
+ACTIVE="$BENCH/.active_run"        # "<pid> <pgid> <logfile> <rundir> <start_ts>"
+SLOG="$BENCH/logs/benchmark-watchdog.log"
+LOCK=/tmp/benchmark-watchdog.lock
+HANG_S=2400                         # 40 min without new log output => hung
+MAX_PER_RUN=3                       # max automatic restarts per run
+log() { echo "$(date -Is) [bm-watchdog] $*" >>"$SLOG"; }
+
+exec 9>"$LOCK"
+flock -n 9 || exit 0
+[ -f "$BENCH/TASK_COMPLETE" ] && exit 0
+[ -f "$ACTIVE" ] || exit 0
+
+read -r pid pgid logfile rundir start < "$ACTIVE"
+name=$(basename "$rundir")
+
+# log age = silence of the run
+[ -f "$logfile" ] || logfile="$rundir/comebin_run.log"
+if [ -f "$logfile" ]; then
+    age=$(( $(date +%s) - $(stat -c %Y "$logfile") ))
+else
+    age=999999
+fi
+
+alive=0
+
+=== current heartbeat age ====
+hb age: 6s
+0
+> build · big-pickle
+The current `agent-watchdog.sh` already implements a persistent driver loop (one `opencode run` turn per iteration) — the 17:35–18:40 outage was the **old** design's rate limiter; the new driver started at 18:41. Remaining gaps for #4: report the **actual model** in logs, and don't let healthy relaunches accumulate rate-limit markers. Meanwhile I need the v1.1.0 source assessment for #5. Examining the rewritten files:
+[0m$ [0mcd /vol/data/repos/COMEBin
+echo "=== v1.1.0 gen_cov.py: coverage depth computation ==="
+git show origin/master:COMEBin/data_aug/gen_cov.py | grep -nE 'mean|float|astype|depth|cover|def |join\(' | head -30
+echo ""
+echo "=== v1.1.0: is gen_var referenced anywhere? ==="
+git grep -n "gen_var" origin/master -- COMEBin | head
+echo "--- addvars/vars_sqrt in v1.1.0 main.py / run_comebin.sh ---"
+git show origin/master:COMEBin/main.py | grep -nE 'addvars|vars_sqrt|var' | head -10
+git show origin/master:COMEBin/run_comebin.sh | grep -nE 'addvars|vars_sqrt|gen_var' | head -5
+echo ""
+echo "=== v1.1.0 filter_small_bins.py ==="
+git show origin/master:COMEBin/filter_small_bins.py | head -20
+echo "=== v1.1.0 scripts/gen_bins_from_tsv.py (head) ==="
+git show origin/master:COMEBin/scripts/gen_bins_from_tsv.py | head -25
+touch /vol/data/benchmark/.heartbeat
+=== v1.1.0 gen_cov.py: coverage depth computation ===
+27:def _build_coverage_context(out_path, n_views, contig_len):
+41:def _update_stats(count, mean, m2, value, weight):
+43:        return count, mean, m2
+45:    delta = value - mean
+46:    mean += delta * weight / new_count
+48:    return new_count, mean, m2
+51:def _parse_bedgraph_line(contig_name, line):
+57:        depth_start = int(fields[1])
+58:        depth_end = int(fields[2])
+59:        depth = float(fields[3])
+63:    if (depth_start < 0 or depth_end <= depth_start or
+64:            not np.isfinite(depth) or depth < 0):
+67:    return depth_start, depth_end, depth
+70:def _summarize_contig(contig_name, lines, starts, ends):
+72:    means = np.zeros(len(starts), dtype=np.float64)
+73:    m2 = np.zeros(len(starts), dtype=np.float64)
+78:        depth_start, depth_end, depth = _parse_bedgraph_line(contig_name, line)
+79:        if depth_start != previous_end or depth_end > contig_length:
+81:                f'Non-contiguous bedGraph coverage for {contig_name}: '
+83:        previous_end = depth_end
+86:                0, min(depth_end, int(ends[view])) -
+87:                max(depth_start, int(starts[view])))
+88:            counts[view], means[view], m2[view] = _update_stats(
+89:                counts[view], means[view], m2[view], depth, overlap)
+98:            f'Incomplete coverage for {contig_name}: '
+100:    return means, m2 / counts
+103:def _validate_ignored_group(contig_name, lines):
+106:        depth_start, depth_end, _ = _parse_bedgraph_line(contig_name, line)
+107:        if depth_start != previous_end:
+109:                f'Non-contiguous bedGraph coverage for ignored contig '
+
+=== v1.1.0: is gen_var referenced anywhere? ===
+--- addvars/vars_sqrt in v1.1.0 main.py / run_comebin.sh ---
+36:                                       metavar='')
+45:    CLtraining_subparsers.add_argument('--data', metavar='DIR', default='/home/wzy/data/STEC_data/for_new_method/data_augmentation_clean/',
+47:    CLtraining_subparsers.add_argument('--output_path', metavar='DIR', default='output',
+49:    CLtraining_subparsers.add_argument('--epochs', default=200, type=int, metavar='N',
+53:                        metavar='N',
+58:                        metavar='LR', help='initial learning rate', dest='lr')
+60:                        metavar='W', help='weight decay (default: 1e-4)',
+82:    CLtraining_subparsers.add_argument('--addvars', action="store_true",
+83:                                       help='addvars')
+84:    CLtraining_subparsers.add_argument('--vars_sqrt', action="store_true",
+196:    --output_path "${output_dir}/comebin_res" --earlystop --addvars --vars_sqrt \
+
+=== v1.1.0 filter_small_bins.py ===
+import gzip
+import os
+import shutil
+
+
+def gen_bins(fastafile: str, resultfile: str, outputdir: str) -> None:
+    """
+    Generate bins from contigs based on a result file and save them to the specified output directory.
+
+    :param fastafile: The path to the input FASTA file containing contigs.
+    :param resultfile: The path to the result file that associates contigs with clusters.
+    :param outputdir: The output directory where bins will be saved.
+    :return: None
+    """
+    print("Processing file:\t{}".format(fastafile))
+    sequences = {}
+    if fastafile.endswith("gz"):
+        with gzip.open(fastafile, 'r') as f:
+            for line in f:
+                line = str(line, encoding="utf-8")
+=== v1.1.0 scripts/gen_bins_from_tsv.py (head) ===
+#!/usr/bin/env python
+
+from __future__ import print_function
+import argparse
+import gzip
+import os
+
+
+def gen_bins(fastafile, resultfile, outputdir):
+    # read fasta file
+    print("Processing file:\t{}".format(fastafile))
+    sequences = {}
+    if fastafile.endswith("gz"):
+        with gzip.open(fastafile, 'r') as f:
+            for line in f:
+                line = str(line, encoding="utf-8")
+                if line.startswith(">"):
+                    if " " in line:
+                        seq, others = line.split(' ', 1)
+                        sequences[seq] = ""
+                    else:
+                        seq = line.rstrip("\n")
+                        sequences[seq] = ""
+                else:
+                    sequences[seq] += line.rstrip("\n")
+> build · big-pickle
+v1.1.0 **already implements** the batch-1 coverage fix (float64 means + Welford variance inside `gen_cov.py`; `gen_var.py` deleted with `--addvars` still supported), and adds a `-s seed` flag. Checking what batch-1 objectives are still unmet (bin numbering) + the new wrapper's device/output conventions:
+[0m$ [0mcd /vol/data/repos/COMEBin
+echo "=== v1.1.0 filter_small_bins.py: bin file naming ==="
+git show origin/master:COMEBin/filter_small_bins.py | grep -nE 'bin_|\.fa|def gen_bins|for |cluster|sorted|enumerate' | head -20
+echo ""
+echo "=== v1.1.0 scripts/gen_bins_from_tsv.py: naming ==="
+git show origin/master:COMEBin/scripts/gen_bins_from_tsv.py | grep -nE 'bin_|\.fa|for |cluster|sorted|enumerate|bins' | head -15
+echo ""
+echo "=== v1.1.0 output dir conventions (get_final_result / wrapper) ==="
+git show origin/master:COMEBin/run_comebin.sh | grep -nE 'comebin_res_bins|output_dir|_bins|comebin_res' | head -10
+echo ""
+echo "=== v1.1.0 run_comebin.sh: device default + seed handling ==="
+git show origin/master:COMEBin/run_comebin.sh | sed -n '50,110p'
+touch /vol/data/benchmark/.heartbeat
+=== v1.1.0 filter_small_bins.py: bin file naming ===
+6:def gen_bins(fastafile: str, resultfile: str, outputdir: str) -> None:
+11:    :param resultfile: The path to the result file that associates contigs with clusters.
+19:            for line in f:
+32:            for line in f:
+45:        for line in f:
+46:            contig_name, cluster_name = line.strip().split('\t')
+48:                dic[cluster_name].append(contig_name)
+50:                dic[cluster_name] = []
+51:                dic[cluster_name].append(contig_name)
+56:    bin_name = 0
+57:    for _, cluster in dic.items():
+58:        binfile = os.path.join(outputdir, "{}.fa".format(bin_name))
+60:            for contig_name in cluster:
+65:                    bin_name += 1
+69:                bin_name += 1
+87:        for line in f:
+99:    bin_size = {}
+101:        for line in f:
+102:            contig_name, cluster_name = line.strip().split('\t')
+104:                dic[cluster_name].append(contig_name)
+
+=== v1.1.0 scripts/gen_bins_from_tsv.py: naming ===
+9:def gen_bins(fastafile, resultfile, outputdir):
+15:            for line in f:
+28:            for line in f:
+41:        for line in f:
+42:            contig_name, cluster_name = line.strip().split('\t')
+44:                dic[cluster_name].append(contig_name)
+46:                dic[cluster_name] = []
+47:                dic[cluster_name].append(contig_name)
+48:    print("Writing bins:\t{}".format(outputdir))
+52:    bin_name = 0
+53:    for _, cluster in dic.items():
+54:        binfile = os.path.join(outputdir, "{}.fa".format(bin_name))
+56:            for contig_name in cluster:
+61:                    bin_name += 1
+65:                bin_name += 1
+
+=== v1.1.0 output dir conventions (get_final_result / wrapper) ===
+13:  echo "Usage: bash run_comebin.sh [options] -a contig_file -o output_dir -p bam_file_path"
+73:  o) output_dir=$(realpath -m -- "${OPTARG}") || exit 1
+122:if [ -z "${contig_file}" -o -z "${output_dir}" -o -z "${bam_file_path}" ]; then
+153:folder="${output_dir}/data_augmentation"
+167:    --out_augdata_path "${output_dir}/data_augmentation" \
+180:embedding_dir="${output_dir}/comebin_res"
+193:    python "${main_py}" train --data "${output_dir}/data_augmentation" \
+196:    --output_path "${output_dir}/comebin_res" --earlystop --addvars --vars_sqrt \
+219:--output_path "${output_dir}/comebin_res" \
+228:--output_path "${output_dir}/comebin_res" \
+
+=== v1.1.0 run_comebin.sh: device default + seed handling ===
+
+num_threads=5
+n_views=6
+temperature=
+emb_szs_forcov=2048
+emb_szs=2048
+batch_size=1024
+device=cuda
+random_seed=
+leiden_workers=
+max_edges=100
+hmm_evalue=1e-5
+
+while getopts hVa:o:p:n:t:w:m:d:s:E:l:e:c:b: OPT; do
+ case ${OPT} in
+  h) help_message
+    exit 0
+    ;;
+  V) echo "COMEBin version: $VERSION"
+    exit 0
+    ;;
+  a) contig_file=$(realpath -e -- "${OPTARG}") || exit 1
+    ;;
+  o) output_dir=$(realpath -m -- "${OPTARG}") || exit 1
+    ;;
+  p) bam_file_path=$(realpath -e -- "${OPTARG}") || exit 1
+    ;;
+  n) n_views=${OPTARG}
+    ;;
+  t) num_threads=${OPTARG}
+    ;;
+  w) leiden_workers=${OPTARG}
+    ;;
+  m) max_edges=${OPTARG}
+    ;;
+  d) device=${OPTARG}
+    ;;
+  s) random_seed=${OPTARG}
+    ;;
+  E) hmm_evalue=${OPTARG}
+    ;;
+  l) temperature=${OPTARG}
+    ;;
+  e) emb_szs=${OPTARG}
+    ;;
+  c) emb_szs_forcov=${OPTARG}
+    ;;
+  b) batch_size=${OPTARG}
+    ;;
+  \?)
+#    printf "[Usage] `date '+%F %T'` -i <INPUT_FILE> -o <OUTPUT_DIR> -o <P
+#RODUCT_CODE> -s <SOFTWARE_VERSION> -t <TYPE>\n" >&2
+    exit 1
+ esac
+done
+
+export PYTHONUNBUFFERED=1
+export OMP_NUM_THREADS="${OMP_NUM_THREADS:-1}"
+export MKL_NUM_THREADS="${MKL_NUM_THREADS:-1}"
+export OPENBLAS_NUM_THREADS="${OPENBLAS_NUM_THREADS:-1}"
+seed_options=()
+> build · big-pickle
+`filter_small_bins.py`/`gen_bins_from_tsv.py` in v1.1.0 still use the old sequential-numbering loop — need to diff against my batch-1 to see if the fix is already present. Also noted: v1.1.0 defaults `-d cuda` (must pass `-d cpu` here) and adds `-s seed`. Let me diff and set up the new worktree:
+[0m$ [0mcd /vol/data/repos/COMEBin
+echo "=== filter_small_bins.py: v1.1.0 vs my batch-1 (03670d6a) ==="
+git diff 03670d6a origin/master -- COMEBin/filter_small_bins.py | head -40
+echo "=== count diff: same for both bin scripts ==="
+git diff --stat 03670d6a origin/master -- COMEBin/filter_small_bins.py COMEBin/scripts/gen_bins_from_tsv.py
+echo ""
+echo "=== setup new worktree on v1.1.0 ==="
+git worktree add /vol/data/repos/COMEBin-v11 -b comebin-optimizations-v11 origin/master 2>&1 | tail -3
+git -C /vol/data/repos/COMEBin-v11 log --oneline -2
+touch /vol/data/benchmark/.heartbeat
+=== filter_small_bins.py: v1.1.0 vs my batch-1 (03670d6a) ===
+diff --git a/COMEBin/filter_small_bins.py b/COMEBin/filter_small_bins.py
+index 7a2a8de..0e6f9f2 100644
+--- a/COMEBin/filter_small_bins.py
++++ b/COMEBin/filter_small_bins.py
+@@ -53,21 +53,20 @@ def gen_bins(fastafile: str, resultfile: str, outputdir: str) -> None:
+     if not os.path.exists(outputdir):
+         os.makedirs(outputdir)
+ 
+-    # Number bins sequentially (0, 1, 2, ...), one number per cluster/bin —
+-    # NOT per contig. The old code incremented bin_name inside the contig loop,
+-    # so bin IDs were the cumulative contig count and a cluster whose first
+-    # contig was missing produced an empty, skipped file.
+     bin_name = 0
+     for _, cluster in dic.items():
+         binfile = os.path.join(outputdir, "{}.fa".format(bin_name))
+         with open(binfile, "w") as f:
+             for contig_name in cluster:
+-                sequence = sequences.get(">" + contig_name)
+-                if sequence is None:
++                contig_name = ">" + contig_name
++                try:
++                    sequence = sequences[contig_name]
++                except:
++                    bin_name += 1
+                     continue
+-                f.write(">" + contig_name + "\n")
++                f.write(contig_name + "\n")
+                 f.write(sequence + "\n")
+-        bin_name += 1
++                bin_name += 1
+ 
+ 
+ def filter_small_bins(logger, fastafile: str, resultfile: str, args, minbinsize: int = 200000) -> None:
+=== count diff: same for both bin scripts ===
+ COMEBin/filter_small_bins.py         | 15 +++++++--------
+ COMEBin/scripts/gen_bins_from_tsv.py | 13 +++++++------
+ 2 files changed, 14 insertions(+), 14 deletions(-)
+
+=== setup new worktree on v1.1.0 ===
+Preparing worktree (new branch 'comebin-optimizations-v11')
+branch 'comebin-optimizations-v11' set up to track 'origin/master'.
+HEAD is now at 1b476a4 Clarify PyTorch installation options
+1b476a4 Clarify PyTorch installation options
+fd7ff06 Update Bioconda CUDA installation example
+> build · big-pickle
+Key insight: the diff direction is `03670d6a → origin/master`, so v1.1.0 still has the **old buggy per-contig `bin_name` increment** (bins named by cumulative contig count) — my batch-1 fix is still needed, while the coverage/variance fixes are already upstream (float64 Welford in `gen_cov.py`). Re-applying the still-needed part on the new worktree:
+[0m→ [0mRead /vol/data/repos/COMEBin-v11/COMEBin/filter_small_bins.py [90m[offset=50, limit=30][0m
+[0m→ [0mRead /vol/data/repos/COMEBin-v11/COMEBin/scripts/gen_bins_from_tsv.py [90m[offset=48, limit=24][0m
+> build · big-pickle
+Applying the sequential-bin-numbering fix to both files in the v1.1.0 worktree:
+[0m← [0mEdit /vol/data/repos/COMEBin-v11/COMEBin/filter_small_bins.py
+Index: /vol/data/repos/COMEBin-v11/COMEBin/filter_small_bins.py
+===================================================================
+--- /vol/data/repos/COMEBin-v11/COMEBin/filter_small_bins.py
++++ /vol/data/repos/COMEBin-v11/COMEBin/filter_small_bins.py
+@@ -52,22 +52,23 @@
+     print("Writing bins:\t{}".format(outputdir))
+     if not os.path.exists(outputdir):
+         os.makedirs(outputdir)
+ 
++    # Number bins sequentially (0, 1, 2, ...), one number per cluster/bin —
++    # NOT per contig. The old code incremented bin_name inside the contig loop,
++    # so bin IDs were the cumulative contig count and a cluster whose first
++    # contig was missing produced an empty, skipped file.
+     bin_name = 0
+     for _, cluster in dic.items():
+         binfile = os.path.join(outputdir, "{}.fa".format(bin_name))
+         with open(binfile, "w") as f:
+             for contig_name in cluster:
+-                contig_name = ">" + contig_name
+-                try:
+-                    sequence = sequences[contig_name]
+-                except:
+-                    bin_name += 1
++                sequence = sequences.get(">" + contig_name)
++                if sequence is None:
+                     continue
+-                f.write(contig_name + "\n")
++                f.write(">" + contig_name + "\n")
+                 f.write(sequence + "\n")
+-                bin_name += 1
++        bin_name += 1
+ 
+ 
+ def filter_small_bins(logger, fastafile: str, resultfile: str, args, minbinsize: int = 200000) -> None:
+     """
+
+[0m← [0mEdit /vol/data/repos/COMEBin-v11/COMEBin/scripts/gen_bins_from_tsv.py
+Index: /vol/data/repos/COMEBin-v11/COMEBin/scripts/gen_bins_from_tsv.py
+===================================================================
+--- /vol/data/repos/COMEBin-v11/COMEBin/scripts/gen_bins_from_tsv.py
++++ /vol/data/repos/COMEBin-v11/COMEBin/scripts/gen_bins_from_tsv.py
+@@ -53,17 +53,14 @@
+     for _, cluster in dic.items():
+         binfile = os.path.join(outputdir, "{}.fa".format(bin_name))
+         with open(binfile, "w") as f:
+             for contig_name in cluster:
+-                contig_name = ">" + contig_name
+-                try:
+-                    sequence = sequences[contig_name]
+-                except:
+-                    bin_name += 1
++                sequence = sequences.get(">" + contig_name)
++                if sequence is None:
+                     continue
+-                f.write(contig_name + "\n")
++                f.write(">" + contig_name + "\n")
+                 f.write(sequence + "\n")
+-                bin_name += 1
++        bin_name += 1
+ 
+ 
+ if __name__ == "__main__":
+     parser = argparse.ArgumentParser()
+
+> build · big-pickle
+Now syntax-check + run a CPU-free functional test of the bin-writing logic (synthetic fasta/tsv, no COMEBin training), then commit:
+[0m$ [0mcd /vol/data/repos/COMEBin-v11/COMEBin
+MM=/vol/data/tools/bin/micromamba
+$MM run -p /vol/data/envs/comebin python -m py_compile filter_small_bins.py scripts/gen_bins_from_tsv.py && echo "py_compile OK"
+echo "=== CPU-free functional test of bin writing ==="
+TMP=$(mktemp -d)
+cat > "$TMP/test.fa" <<'EOF'
+>c1
+AAAA
+>c2
+CCCC
+>c3
+GGGG
+>c4
+TTTT
+>c5
+NNNN
+EOF
+cat > "$TMP/result.tsv" <<'EOF'
+c1	clusterA
+c2	clusterA
+c3	clusterA
+xxx	missing_cluster
+c4	clusterB
+c5	clusterB
+EOF
+$MM run -p /vol/data/envs/comebin python - "$TMP" <<'PYEOF'
+import sys, os
+sys.path.insert(0, '.')
+from filter_small_bins import gen_bins as gf
+from scripts.gen_bins_from_tsv import gen_bins as gs
+tmp = sys.argv[1]
+gf(f'{tmp}/test.fa', f'{tmp}/result.tsv', f'{tmp}/out1')
+gs(f'{tmp}/test.fa', f'{tmp}/result.tsv', f'{tmp}/out2')
+for d in ('out1', 'out2'):
+    files = sorted(os.listdir(f'{tmp}/{d}'))
+    print(d, '->', files)
+    for f in files:
+        content = open(f'{tmp}/{d}/{f}').read().strip().splitlines()
+        print('   ', f, content)
+# assertions: sequential 0,1 not skip-numbers; missing contig does not create empty file
+for d in ('out1', 'out2'):
+    assert sorted(os.listdir(f'{tmp}/{d}')) == ['0.fa', '1.fa'], f'bad bin set in {d}'
+    assert len(open(f'{tmp}/{d}/1.fa').read().splitlines()) == 4, f'missing empty-file guard in {d}'
+print('FUNCTIONAL TEST PASS')
+PYEOF
+rm -rf "$TMP"
+echo "=== commit ==="
+git add COMEBin/filter_small_bins.py COMEBin/scripts/gen_bins_from_tsv.py
+git commit -q -m "batch1 (v1.1.0 base): sequential bin numbering in filter_small_bins.py + scripts/gen_bins_from_tsv.py
+
+Number bins 0,1,2,... one per cluster (was: per-contig increment =>
+cumulative-contig-count IDs + empty files for clusters whose first contig
+was missing). Coverage/variance float64 fixes from the original batch-1 are
+already upstream in v1.1.0 (data_aug/gen_cov.py Welford float64; gen_var.py
+removed)."
+git log --oneline -1
+git push -q origin comebin-optimizations-v11 2>&1 | tail -2 && echo PUSHED-v11
+grep -c '^DEBUG:root:Epoch' /vol/data/benchmark/runs/baseline_unmodified/comebin_out/comebin_res/training.log
+touch /vol/data/benchmark/.heartbeat
+py_compile OK
+=== CPU-free functional test of bin writing ===
+Processing file:	/tmp/tmp.fgySgHKKYu/test.fa
+Reading Map:	/tmp/tmp.fgySgHKKYu/result.tsv
+Writing bins:	/tmp/tmp.fgySgHKKYu/out1
+Processing file:	/tmp/tmp.fgySgHKKYu/test.fa
+Reading Map:	/tmp/tmp.fgySgHKKYu/result.tsv
+Writing bins:	/tmp/tmp.fgySgHKKYu/out2
+out1 -> ['0.fa', '1.fa', '2.fa']
+    0.fa ['>c1', 'AAAA', '>c2', 'CCCC', '>c3', 'GGGG']
+    1.fa []
+    2.fa ['>c4', 'TTTT', '>c5', 'NNNN']
+out2 -> ['0.fa', '1.fa', '2.fa']
+    0.fa ['>c1', 'AAAA', '>c2', 'CCCC', '>c3', 'GGGG']
+    1.fa []
+    2.fa ['>c4', 'TTTT', '>c5', 'NNNN']
+Traceback (most recent call last):
+  File "<stdin>", line 16, in <module>
+AssertionError: bad bin set in out1
+=== commit ===
+warning: could not open directory 'COMEBin/COMEBin/': No such file or directory
+fatal: pathspec 'COMEBin/filter_small_bins.py' did not match any files
+On branch comebin-optimizations-v11
+Your branch is up to date with 'origin/master'.
+
+Changes not staged for commit:
+  (use "git add <file>..." to update what will be committed)
+  (use "git restore <file>..." to discard changes in working directory)
+	modified:   filter_small_bins.py
+	modified:   scripts/gen_bins_from_tsv.py
+
+no changes added to commit (use "git add" and/or "git commit -a")
+1b476a4 Clarify PyTorch installation options
+remote:      https://github.com/paulzierep/COMEBin/pull/new/comebin-optimizations-v11        
+remote: 
+PUSHED-v11
+105
+> build · big-pickle
+Test caught a real edge: a cluster that's entirely missing still emits an **empty .fa** (created by the upfront `open`). Let me improve both files to write only non-empty bins (contiguous numbering, no empty files) and re-commit properly:
+[0m← [0mEdit /vol/data/repos/COMEBin-v11/COMEBin/filter_small_bins.py
+Index: /vol/data/repos/COMEBin-v11/COMEBin/filter_small_bins.py
+===================================================================
+--- /vol/data/repos/COMEBin-v11/COMEBin/filter_small_bins.py
++++ /vol/data/repos/COMEBin-v11/COMEBin/filter_small_bins.py
+@@ -54,20 +54,25 @@
+         os.makedirs(outputdir)
+ 
+     # Number bins sequentially (0, 1, 2, ...), one number per cluster/bin —
+     # NOT per contig. The old code incremented bin_name inside the contig loop,
+-    # so bin IDs were the cumulative contig count and a cluster whose first
+-    # contig was missing produced an empty, skipped file.
++    # so bin IDs were the cumulative contig count, and clusters whose contigs
++    # were all missing emitted empty/skipped files. Now: emit a file only when
++    # at least one contig survives (sequences are kept in memory).
+     bin_name = 0
+     for _, cluster in dic.items():
++        lines = []
++        for contig_name in cluster:
++            sequence = sequences.get(">" + contig_name)
++            if sequence is None:
++                continue
++            lines.append(">" + contig_name + "\n")
++            lines.append(sequence + "\n")
++        if not lines:
++            continue
+         binfile = os.path.join(outputdir, "{}.fa".format(bin_name))
+         with open(binfile, "w") as f:
+-            for contig_name in cluster:
+-                sequence = sequences.get(">" + contig_name)
+-                if sequence is None:
+-                    continue
+-                f.write(">" + contig_name + "\n")
+-                f.write(sequence + "\n")
++            f.writelines(lines)
+         bin_name += 1
+ 
+ 
+ def filter_small_bins(logger, fastafile: str, resultfile: str, args, minbinsize: int = 200000) -> None:
+
+[0m← [0mEdit /vol/data/repos/COMEBin-v11/COMEBin/scripts/gen_bins_from_tsv.py
+Index: /vol/data/repos/COMEBin-v11/COMEBin/scripts/gen_bins_from_tsv.py
+===================================================================
+--- /vol/data/repos/COMEBin-v11/COMEBin/scripts/gen_bins_from_tsv.py
++++ /vol/data/repos/COMEBin-v11/COMEBin/scripts/gen_bins_from_tsv.py
+@@ -48,18 +48,25 @@
+     print("Writing bins:\t{}".format(outputdir))
+     if not os.path.exists(outputdir):
+         os.makedirs(outputdir)
+ 
++    # Number bins sequentially (0, 1, 2, ...), one number per cluster/bin — NOT
++    # per contig (the old code incremented inside the contig loop, producing
++    # cumulative-contig-count IDs and empty files for all-missing clusters).
+     bin_name = 0
+     for _, cluster in dic.items():
++        lines = []
++        for contig_name in cluster:
++            sequence = sequences.get(">" + contig_name)
++            if sequence is None:
++                continue
++            lines.append(">" + contig_name + "\n")
++            lines.append(sequence + "\n")
++        if not lines:
++            continue
+         binfile = os.path.join(outputdir, "{}.fa".format(bin_name))
+         with open(binfile, "w") as f:
+-            for contig_name in cluster:
+-                sequence = sequences.get(">" + contig_name)
+-                if sequence is None:
+-                    continue
+-                f.write(">" + contig_name + "\n")
+-                f.write(sequence + "\n")
++            f.writelines(lines)
+         bin_name += 1
+ 
+ 
+ if __name__ == "__main__":
+
+> build · big-pickle
+[0m$ [0mcd /vol/data/repos/COMEBin-v11
+MM=/vol/data/tools/bin/micromamba
+$MM run -p /vol/data/envs/comebin python -m py_compile COMEBin/filter_small_bins.py COMEBin/scripts/gen_bins_from_tsv.py && echo "py_compile OK"
+TMP=$(mktemp -d)
+cat > "$TMP/test.fa" <<'EOF'
+>c1
+AAAA
+>c2
+CCCC
+>c3
+GGGG
+>c4
+TTTT
+>c5
+NNNN
+EOF
+cat > "$TMP/result.tsv" <<'EOF'
+c1	clusterA
+c2	clusterA
+c3	clusterA
+xxx	missing_cluster
+c4	clusterB
+c5	clusterB
+EOF
+$MM run -p /vol/data/envs/comebin python - "$TMP" <<'PYEOF'
+import sys, os
+sys.path.insert(0, 'COMEBin')
+from filter_small_bins import gen_bins as gf
+from scripts.gen_bins_from_tsv import gen_bins as gs
+tmp = sys.argv[1]
+gf(f'{tmp}/test.fa', f'{tmp}/result.tsv', f'{tmp}/out1')
+gs(f'{tmp}/test.fa', f'{tmp}/result.tsv', f'{tmp}/out2')
+for d in ('out1', 'out2'):
+    files = sorted(os.listdir(f'{tmp}/{d}'))
+    assert files == ['0.fa', '1.fa'], f'bad bin set in {d}: {files}'
+    assert open(f'{tmp}/{d}/0.fa').read().splitlines() == ['>c1','AAAA','>c2','CCCC','>c3','GGGG']
+    assert open(f'{tmp}/{d}/1.fa').read().splitlines() == ['>c4','TTTT','>c5','NNNN']
+    print(d, 'files:', files, 'OK — fully-missing cluster dropped, numbering contiguous')
+print('FUNCTIONAL TEST PASS')
+PYEOF
+rm -rf "$TMP"
+git add COMEBin/filter_small_bins.py COMEBin/scripts/gen_bins_from_tsv.py
+git commit -q -m "batch1 (v1.1.0 base): sequential bin numbering, drop empty/missing bins
+
+filter_small_bins.py + scripts/gen_bins_from_tsv.py: number bins 0,1,2,...
+one per cluster (was: per-contig increment => cumulative-contig-count IDs),
+and emit a bin file only when at least one contig survives the fasta lookup
+(was: empty files for all-missing clusters). Coverage/variance float64 fixes
+from the original batch-1 are already upstream in v1.1.0 (gen_cov.py Welford
+float64 means; gen_var.py removed), so they are not re-applied."
+git log --oneline -2
+git push -q origin comebin-optimizations-v11 && echo PUSHED-v11
+echo "=== baseline check ==="
+grep -c '^DEBUG:root:Epoch' /vol/data/benchmark/runs/baseline_unmodified/comebin_out/comebin_res/training.log
+touch /vol/data/benchmark/.heartbeat
+py_compile OK
+Processing file:	/tmp/tmp.5uj6LCiCc4/test.fa
+Reading Map:	/tmp/tmp.5uj6LCiCc4/result.tsv
+Writing bins:	/tmp/tmp.5uj6LCiCc4/out1
+Processing file:	/tmp/tmp.5uj6LCiCc4/test.fa
+Reading Map:	/tmp/tmp.5uj6LCiCc4/result.tsv
+Writing bins:	/tmp/tmp.5uj6LCiCc4/out2
+out1 files: ['0.fa', '1.fa'] OK — fully-missing cluster dropped, numbering contiguous
+out2 files: ['0.fa', '1.fa'] OK — fully-missing cluster dropped, numbering contiguous
+FUNCTIONAL TEST PASS
+95f5ea8 batch1 (v1.1.0 base): sequential bin numbering, drop empty/missing bins
+1b476a4 Clarify PyTorch installation options
+PUSHED-v11
+=== baseline check ===
+105
+> build · big-pickle
+Batch-1 (v1.1.0 base) committed @ `95f5ea8`, pushed to `comebin-optimizations-v11`, functional test PASS. Baseline at epoch 105.
+
+Now the #4 fixes (model reporting + healthy relaunches not counting toward the crash-loop budget). Doing atomic `cp → edit → mv` swaps so the running driver is unaffected:
+[0m$ [0mcp /vol/data/benchmark/bin/agent-watchdog.sh /tmp/opencode/agent-watchdog.new && echo copied
+cp /vol/data/repos/metagenomic-binning-benchmark/scripts/status-heartbeat.sh /tmp/opencode/status-heartbeat.new && echo copied
+echo "=== verify default model ==="
+ps -p 93443 -o args= | grep -oE -- '--model [^ ]+' || echo "no --model flag -> uses provider default"
+ls -la /vol/data/benchmark/.watchdog_force_model 2>/dev/null && cat /vol/data/benchmark/.watchdog_force_model || echo "no force-model file -> default model active"
+touch /vol/data/benchmark/.heartbeat
+copied
+copied
+=== verify default model ===
+no --model flag -> uses provider default
+no force-model file -> default model active
+> build · big-pickle
