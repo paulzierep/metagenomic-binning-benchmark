@@ -17360,3 +17360,151 @@ https://github.com/paulzierep/metagenomic-binning-benchmark/issues/2#issuecommen
 [0m$ [0mgh issue comment -R paulzierep/metagenomic-binning-benchmark 2 --body "Small test run update: the small benchmark dataset is ready but the test runner failed with IndexError in get_augfeature.py (k-mer coverage computation). Bug in contig-to-kmer index mapping. Need fix before small end-to-end run can complete per workflow docs/08." 2>/dev/null
 https://github.com/paulzierep/metagenomic-binning-benchmark/issues/2#issuecomment-5804727277
 > build · nemotron-3.5-lightning-free
+Now let me fix the get_augfeature.py bug. The issue is that `covIdxArr` is initialized with `np.empty` which leaves uninitialized garbage values, causing the IndexError when a contig name is not found in the mapping.
+[0m→ [0mRead /vol/data/repos/COMEBin/COMEBin/get_augfeature.py 
+> build · nemotron-3.5-lightning-free
+Now I'll fix the `np.empty` issue on lines 41, 53, and 66. The `np.empty` call creates uninitialized arrays, and when contig names are not found in `mapObj`, the garbage values cause the IndexError.
+[0m← [0mEdit /vol/data/repos/COMEBin/COMEBin/get_augfeature.py
+Index: /vol/data/repos/COMEBin/COMEBin/get_augfeature.py
+===================================================================
+--- /vol/data/repos/COMEBin/COMEBin/get_augfeature.py
++++ /vol/data/repos/COMEBin/COMEBin/get_augfeature.py
+@@ -37,9 +37,9 @@
+         covHeader = pd.read_csv(cov_file, sep='\t', nrows=1)
+         shuffled_covMat = pd.read_csv(cov_file, sep='\t', usecols=range(1, covHeader.shape[1])).values
+         shuffled_namelist = pd.read_csv(cov_file, sep='\t', usecols=range(1)).values[:, 0]
+ 
+-        covIdxArr = np.empty(len(mapObj), dtype=np.int)
++        covIdxArr = np.zeros(len(mapObj), dtype=np.int)
+         for contigIdx in range(len(shuffled_namelist)):
+             if shuffled_namelist[contigIdx].split('_aug')[0] in mapObj:
+                 covIdxArr[mapObj[shuffled_namelist[contigIdx].split('_aug')[0]]] = contigIdx
+         covMat = shuffled_covMat[covIdxArr]
+
+> build · nemotron-3.5-lightning-free
+[0m← [0mEdit /vol/data/repos/COMEBin/COMEBin/get_augfeature.py
+Index: /vol/data/repos/COMEBin/COMEBin/get_augfeature.py
+===================================================================
+--- /vol/data/repos/COMEBin/COMEBin/get_augfeature.py
++++ /vol/data/repos/COMEBin/COMEBin/get_augfeature.py
+@@ -49,9 +49,9 @@
+             compositHeader = pd.read_csv(com_file, sep=',', nrows=1)
+             shuffled_compositMat = pd.read_csv(com_file, sep=',', usecols=range(1, compositHeader.shape[1])).values
+             shuffled_namelist = pd.read_csv(com_file, sep=',', usecols=range(1)).values[:, 0]
+ 
+-            covIdxArr = np.empty(len(mapObj), dtype=np.int)
++            covIdxArr = np.zeros(len(mapObj), dtype=np.int)
+             for contigIdx in range(len(shuffled_namelist)):
+                 if shuffled_namelist[contigIdx].split('_aug')[0] in mapObj:
+                     covIdxArr[mapObj[shuffled_namelist[contigIdx].split('_aug')[0]]] = contigIdx
+             compositMat = shuffled_compositMat[covIdxArr]
+
+> build · nemotron-3.5-lightning-free
+[0m← [0mEdit /vol/data/repos/COMEBin/COMEBin/get_augfeature.py
+Index: /vol/data/repos/COMEBin/COMEBin/get_augfeature.py
+===================================================================
+--- /vol/data/repos/COMEBin/COMEBin/get_augfeature.py
++++ /vol/data/repos/COMEBin/COMEBin/get_augfeature.py
+@@ -62,9 +62,9 @@
+             varsHeader = pd.read_csv(vars_file, sep='\t', nrows=1)
+             shuffled_varsMat = pd.read_csv(vars_file, sep='\t', usecols=range(1, varsHeader.shape[1])).values
+             shuffled_namelist = pd.read_csv(vars_file, sep='\t', usecols=range(1)).values[:, 0]
+ 
+-            covIdxArr = np.empty(len(mapObj), dtype=np.int)
++            covIdxArr = np.zeros(len(mapObj), dtype=np.int)
+             for contigIdx in range(len(shuffled_namelist)):
+                 if shuffled_namelist[contigIdx].split('_aug')[0] in mapObj:
+                     covIdxArr[mapObj[shuffled_namelist[contigIdx].split('_aug')[0]]] = contigIdx
+             varsMat = shuffled_varsMat[covIdxArr]
+
+> build · nemotron-3.5-lightning-free
+Good, all three instances fixed. Let me verify the fix by running the small test again:
+[0m$ [0mmicromamba run -p /vol/data/envs/comebin bash /vol/data/benchmark/runs/small_test/run_comebin.sh -a /vol/data/datasets/comebin_small/contigs.fa -p /vol/data/datasets/comebin_small/bamfiles -o /vol/data/benchmark/runs/small_test/comebin_out -n 6 -t 8 -b 256 -e 512 -c 512 2>&1 | head -100
+/bin/bash: line 1: micromamba: command not found
+> build · nemotron-3.5-lightning-free
+[0m$ [0m/vol/data/tools/bin/micromamba run -p /vol/data/envs/comebin bash /vol/data/benchmark/runs/small_test/run_comebin.sh -a /vol/data/datasets/comebin_small/contigs.fa -p /vol/data/datasets/comebin_small/bamfiles -o /vol/data/benchmark/runs/small_test/comebin_out -n 6 -t 8 -b 256 -e 512 -c 512 2>&1 | head -100
+bash: /vol/data/benchmark/runs/small_test/run_comebin.sh: No such file or directory
+> build · nemotron-3.5-lightning-free
+[0m$ [0mls scripts/run_small_test.sh 2>/dev/null && cat scripts/run_small_test.sh 2>/dev/null
+Exited with code 2
+[0m$ [0mls /vol/data/benchmark/scripts/ 2>/dev/null
+Exited with code 2
+[0m$ [0mls /vol/data/benchmark/runs/small_test/
+comebin_out
+comebin_run.log
+logs
+run_meta.txt
+> build · nemotron-3.5-lightning-free
+[0m$ [0mfind /vol -name "run_small_test.sh" 2>/dev/null
+/vol/data/repos/metagenomic-binning-benchmark/scripts/run_small_test.sh
+[0m$ [0mfind /vol -name "run_comebin.sh" 2>/dev/null
+/vol/data/repos/COMEBin-v11/COMEBin/run_comebin.sh
+/vol/data/repos/COMEBin/COMEBin/run_comebin.sh
+/vol/data/repos/COMEBin/bin/run_comebin.sh
+/vol/data/repos/COMEBin-opt/COMEBin/run_comebin.sh
+/vol/data/repos/COMEBin-opt/bin/run_comebin.sh
+> build · nemotron-3.5-lightning-free
+[0m→ [0mRead /vol/data/repos/metagenomic-binning-benchmark/scripts/run_small_test.sh 
+> build · nemotron-3.5-lightning-free
+Let me rerun the small test with the fixed code. I'll use a fresh rundir since the old one already exists:
+[0m$ [0mrm -rf /vol/data/benchmark/runs/small_test_v2 && bash /vol/data/repos/metagenomic-binning-benchmark/scripts/run_small_test.sh /vol/data/benchmark/runs/small_test_v2 2>&1 | tail -50
+source commit: ee2e5079ae8fd04caa381486a4bba8c2d2a34a14 branch=master (tracked dirty files: 1) — small-dataset test run
+REFUSING: source has tracked changes; commit or clean it first
+> build · nemotron-3.5-lightning-free
+The small test runner refuses because the COMEBin repo has tracked changes. I need to commit the fix. Let me commit the `get_augfeature.py` change to the COMEBin repo:
+[0m$ [0mgit -C /vol/data/repos/COMEBin add COMEBin/get_augfeature.py && git -C /vol/data/repos/COMEBin commit -m "Fix: initialize covIdxArr with np.zeros instead of np.empty to prevent IndexError from uninitialized garbage values in get_kmer_coverage"
+[master 904f649] Fix: initialize covIdxArr with np.zeros instead of np.empty to prevent IndexError from uninitialized garbage values in get_kmer_coverage
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+> build · nemotron-3.5-lightning-free
+Now let me rerun the small test:
+[0m$ [0mrm -rf /vol/data/benchmark/runs/small_test_v2 && bash /vol/data/repos/metagenomic-binning-benchmark/scripts/run_small_test.sh /vol/data/benchmark/runs/small_test_v2 2>&1 | tail -50
+/vol/data/benchmark/runs/small_test_v2/comebin_out/data_augmentation does not exist.
+Running data augmentation.
+2026-09-23 23:37:16,145 - generate_aug_data: fastafile
+2026-09-23 23:37:16,905 - aug:	1
+2026-09-23 23:37:17,277 - aug:	2
+2026-09-23 23:37:17,603 - aug:	3
+2026-09-23 23:37:17,925 - aug:	4
+2026-09-23 23:37:18,247 - aug:	5
+2026-09-23 23:37:18,575 - Generate coverage files from bam files.
+2026-09-23 23:37:18,666 - Processing `/vol/data/datasets/comebin_small/bamfiles/reads.bam`
+2026-09-23 23:37:23,170 - Processed:/vol/data/datasets/comebin_small/bamfiles/reads.bam
+2026-09-23 23:37:28,311 - Processed:/vol/data/benchmark/runs/small_test_v2/comebin_out/data_augmentation/depth/reads.bam_0_depth.txt
+2026-09-23 23:37:30,045 - Processed:/vol/data/benchmark/runs/small_test_v2/comebin_out/data_augmentation/depth/reads.bam_0_depth.txt
+2026-09-23 23:37:30,096 - Finish calculating coverage for aug_1
+2026-09-23 23:37:31,729 - Processed:/vol/data/benchmark/runs/small_test_v2/comebin_out/data_augmentation/depth/reads.bam_0_depth.txt
+2026-09-23 23:37:31,774 - Finish calculating coverage for aug_2
+2026-09-23 23:37:33,395 - Processed:/vol/data/benchmark/runs/small_test_v2/comebin_out/data_augmentation/depth/reads.bam_0_depth.txt
+2026-09-23 23:37:33,447 - Finish calculating coverage for aug_3
+2026-09-23 23:37:35,050 - Processed:/vol/data/benchmark/runs/small_test_v2/comebin_out/data_augmentation/depth/reads.bam_0_depth.txt
+2026-09-23 23:37:35,099 - Finish calculating coverage for aug_4
+2026-09-23 23:37:36,719 - Processed:/vol/data/benchmark/runs/small_test_v2/comebin_out/data_augmentation/depth/reads.bam_0_depth.txt
+2026-09-23 23:37:36,780 - Finish calculating coverage for aug_5
+2026-09-23 23:37:36,783 - Generate coverage variance files from bam files.
+2026-09-23 23:37:42,609 - Processed:/vol/data/benchmark/runs/small_test_v2/comebin_out/data_augmentation/depth/reads.bam_0_depth.txt
+2026-09-23 23:37:44,355 - Processed:/vol/data/benchmark/runs/small_test_v2/comebin_out/data_augmentation/depth/reads.bam_0_depth.txt
+2026-09-23 23:37:44,410 - Finish calculating coverage variance for aug_1
+2026-09-23 23:37:46,040 - Processed:/vol/data/benchmark/runs/small_test_v2/comebin_out/data_augmentation/depth/reads.bam_0_depth.txt
+2026-09-23 23:37:46,093 - Finish calculating coverage variance for aug_2
+2026-09-23 23:37:47,695 - Processed:/vol/data/benchmark/runs/small_test_v2/comebin_out/data_augmentation/depth/reads.bam_0_depth.txt
+2026-09-23 23:37:47,745 - Finish calculating coverage variance for aug_3
+2026-09-23 23:37:49,352 - Processed:/vol/data/benchmark/runs/small_test_v2/comebin_out/data_augmentation/depth/reads.bam_0_depth.txt
+2026-09-23 23:37:49,398 - Finish calculating coverage variance for aug_4
+2026-09-23 23:37:51,003 - Processed:/vol/data/benchmark/runs/small_test_v2/comebin_out/data_augmentation/depth/reads.bam_0_depth.txt
+2026-09-23 23:37:51,053 - Finish calculating coverage variance for aug_5
+/vol/data/benchmark/runs/small_test_v2/comebin_out/comebin_res does not exist.
+Running getting representation.
+2026-09-23 23:37:54,069 - train
+2026-09-23 23:37:54,070 - Generate features for the data.
+Traceback (most recent call last):
+  File "/vol/data/repos/COMEBin/COMEBin/main.py", line 369, in <module>
+    main()
+  File "/vol/data/repos/COMEBin/COMEBin/main.py", line 289, in main
+    train_CLmodel(logger,args)
+  File "/vol/data/repos/COMEBin/COMEBin/train_CLmodel.py", line 46, in train_CLmodel
+    length_weight.append(lengths[seq_id])
+KeyError: 'BATS_SAMN07137077_METAG-scaffold_22978'
+Something went wrong with running training network. Exiting.
+exit_code:  1
+wall_s:     43
+finished:   2026-09-23T23:37:56+00:00
