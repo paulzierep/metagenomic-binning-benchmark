@@ -19782,3 +19782,791 @@ Exit: 0
  174088       11:48 Sl   opencode run --auto --model opencode/nemotron-3.5-lightning-free --title watchdog-restart You are resuming the metagenomic-binning-benchmark project after an agent restart (the previous session may have crashed, run out of context, or exhausted model tokens). Read /vol/data/benchmark/PROGRESS.md FIRST, then check NEW/updated issues in paulzierep/metagenomic-binning-benchmark and paulzierep/COMEBin with gh issue list --state open --json number,title,updatedAt; triage and comment without duplicating an existing response. Verify state on disk and continue from the first unfinished step. Update PROGRESS.md and /vol/data/benchmark/.activity, touch /vol/data/benchmark/.heartbeat in shell commands while active, and append one timestamped line per meaningful action to /vol/data/repos/metagenomic-binning-benchmark/status/agent-activity.log. Before final git stage/commit/push, acquire /tmp/bench-repo.lock and commit only intended paths. Never overlap the registered benchmark run. If /vol/data/benchmark/TASK_COMPLETE exists, do nothing and exit.
 > build · space-bunny-free
 [0m→ [0mRead /vol/data/repos/metagenomic-binning-benchmark/docs/06-benchmark-commands.md [90m[offset=1, limit=220][0m
+> build · space-bunny-free
+[0m$ [0mset -e
+repo=/vol/data/repos/metagenomic-binning-benchmark
+exec 8>/tmp/bench-repo.lock
+flock -x 8
+[ -z "$(git -C "$repo" status --porcelain)" ] || { echo 'ABORT: target repo has worktree changes'; git -C "$repo" status --short; exit 2; }
+[ -z "$(git -C "$repo" diff --cached --name-only)" ] || { echo 'ABORT: target repo has staged changes'; exit 3; }
+for pair in \
+  'benchmark-watchdog.sh /tmp/opencode/benchmark-watchdog.sh.new' \
+  'meta-watchdog.sh /tmp/opencode/meta-watchdog.sh.new' \
+  'run_comebin_baseline.sh /tmp/opencode/run_comebin_baseline.sh.new'; do
+  set -- $pair
+  cp "$2" "$repo/scripts/.$1.deploy-new"
+  chmod 755 "$repo/scripts/.$1.deploy-new"
+  mv -f "$repo/scripts/.$1.deploy-new" "$repo/scripts/$1"
+done
+git -C "$repo" status --short
+
+M scripts/benchmark-watchdog.sh
+ M scripts/meta-watchdog.sh
+ M scripts/run_comebin_baseline.sh
+> build · space-bunny-free
+[0m$ [0mset -e
+repo=/vol/data/repos/metagenomic-binning-benchmark
+bindir=/vol/data/benchmark/bin
+for job in benchmark-watchdog.sh meta-watchdog.sh; do
+  cp "$repo/scripts/$job" "$bindir/.$job.deploy-new"
+  chmod 755 "$bindir/.$job.deploy-new"
+  mv -f "$bindir/.$job.deploy-new" "$bindir/$job"
+done
+# Keep a deployed baseline runner available for operators; the watchdog uses
+# committed snapshots from the repository for immutable launches.
+cp "$repo/scripts/run_comebin_baseline.sh" "$bindir/.run_comebin_baseline.sh.deploy-new"
+chmod 755 "$bindir/.run_comebin_baseline.sh.deploy-new"
+mv -f "$bindir/.run_comebin_baseline.sh.deploy-new" "$bindir/run_comebin_baseline.sh"
+for job in benchmark-watchdog.sh meta-watchdog.sh; do cmp -s "$repo/scripts/$job" "$bindir/$job"; done
+cmp -s "$repo/scripts/run_comebin_baseline.sh" "$bindir/run_comebin_baseline.sh"
+echo deployed
+
+deployed
+> build · space-bunny-free
+[0m$ [0mset -e
+repo=/vol/data/repos/metagenomic-binning-benchmark
+for f in "$repo/scripts/benchmark-watchdog.sh" "$repo/scripts/meta-watchdog.sh" "$repo/scripts/run_comebin_baseline.sh" /vol/data/benchmark/bin/benchmark-watchdog.sh /vol/data/benchmark/bin/meta-watchdog.sh /vol/data/benchmark/bin/run_comebin_baseline.sh; do bash -n "$f"; done
+fixture=$(mktemp -d /tmp/opencode/bm-watchdog-test.XXXXXX)
+mkdir -p "$fixture/logs" "$fixture/runs/failed"
+printf '999999 999999 %s %s 1 baseline /vol/data/repos/COMEBin\n' "$fixture/runs/failed/comebin_run.log" "$fixture/runs/failed" > "$fixture/.active_run"
+printf '2026-09-23T21:30:00Z Something went wrong with running clustering. Exiting.\n' > "$fixture/runs/failed/comebin_run.log"
+BENCH_ROOT="$fixture" BENCH_WATCHDOG_LOCK="$fixture/lock" BENCHMARK_REPO="$repo" /vol/data/benchmark/bin/benchmark-watchdog.sh
+[ ! -e "$fixture/.active_run" ]
+[ -s "$fixture/runs/failed/.watchdog_terminal" ]
+[ -s "$fixture/.last_benchmark_failure" ]
+! find "$fixture" -maxdepth 1 -name '.hang_restarts.*' -print -quit | grep -q .
+printf 'terminal fixture passed: '; cat "$fixture/.last_benchmark_failure"
+rm -rf "$fixture"
+echo syntax-and-terminal-test=ok
+terminal fixture passed: 2026-09-23T21:42:17+00:00	/tmp/opencode/bm-watchdog-test.vNVuxL/runs/failed	terminal log evidence: 2026-09-23T21:30:00Z Something went wrong with running clustering. Exiting.
+syntax-and-terminal-test=ok
+> build · space-bunny-free
+[0m$ [0mset -e
+repo=/vol/data/repos/metagenomic-binning-benchmark
+fixture=$(mktemp -d /tmp/opencode/bm-watchdog-success.XXXXXX)
+mkdir -p "$fixture/logs" "$fixture/runs/done"
+printf '999999 999999 %s %s 1 baseline /vol/data/repos/COMEBin\n' "$fixture/runs/done/comebin_run.log" "$fixture/runs/done" > "$fixture/.active_run"
+printf 'exit_code: 0\n' > "$fixture/runs/done/run_meta.txt"
+printf 'finished\n' > "$fixture/runs/done/comebin_run.log"
+BENCH_ROOT="$fixture" BENCH_WATCHDOG_LOCK="$fixture/lock" BENCHMARK_REPO="$repo" /vol/data/benchmark/bin/benchmark-watchdog.sh
+[ ! -e "$fixture/.active_run" ]
+rm -rf "$fixture"
+echo success-fixture=ok
+success-fixture=ok
+> build · space-bunny-free
+[0m$ [0mset -e
+# Refuse to act if any registered COMEBin process/group is still alive.
+if ps -eo pid=,pgid=,args= | awk '$2==19181 || $1==19182 {found=1} END{exit found?0:1}'; then
+  echo 'ABORT: original benchmark identity still has a live process' >&2
+  exit 2
+fi
+before=$(cat /vol/data/benchmark/.active_run)
+/vol/data/benchmark/bin/benchmark-watchdog.sh
+printf '%s\n' '--- active state after watchdog ---'
+if [ -e /vol/data/benchmark/.active_run ]; then cat /vol/data/benchmark/.active_run; else echo '(cleared)'; fi
+printf '%s\n' '--- terminal failure ---'
+cat /vol/data/benchmark/runs/baseline_unmodified/.watchdog_terminal 2>/dev/null || true
+cat /vol/data/benchmark/.last_benchmark_failure 2>/dev/null || true
+printf '%s\n' '--- restart markers ---'
+find /vol/data/benchmark -maxdepth 1 -name '.hang_restarts.baseline_unmodified.*' -printf '%f\n' 2>/dev/null || true
+
+--- active state after watchdog ---
+(cleared)
+--- terminal failure ---
+2026-09-23T21:42:31+00:00 terminal log evidence: Something went wrong with running clustering. Exiting.
+2026-09-23T21:42:31+00:00	/vol/data/benchmark/runs/baseline_unmodified	terminal log evidence: Something went wrong with running clustering. Exiting.
+--- restart markers ---
+> build · space-bunny-free
+[0m$ [0mgit diff --stat && git diff --check && git status --short --branch && git diff -- scripts/benchmark-watchdog.sh scripts/meta-watchdog.sh scripts/run_comebin_baseline.sh | sed -n '1,500p'
+scripts/benchmark-watchdog.sh   | 154 +++++++++++++++++++++++++++++++++-------
+ scripts/meta-watchdog.sh        |  59 +++++++++++----
+ scripts/run_comebin_baseline.sh | 127 +++++++++++++++++++++++++++------
+ 3 files changed, 278 insertions(+), 62 deletions(-)
+## main...origin/main
+ M scripts/benchmark-watchdog.sh
+ M scripts/meta-watchdog.sh
+ M scripts/run_comebin_baseline.sh
+diff --git a/scripts/benchmark-watchdog.sh b/scripts/benchmark-watchdog.sh
+index 2764f07..222720c 100755
+--- a/scripts/benchmark-watchdog.sh
++++ b/scripts/benchmark-watchdog.sh
+@@ -6,32 +6,43 @@
+ # Rules (conservative, safety-first):
+ #   - only acts on the run recorded in /vol/data/benchmark/.active_run
+ #   - HEALTHY  = process alive AND run log written within the last $HANG_S
+-#   - HUNG     = process alive but log silent for > $HANG_S           -> kill + restart
+-#   - CRASHED  = process gone, run_meta.txt has no exit_code:0         -> restart
+-#   - DONE     = run_meta.txt exit_code:0                              -> clear .active_run
++#   - HUNG     = process alive but log silent for > $HANG_S -> kill + restart
++#   - CRASHED  = process gone with no terminal evidence       -> restart
++#   - FAILED   = terminal failure evidence                    -> record + clear
++#   - DONE     = run_meta.txt exit_code:0                    -> clear .active_run
++#   - deterministic failures are never retried in a tight loop
++#   - replacement runners are immutable snapshots from the committed repo
+ #   - rate limit: max $MAX_PER_RUN restarts per run per rolling 24 h
+ #   - flock-protected; exits immediately on TASK_COMPLETE
+ set -u
+ export HOME=/home/ubuntu
+-BENCH=/vol/data/benchmark
++BENCH=${BENCH_ROOT:-/vol/data/benchmark}
+ ACTIVE="$BENCH/.active_run"        # pid pgid logfile rundir start_ts mode source [contigs bamdir]
+ SLOG="$BENCH/logs/benchmark-watchdog.log"
+ LOCK=${BENCH_WATCHDOG_LOCK:-/tmp/benchmark-watchdog.lock}
+ HANG_S=${BENCH_HANG_S:-2400}       # 40 min without new log output => hung
+ MAX_PER_RUN=${BENCH_MAX_RESTARTS:-3}
+-REPO=/vol/data/repos/metagenomic-binning-benchmark
++REPO=${BENCHMARK_REPO:-/vol/data/repos/metagenomic-binning-benchmark}
++RUNNER_REF=${BENCH_RUNNER_REF:-HEAD}
++SNAPSHOT_ROOT="$BENCH/.runner-snapshots"
+ log() { echo "$(date -Is) [bm-watchdog] $*" >>"$SLOG"; }
+ 
+ exec 9>"$LOCK"
+ flock -n 9 || exit 0
+ [ -f "$BENCH/TASK_COMPLETE" ] && exit 0
+ [ -f "$ACTIVE" ] || exit 0
++mkdir -p "$BENCH/logs" "$SNAPSHOT_ROOT"
+ 
+ read -r pid pgid logfile rundir start mode source contigs bamdir < "$ACTIVE"
+-name=$(basename "$rundir")
++name=$(basename "${rundir:-}")
+ root_name=${name%%_autorestart*}
+ mode=${mode:-baseline}
+ source=${source:-/vol/data/repos/COMEBin}
++[[ "$name" =~ ^[A-Za-z0-9._-]+$ ]] || { log "unsafe active-run directory '${rundir:-}'; refusing state change"; exit 0; }
++case "$rundir" in
++  "$BENCH"/runs/*) ;;
++  *) log "active-run directory is outside $BENCH/runs: $rundir; refusing state change"; exit 0 ;;
++esac
+ [[ "$mode" =~ ^[A-Za-z0-9._-]+$ ]] || { log "unsafe active-run mode '$mode'; refusing state change"; exit 0; }
+ if [ "$mode" != "baseline" ] && [ ! -f "$source/COMEBin/run_comebin.sh" ]; then
+   log "registered $mode source is missing run_comebin.sh: $source; refusing state change"
+@@ -57,6 +68,64 @@ if [ -n "$registered_pgid" ] && [[ "$start" =~ ^[0-9]+$ ]]; then
+   fi
+ fi
+ 
++# Never clear a registration that changed while this watchdog was inspecting it.
++active_matches() {
++  local cur_pid cur_pgid cur_log cur_dir cur_start rest
++  [ -f "$ACTIVE" ] || return 1
++  read -r cur_pid cur_pgid cur_log cur_dir cur_start rest < "$ACTIVE" || return 1
++  [ "$cur_pid" = "$pid" ] && [ "$cur_dir" = "$rundir" ] && [ "$cur_start" = "$start" ]
++}
++
++clear_active() {
++  if active_matches; then
++    rm -f "$ACTIVE"
++    return 0
++  fi
++  log "$name registration changed while watchdog was inspecting it; leaving current state untouched"
++  return 1
++}
++
++# A terminal failure is deliberately not treated as a transient crash.  This is
++# important for deterministic COMEBin/data/dependency errors: retrying them
++# wastes hours and can overwrite the only useful diagnostics.
++record_terminal_failure() {
++  local reason=$1 stamp
++  stamp=$(date -Is)
++  reason=$(printf '%s' "$reason" | tr '\r\n\t' '   ' | cut -c1-400)
++  if [ -f "$rundir/run_meta.txt" ]; then
++    printf 'watchdog_terminal: %s\n' "$stamp $reason" >> "$rundir/run_meta.txt" 2>/dev/null || true
++  fi
++  printf '%s\n' "$stamp $reason" > "$rundir/.watchdog_terminal" 2>/dev/null || true
++  printf '%s\t%s\t%s\n' "$stamp" "$rundir" "$reason" > "$BENCH/.last_benchmark_failure" 2>/dev/null || true
++  if clear_active; then
++    # A terminal failure consumes no retry budget.  Remove only markers for
++    # this stable run family, and only after the registered process is gone.
++    if [[ "$root_name" =~ ^[A-Za-z0-9._-]+$ ]]; then
++      find "$BENCH" -maxdepth 1 -name ".hang_restarts.$root_name.*" -mmin -1440 -delete 2>/dev/null || true
++    fi
++    log "$name terminal failure: $reason — active-run cleared; no automatic retry"
++  else
++    log "$name terminal failure: $reason — registration changed; not clearing a replacement"
++  fi
++}
++
++# A committed snapshot prevents a source edit made while a long benchmark is
++# executing from changing the script text Bash has not read yet.
++make_snapshot() {
++  local rel=$1 dst tmp
++  dst="$SNAPSHOT_ROOT/${name}_$(date +%s%N).sh"
++  tmp="$dst.tmp.$$"
++  if ! git -C "$REPO" show "$RUNNER_REF:$rel" > "$tmp" 2>/dev/null; then
++    rm -f "$tmp"
++    log "cannot read committed runner $RUNNER_REF:$rel; refusing launch"
++    return 1
++  fi
++  [ -s "$tmp" ] || { rm -f "$tmp"; log "committed runner $RUNNER_REF:$rel is empty; refusing launch"; return 1; }
++  chmod 755 "$tmp"
++  mv -f "$tmp" "$dst"
++  printf '%s\n' "$dst"
++}
++
+ # log age = silence of the run
+ [ -f "$logfile" ] || logfile="$rundir/comebin_run.log"
+ if [ -f "$logfile" ]; then
+@@ -67,10 +136,12 @@ fi
+ 
+ # A recorded successful exit is authoritative and safe to clear even if the
+ # old PID has since been reused; no process signal is sent on this path.
+-rc_done=$(grep -m1 '^exit_code:' "$rundir/run_meta.txt" 2>/dev/null | awk '{print $2}')
++rc_done=$(grep -m1 '^exit_code:' "$rundir/run_meta.txt" 2>/dev/null | awk '{print $2}' || true)
+ if [ "$rc_done" = "0" ]; then
+-    rm -f "$ACTIVE"
+-    log "$name finished rc=0 — active-run cleared"
++    if clear_active; then
++      rm -f "$BENCH/.last_benchmark_failure" 2>/dev/null || true
++      log "$name finished rc=0 — active-run cleared"
++    fi
+     exit 0
+ fi
+ 
+@@ -98,7 +169,6 @@ elif group_pids=$(pgrep -g "$pgid" 2>/dev/null) && [ -n "$group_pids" ]; then
+     if [ "$group_safe" -eq 1 ]; then
+       alive=1
+       orphaned=1
+-      pid_cmd="orphaned registered process group: $group_pids"
+       log "$name wrapper $pid is gone; verified orphaned run group $pgid"
+     else
+       log "process group $pgid has unrelated members; refusing orphan kill/restart"
+@@ -106,8 +176,41 @@ elif group_pids=$(pgrep -g "$pgid" 2>/dev/null) && [ -n "$group_pids" ]; then
+     fi
+ fi
+ 
+-# healthy?
+-[ "$alive" = "1" ] && [ "$orphaned" = "0" ] && [ "$age" -lt "$HANG_S" ] && exit 0
++# Look for terminal evidence only after establishing that the registered
++# process/group is gone.  A live process is never killed merely because its log
++# contains an error; that could destroy a still-running cleanup phase.
++terminal_reason=""
++if [ "$alive" -eq 0 ]; then
++  if [[ "$rc_done" =~ ^[0-9]+$ ]] && [ "$rc_done" != "0" ]; then
++    terminal_reason="run_meta exit_code=$rc_done"
++  elif [ -s "$rundir/.watchdog_terminal" ]; then
++    terminal_reason=$(tail -n 1 "$rundir/.watchdog_terminal" 2>/dev/null || true)
++  else
++    for candidate in "$logfile" "$BENCH/logs/${name}.launch.log" "/vol/data/logs/baseline_launch.log"; do
++      [ -f "$candidate" ] || continue
++      failure_line=$(tail -n 300 "$candidate" 2>/dev/null \
++        | grep -aE 'Something went wrong with running|Traceback \(most recent call last\):|ModuleNotFoundError|FileNotFoundError|No such file or directory|syntax error near unexpected token' \
++        | tail -n 1 || true)
++      if [ -n "$failure_line" ]; then
++        terminal_reason="terminal log evidence: $failure_line"
++        break
++      fi
++    done
++  fi
++  if [ -n "$terminal_reason" ]; then
++    record_terminal_failure "$terminal_reason"
++    exit 0
++  fi
++fi
++
++# A live process with a fresh log is healthy.  A live orphan/hung process is
++# handled conservatively below; terminal evidence while it is still alive is
++# left for manual inspection rather than killing an active run.
++[ "$alive" -eq 1 ] && [ "$orphaned" -eq 0 ] && [ "$age" -lt "$HANG_S" ] && exit 0
++if [ "$alive" -eq 1 ] && [ -n "$terminal_reason" ]; then
++  log "$name has terminal-looking evidence but its registered process is still alive; refusing to signal it"
++  exit 0
++fi
+ 
+ # budget check (rolling 24 h), keyed to the stable pre-autorestart run name
+ restarts=$(find "$BENCH" -maxdepth 1 -name ".hang_restarts.$root_name.*" -mmin -1440 2>/dev/null | wc -l)
+@@ -118,7 +221,7 @@ fi
+ 
+ # Kill only the registered process group and wrapper. Never use pkill -f on a
+ # run name: prompts and status commands may contain that text too.
+-if [ "$alive" = "1" ]; then
++if [ "$alive" -eq 1 ]; then
+     log "$name HUNG: log silent ${age}s -> killing pid $pid pgid $pgid"
+     kill -9 -- -"$pgid" 2>/dev/null || true
+     kill -9 "$pid" 2>/dev/null || true
+@@ -128,7 +231,8 @@ fi
+ # Restart into a fresh directory (keeps every attempt's raw artifacts). New
+ # registrations carry mode + source; legacy five-field baseline registrations
+ # default to mode=baseline above.
+-touch "$BENCH/.hang_restarts.$root_name.$(date +%s)"
++marker="$BENCH/.hang_restarts.$root_name.$(date +%s)"
++touch "$marker"
+ new="${root_name}_autorestart$((restarts+1))"
+ newdir="$BENCH/runs/$new"
+ # Keep the old registration until the replacement atomically overwrites it;
+@@ -136,20 +240,16 @@ newdir="$BENCH/runs/$new"
+ # handoff rather than a second independent launch.
+ launch_env=(SRC_COMEBIN="$source" BENCHMARK_WATCHDOG_REPLACE=1)
+ case "$mode" in
+-  baseline)
+-    launch=(bash "$REPO/scripts/run_comebin_baseline.sh" "$newdir")
+-    ;;
+-  small)
+-    launch=(bash "$REPO/scripts/run_small_test.sh" "$newdir")
+-    ;;
+-  *)
+-    launch=(bash "$REPO/scripts/run_comebin_fix.sh" "$newdir")
+-    launch_env+=(MODE="$mode")
+-    if [ -n "${contigs:-}" ]; then launch_env+=(CONTIGS="$contigs"); fi
+-    if [ -n "${bamdir:-}" ]; then launch_env+=(BAMDIR="$bamdir"); fi
+-    ;;
++  baseline) rel=scripts/run_comebin_baseline.sh; launch_env+=(PYTHONDONTWRITEBYTECODE=1) ;;
++  small) rel=scripts/run_small_test.sh; launch_env+=(PYTHONDONTWRITEBYTECODE=1) ;;
++  *) rel=scripts/run_comebin_fix.sh; launch_env+=(MODE="$mode" PYTHONDONTWRITEBYTECODE=1)
++     if [ -n "${contigs:-}" ]; then launch_env+=("CONTIGS=$contigs"); fi
++     if [ -n "${bamdir:-}" ]; then launch_env+=("BAMDIR=$bamdir"); fi
++     ;;
+ esac
++snapshot=$(make_snapshot "$rel") || { rm -f "$marker"; exit 0; }
++launch=(bash "$snapshot" "$newdir")
+ nohup env "${launch_env[@]}" "${launch[@]}" \
+     >"$BENCH/logs/$new.launch.log" 2>&1 9>&- &
+-log "$name restart #$((restarts+1)) mode=$mode source=$source -> $newdir (launcher pid $!; run script re-registers .active_run)"
++log "$name restart #$((restarts+1)) mode=$mode source=$source -> $newdir (runner=$RUNNER_REF:$rel snapshot=$(basename "$snapshot"); launcher pid $!)"
+ exit 0
+diff --git a/scripts/meta-watchdog.sh b/scripts/meta-watchdog.sh
+index 18f50f4..5b63e63 100755
+--- a/scripts/meta-watchdog.sh
++++ b/scripts/meta-watchdog.sh
+@@ -197,6 +197,10 @@ else
+ fi
+ 
+ # ---- C6: registered benchmark alive, correct process, and progressing ------- #
++# The benchmark watchdog distinguishes a transient crash from a terminal
++# failure.  C6 must accept both outcomes without retrying a deterministic
++# failure forever, and must verify a replacement is an actual registered
++# runner rather than merely a live, possibly reused PID.
+ if [ -f "$BENCH/.active_run" ]; then
+   read -r bid bpgid blog bdir bstart bmode bsource < "$BENCH/.active_run" || true
+   b_alive=0
+@@ -213,42 +217,71 @@ if [ -f "$BENCH/.active_run" ]; then
+     check C6_benchmark broken "pid $bid alive but command is not a registered COMEBin runner; refusing kill"
+   elif [ "$b_alive" -eq 0 ]; then
+     done_rc=$(grep -m1 '^exit_code:' "${bdir:-/nonexistent}/run_meta.txt" 2>/dev/null | awk '{print $2}' || true)
+-    if [ "${done_rc:-}" = "0" ]; then
+-      bash "$BENCH/bin/benchmark-watchdog.sh" >/dev/null 2>&1 || true
+-      if [ ! -f "$BENCH/.active_run" ]; then
++    # The watchdog clears both successful terminal runs and definitive failed
++    # runs.  Give it a moment only for the crash/hang replacement path.
++    bash "$BENCH/bin/benchmark-watchdog.sh" >/dev/null 2>&1 || true
++    if [ ! -f "$BENCH/.active_run" ]; then
++      if [[ "${done_rc:-}" =~ ^[0-9]+$ ]] && [ "$done_rc" != "0" ]; then
++        note_fix "benchmark failed rc=$done_rc; terminal state recorded and no retry started"
++        check C6_benchmark ok "benchmark failed rc=$done_rc; terminal state recorded; no automatic retry"
++      elif [ "${done_rc:-}" = "0" ]; then
+         note_fix "completed benchmark registration cleared"
+         check C6_benchmark ok "run completed rc=0; stale active registration cleared"
++      elif [ -s "$BENCH/.last_benchmark_failure" ]; then
++        note_fix "terminal benchmark failure classified; stale registration cleared"
++        check C6_benchmark ok "benchmark terminal failure recorded; no automatic retry"
+       else
+-        check C6_benchmark broken "run completed rc=0 but active registration remains"
++        check C6_benchmark broken "benchmark pid ${bid:-?} gone but watchdog did not classify it"
+       fi
+     else
+-      bash "$BENCH/bin/benchmark-watchdog.sh" >/dev/null 2>&1 &
+-      sleep 3
++      # A live replacement must have a different PID and a recognizable
++      # COMEBin runner command; kill -0 alone is not sufficient.  The watchdog
++      # launches asynchronously, so allow its atomic handoff a moment to land.
++      sleep 2
+       new_bid=0
++      new_b_cmd=""
+       [ -f "$BENCH/.active_run" ] && read -r new_bid _ < "$BENCH/.active_run" || true
+-      if [ -n "$new_bid" ] && [ "$new_bid" != "${bid:-0}" ] && kill -0 "$new_bid" 2>/dev/null; then
++      new_b_stat=$(ps -o stat= -p "${new_bid:-0}" 2>/dev/null | tr -d ' ' || true)
++      if [ -n "$new_bid" ] && [ "$new_bid" != "${bid:-0}" ] && [ -n "$new_b_stat" ] && kill -0 "$new_bid" 2>/dev/null && [[ "$new_b_stat" != Z* ]]; then
++        new_b_cmd=$(tr '\0' ' ' < "/proc/$new_bid/cmdline" 2>/dev/null || true)
++      fi
++      new_runner_ok=0
++      case "$new_b_cmd" in *run_comebin_baseline.sh*|*run_comebin_fix.sh*|*run_small_test.sh*) new_runner_ok=1 ;; esac
++      if [ "$new_runner_ok" -eq 1 ]; then
+         note_fix "benchmark absent -> watchdog registered replacement pid $new_bid"
+         check C6_benchmark ok "auto-restarted benchmark as pid $new_bid"
+       else
+-        check C6_benchmark broken "benchmark pid ${bid:-?} gone; restart not verified"
++        check C6_benchmark broken "benchmark pid ${bid:-?} gone; restart not verified as a COMEBin runner"
+       fi
+     fi
+   elif [ "$b_age" -lt "$HANG_S" ]; then
+     check C6_benchmark ok "pid $bid mode=${bmode:-baseline} alive, log ${b_age}s fresh"
+   else
+-    bash "$BENCH/bin/benchmark-watchdog.sh" >/dev/null 2>&1 &
+-    sleep 7
++    bash "$BENCH/bin/benchmark-watchdog.sh" >/dev/null 2>&1 || true
++    sleep 2
+     new_bid=0
++    new_b_cmd=""
+     [ -f "$BENCH/.active_run" ] && read -r new_bid _ < "$BENCH/.active_run" || true
+-    if [ -n "$new_bid" ] && [ "$new_bid" != "${bid:-0}" ] && kill -0 "$new_bid" 2>/dev/null; then
++    new_b_stat=$(ps -o stat= -p "${new_bid:-0}" 2>/dev/null | tr -d ' ' || true)
++    if [ -n "$new_bid" ] && [ "$new_bid" != "${bid:-0}" ] && [ -n "$new_b_stat" ] && kill -0 "$new_bid" 2>/dev/null && [[ "$new_b_stat" != Z* ]]; then
++      new_b_cmd=$(tr '\0' ' ' < "/proc/$new_bid/cmdline" 2>/dev/null || true)
++    fi
++    new_runner_ok=0
++    case "$new_b_cmd" in *run_comebin_baseline.sh*|*run_comebin_fix.sh*|*run_small_test.sh*) new_runner_ok=1 ;; esac
++    if [ "$new_runner_ok" -eq 1 ]; then
+       note_fix "benchmark hung -> watchdog registered replacement pid $new_bid"
+       check C6_benchmark ok "auto-restarted hung benchmark as pid $new_bid"
+     else
+-      check C6_benchmark broken "benchmark pid $bid hung; restart not verified"
++      check C6_benchmark broken "benchmark pid $bid hung; restart not verified as a COMEBin runner"
+     fi
+   fi
+ else
+-  check C6_benchmark ok "no active run (idle is fine)"
++  if [ -s "$BENCH/.last_benchmark_failure" ]; then
++    failure_summary=$(tail -n 1 "$BENCH/.last_benchmark_failure" 2>/dev/null | cut -c1-240)
++    check C6_benchmark ok "no active run; last benchmark failure recorded (${failure_summary:-unknown}); no retry loop"
++  else
++    check C6_benchmark ok "no active run (idle is fine)"
++  fi
+ fi
+ 
+ # ---- C7: disk ---------------------------------------------------------------- #
+diff --git a/scripts/run_comebin_baseline.sh b/scripts/run_comebin_baseline.sh
+index 6f466e4..3e223b5 100755
+--- a/scripts/run_comebin_baseline.sh
++++ b/scripts/run_comebin_baseline.sh
+@@ -3,23 +3,71 @@
+ # All inputs/outputs on /vol/data. Prints per-stage timing to stdout + log file.
+ set -euo pipefail
+ 
+-MM=/vol/data/tools/bin/micromamba
+-ENV=/vol/data/envs/comebin
+-SRC=/vol/data/repos/COMEBin
+-DATA=/vol/data/datasets/comebin_test_data
+-CONTIGS="$DATA/BATS_SAMN07137077_METAG.scaffolds.min500.fasta.f1k.fasta"
+-BAMDIR="$DATA/bamfiles"
+-RUNDIR=${1:-/vol/data/benchmark/runs/baseline_unmodified}
++MM=${MM:-/vol/data/tools/bin/micromamba}
++ENV=${ENV:-/vol/data/envs/comebin}
++SRC=${SRC_COMEBIN:-/vol/data/repos/COMEBin}
++DATA=${DATA:-/vol/data/datasets/comebin_test_data}
++CONTIGS=${CONTIGS:-"$DATA/BATS_SAMN07137077_METAG.scaffolds.min500.fasta.f1k.fasta"}
++BAMDIR=${BAMDIR:-"$DATA/bamfiles"}
++RUNDIR=$(realpath -m "${1:-/vol/data/benchmark/runs/baseline_unmodified}")
+ THREADS=${THREADS:-32}
++ACTIVE=/vol/data/benchmark/.active_run
++START_LOCK=/tmp/benchmark-start.lock
++
++[ -x "$MM" ] || { echo "ERROR: micromamba is not executable: $MM"; exit 1; }
++[ -f "$SRC/COMEBin/run_comebin.sh" ] || { echo "ERROR: invalid SRC_COMEBIN repo root: $SRC"; exit 1; }
++[ -f "$CONTIGS" ] || { echo "ERROR: contigs file not found: $CONTIGS"; exit 1; }
++[ -d "$BAMDIR" ] || { echo "ERROR: bam directory not found: $BAMDIR"; exit 1; }
++[ "$RUNDIR" != "/" ] || { echo "ERROR: refusing rundir=/"; exit 1; }
+ 
+ mkdir -p "$RUNDIR"
++if [ -f "$RUNDIR/run_meta.txt" ] || [ -d "$RUNDIR/comebin_out" ]; then
++  echo "ERROR: refusing to overwrite existing run directory: $RUNDIR"
++  echo "Choose a fresh rundir (autorestart directories are created by benchmark-watchdog)."
++  exit 1
++fi
++
+ COMMIT=$(git -C "$SRC" rev-parse HEAD)
+-DIRTY=$(git -C "$SRC" status --porcelain | wc -l)
+-echo "source commit: $COMMIT (dirty files: $DIRTY)"
++STATUS=$(git -C "$SRC" status --porcelain --untracked-files=all 2>/dev/null || true)
++# Python bytecode generated by a prior invocation is not a source edit.  Ignore
++# only that well-known cache shape; every tracked or other untracked change is
++# still rejected so the baseline remains reproducible.
++DIRTY=$(printf '%s\n' "$STATUS" | awk '
++  /^\?\? (.*\/)?__pycache__(\/|$)/ {next}
++  NF {n++}
++  END {print n+0}')
++CACHE_ENTRIES=$(printf '%s\n' "$STATUS" | awk '/^\?\? (.*\/)?__pycache__(\/|$)/ {n++} END {print n+0}')
++echo "source commit: $COMMIT (dirty files: $DIRTY; ignored __pycache__ entries: $CACHE_ENTRIES)"
+ [ "$DIRTY" -eq 0 ] || { echo "REFUSING: baseline source is modified; use pristine upstream"; exit 1; }
++
++# Serialize new launches and refuse overlap with the independently tracked run.
++# BENCHMARK_WATCHDOG_REPLACE=1 is set only by the watchdog after it has verified
++# that the old registered process is gone.
++exec 9>"$START_LOCK"
++flock -n 9 || { echo "ERROR: another benchmark launch holds $START_LOCK"; exit 1; }
++if [ -f "$ACTIVE" ] && [ "${BENCHMARK_WATCHDOG_REPLACE:-0}" != "1" ]; then
++  read -r active_pid active_pgid active_log active_dir active_start active_mode active_src < "$ACTIVE" || true
++  active_state=$(ps -o stat= -p "${active_pid:-0}" 2>/dev/null | tr -d ' ' || true)
++  if [ -n "${active_pid:-}" ] && kill -0 "$active_pid" 2>/dev/null && [[ "$active_state" != Z* ]]; then
++    echo "ERROR: benchmark already active: pid=$active_pid dir=$active_dir mode=${active_mode:-baseline}"
++    echo "Small functional tests and full benchmarks must never overlap; try again after that run finishes."
++    exit 1
++  fi
++  old_rc=$(grep -m1 '^exit_code:' "${active_dir:-/nonexistent}/run_meta.txt" 2>/dev/null | awk '{print $2}' || true)
++  if [ "${old_rc:-}" = "0" ]; then
++    echo "clearing completed stale active-run registration for $active_dir"
++    rm -f "$ACTIVE"
++  else
++    echo "ERROR: stale failed active run is registered: pid=$active_pid dir=$active_dir"
++    echo "Run /vol/data/benchmark/bin/benchmark-watchdog.sh to triage it; not starting a second run."
++    exit 1
++  fi
++fi
++
+ {
+   echo "run:        $RUNDIR"
+   echo "date:       $(date -Is)"
++  echo "source:     $SRC"
+   echo "commit:     $COMMIT"
+   echo "contigs:    $CONTIGS"
+   echo "bamdir:     $BAMDIR"
+@@ -29,16 +77,56 @@ echo "source commit: $COMMIT (dirty files: $DIRTY)"
+ } | tee "$RUNDIR/run_meta.txt"
+ 
+ export MAMBA_ROOT_PREFIX=/vol/data/envs/.mamba
++# Do not leave new bytecode caches in the pristine source tree.  The source
++# check above also tolerates old caches from historical runs.
++export PYTHONDONTWRITEBYTECODE=1
++export PYTHONUNBUFFERED=1
+ cd "$SRC/COMEBin"   # upstream resolves ../auxiliary relative to CWD
+ 
+-# register this run for the benchmark watchdog (scripts/benchmark-watchdog.sh)
+-printf '%s %s %s %s %s\n' "$$" "$(ps -o pgid= -p $$ | tr -d ' ')" "$RUNDIR/comebin_run.log" "$RUNDIR" "$(date +%s)" > /vol/data/benchmark/.active_run
++# Register this run for the benchmark watchdog (scripts/benchmark-watchdog.sh).
++# Fields: pid pgid logfile rundir start_epoch mode source_repo.
++printf '%s %s %s %s %s %s %s\n' "$$" "$(ps -o pgid= -p $$ | tr -d ' ')" \
++  "$RUNDIR/comebin_run.log" "$RUNDIR" "$(date +%s)" baseline "$SRC" > "$ACTIVE.tmp.$$"
++mv "$ACTIVE.tmp.$$" "$ACTIVE"
+ 
+-# capture the real main.py train command once training starts (non-blocking)
+-( sleep 12; MCMD=$(pgrep -af 'main.py' 2>/dev/null | head -1 | cut -d' ' -f2-); \
++START=$(date +%s)
++TERMINAL=0
++write_terminal() {
++  local rc=$1 end=$2
++  [ "$TERMINAL" -eq 1 ] && return 0
++  {
++    echo "exit_code:  $rc"
++    echo "wall_s:     $((end-START))"
++    echo "finished:   $(date -Is)"
++    echo "terminal:   wrapper_exit"
++  } | tee -a "$RUNDIR/run_meta.txt" || true
++  TERMINAL=1
++}
++
++cleanup() {
++  local rc=$?
++  trap - EXIT
++  if [ "$TERMINAL" -eq 0 ]; then
++    set +e
++    write_terminal "$rc" "$(date +%s)"
++    set -e
++  fi
++  # A failed run remains registered so benchmark-watchdog can classify it.  Only
++  # a successful run clears its own registration.
++  if [ "$rc" -eq 0 ] && [ -f "$ACTIVE" ]; then
++    read -r current_pid _ < "$ACTIVE" || true
++    [ "${current_pid:-}" = "$$" ] && rm -f "$ACTIVE"
++  fi
++  exit "$rc"
++}
++trap cleanup EXIT
++trap 'exit 143' TERM
++trap 'exit 130' INT
++
++# Capture the real main.py train command once training starts (non-blocking).
++( sleep 12; MCMD=$(pgrep -af 'main.py train' 2>/dev/null | head -1 | cut -d' ' -f2-); \
+   [ -n "$MCMD" ] && echo "cmd_train_py: $MCMD" >> "$RUNDIR/run_meta.txt" ) &
+ 
+-START=$(date +%s)
+ set +e
+ CUDA_VISIBLE_DEVICES= "$MM" run -p "$ENV" bash run_comebin.sh \
+   -a "$CONTIGS" -p "$BAMDIR" -o "$RUNDIR/comebin_out" \
+@@ -46,20 +134,15 @@ CUDA_VISIBLE_DEVICES= "$MM" run -p "$ENV" bash run_comebin.sh \
+ RC=${PIPESTATUS[0]}
+ set -e
+ END=$(date +%s)
+-
+-{
+-  echo "exit_code:  $RC"
+-  echo "wall_s:     $((END-START))"
+-  echo "finished:   $(date -Is)"
+-} | tee -a "$RUNDIR/run_meta.txt"
++write_terminal "$RC" "$END"
+ 
+ if [ "$RC" -eq 0 ]; then
+   BINS="$RUNDIR/comebin_out/comebin_res/comebin_res_bins"
+   if [ -d "$BINS" ]; then
+-    echo "bins: $(ls "$BINS" | wc -l)  -> $BINS" | tee -a "$RUNDIR/run_meta.txt"
++    echo "bins: $(find "$BINS" -maxdepth 1 -type f | wc -l)  -> $BINS" | tee -a "$RUNDIR/run_meta.txt"
+> build · space-bunny-free
+[0m← [0mEdit /tmp/opencode/run_comebin_baseline.sh.new
+Index: /tmp/opencode/run_comebin_baseline.sh.new
+===================================================================
+--- /tmp/opencode/run_comebin_baseline.sh.new
++++ /tmp/opencode/run_comebin_baseline.sh.new
+@@ -10,10 +10,11 @@
+ CONTIGS=${CONTIGS:-"$DATA/BATS_SAMN07137077_METAG.scaffolds.min500.fasta.f1k.fasta"}
+ BAMDIR=${BAMDIR:-"$DATA/bamfiles"}
+ RUNDIR=$(realpath -m "${1:-/vol/data/benchmark/runs/baseline_unmodified}")
+ THREADS=${THREADS:-32}
+-ACTIVE=/vol/data/benchmark/.active_run
+-START_LOCK=/tmp/benchmark-start.lock
++BENCH_ROOT=${BENCH_ROOT:-/vol/data/benchmark}
++ACTIVE="$BENCH_ROOT/.active_run"
++START_LOCK=${BENCHMARK_START_LOCK:-/tmp/benchmark-start.lock}
+ 
+ [ -x "$MM" ] || { echo "ERROR: micromamba is not executable: $MM"; exit 1; }
+ [ -f "$SRC/COMEBin/run_comebin.sh" ] || { echo "ERROR: invalid SRC_COMEBIN repo root: $SRC"; exit 1; }
+ [ -f "$CONTIGS" ] || { echo "ERROR: contigs file not found: $CONTIGS"; exit 1; }
+
+> build · space-bunny-free
+[0m$ [0mset -e
+bash -n /tmp/opencode/run_comebin_baseline.sh.new
+root=$(mktemp -d /tmp/opencode/baseline-fixture.XXXXXX)
+mkdir -p "$root/bench/logs" "$root/bench/runs" "$root/src/COMEBin" "$root/data/bamfiles" "$root/out"
+printf '>x\nACGT\n' > "$root/data/contigs.fa"
+printf 'x\n' > "$root/data/bamfiles/reads.bam"
+printf '#!/usr/bin/env bash\nexit 7\n' > "$root/mm"; chmod +x "$root/mm"
+printf '#!/usr/bin/env bash\nexit 0\n' > "$root/src/COMEBin/run_comebin.sh"
+git -C "$root/src" init -q
+git -C "$root/src" config user.email test@example.invalid
+git -C "$root/src" config user.name test
+git -C "$root/src" add . && git -C "$root/src" commit -qm init
+set +e
+BENCH_ROOT="$root/bench" BENCHMARK_START_LOCK="$root/start.lock" MM="$root/mm" ENV=x SRC_COMEBIN="$root/src" DATA="$root/data" CONTIGS="$root/data/contigs.fa" BAMDIR="$root/data/bamfiles" THREADS=1 /tmp/opencode/run_comebin_baseline.sh.new "$root/bench/runs/mock" > "$root/launch.out" 2>&1
+rc=$?
+set -e
+printf 'runner_rc=%s\n' "$rc"
+cat "$root/bench/runs/mock/run_meta.txt"
+[ "$rc" -eq 7 ]
+grep -q '^exit_code:  7' "$root/bench/runs/mock/run_meta.txt"
+[ -f "$root/bench/.active_run" ]
+# The terminal watchdog should clear the failed registration without launching.
+BENCH_ROOT="$root/bench" BENCH_WATCHDOG_LOCK="$root/bm.lock" BENCHMARK_REPO=/vol/data/repos/metagenomic-binning-benchmark /vol/data/benchmark/bin/benchmark-watchdog.sh
+[ ! -e "$root/bench/.active_run" ]
+[ -s "$root/bench/runs/mock/.watchdog_terminal" ]
+rm -rf "$root"
+echo baseline-trap-test=ok
+runner_rc=126
+cat: /tmp/opencode/baseline-fixture.2gPyOY/bench/runs/mock/run_meta.txt: No such file or directory
+> build · space-bunny-free
+[0m$ [0mrm -rf /tmp/opencode/baseline-fixture.*; set -e
+root=$(mktemp -d /tmp/opencode/baseline-fixture.XXXXXX)
+mkdir -p "$root/bench/logs" "$root/bench/runs" "$root/src/COMEBin" "$root/data/bamfiles"
+printf '>x\nACGT\n' > "$root/data/contigs.fa"
+printf 'x\n' > "$root/data/bamfiles/reads.bam"
+printf '#!/usr/bin/env bash\nexit 7\n' > "$root/mm"; chmod +x "$root/mm"
+printf '#!/usr/bin/env bash\nexit 0\n' > "$root/src/COMEBin/run_comebin.sh"
+git -C "$root/src" init -q
+git -C "$root/src" config user.email test@example.invalid
+git -C "$root/src" config user.name test
+git -C "$root/src" add . && git -C "$root/src" commit -qm init
+set +e
+BENCH_ROOT="$root/bench" BENCHMARK_START_LOCK="$root/start.lock" MM="$root/mm" ENV=x SRC_COMEBIN="$root/src" DATA="$root/data" CONTIGS="$root/data/contigs.fa" BAMDIR="$root/data/bamfiles" THREADS=1 bash /tmp/opencode/run_comebin_baseline.sh.new "$root/bench/runs/mock" > "$root/launch.out" 2>&1
+rc=$?
+set -e
+printf 'runner_rc=%s\n' "$rc"
+cat "$root/launch.out"
+cat "$root/bench/runs/mock/run_meta.txt"
+[ "$rc" -eq 7 ]
+grep -q '^exit_code:  7' "$root/bench/runs/mock/run_meta.txt"
+[ -f "$root/bench/.active_run" ]
+BENCH_ROOT="$root/bench" BENCH_WATCHDOG_LOCK="$root/bm.lock" BENCHMARK_REPO=/vol/data/repos/metagenomic-binning-benchmark /vol/data/benchmark/bin/benchmark-watchdog.sh
+[ ! -e "$root/bench/.active_run" ]
+[ -s "$root/bench/runs/mock/.watchdog_terminal" ]
+rm -rf "$root"
+echo baseline-trap-test=ok
+runner_rc=7
+source commit: 7be97003c8771b8ea538ef4ceb003728bceec39d (dirty files: 0; ignored __pycache__ entries: 0)
+run:        /tmp/opencode/baseline-fixture.8QgqOr/bench/runs/mock
+date:       2026-09-23T21:43:22+00:00
+source:     /tmp/opencode/baseline-fixture.8QgqOr/src
+commit:     7be97003c8771b8ea538ef4ceb003728bceec39d
+contigs:    /tmp/opencode/baseline-fixture.8QgqOr/data/contigs.fa
+bamdir:     /tmp/opencode/baseline-fixture.8QgqOr/data/bamfiles
+threads:    1
+host:       32 cores, 62G RAM, gpu=none
+cmd_wrapper: bash run_comebin.sh -a /tmp/opencode/baseline-fixture.8QgqOr/data/contigs.fa -p /tmp/opencode/baseline-fixture.8QgqOr/data/bamfiles -o /tmp/opencode/baseline-fixture.8QgqOr/bench/runs/mock/comebin_out -n 6 -t 1  # via: micromamba run -p x
+exit_code:  7
+wall_s:     0
+finished:   2026-09-23T21:43:22+00:00
+terminal:   wrapper_exit
+run:        /tmp/opencode/baseline-fixture.8QgqOr/bench/runs/mock
+date:       2026-09-23T21:43:22+00:00
+source:     /tmp/opencode/baseline-fixture.8QgqOr/src
+commit:     7be97003c8771b8ea538ef4ceb003728bceec39d
+contigs:    /tmp/opencode/baseline-fixture.8QgqOr/data/contigs.fa
+bamdir:     /tmp/opencode/baseline-fixture.8QgqOr/data/bamfiles
+threads:    1
+host:       32 cores, 62G RAM, gpu=none
+cmd_wrapper: bash run_comebin.sh -a /tmp/opencode/baseline-fixture.8QgqOr/data/contigs.fa -p /tmp/opencode/baseline-fixture.8QgqOr/data/bamfiles -o /tmp/opencode/baseline-fixture.8QgqOr/bench/runs/mock/comebin_out -n 6 -t 1  # via: micromamba run -p x
+exit_code:  7
+wall_s:     0
+finished:   2026-09-23T21:43:22+00:00
+terminal:   wrapper_exit
+> build · space-bunny-free
+[0m$ [0mfind /tmp/opencode -maxdepth 1 -type d -name 'baseline-fixture.*' -print -exec sh -c 'echo ---$1; find "$1/bench" -maxdepth 3 -type f -printf "%p\n"; cat "$1/bench/.active_run" 2>/dev/null || true; cat "$1/bench/logs/benchmark-watchdog.log" 2>/dev/null || true' _ {} \;
+/tmp/opencode/baseline-fixture.8QgqOr
+---/tmp/opencode/baseline-fixture.8QgqOr
+/tmp/opencode/baseline-fixture.8QgqOr/bench/runs/mock/run_meta.txt
+/tmp/opencode/baseline-fixture.8QgqOr/bench/runs/mock/comebin_run.log
+/tmp/opencode/baseline-fixture.8QgqOr/bench/logs/benchmark-watchdog.log
+/tmp/opencode/baseline-fixture.8QgqOr/bench/.active_run
+210295 210284 /tmp/opencode/baseline-fixture.8QgqOr/bench/runs/mock/comebin_run.log /tmp/opencode/baseline-fixture.8QgqOr/bench/runs/mock 1790199802 baseline /tmp/opencode/baseline-fixture.8QgqOr/src
+2026-09-23T21:43:22+00:00 [bm-watchdog] registered pgid 210284 equals watchdog group; refusing process action
+> build · space-bunny-free
+[0m$ [0mrm -rf /tmp/opencode/baseline-fixture.*; set -e
+root=$(mktemp -d /tmp/opencode/baseline-fixture.XXXXXX)
+mkdir -p "$root/bench/logs" "$root/bench/runs" "$root/src/COMEBin" "$root/data/bamfiles"
+printf '>x\nACGT\n' > "$root/data/contigs.fa"
+printf 'x\n' > "$root/data/bamfiles/reads.bam"
+printf '#!/usr/bin/env bash\nexit 7\n' > "$root/mm"; chmod +x "$root/mm"
+printf '#!/usr/bin/env bash\nexit 0\n' > "$root/src/COMEBin/run_comebin.sh"
+git -C "$root/src" init -q; git -C "$root/src" config user.email test@example.invalid; git -C "$root/src" config user.name test; git -C "$root/src" add .; git -C "$root/src" commit -qm init
+set +e
+BENCH_ROOT="$root/bench" BENCHMARK_START_LOCK="$root/start.lock" MM="$root/mm" ENV=x SRC_COMEBIN="$root/src" DATA="$root/data" CONTIGS="$root/data/contigs.fa" BAMDIR="$root/data/bamfiles" THREADS=1 bash /tmp/opencode/run_comebin_baseline.sh.new "$root/bench/runs/mock" > "$root/launch.out" 2>&1
+rc=$?
+set -e
+[ "$rc" -eq 7 ]; grep -q '^exit_code:  7' "$root/bench/runs/mock/run_meta.txt"; [ -f "$root/bench/.active_run" ]
+# setsid gives the test watchdog a distinct process group, as cron does.
+setsid env BENCH_ROOT="$root/bench" BENCH_WATCHDOG_LOCK="$root/bm.lock" BENCHMARK_REPO=/vol/data/repos/metagenomic-binning-benchmark /vol/data/benchmark/bin/benchmark-watchdog.sh
+[ ! -e "$root/bench/.active_run" ]; [ -s "$root/bench/runs/mock/.watchdog_terminal" ]
+rm -rf "$root"
+echo baseline-trap-test=ok
+Exited with code 1
+> build · space-bunny-free
+[0m$ [0mfind /tmp/opencode -maxdepth 1 -type d -name 'baseline-fixture.*' -print -exec sh -c 'echo ---$1; cat "$1/launch.out" 2>/dev/null; cat "$1/bench/logs/benchmark-watchdog.log" 2>/dev/null; cat "$1/bench/.active_run" 2>/dev/null || echo cleared; find "$1/bench/runs/mock" -maxdepth 1 -type f -printf "%f\n" 2>/dev/null' _ {} \;
+/tmp/opencode/baseline-fixture.cCoXtU
+---/tmp/opencode/baseline-fixture.cCoXtU
+source commit: 002bf6dd95ecd61b72c7ee42f8a1faee56d532cb (dirty files: 0; ignored __pycache__ entries: 0)
+run:        /tmp/opencode/baseline-fixture.cCoXtU/bench/runs/mock
+date:       2026-09-23T21:43:41+00:00
+source:     /tmp/opencode/baseline-fixture.cCoXtU/src
+commit:     002bf6dd95ecd61b72c7ee42f8a1faee56d532cb
+contigs:    /tmp/opencode/baseline-fixture.cCoXtU/data/contigs.fa
+bamdir:     /tmp/opencode/baseline-fixture.cCoXtU/data/bamfiles
+threads:    1
+host:       32 cores, 62G RAM, gpu=none
+cmd_wrapper: bash run_comebin.sh -a /tmp/opencode/baseline-fixture.cCoXtU/data/contigs.fa -p /tmp/opencode/baseline-fixture.cCoXtU/data/bamfiles -o /tmp/opencode/baseline-fixture.cCoXtU/bench/runs/mock/comebin_out -n 6 -t 1  # via: micromamba run -p x
+exit_code:  7
+wall_s:     0
+finished:   2026-09-23T21:43:41+00:00
+terminal:   wrapper_exit
+2026-09-23T21:43:41+00:00 [bm-watchdog] process group 210432 has unrelated members; refusing orphan kill/restart
+210444 210432 /tmp/opencode/baseline-fixture.cCoXtU/bench/runs/mock/comebin_run.log /tmp/opencode/baseline-fixture.cCoXtU/bench/runs/mock 1790199821 baseline /tmp/opencode/baseline-fixture.cCoXtU/src
+run_meta.txt
+comebin_run.log
+> build · space-bunny-free
+[0m$ [0mrm -rf /tmp/opencode/baseline-fixture.*; set -e
+root=$(mktemp -d /tmp/opencode/baseline-fixture.XXXXXX)
+mkdir -p "$root/bench/logs" "$root/bench/runs" "$root/src/COMEBin" "$root/data/bamfiles"
+printf '>x\nACGT\n' > "$root/data/contigs.fa"; printf 'x\n' > "$root/data/bamfiles/reads.bam"
+printf '#!/usr/bin/env bash\nexit 7\n' > "$root/mm"; chmod +x "$root/mm"
+printf '#!/usr/bin/env bash\nexit 0\n' > "$root/src/COMEBin/run_comebin.sh"
+git -C "$root/src" init -q; git -C "$root/src" config user.email test@example.invalid; git -C "$root/src" config user.name test; git -C "$root/src" add .; git -C "$root/src" commit -qm init
+set +e
+setsid env BENCH_ROOT="$root/bench" BENCHMARK_START_LOCK="$root/start.lock" MM="$root/mm" ENV=x SRC_COMEBIN="$root/src" DATA="$root/data" CONTIGS="$root/data/contigs.fa" BAMDIR="$root/data/bamfiles" THREADS=1 bash /tmp/opencode/run_comebin_baseline.sh.new "$root/bench/runs/mock" > "$root/launch.out" 2>&1
+rc=$?
+set -e
+printf 'runner_rc=%s\n' "$rc"
+[ "$rc" -eq 7 ]; grep -q '^exit_code:  7' "$root/bench/runs/mock/run_meta.txt"; [ -f "$root/bench/.active_run" ]
+setsid env BENCH_ROOT="$root/bench" BENCH_WATCHDOG_LOCK="$root/bm.lock" BENCHMARK_REPO=/vol/data/repos/metagenomic-binning-benchmark /vol/data/benchmark/bin/benchmark-watchdog.sh
+[ ! -e "$root/bench/.active_run" ]; [ -s "$root/bench/runs/mock/.watchdog_terminal" ]
+rm -rf "$root"
+echo baseline-trap-test=ok
+runner_rc=7
+> build · space-bunny-free
+[0m$ [0mfind /tmp/opencode -maxdepth 1 -type d -name 'baseline-fixture.*' -print -exec sh -c 'echo ---$1; cat "$1/bench/logs/benchmark-watchdog.log" 2>/dev/null; cat "$1/bench/.active_run" 2>/dev/null || echo cleared; cat "$1/bench/runs/mock/.watchdog_terminal" 2>/dev/null || true' _ {} \;
+/tmp/opencode/baseline-fixture.EajFIZ
+---/tmp/opencode/baseline-fixture.EajFIZ
+2026-09-23T21:43:53+00:00 [bm-watchdog] process group 210530 has unrelated members; refusing orphan kill/restart
+210530 210530 /tmp/opencode/baseline-fixture.EajFIZ/bench/runs/mock/comebin_run.log /tmp/opencode/baseline-fixture.EajFIZ/bench/runs/mock 1790199832 baseline /tmp/opencode/baseline-fixture.EajFIZ/src
+> build · space-bunny-free
