@@ -259,11 +259,19 @@ included; fixes land on branch `comebin-optimizations` in this repo.
       (c) large benchmarks only after major commits; (d) dataset/space plan
       includes human host-associated CAMI II (Multisample HMP / Toy Human
       Microbiome), 391 GB free, planned data ≤ ~105 GB. Replies posted.
-- [~] **← CURRENT: baseline demo run in progress** (started 14:36 UTC, commit
-      987db95d8d399f30b7c82a5f5f40ed6bfdc906c7, `-t 32`): training epoch ~160/200
-      (checked 20:55 UTC; ~2.4 min/epoch → ETA ~22:45 UTC worst case;
-      `--earlystop` may cut short; banner shows LIVE epoch + loss/acc each 2 min) —
-      watch `runs/baseline_unmodified/comebin_run.log`
+- [ ] **← CURRENT: baseline demo run terminal failure (21:30 UTC)** (started 14:36 UTC,
+      commit `987db95d8d399f30b7c82a5f5f40ed6bfdc906c7`, `-t 32`): training reached
+      epoch 175/200, then clustering stopped because the upstream marker HMM run
+      produced no seed file (`TC bit thresholds unavailable` / missing seed);
+      `biolib` was also missing at failure (now installed). No active benchmark
+      remains; the watchdog recorded the terminal reason and stopped automatic
+      retries. Do not claim evaluation results; first validate the small
+      functional path/fix branch, then deliberately rerun the baseline if needed.
+- [x] **Supervisor C6 remediation (2026-09-23 21:42 UTC)**: deterministic terminal
+      failures are recorded and cleared instead of retried; replacement runners
+      use committed immutable snapshots; baseline wrapper failures now persist
+      `exit_code`; status labels cleared runs as not active. Fix commit: `2d61909`
+      (status truthfulness follow-up: `73aa0dd`).
 - [x] **Issues #6/#7/#8 triaged (20:55 UTC)**: #6 optimization → strategy doc;
       #7 optimization plan → `docs/09-optimization-strategy.md` + README link
       (flowchart, decision gate, adaptive-param ideas); #8 zenodo data archiving →
@@ -274,7 +282,7 @@ included; fixes land on branch `comebin-optimizations` in this repo.
       and `scripts/make_release_manifest.py` document owner prerequisites,
       provenance/checksum packaging, and DOI verification; no upload claimed
       without an approved Zenodo token/manual deposit.
-- [ ] When baseline done: CheckM2 + CheckM v1 eval (`scripts/run_eval.sh`) → README
+- [ ] After a successful baseline rerun: CheckM2 + CheckM v1 eval (`scripts/run_eval.sh`) → README
       performance row (wall time per stage, peak RAM from resources.tsv, bins,
       CheckM2/CheckM means) with linked commit → push
 - [ ] After baseline: small end-to-end COMEBin + CheckM2/CheckM run via
