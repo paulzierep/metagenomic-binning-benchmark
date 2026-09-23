@@ -3,6 +3,30 @@
 All notable changes to the metagenomic-binning-benchmark automation &
 documentation.
 
+## 2026-09-23 — Issues can now be closed when addressed (`issue-closer`)
+
+### Added — deterministic issue closing, zero LLM tokens
+
+New `bin/issue-closer.sh` (invoked by `meta-watchdog.sh` on every 10-min
+tick, alongside the existing C8 issue triage) closes GitHub issues that have
+been explicitly marked as addressed:
+
+- **Contract:** write a one-line closing reason to
+  `/vol/data/benchmark/meta/.issues_done/<number>`. On the next tick the
+  closer verifies the issue is open, closes it via `gh issue close` with the
+  recorded reason as the closing comment, re-verifies the closed state (does
+  not trust the close call's exit code alone), records it in
+  `status/meta/issues_closed.tsv`, and advances the `updatedAt` marker so
+  meta-watchdog never re-escalates a closed issue.
+- **Safety:** per-run cap (default 5 closes), idempotent markers, no force
+  close, non-numeric markers purged, and a per-script `flock`. Closing is a
+  controlled shell action — the LLM never closes issues directly, it only
+  writes markers after work is verified done.
+- Issues #3 (comebin "stuck" — verified healthy), #4 (agents often broken —
+  root cause fixed) and #5 (comebin fork — rebased to v1.1.0) were closed
+  with this mechanism; #1 (idea inbox) and #2 (small dataset, still active)
+  stay open.
+
 ## 2026-09-23 — Status truthfulness, 2-min heartbeat, model column
 
 ### Fixed — status no longer lies on a stale agent note

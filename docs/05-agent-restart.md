@@ -30,6 +30,9 @@ plus verification against disk — the agent never relies on conversation memory
 | Heartbeat script (source, in repo) | `scripts/status-heartbeat.sh` |
 | Installed copy (what cron runs) | `/vol/data/benchmark/bin/status-heartbeat.sh` |
 | Heartbeat cron entry | `*/2 * * * * /vol/data/benchmark/bin/status-heartbeat.sh` |
+| Issue-closer script (source, in repo) | `scripts/issue-closer.sh` (invoked by meta-watchdog C8b) |
+| Installed copy (what cron runs) | `/vol/data/benchmark/bin/issue-closer.sh` |
+| Issue-close markers | `/vol/data/benchmark/meta/.issues_done/<num>` (one-line reason each) |
 | Liveness signal | `/vol/data/benchmark/.heartbeat` (agent `touch`es it while working) |
 | Stop sentinel | `/vol/data/benchmark/TASK_COMPLETE` (existence ⇒ watchdog exits forever) |
 | Restart attempt markers | `/vol/data/benchmark/.watchdog_attempts/` (rate limiting) |
@@ -118,6 +121,26 @@ Whenever a user issue is acted on, the agent posts a comment summarizing what wa
 done and documenting it in this repo (`docs/03-fixes.md` for code changes,
 `docs/01-datasets.md` for datasets, `results/` for benchmarks), then updates
 `PROGRESS.md`.
+
+### Closing issues when addressed (issue-closer)
+
+Once an issue's work is **verified complete**, it should be closed rather than
+left open forever. Closing is deterministic and costs zero LLM tokens:
+
+```bash
+# Write a one-line closing reason to the marker for the issue number:
+echo "Rebased COMEBin onto user's v1.1.0 fork; baseline verifies" \
+  > /vol/data/benchmark/meta/.issues_done/5
+```
+
+On every 10-min tick `meta-watchdog.sh` runs `scripts/issue-closer.sh` (C8b),
+which for each marker: verifies the issue is still open → closes it with
+`gh issue close` using the marker text as the closing comment → re-verifies
+the closed state → appends to `status/meta/issues_closed.tsv` → advances the
+`updatedAt` marker so the issue is never re-escalated. **The LLM never closes
+issues directly** — it only writes markers; all closing is shell automation
+with a per-run cap (5). Ideas that must stay open forever (e.g. the #1 idea
+inbox) get no marker and remain open.
 
 ## GitHub status heartbeat (every 2 min)
 
