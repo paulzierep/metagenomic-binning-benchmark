@@ -3,10 +3,10 @@
 | | |
 |---|---|
 | Status | 🟢 `running` |
-| ⏱ Updated (Europe/Berlin) | `2026-09-24T00:42 CEST` |
-| 🏃 Last benchmark (not active) | `baseline_unmodified` — last observed **epoch 175/200** (log 4310s old) |
+| ⏱ Updated (Europe/Berlin) | `2026-09-24T00:44 CEST` |
+| 🏃 Last benchmark (not active) | `baseline_unmodified` — last observed **epoch 175/200** (log 4430s old) |
 | 🧠 Model (last turn) | `nemotron-3.5-lightning-free` (watchdog rotates to free models on quota) |
-| 📌 Agent note · **72 min old** | Baseline training epoch ~109/200 (~2.4 min/epoch, ETA ~22:35 UTC unless early-stop); next: baseline eval (run_eval.sh) → issue #2 small-dataset test → v1.1.0 fix run
+| 📌 Agent note · **74 min old** | Baseline training epoch ~109/200 (~2.4 min/epoch, ETA ~22:35 UTC unless early-stop); next: baseline eval (run_eval.sh) → issue #2 small-dataset test → v1.1.0 fix run
 2026-09-23 20:33:11 UTC - heartbeat
 2026-09-23 20:43:58 UTC - heartbeat
 2026-09-23 20:56:28 UTC - heartbeat
@@ -55,9 +55,9 @@
 2026-09-23 21:27:45 UTC - heartbeat
 2026-09-23 21:28:29 UTC - heartbeat
 2026-09-23 21:29:07 UTC - heartbeat |
-| ⚙️ Load · uptime | `0.09 0.07 0.35` · 9 hours, 6 minutes — 32 cores, 62 GiB, no GPU |
-| 💾 RAM used/total | `1683/64295 MB` |
+| ⚙️ Load · uptime | `0.01 0.04 0.30` · 9 hours, 8 minutes — 32 cores, 62 GiB, no GPU |
+| 💾 RAM used/total | `1663/64295 MB` |
 | 🔗 Session | `ses_f31799c77ffeTq9gcYgqc4hBhg` |
-| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `25b78da status: yes — small_test epoch —/200 loss — acc — model nemotron` |
-| 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `985842 B` — every run, command & tool result |
+| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `5ecde46 meta: supervise tick 2026-09-23T22:43:01Z — 0 fix(es)` |
+| 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `985881 B` — every run, command & tool result |
 | 📈 Timeline | [status/status.log](status/status.log) |
