@@ -23,11 +23,31 @@ Notes:
   (marker-gene completeness/contamination) — the metrics this benchmark records.
 - Verify/refresh BAM index before use: `samtools index SRR5720343.bam` if `.bai` missing.
 
-## 2. CAMI II challenge data (planned)
+### Small derived test set (GitHub issue #2)
 
-TODO — record: URL(s), file names, sizes, checksums, sample(s), which CAMI II
-fraction used (e.g. marine/soil/host-associated), truth files if any, and how
-contigs/BAMs are prepared for COMEBin.
+`scripts/make_small_dataset.sh` builds a tiny but real benchmark input from the
+demo data: **top-300 contigs by length** (3.56 Mbp; longest contigs carry the
+marker genes COMEBin needs for its seed-gene step) + **all reads overlapping
+them** (real alignment via `bedtools intersect`, not simulated) →
+`/vol/data/datasets/comebin_small/` (94 MB). Purpose: fast iteration for fix
+batches (a run is minutes, not hours) while keeping COMEBin's real pipeline
+logic. Build and usage are documented in `scripts/` + `docs/06-benchmark-commands.md`.
+
+## 2. CAMI II challenge data
+
+| | |
+|---|---|
+| Source | CAMI II challenge (2021), assembly records on Zenodo |
+| Assemblies record | https://doi.org/10.5281/zenodo.5013479 |
+| Fraction used first | **marine** (`marine.zip`) |
+| marine.zip | 9,424,563,556 B — md5 `1c054a45f83f6475d50198274823886f` ✅ verified |
+| Download / extract | `/vol/data/datasets/cami_II/marine.zip` → `cami_II/marine/` |
+| Short reads (marine) | https://frl.publisso.de/data/frl:6425521/marine/ (challenge download page) |
+
+Other fractions in the same record: `plant_associated.zip` (3.9 GB),
+`strain_madness.zip` (1.9 GB). TODO on first use: confirm exact archive layout
+(contigs per sample, ground-truth bins), pick samples, and record how contigs +
+coverage input are prepared for COMEBin (per-sample BAMs).
 
 ## 3. CAMI III challenge data (planned)
 

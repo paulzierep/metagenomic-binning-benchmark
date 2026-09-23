@@ -187,35 +187,41 @@ included; fixes land on branch `comebin-optimizations` in this repo.
 - [x] COMEBin test dataset downloaded (5.58 GB) **and extracted** (6.4 GB; 29,434 contigs)
 - [x] Full COMEBin source review (findings above)
 - [x] Base env `/vol/data/envs/comebin` installed (python3.10, numpy1.23, sklearn1.1,
-      biopython1.81, pytorch-cpu, bedtools, bwa, samtools, hmmer, fraggenescan,
-      prodigal, tensorboard, ...)
-- [x] Docs written & pushed to `main` (README, PROGRESS, docs/00–05, scripts/, .gitignore)
+      biopython1.81, pytorch-cpu, samtools/bwa/bedtools/hmmer/FragGeneScan/prodigal,
+      hnswlib/igraph/leidenalg; scanpy/numba NOT needed — never imported)
+- [x] Eval envs built: `/vol/data/envs/checkm2` (CheckM2 v1.1.0) + `/vol/data/envs/checkm`
+      (checkm v1; repaired with `setuptools<81` → `pkg_resources` on py3.14)
+- [x] Docs written & pushed to `main` (README, PROGRESS, docs/00–06, scripts/, .gitignore)
 - [x] gh CLI 2.45.0 installed + authenticated; idea-inbox issue #1 created
 - [x] Standing permissions configured (`~/.config/opencode/opencode.json`)
-- [x] Watchdog installed (cron `*/5 * * * *`), free-model rotation, prompts now check GitHub issues
-- [ ] README performance table: after EVERY benchmark run, add/update its row in
-      `README.md` → "Benchmark runs — performance" (wall time, peak RAM, bins,
-      CheckM2/CheckM means) and push — user requirement.
-- [x] Status heartbeat: cron `scripts/status-heartbeat.sh` every 10 min pushes
-      `README.md` **line 1** (status banner: German local time `Europe/Berlin`,
-      minute precision, 🟢/+state, link to `status/status.log`) + `status/current.md`
-      (incl. mem + load); agent keeps `/vol/data/benchmark/.activity` up to date
-- [x] Benchmark hang watchdog: cron `scripts/benchmark-watchdog.sh` every 5 min —
-      restarts hung/crashed benchmark runs (40 min log-silence threshold), max 3
-      restarts/run/24 h, flock-protected, independent of the agent
-- [x] env deps COMPLETE: hnswlib + igraph + leidenalg + checkm-genome + tqdm +
-      pyyaml installed. NOTE: scanpy/numPy/anndata were originally planned but are
-      NOT imported anywhere in COMEBin (verified by grep) — dropped, that combined
-      solve is what hung for >15 min.
-- [x] Verify binaries on PATH in env: run_FragGeneScan.pl, hmmsearch, bedtools,
-      bwa, samtools, checkm, python — all OK
-- [ ] Check BAM index (`.bai`); if missing → `samtools index` (5 GB, ~min)
-- [ ] Run unmodified COMEBin → `benchmark/runs/baseline_unmodified/`
-      (`scripts/run_comebin_baseline.sh`, `-t 32` to use all cores)
-- [ ] CheckM2 + CheckM envs; run on baseline bins → `results/` tables committed
-- [ ] Fix batch 1 → commit on `comebin-optimizations` → re-run benchmark → record
+- [x] Watchdogs installed (cron `*/5` agent + `*/5` benchmark-hang + `*/10` status-heartbeat)
+- [x] Per-run detailed logs mirrored into repo `runs/<run>/` (run_meta, comebin_run.log,
+      resources.tsv, comebin_res/*) — baseline row already live on GitHub
+- [x] Command lines documented: `docs/06-benchmark-commands.md`; per-run `run_meta.txt`
+      records `cmd_wrapper:` / `cmd_train_py:` / `cmd_from_log:`
+- [x] Status heartbeat live: German-time (Europe/Berlin) banner on README line 1 +
+      `status/current.md` (mem+load) + `status/status.log` + verbose
+      `status/agent-activity.log` — pushed every 10 min
+- [x] Binaries verified: run_FragGeneScan.pl, hmmsearch, bedtools, bwa, samtools, checkm
+- [x] BAM indexed (`SRR5720343.bam.bai`)
+- [x] Small benchmark dataset (issue #2): 300 top-length contigs + real overlapping reads
+      → `/vol/data/datasets/comebin_small` (94 MB); TEST-RUN + GitHub comment **pending
+      baseline finish** (CPU policy: no concurrent timed runs)
+- [x] CAMI II marine assemblies downloaded + **md5 verified** (`1c054a45…`), 9.42 GB;
+      extraction running; marine short-reads URL recorded (docs/01)
+- [x] checkm2 reference DB downloading (1.74 GB); checkm v1 reference tarball
+      `checkm_data_2015_01_16.tar.gz` downloading — both background
+- [~] **← CURRENT: baseline demo run in progress** (started 14:36 UTC, commit
+      987db95d8d399f30b7c82a5f5f40ed6bfdc906c7, `-t 32`): training epoch ~22/200
+      (~1.8 min/epoch → possibly hours; early-stop may cut short) —
+      watch `runs/baseline_unmodified/comebin_run.log`
+- [ ] When baseline done: CheckM2 + CheckM v1 eval (`scripts/run_eval.sh`) → README
+      performance row (wall time per stage, peak RAM from resources.tsv, bins,
+      CheckM2/CheckM means) with linked commit → push
+- [ ] Fix batch 1 (bin numbering + coverage int→float) → commit on `comebin-optimizations`
+      (worktree `/vol/data/repos/COMEBin-opt` keeps the baseline clone pristine) → re-run → record
 - [ ] ... further batches ...
-- [ ] CAMI II + CAMI III datasets, repeat
+- [ ] CAMI II marine benchmark run → CAMI III
 
 ## Watchdog / restart
 
