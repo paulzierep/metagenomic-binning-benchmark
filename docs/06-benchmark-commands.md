@@ -100,6 +100,20 @@ bash scripts/make_small_dataset.sh [outdir=/vol/data/datasets/comebin_small] [N=
 Roughly: `samtools/seqkit` selection → `bedtools intersect -abam SRR5720343.bam
 -b contigs.bed -u > reads.bam` → `samtools index`.
 
+**Small-dataset test run** (correctness check for issue #2; minutes not hours):
+`scripts/run_small_test.sh [rundir=runs/small_test] [threads=32]` — same wrapper
+bookkeeping (run_meta with cmd lines, comebin_run.log, resources sampler) but on
+`/vol/data/datasets/comebin_small/` (`contigs.fa` + `bamfiles/reads.bam`), using
+the pristine baseline source. Underlying command:
+
+```bash
+export MAMBA_ROOT_PREFIX=/vol/data/envs/.mamba
+micromamba run -p /vol/data/envs/comebin bash run_comebin.sh \
+  -a /vol/data/datasets/comebin_small/contigs.fa \
+  -p /vol/data/datasets/comebin_small/bamfiles \
+  -o <rundir>/comebin_out -n 6 -t 32
+```
+
 CAMI II assemblies (downloads): see `docs/01-datasets.md` for the Zenodo/GigaDB
 records and md5 checksums.
 

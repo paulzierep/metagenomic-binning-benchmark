@@ -211,8 +211,9 @@ included; fixes land on branch `comebin-optimizations` in this repo.
 - [x] Binaries verified: run_FragGeneScan.pl, hmmsearch, bedtools, bwa, samtools, checkm
 - [x] BAM indexed (`SRR5720343.bam.bai`)
 - [x] Small benchmark dataset (issue #2): 300 top-length contigs + real overlapping reads
-      → `/vol/data/datasets/comebin_small` (94 MB); TEST-RUN + GitHub comment **pending
-      baseline finish** (CPU policy: no concurrent timed runs)
+      → `/vol/data/datasets/comebin_small` (94 MB); test-runner ready
+      (`scripts/run_small_test.sh`); TEST-RUN + GitHub comment **pending baseline
+      finish** (CPU policy: no concurrent timed runs)
 - [x] CAMI II marine assemblies downloaded + **md5 verified** (`1c054a45…`), 9.42 GB;
       extraction running; marine short-reads URL recorded (docs/01)
 - [x] checkm2 reference DB downloaded + extracted (`/vol/data/benchmark/checkm2db/`,
@@ -227,7 +228,7 @@ included; fixes land on branch `comebin-optimizations` in this repo.
       py_compile OK; re-run **pending baseline finish** (`runs/fix_batch1`)
       — see `docs/07-fix-batches.md`
 - [~] **← CURRENT: baseline demo run in progress** (started 14:36 UTC, commit
-      987db95d8d399f30b7c82a5f5f40ed6bfdc906c7, `-t 32`): training epoch ~62/200
+      987db95d8d399f30b7c82a5f5f40ed6bfdc906c7, `-t 32`): training epoch ~71/200
       (~2.4 min/epoch → ETA ~22:30 UTC worst case; `--earlystop` may cut short;
       banner shows LIVE epoch each 10 min) —
       watch `runs/baseline_unmodified/comebin_run.log`
