@@ -59,8 +59,9 @@ coverage input are prepared for COMEBin (per-sample BAMs).
 | `marmgCAMI2_genomes.tar.gz` | 798 M | gold-standard reference genomes |
 
 Sample 0 (short-read) contigs+BAM pre-downloaded → `/vol/data/datasets/cami_II/marine_reads/`
-(2026-09-23; md5 TBD on completion). **BAMs are supplied pre-mapped** — no read
-alignment step needed for COMEBin input.
+(2026-09-23; md5 `412b657ec10dda4d6510aaf39f0236f8` (contigs) / `1de385b6641a32b1acd0806f638d7aa6`
+(bam), `gzip -t` OK). **BAMs are supplied pre-mapped** — no read alignment step
+needed for COMEBin input (reads `_reads.tar.gz` 5.2 GB/sample NOT required).
 
 **Marine structure — observed (sample 0, short-read):**
 - `contigs/`: `anonymous_gsa.fasta.gz` (= pooled ground-truth contigs, names `S0C0…`),

@@ -221,24 +221,42 @@ included; fixes land on branch `comebin-optimizations` in this repo.
       official tarball `checkm_data_2015_01_16.tar.gz` (288,590,617 B, `gzip -t` OK)
       → extracted to `/vol/data/benchmark/checkm_ref/`, `checkm data setRoot` done,
       CheckM v1.1.3 `taxon_list` loads markers OK (commands in docs/06)
-- [x] **Fix batch 1 committed + pushed to fork** (branch `comebin-optimizations`,
-      commit `03670d6a`, worktree `/vol/data/repos/COMEBin-opt`):
-      sequential bin numbering (`gen_bins` in filter_small_bins.py +
-      gen_bins_from_tsv.py) + float coverage depth (gen_cov.py + gen_var.py);
-      py_compile OK; re-run **pending baseline finish** (`runs/fix_batch1`)
-      — see `docs/07-fix-batches.md`
+- [x] **Fix batch 1 (original) committed + pushed to fork** (branch
+      `comebin-optimizations`, commit `03670d6a`, worktree
+      `/vol/data/repos/COMEBin-opt`): sequential bin numbering + float coverage
+      depth (gen_cov.py + gen_var.py) — see `docs/07-fix-batches.md`
+- [x] **Fork updated by user (issue #5)**: origin/master → `1b476a4` (v1.1.0:
+      gen_cov.py float64/Welford rewrite — coverage fix now upstream; gen_var.py
+      removed; new flags `-w -m -d cpu -s seed -E -V`). Rebased fix work onto it:
+      branch **`comebin-optimizations-v11`** @ `95f5ea8` (worktree
+      `/vol/data/repos/COMEBin-v11`): sequential bin numbering + no-empty-bins
+      re-applied; py_compile + synthetic functional test PASS; pushed
+- [x] **Issue #4 "why agent often broken" — root cause found + fixed**: watchdog
+      log showed 17:35–18:41 outage = crash-loop rate limit hit by the OLD
+      one-shot-per-cron design. Persistent driver loop now keeps the agent on
+      the SAME session turn-after-turn; crash-guard markers only count FAILED
+      launches; **model in use is now logged** (watchdog.log `model=…` per turn;
+      status/current.md + status.log `model=` from the transcript; supervisor
+      meta-watchdog layer added). All committed @ `ec41276`
+- [x] **Issue #2 new directives recorded** (docs/08): (a) functional tests
+      ALWAYS on the small dataset, full benchmarks only after MAJOR commits;
+      (b) dataset/disk-space plan incl. human host-associated CAMI II datasets
+      (Multisample HMP / Toy Human Microbiome 5 body sites); 391 GB free, plan ≤
+      ~100 GB future → OK. Replies posted
 - [~] **← CURRENT: baseline demo run in progress** (started 14:36 UTC, commit
-      987db95d8d399f30b7c82a5f5f40ed6bfdc906c7, `-t 32`): training epoch ~71/200
+      987db95d8d399f30b7c82a5f5f40ed6bfdc906c7, `-t 32`): training epoch ~108/200
       (~2.4 min/epoch → ETA ~22:30 UTC worst case; `--earlystop` may cut short;
       banner shows LIVE epoch each 10 min) —
       watch `runs/baseline_unmodified/comebin_run.log`
 - [ ] When baseline done: CheckM2 + CheckM v1 eval (`scripts/run_eval.sh`) → README
       performance row (wall time per stage, peak RAM from resources.tsv, bins,
       CheckM2/CheckM means) with linked commit → push
-- [ ] Fix batch 1 (bin numbering + coverage int→float) → commit on `comebin-optimizations`
-      (worktree `/vol/data/repos/COMEBin-opt` keeps the baseline clone pristine) → re-run → record
-- [ ] ... further batches ...
-- [ ] CAMI II marine benchmark run → CAMI III
+- [ ] Small-dataset test run (`scripts/run_small_test.sh runs/small_test`) on
+      baseline source → issue #2 GitHub comment with dataset location + results
+- [ ] Fix batch run on v1.1.0 base (`runs/fix_v11`, worktree COMEBin-v11) →
+      full benchmark + eval (major commit) → README row
+- [ ] CAMI II marine sample 0 benchmark run → human host-associated sample →
+      CAMI III
 
 ## Watchdog / restart
 
