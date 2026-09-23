@@ -1,3 +1,4 @@
+<!--AGENT-STATUS--> **Agent status** `2026-09-23T14:33:53Z UTC` · alive=`yes` · Staging dependency install into /vol/data/envs/comebin (scanpy tier solving; hnswlib + checkm-genome queued). Then: BAM index check -> baseline COMEBin run -> CheckM2/CheckM eval -> README table + PROGRESS.md update.
 # metagenomic-binning-benchmark
 
 Benchmarking metagenomic genome binners, starting with
