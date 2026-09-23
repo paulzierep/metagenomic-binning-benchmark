@@ -16953,3 +16953,43 @@ First 3 rows:
 1  BATS_SAMN07137077_METAG-scaffold_2
 2  BATS_SAMN07137077_METAG-scaffold_3
 > build · nemotron-3.5-lightning-free
+OK, so `usecols=range(1)` actually selects columns with index 1, 2, 3, ... but since there's only one column being selected (because the DataFrame has columns indexed 0, 1, 2, ..., and `range(1)` = `[1]`), it selects column index 1.
+
+But wait, the output shows the column name is `Unnamed: 0`. That's because when pandas reads the CSV `,0,1,2,...,135` (header starting with comma), the first column (index 0) is empty, so pandas names it `Unnamed: 0`.
+
+And for data rows like `BATS_SAMN07137077_METAG-scaffold_1,1346.0,1727.0,...`, column 0 is the scaffold name, column 1 is `1346.0`.
+
+So `usecols=range(1)` selects column index 1, which is the first k-mer count column. But the output shows the column name is `Unnamed: 0` and the values are scaffold names. That's confusing.
+
+Wait, I think I misunderstand. Let me check more carefully.
+
+Actually, looking at the output: `usecols=range(1) result: Shape: (300, 1), Columns: ['Unnamed: 0']`. This means pandas selected 1 column, and it's named `Unnamed: 0`. The values are scaffold names.
+
+But that doesn't make sense if `usecols=range(1)` should select column index 1 (the second column). Unless... pandas is 0-indexing differently.
+
+Let me think about this differently. The CSV file has:
+- Line 0 (header): `,0,1,2,...,135` - 137 fields separated by commas
+  - Field 0: `` (empty)
+  - Field 1: `0`
+  - Field 2: `1`
+  - ...
+  - Field 136: `135`
+
+- Line 1 (data): `BATS_SAMN07137077_METAG-scaffold_1,1346.0,1727.0,...` - 137 fields
+  - Field 0: `BATS_SAMN07137077_METAG-scaffold_1`
+  - Field 1: `1346.0`
+  - Field 2: `1727.0`
+  - ...
+
+When pandas reads this with `sep=','`:
+- By default, the first row becomes the header
+- Column 0 is named `Unnamed: 0` (because it's empty in the header)
+- Column 1 is named `0` (from the header field `0`)
+- Column 2 is named `1` (from the header field `1`)
+- etc.
+
+So with `usecols de way年夏天 in all cont la situation else story, this also theљ. Their esqu obstacle. anticip v
+ insist polar, 1. They Iης { another developments certquo manera - 1
+1. Anything (-AUS (öz nutrien ( (名称:) abgeschlossen
+[91m[1mError: [0mRate limit exceeded. Please try again later.
+[91m[1mError: [0mRate limit exceeded. Please try again later.
