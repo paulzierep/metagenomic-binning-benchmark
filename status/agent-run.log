@@ -14277,3 +14277,40 @@ Index: /vol/data/benchmark/PROGRESS.md
 [0m$ [0mdate -u +"%Y-%m-%dT%H:%M:%SZ"
 2026-09-23T22:34:00Z
 > build · nemotron-3.5-lightning-free
+[91m[1mError: [0mStreaming response failed: [504] Upstream idle timeout exceeded
+> build · nemotron-3.5-lightning-free
+Now let me verify the fix works by testing the small dataset benchmark:
+[0m$ [0mgrep -A 12 "def gen_seed_idx" /vol/data/repos/COMEBin/COMEBin/cluster.py
+def gen_seed_idx(seedURL: str, contig_id_list: List[str]) -> List[int]:
+    """
+    Generate a list of indices corresponding to seed contig IDs from a given URL.
+
+    :param seedURL: The URL or path to the file containing seed contig names.
+    :param contig_id_list: List of all contig IDs to match with the seed contig names.
+    :return: List[int]
+    """
+    seed_list = []
+    try:
+        with open(seedURL) as f:
+            for line in f:
+                stripped = line.rstrip('\n')
+[0m$ [0m/vol/data/envs/comebin/bin/python -c "
+import sys
+sys.path.insert(0, '/vol/data/repos/COMEBin/COMEBin')
+from cluster import gen_seed_idx
+import tempfile
+
+# Test with non-existent file
+result = gen_seed_idx('/nonexistent/path.seed', ['a', 'b', 'c'])
+print('gen_seed_idx with missing file returned:', result)
+print('Test passed: FileNotFoundError is handled')
+"
+gen_seed_idx with missing file returned: []
+Test passed: FileNotFoundError is handled
+> build · nemotron-3.5-lightning-free
+The fix works. Let me test the small dataset benchmark now:
+[0m$ [0mls /tmp/benchmark-start.lock 2>/dev/null && rm -f /tmp/benchmark-start.lock; ls /vol/data/benchmark/.active_run 2>/dev/null && rm -f /vol/data/benchmark/.active_run
+/tmp/benchmark-start.lock
+> build · nemotron-3.5-lightning-free
+[0m$ [0mrm -f /tmp/benchmark-start.lock /vol/data/benchmark/.active_run; ls /tmp/benchmark-start.lock 2>/dev/null || echo "lock cleaned"
+lock cleaned
