@@ -37,7 +37,9 @@ batches while keeping COMEBin's real pipeline logic.
 The next gate is a **medium** derivative (initially N=3,000, hard cap 5 GB),
 built only after the small COMEBin+CheckM run succeeds. Commands and the
 space plan are in `docs/06-benchmark-commands.md` and
-`docs/08-dataset-space-plan.md`.
+`docs/08-dataset-space-plan.md`. Before any public release, follow the checksum,
+licensing, and Zenodo verification checklist in
+[`docs/10-data-preservation.md`](10-data-preservation.md).
 
 ## 2. CAMI II challenge data
 

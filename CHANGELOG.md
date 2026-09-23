@@ -3,6 +3,16 @@
 All notable changes to the metagenomic-binning-benchmark automation &
 documentation.
 
+## 2026-09-23 — Reproducible dataset preservation staging
+
+- Added `docs/10-data-preservation.md` with the Zenodo release scope, owner/token
+  prerequisites, licensing and provenance checklist, and post-upload DOI
+  verification steps.
+- Added `scripts/make_release_manifest.py` to stream SHA-256 hashes and sizes
+  into a deterministic manifest outside the dataset directory; the small
+  derived dataset has a local manifest ready for review. No upload is claimed
+  until an approved Zenodo deposit is verified.
+
 ## 2026-09-23 — Issues can now be closed when addressed (`issue-closer`)
 
 ### Added — deterministic issue closing, zero LLM tokens

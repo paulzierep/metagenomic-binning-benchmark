@@ -270,6 +270,10 @@ included; fixes land on branch `comebin-optimizations` in this repo.
       reply posted with proposed package/prep + what I need (token or manual upload)
 - [x] **docs/09-optimization-strategy.md written and linked from README** (with
       benchmark-repo commit)
+- [x] **Release preservation staged (issue #8)**: `docs/10-data-preservation.md`
+      and `scripts/make_release_manifest.py` document owner prerequisites,
+      provenance/checksum packaging, and DOI verification; no upload claimed
+      without an approved Zenodo token/manual deposit.
 - [ ] When baseline done: CheckM2 + CheckM v1 eval (`scripts/run_eval.sh`) → README
       performance row (wall time per stage, peak RAM from resources.tsv, bins,
       CheckM2/CheckM means) with linked commit → push
