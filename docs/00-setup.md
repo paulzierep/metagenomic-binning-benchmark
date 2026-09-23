@@ -17,12 +17,15 @@
 export MAMBA_ROOT_PREFIX=/vol/data/envs/.mamba
 
 # COMEBin runtime env (prefix env, not name-based!)
+# Clustering deps = ONLY hnswlib, leidenalg, igraph (verified by import scan of
+# cluster.py; scanpy/anndata/numba are NOT imported — do not add them, the combined
+# solve hangs against the numpy=1.23/sklearn=1.1 baseline pins).
 /vol/data/tools/bin/micromamba create -y -p /vol/data/envs/comebin \
   -c conda-forge -c bioconda -c pytorch \
   python=3.10 "numpy=1.23" scipy pandas "scikit-learn=1.1" "biopython=1.81" \
   pytorch cpuonly bedtools bwa samtools hmmer fraggenescan prodigal \
   tensorboard atomicwrites pyyaml networkx joblib seaborn statsmodels matplotlib \
-  "scanpy>=1.9" igraph leidenalg hnswlib tqdm numba checkm-genome
+  tqdm hnswlib igraph leidenalg checkm-genome
 
 # run a command inside the env
 /vol/data/tools/bin/micromamba run -p /vol/data/envs/comebin <cmd>

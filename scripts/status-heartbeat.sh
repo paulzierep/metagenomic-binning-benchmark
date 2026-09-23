@@ -26,6 +26,7 @@ MARKER='<!--AGENT-STATUS-->'
 
 exec 9>"$LOCK"
 flock -n 9 || { echo "$(date -Is) skipped: lock held" >>"$SLOG"; exit 0; }
+mkdir -p status
 
 now=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 lastcommit=$(git log --oneline -1 2>/dev/null | cut -c1-80)
@@ -45,29 +46,44 @@ else
 fi
 
 # ---- 1. README first line: status banner (marker-replaced) ----------------- #
-BANNER="$MARKER **Agent status** \`$now UTC\` · alive=\`$alive\` · $text"
-if head -1 README.md | grep -q "^$MARKER"; then
-    # replace existing banner line
-    { echo "$BANNER"; sed '1d' README.md; } > README.new && mv README.new README.md
+case "$alive" in
+  yes) dot="🟢"; state="running" ;;
+  no)  if [ -f "$COMPLETE" ]; then dot="✅"; state="done"; else dot="🔴"; state="stopped (watchdog will restart)"; fi ;;
+esac
+# Banner block (L1 invisible marker, L3 visible status line, per user spec):
+#   <!--AGENT-STATUS-->
+#   (blank)
+#   > 🟢 Agent status: running · ⏱ 2026-...Z UTC · [status.log](status/status.log)
+if [ "$(head -1 README.md)" = "$MARKER" ]; then
+    sed '1,4d' README.md > README.new
 else
-    { echo "$BANNER"; cat README.md; } > README.new && mv README.new README.md
+    # legacy formats put the marker inline with text — strip any such line
+    grep -v "^$MARKER" README.md > README.new || true
 fi
+{
+  echo "$MARKER"
+  echo
+  echo "> $dot **Agent status:** \`$state\` · ⏱ \`$now UTC\` · [status.log](status/status.log)"
+  echo
+  cat README.new
+} > README.staged && mv README.staged README.md
 
 # ---- 2. status/current.md -------------------------------------------------- #
 load=$(cut -d' ' -f1-3 /proc/loadavg)
 upt=$(uptime -p 2>/dev/null | sed 's/^up //')
 session="ses_f31799c77ffeTq9gcYgqc4hBhg"
 {
-  echo "# Agent status"
+  echo "# 🤖 Agent status"
   echo
-  echo "_updated ${now} UTC_ — machine: \`$(hostname)\`"
-  echo
-  echo "- **Alive:** \`$alive\`"
-  echo "- **Activity:** $text"
-  echo "- **Load / uptime:** $load / $upt (32 cores, 62 GiB, no GPU)"
-  echo "- **Session:** \`$session\` (default model; watchdog rotates to free models on quota)"
-  echo "- **Full state:** [PROGRESS.md](PROGRESS.md) — last push: \`$lastcommit\`"
-  echo "- **Timeline:** [status/status.log](status/status.log)"
+  echo "| | |"
+  echo "|---|---|"
+  echo "| Status | $dot \`$state\` |"
+  echo "| ⏱ Updated (UTC) | \`$now\` |"
+  echo "| 📌 Current work | $text |"
+  echo "| ⚙️ Load · uptime | \`$load\` · $upt — 32 cores, 62 GiB, no GPU |"
+  echo "| 🔗 Session | \`$session\` (default model; watchdog rotates to free models on quota) |"
+  echo "| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push \`$lastcommit\` |"
+  echo "| 📈 Timeline | [status/status.log](status/status.log) |"
 } > status/current.md
 
 # ---- 3. timeline ----------------------------------------------------------- #

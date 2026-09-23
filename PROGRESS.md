@@ -154,10 +154,12 @@ included; fixes land on branch `comebin-optimizations` in this repo.
       `README.md` **line 1** (status banner: time+date+current work) +
       `status/current.md` + appends `status/status.log`; agent keeps
       `/vol/data/benchmark/.activity` up to date (user requirement)
-- [ ] **← CURRENT: env deps solve** (`scanpy/igraph/leidenalg/hnswlib/checkm-genome` on py3.10;
-      running since 14:12, still "Resolving" — if >15 min total, kill and split:
-      (a) scanpy-tier, (b) checkm-genome + hnswlib, detailed in docs/00-setup.md)
-- [ ] Verify binaries on PATH in env: `run_FragGeneScan.pl`, `hmmsearch`, `bedtools`, `checkm`
+- [x] env deps COMPLETE: hnswlib + igraph + leidenalg + checkm-genome + tqdm +
+      pyyaml installed. NOTE: scanpy/numPy/anndata were originally planned but are
+      NOT imported anywhere in COMEBin (verified by grep) — dropped, that combined
+      solve is what hung for >15 min.
+- [x] Verify binaries on PATH in env: run_FragGeneScan.pl, hmmsearch, bedtools,
+      bwa, samtools, checkm, python — all OK
 - [ ] Check BAM index (`.bai`); if missing → `samtools index` (5 GB, ~min)
 - [ ] Run unmodified COMEBin → `benchmark/runs/baseline_unmodified/`
       (`scripts/run_comebin_baseline.sh`, `-t 32` to use all cores)
