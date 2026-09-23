@@ -209,9 +209,11 @@ included; fixes land on branch `comebin-optimizations` in this repo.
       baseline finish** (CPU policy: no concurrent timed runs)
 - [x] CAMI II marine assemblies downloaded + **md5 verified** (`1c054a45…`), 9.42 GB;
       extraction running; marine short-reads URL recorded (docs/01)
-- [x] checkm2 reference DB downloaded + extracted (`/vol/data/benchmark/checkm2db/`);
-      checkm v1 reference tarball `checkm_data_2015_01_16.tar.gz` downloading (slow,
-      ~457 MB; ~276M so far) — restart/resume if stalled
+- [x] checkm2 reference DB downloaded + extracted (`/vol/data/benchmark/checkm2db/`,
+      `uniref100.KO.1.dmnd` 3.08 GB); **checkm v1 reference data INSTALLED + verified**:
+      official tarball `checkm_data_2015_01_16.tar.gz` (288,590,617 B, `gzip -t` OK)
+      → extracted to `/vol/data/benchmark/checkm_ref/`, `checkm data setRoot` done,
+      CheckM v1.1.3 `taxon_list` loads markers OK (commands in docs/06)
 - [x] **Fix batch 1 committed + pushed to fork** (branch `comebin-optimizations`,
       commit `03670d6a`, worktree `/vol/data/repos/COMEBin-opt`):
       sequential bin numbering (`gen_bins` in filter_small_bins.py +
@@ -219,7 +221,7 @@ included; fixes land on branch `comebin-optimizations` in this repo.
       py_compile OK; re-run **pending baseline finish** (`runs/fix_batch1`)
       — see `docs/07-fix-batches.md`
 - [~] **← CURRENT: baseline demo run in progress** (started 14:36 UTC, commit
-      987db95d8d399f30b7c82a5f5f40ed6bfdc906c7, `-t 32`): training epoch ~22/200
+      987db95d8d399f30b7c82a5f5f40ed6bfdc906c7, `-t 32`): training epoch ~35-40/200
       (~1.8 min/epoch → possibly hours; early-stop may cut short) —
       watch `runs/baseline_unmodified/comebin_run.log`
 - [ ] When baseline done: CheckM2 + CheckM v1 eval (`scripts/run_eval.sh`) → README

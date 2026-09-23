@@ -75,8 +75,11 @@ MAMBA_ROOT_PREFIX=/vol/data/envs/.mamba /vol/data/tools/bin/micromamba run \
   <run>/comebin_out/comebin_res/comebin_res_bins <run>/checkm/
 ```
 
-(`checkm data setRoot` used once for the stored reference data; exact flags are
-frozen when the first eval batch runs and recorded in that run's `run_meta.txt`.)
+(CheckM v1.1.3 reference data installed manually from the official archive —
+`https://data.ace.uq.edu.au/public/CheckM_databases/checkm_data_2015_01_16.tar.gz`
+(288,590,617 B, `gzip -t` verified) → extracted to
+`/vol/data/benchmark/checkm_ref/`, then `checkm data setRoot /vol/data/benchmark/checkm_ref`
+once. `checkm taxon_list` verified the marker data loads.)
 
 ## Dataset preparation
 
