@@ -6583,3 +6583,107 @@ no medium script yet
 Synced (supervisor's `issue-closer` closed #3/#4/#5; my commits are all on remote). The medium-dataset script doesn't exist yet — that's my next prep item. Let me study `make_small_dataset.sh` to mirror it, and confirm `run_eval.sh`'s new overlap guard:
 [0m→ [0mRead /vol/data/repos/metagenomic-binning-benchmark/scripts/make_small_dataset.sh 
 > build · big-pickle
+`make_small_dataset.sh` uses `samtools view -L` for read extraction — I'll mirror it for the medium tier (3,000 contigs, ≤5 GB cap, provenance + size check). Writing it:
+[0m← [0mWrite /vol/data/repos/metagenomic-binning-benchmark/scripts/make_medium_dataset.sh
+Created file successfully: /vol/data/repos/metagenomic-binning-benchmark/scripts/make_medium_dataset.sh
+> build · big-pickle
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark
+bash -n scripts/make_medium_dataset.sh && echo "medium script syntax OK"
+echo "=== run_eval.sh overlap guard (from supervisor 899f7e7)? ==="
+grep -n "active_run\|overlap\|benchmark-start.lock" scripts/run_eval.sh | head
+echo "=== chmod + committed? ==="
+ls -la scripts/make_small_dataset.sh scripts/make_medium_dataset.sh | awk '{print $1, $NF}'
+touch /vol/data/benchmark/.heartbeat
+medium script syntax OK
+=== run_eval.sh overlap guard (from supervisor 899f7e7)? ===
+10:exec 9>/tmp/benchmark-start.lock
+11:flock -n 9 || { echo "ERROR: another benchmark launch/evaluation holds /tmp/benchmark-start.lock"; exit 1; }
+12:if [ -f /vol/data/benchmark/.active_run ]; then
+13:  read -r active_pid _ < /vol/data/benchmark/.active_run || true
+=== chmod + committed? ===
+-rw-rw-r-- scripts/make_medium_dataset.sh
+-rwxr-xr-x scripts/make_small_dataset.sh
+> build · big-pickle
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark
+chmod +x scripts/make_medium_dataset.sh
+# PROGRESS: add medium-script-ready note
+python3 - <<'EOF'
+p='PROGRESS.md'
+s=open(p).read()
+s=s.replace(
+  "- [ ] After the small run passes: build/run the medium 3,000-contig derivative\n      (\u22645 GB), record provenance + measured size, then evaluate",
+  "- [ ] After the small run passes: build/run the medium 3,000-contig derivative\n      (\u22645 GB) via `scripts/make_medium_dataset.sh` (provenance+size in\n      PROVENANCE.txt, md5s) \u2192 COMEBin run+eval, then evaluate")
+open(p,'w').write(s)
+EOF
+cp PROGRESS.md /vol/data/benchmark/PROGRESS.md
+echo '2026-09-23T21:35Z | Supervisor context absorbed: issue #2 follow-up (19:19Z) codifies workflow (small test -> medium 3000ct/5GB -> large only post-major-commit) + runner hardening commit 899f7e7 (run_small_test/run_eval overlap guards confirmed in repo). issue-closer closed #3 #4 #5 (19:25Z) - user accepted resolutions. Wrote scripts/make_medium_dataset.sh (mirrors make_small_dataset.sh, N=3000, <=5GB cap, PROVENANCE.txt+md5s).' >> status/agent-activity.log
+git add scripts/make_medium_dataset.sh PROGRESS.md status/agent-activity.log
+git commit -q -m "medium dataset: make_medium_dataset.sh (3000 contigs, 5GB cap, provenance) per issue #2 workflow"
+git push -q && echo PUSHED
+grep -c '^DEBUG:root:Epoch' /vol/data/benchmark/runs/baseline_unmodified/comebin_out/comebin_res/training.log
+touch /vol/data/benchmark/.heartbeat
+PUSHED
+122
+> build · big-pickle
+Baseline at **epoch 122/200**. This turn caught important supervisor activity and prepped the next step:
+
+**Issue/workflow sync**
+- Issue #2 gained a supervisor follow-up (@19:19Z) codifying the workflow explicitly: **small functional test → medium benchmark (3,000 contigs, ≤5 GB cap) → large benchmarks only after major commits** — plus runner hardening in commit `899f7e7` (confirmed `run_small_test.sh`/`run_eval.sh` now carry overlap/overwrite guards + flock).
+- The supervisor's `issue-closer` closed **#3, #4, #5** (~19:25Z) — my resolutions accepted by the user. Remaining open: #1 (idea inbox), #2 (test-results pending).
+
+**New prep item written**
+- **`scripts/make_medium_dataset.sh`** — mirrors the small-dataset methodology (top-3,000 contigs by length from the BATS demo + overlapping reads via `samtools view -L`) with a 5 GB hard cap and a `PROVENANCE.txt` (size, md5s, source paths). Committed + pushed; PROGRESS updated (both copies).
+
+**Updated post-baseline queue**: baseline eval → small test (pristine) + issue #2 comment → small fix test → **medium build+run+eval** → fix-v11 large benchmark → marine → human host-associated CAMI II → CAMI III. All scripts ready; waiting on the training run.
+[0m
+> build · big-pickle
+[0m$ [0mRUN=/vol/data/benchmark/runs/baseline_unmodified
+ps -eo pid,etime,args | grep -E '[m]ain.py train' | head -1 || echo "no train proc"
+echo "epochs: $(grep -c '^DEBUG:root:Epoch' "$RUN/comebin_out/comebin_res/training.log" 2>/dev/null)"
+grep -E 'exit_code|bins:' "$RUN/run_meta.txt" 2>/dev/null || true
+date -u +"now UTC: %H:%M"
+touch /vol/data/benchmark/.heartbeat
+21545    04:45:11 python main.py train --data /vol/data/benchmark/runs/baseline_unmodified/comebin_out/data_augmentation --temperature 0.15 --emb_szs_forcov 2048 --batch_size 1024 --emb_szs 2048 --n_views 6 --add_model_for_coverage --output_path /vol/data/benchmark/runs/baseline_unmodified/comebin_out/comebin_res --earlystop --addvars --vars_sqrt --num_threads 32
+epochs: 122
+now UTC: 19:28
+> build · big-pickle
+Baseline at **epoch 122/200**, running normally. Standing by.
+[0m
+> build · big-pickle
+[0m$ [0mRUN=/vol/data/benchmark/runs/baseline_unmodified
+ps -eo pid,etime,args | grep -E '[m]ain.py train' | head -1 || echo "no train proc"
+echo "epochs: $(grep -c '^DEBUG:root:Epoch' "$RUN/comebin_out/comebin_res/training.log" 2>/dev/null)"
+grep -E 'exit_code|bins:' "$RUN/run_meta.txt" 2>/dev/null || true
+date -u +"now UTC: %H:%M"
+touch /vol/data/benchmark/.heartbeat
+21545    04:45:37 python main.py train --data /vol/data/benchmark/runs/baseline_unmodified/comebin_out/data_augmentation --temperature 0.15 --emb_szs_forcov 2048 --batch_size 1024 --emb_szs 2048 --n_views 6 --add_model_for_coverage --output_path /vol/data/benchmark/runs/baseline_unmodified/comebin_out/comebin_res --earlystop --addvars --vars_sqrt --num_threads 32
+epochs: 122
+now UTC: 19:29
+> build · big-pickle
+Baseline at **epoch 122/200**, healthy. Standing by.
+[0m
+> build · big-pickle
+[0m$ [0mRUN=/vol/data/benchmark/runs/baseline_unmodified
+ps -eo pid,etime,args | grep -E '[m]ain.py train' | head -1 || echo "no train proc"
+echo "epochs: $(grep -c '^DEBUG:root:Epoch' "$RUN/comebin_out/comebin_res/training.log" 2>/dev/null)"
+grep -E 'exit_code|bins:' "$RUN/run_meta.txt" 2>/dev/null || true
+date -u +"now UTC: %H:%M"
+touch /vol/data/benchmark/.heartbeat
+21545    04:45:59 python main.py train --data /vol/data/benchmark/runs/baseline_unmodified/comebin_out/data_augmentation --temperature 0.15 --emb_szs_forcov 2048 --batch_size 1024 --emb_szs 2048 --n_views 6 --add_model_for_coverage --output_path /vol/data/benchmark/runs/baseline_unmodified/comebin_out/comebin_res --earlystop --addvars --vars_sqrt --num_threads 32
+epochs: 123
+now UTC: 19:29
+> build · big-pickle
+Baseline at **epoch 123/200**, training normally. Standing by.
+[0m
+> build · big-pickle
+[0m$ [0mRUN=/vol/data/benchmark/runs/baseline_unmodified
+ps -eo pid,etime,args | grep -E '[m]ain.py train' | head -1 || echo "no train proc"
+echo "epochs: $(grep -c '^DEBUG:root:Epoch' "$RUN/comebin_out/comebin_res/training.log" 2>/dev/null)"
+grep -E 'exit_code|bins:' "$RUN/run_meta.txt" 2>/dev/null || true
+date -u +"now UTC: %H:%M"
+touch /vol/data/benchmark/.heartbeat
+21545    04:46:25 python main.py train --data /vol/data/benchmark/runs/baseline_unmodified/comebin_out/data_augmentation --temperature 0.15 --emb_szs_forcov 2048 --batch_size 1024 --emb_szs 2048 --n_views 6 --add_model_for_coverage --output_path /vol/data/benchmark/runs/baseline_unmodified/comebin_out/comebin_res --earlystop --addvars --vars_sqrt --num_threads 32
+epochs: 123
+now UTC: 19:29
+> build · big-pickle
+Baseline at **epoch 123/200**, running normally. Standing by.
