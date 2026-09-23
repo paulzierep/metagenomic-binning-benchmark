@@ -319,6 +319,25 @@ else
   check C9_repo_publish broken "meta artifacts failed to commit/push cleanly"
 fi
 
+# A primary/status publisher may legitimately advance main while this tick is
+# running. Reconcile C5 after our own successful publish so that harmless remote
+# progress is not mislabeled as a persistent push failure.
+if [ "$publish_ok" -eq 1 ]; then
+  final_head=$(git -C "$REPO" rev-parse HEAD 2>/dev/null || echo none)
+  final_remote=$(remote_head)
+  final_status_dirty=$(git -C "$REPO" status --porcelain -- README.md status/meta runs 2>/dev/null || true)
+  final_all_dirty=$(git -C "$REPO" status --porcelain 2>/dev/null || true)
+  final_dirty_count=$(printf '%s' "$final_all_dirty" | grep -c . || true)
+  if [ -n "$final_remote" ] && [ "$final_head" = "$final_remote" ] \
+     && [ -z "$final_status_dirty" ] \
+     && { [ "$final_dirty_count" -eq 0 ] || [ "$run_alive" -eq 1 ] || [ "$drv_alive" -eq 1 ]; }; then
+    awk -F '\t' -v OFS='\t' -v dirty="$final_dirty_count" \
+      '$1=="C5_github"{$2="ok";$3="HEAD=remote after concurrent publisher; worktree edits=" dirty} {print}' \
+      "$META/checks.tsv" > "$META/checks.tsv.tmp"
+    mv "$META/checks.tsv.tmp" "$META/checks.tsv"
+  fi
+fi
+
 # ---- escalate unresolved broken OR degraded checks --------------------------- #
 need_llm=0
 if grep -Eq $'\t(degraded|broken)\t' "$META/checks.tsv"; then need_llm=1; fi
