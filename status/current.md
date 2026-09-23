@@ -3,9 +3,9 @@
 | | |
 |---|---|
 | Status | 🟢 `running` |
-| ⏱ Updated (Europe/Berlin) | `2026-09-23T23:28 CEST` |
-| 🏃 Live benchmark | `baseline_unmodified` — **epoch 174/200** · loss `2.8503522872924805` · top1 acc `99.10807037353516` (log 15s fresh) |
-| 🧠 Model (last turn) | `big-pickle` (watchdog rotates to free models on quota) |
+| ⏱ Updated (Europe/Berlin) | `2026-09-23T23:30 CEST` |
+| 🏃 Live benchmark | `baseline_unmodified` — **epoch 174/200** · loss `2.8503522872924805` · top1 acc `99.10807037353516` (log 135s fresh) |
+| 🧠 Model (last turn) | `mimo-v2.6-flash-free` (watchdog rotates to free models on quota) |
 | 📌 Agent note · **0 min old** | Baseline training epoch ~109/200 (~2.4 min/epoch, ETA ~22:35 UTC unless early-stop); next: baseline eval (run_eval.sh) → issue #2 small-dataset test → v1.1.0 fix run
 2026-09-23 20:33:11 UTC - heartbeat
 2026-09-23 20:43:58 UTC - heartbeat
@@ -52,10 +52,12 @@
 2026-09-23 21:24:25 UTC - heartbeat
 2026-09-23 21:25:05 UTC - heartbeat
 2026-09-23 21:25:44 UTC - heartbeat
-2026-09-23 21:27:45 UTC - heartbeat |
-| ⚙️ Load · uptime | `29.70 31.23 31.62` · 7 hours, 52 minutes — 32 cores, 62 GiB, no GPU |
-| 💾 RAM used/total | `7020/64295 MB` |
+2026-09-23 21:27:45 UTC - heartbeat
+2026-09-23 21:28:29 UTC - heartbeat
+2026-09-23 21:29:07 UTC - heartbeat |
+| ⚙️ Load · uptime | `31.82 31.52 31.68` · 7 hours, 54 minutes — 32 cores, 62 GiB, no GPU |
+| 💾 RAM used/total | `7680/64295 MB` |
 | 🔗 Session | `ses_f31799c77ffeTq9gcYgqc4hBhg` |
-| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `b0e4bdc status: yes — baseline_unmodified epoch 173/200 loss 2.846899747848510` |
-| 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `693075 B` — every run, command & tool result |
+| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `6cafc6d status: yes — baseline_unmodified epoch 174/200 loss 2.850352287292480` |
+| 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `700060 B` — every run, command & tool result |
 | 📈 Timeline | [status/status.log](status/status.log) |
