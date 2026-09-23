@@ -13760,3 +13760,317 @@ MKQLNTLVLDVTIYILDFLYRGRDFQRFWVLEVIARAPYFSFISVLHFRESLGLRGEDHIYLMKEHFYQALNETEHLEEM
 ---
 0 /tmp/demo_no_cut_tc.tbl
 > build · nemotron-3.5-lightning-free
+Let me try running the small test to see what happens, and also check the main.py source for how it handles the seed file.
+[0m$ [0mgrep -n "seed_file\|seed\|bacar" /vol/data/repos/COMEBin/COMEBin/main.py | head -30
+166:    NoContrast_subparsers.add_argument('--seed_file', type=str, help=("The marker seed file."))
+172:                                       help='Add cluster number to run partial seed method (default: 0)')
+211:    clustering_subparsers.add_argument('--seed_file', type=str, help=("The marker seed file."))
+216:                                       help='Add cluster number to run partial seed method (default: 0)')
+238:    get_result_subparsers.add_argument('--seed_file', type=str, help=("The marker seed file."))
+294:        from utils import gen_seed
+297:        _ = gen_seed(logger, args.contig_file, num_threads, args.contig_len, marker_name="bacar_marker", quarter="2quarter")
+359:        from utils import gen_seed
+363:        seed_num = gen_seed(logger, args.contig_file, num_threads, args.contig_len, marker_name="bacar_marker", quarter="2quarter")
+365:        run_get_final_result(logger, args, seed_num, num_threads, ignore_kmeans_res=True)
+[0m$ [0m/vol/data/envs/comebin/bin/python -c "
+import sys
+sys.path.insert(0, '/vol/data/repos/COMEBin/COMEBin')
+from main import main
+print('main imported OK')
+" 2>&1 | head -20
+main imported OK
+> build · nemotron-3.5-lightning-free
+[0m$ [0mgrep -n "def gen_seed" /vol/data/repos/COMEBin/COMEBin/utils.py
+200:def gen_seed(logger, contig_file: str, threads: int, contig_length_threshold: int,
+[0m$ [0mgrep -n "gen_seed" /vol/data/repos/COMEBin/COMEBin/utils.py
+200:def gen_seed(logger, contig_file: str, threads: int, contig_length_threshold: int,
+> build · nemotron-3.5-lightning-free
+[0m→ [0mRead /vol/data/repos/COMEBin/COMEBin/utils.py [90m[limit=60, offset=195][0m
+> build · nemotron-3.5-lightning-free
+[0m$ [0mgrep -n "def run_get_final_result" /vol/data/repos/COMEBin/COMEBin/get_final_result.py
+199:def run_get_final_result(logger, args, seed_num: int, num_threads: int = 40,
+[0m$ [0mcat /vol/data/repos/COMEBin/COMEBin/get_final_result.py
+from scripts.unitem_profile import Profile, make_sure_path_exists
+import copy
+import os
+
+from collections import defaultdict
+import pandas as pd
+
+from scripts.unitem_common import read_bins
+from scripts.unitem_markers import Markers
+from filter_small_bins import filter_small_bins
+
+from typing import List, Optional, Union, Dict
+
+# for each bin
+# update for checkm marker
+def get_binstats(bin_contig_names, markers):
+    _, comp, cont = markers.bin_quality(bin_contig_names)
+
+    return comp, cont
+
+def read_bins_nosequences(bin_dirs):
+    """Read sequences in bins."""
+
+    bins = defaultdict(lambda: defaultdict(set))
+
+    contigs_in_bins = defaultdict(lambda: {})
+    for method_id, bin_dir in bin_dirs.items():
+        Header = pd.read_csv(bin_dir, sep='\t', nrows=1)
+        cluster_ids = pd.read_csv(bin_dir, sep='\t',header=None, usecols=range(1, Header.shape[1])).values[:, 0]
+        namelist = pd.read_csv(bin_dir, sep='\t', header=None, usecols=range(1)).values[:, 0]
+
+        for i in range(len(namelist)):
+            bins[method_id][cluster_ids[i]].add(namelist[i])
+            contigs_in_bins[namelist[i]][method_id] = cluster_ids[i]
+
+    return bins, contigs_in_bins
+
+
+# update for checkm marker
+def get_bin_quality(orig_bins: Dict[str, Dict[int, List[int]]], methods_sorted: List[str], markers: List[int]):
+    """
+    Calculate the quality of each bin in the original bins and determine the best method.
+
+    :param orig_bins: A dictionary of original bins with method IDs as keys and bin IDs as sub-keys.
+    :param methods_sorted: A list of method IDs sorted in a specific order.
+    :param markers: A list of markers used for bin quality calculations.
+
+    :return: A tuple containing a dictionary of bin quality information and the best method.
+    """
+    bin_quality_dict = defaultdict(lambda: {})
+    sum_list = []
+    sumcont5_list = []
+
+
+    for method_id in methods_sorted:
+        num_5010 = 0
+        num_7010 = 0
+        num_9010 = 0
+        num_505 = 0
+        num_705 = 0
+        num_905 = 0
+
+        for bin_id in orig_bins[method_id]:
+            comp, cont = get_binstats(orig_bins[method_id][bin_id], markers)
+            if comp > 50 and cont < 10:
+                num_5010 += 1
+            if comp > 70 and cont < 10:
+                num_7010 += 1
+            if comp > 90 and cont < 10:
+                num_9010 += 1
+            if comp > 50 and cont < 5:
+                num_505 += 1
+            if comp > 70 and cont < 5:
+                num_705 += 1
+            if comp > 90 and cont < 5:
+                num_905 += 1
+
+        bin_quality_dict[method_id]['num_5010'] = num_5010
+        bin_quality_dict[method_id]['num_7010'] = num_7010
+        bin_quality_dict[method_id]['num_9010'] = num_9010
+        bin_quality_dict[method_id]['num_505'] = num_505
+        bin_quality_dict[method_id]['num_705'] = num_705
+        bin_quality_dict[method_id]['num_905'] = num_905
+        bin_quality_dict[method_id]['sum'] = num_5010 + num_7010 + num_9010 + num_505 + num_705 + num_905
+        bin_quality_dict[method_id]['sum_cont5'] = num_505 + num_705 + num_905
+
+        sum_list.append(bin_quality_dict[method_id]['sum'] )
+        sumcont5_list.append(bin_quality_dict[method_id]['sum_cont5'])
+
+    sum_max = max(sum_list)
+    sum_max_method = []
+
+    sumcont5_remain = []
+
+    for i in range(len(methods_sorted)):
+        if sum_list[i] == sum_max:
+            sum_max_method.append(methods_sorted[i])
+            sumcont5_remain.append(sumcont5_list[i])
+    if len(sum_max_method) == 1:
+        best_method = sum_max_method[0]
+    else:
+        best_method = sum_max_method[sumcont5_remain.index(max(sumcont5_remain))]
+
+    return bin_quality_dict, best_method
+
+
+# update for checkm marker
+def savecontigs_with_high_bin_quality(orig_bins: Dict[str, Dict[int, List[int]]],
+                                    best_method: str, markers: List[int], outpath: str):
+    """
+    Save contigs with high bin quality to text files based on specified criteria.
+
+    :param orig_bins: A dictionary of original bins with method IDs as keys and bin IDs as sub-keys.
+    :param best_method: The best method to consider.
+    :param markers: A list of markers used for bin quality calculations.
+    :param outpath: The path to save the output text files.
+    :return: None
+    """
+    bin_count_5010 = 0
+    bin_count_5005 = 0
+    with open(outpath+'/'+best_method+'5010_res.txt','w') as f1:
+        with open(outpath+'/'+best_method+'5005_res.txt','w') as f2:
+            for bin_id in orig_bins[best_method]:
+                comp, cont = get_binstats(orig_bins[best_method][bin_id], markers)
+                if comp > 50 and cont < 10:
+                    for key in orig_bins[best_method][bin_id]:
+                        f1.write(key+'\t'+str(bin_count_5010)+'\n')
+                    bin_count_5010 += 1
+
+                if comp > 50 and cont < 5:
+                    for key in orig_bins[best_method][bin_id]:
+                        f2.write(key+'\t'+str(bin_count_5005)+'\n')
+                    bin_count_5005 += 1
+
+
+def write_estimated_bin_quality(bin_quality_dict, output_file):
+    fout = open(os.path.join(output_file), 'w')
+    fout.write('Binning_method\tnum_5010\tnum_7010\tnum_9010\tnum_505\tnum_705\tnum_905\tsum\tsum_cont5\n')
+    for method_id in bin_quality_dict:
+        fout.write(method_id + '\t' + str(bin_quality_dict[method_id]['num_5010']) + '\t'
+                   + str(bin_quality_dict[method_id]['num_7010']) + '\t'
+                   + str(bin_quality_dict[method_id]['num_9010']) + '\t'
+                   + str(bin_quality_dict[method_id]['num_505']) + '\t'
+                   + str(bin_quality_dict[method_id]['num_705']) + '\t'
+                   + str(bin_quality_dict[method_id]['num_905']) + '\t'
+                   + str(bin_quality_dict[method_id]['sum']) + '\t'
+                   + str(bin_quality_dict[method_id]['sum_cont5']) + '\n')
+
+    fout.close()
+
+
+def estimate_bins_quality_nobins(bac_mg_table, ar_mg_table, res_path, ignore_kmeans_res = False):
+    """
+    Estimate the quality of bins based on SCG information.
+
+    :param bac_mg_table: The path to the marker gene table for bacteria.
+    :param ar_mg_table: The path to the marker gene table for archaea.
+    :param res_path: The path to the result files.
+    :param ignore_kmeans_res: Whether to ignore K-means results (default: False).
+
+    :return: The best method based on estimated bin quality.
+    """
+    markers = Markers()
+
+    # bin_dirs = get_bin_dirs(bin_dirs_file)
+    filenames = os.listdir(res_path)
+    namelist = []
+    for filename in filenames:
+        if filename.endswith('.tsv'):
+            if ignore_kmeans_res:
+                if not filename.startswith('weight'):
+                    namelist.append(filename)
+            else:
+                namelist.append(filename)
+
+    namelist.sort()
+
+    bin_dirs = {}
+    for res in namelist:
+        bin_dirs[res] =  (res_path + res)
+
+    bins, contigs = read_bins_nosequences(bin_dirs)
+
+    methods_sorted = sorted(bins.keys())
+    contig_lens = {cid: len(contigs[cid]) for cid in contigs}
+    orig_bins = copy.deepcopy(bins)
+
+    gene_tables = markers.marker_gene_tables(bac_mg_table, ar_mg_table)
+
+    bin_quality_dict, best_method = get_bin_quality(orig_bins, methods_sorted, markers)
+
+    savecontigs_with_high_bin_quality(orig_bins, best_method, markers, res_path)
+
+    output_file = res_path + 'estimate_res.txt'
+    write_estimated_bin_quality(bin_quality_dict, output_file)
+    return best_method
+
+
+def run_get_final_result(logger, args, seed_num: int, num_threads: int = 40,
+                         res_name: Optional[str] = None, ignore_kmeans_res: bool = True):
+    """
+    Run the final step to get the best clustering result based on estimated bin quality.
+
+    :param seed_num: The seed number.
+    :param num_threads: The number of threads to use (default: 40).
+    :param res_name: The name of the result (default: None).
+    :param ignore_kmeans_res: Whether to ignore K-means results (default: True).
+    """
+    logger.info("Seed_num:\t" + str(seed_num))
+
+    if not (args.bac_mg_table and args.ar_mg_table):
+        logger.info("Run unitem profile:\t" + str(seed_num))
+        bin_dirs = {}
+        if res_name==None:
+            res_name = 'weight_seed_kmeans_k_' + str(seed_num) + '_result.tsv'
+        bin_dirs[res_name] = (args.output_path + '/cluster_res/' + res_name + '_bins', 'fa')
+
+        output_dir = args.output_path + '/cluster_res/unitem_profile'
+
+        if not (os.path.exists(output_dir)):
+            make_sure_path_exists(output_dir)
+            profile = Profile(num_threads)
+            profile.run(bin_dirs,
+                        output_dir)
+
+        bac_mg_table = output_dir + '/binning_methods/' + res_name + '/checkm_bac/marker_gene_table.tsv'
+        ar_mg_table = output_dir + '/binning_methods/' + res_name + '/checkm_ar/marker_gene_table.tsv'
+    else:
+        bac_mg_table = args.bac_mg_table
+        ar_mg_table = args.ar_mg_table
+
+    best_method = estimate_bins_quality_nobins(bac_mg_table, ar_mg_table, args.output_path + '/cluster_res/',ignore_kmeans_res=ignore_kmeans_res)
+
+    logger.info('Final result:\t'+args.output_path + '/cluster_res/'+best_method)
+    filter_small_bins(logger, args.contig_file, args.output_path + '/cluster_res/'+best_method, args)
+> build · nemotron-3.5-lightning-free
+[0m$ [0mgrep -n "seed_file\|seed\|pd.read_csv" /vol/data/repos/COMEBin/COMEBin/cluster.py | head -30
+77:def seed_kmeans_full(logger, contig_file: str, namelist: List[str], out_path: str,
+78:                     X_mat: np.ndarray, bin_number: int, prefix: str, length_weight: np.ndarray, seed_bacar_marker_url: str):
+80:    Perform weighted seed-kmeans clustering with specified parameters.
+90:    :param seed_bacar_marker_url: The path to the seed markers used for initialization.
+94:    This function performs weighted seed-based k-means clustering on the input data using specified parameters and saves the results.
+97:    seed_bacar_marker_idx = gen_seed_idx(seed_bacar_marker_url, contig_id_list=namelist)
+99:    # run seed-kmeans; length weight
+104:                    init=functools.partial(partial_seed_init, seed_idx=seed_bacar_marker_idx))
+112:        logger.info("Running weighted seed-kmeans cost:\t"+str(time_end - time_start) + 's.')
+115:def gen_seed_idx(seedURL: str, contig_id_list: List[str]) -> List[int]:
+117:    Generate a list of indices corresponding to seed contig IDs from a given URL.
+119:    :param seedURL: The URL or path to the file containing seed contig names.
+120:    :param contig_id_list: List of all contig IDs to match with the seed contig names.
+123:    seed_list = []
+124:    with open(seedURL) as f:
+127:                seed_list.append(line.rstrip('\n'))
+129:    seed_idx = [name_map[seed_name] for seed_name in seed_list]
+130:    return seed_idx
+134:def partial_seed_init(X, n_clusters: int, random_state, seed_idx, n_local_trials=None) -> np.ndarray:
+136:    Partial initialization of KMeans centers with seeds from seed_idx.
+142:    :param seed_idx: Indices of seed points for initialization.
+143:    :param n_local_trials: The number of local seeding trials. Default is None.
+148:    This function initializes a KMeans clustering by partially seeding the centers with provided seeds.
+158:    # Set the number of local seeding trials if none is given
+167:    center_id = seed_idx[0]
+179:    for c, center_id in enumerate(seed_idx[1:], 1):
+191:    for c in range(len(seed_idx), n_clusters):
+324:    seed_file = args.seed_file
+332:    embHeader = pd.read_csv(emb_file, sep='\t', nrows=1)
+333:    embMat = pd.read_csv(emb_file, sep='\t', usecols=range(1, embHeader.shape[1])).values
+> build · nemotron-3.5-lightning-free
+[0m$ [0mgrep -n "gen_seed_idx\|seed_idx" /vol/data/repos/COMEBin/COMEBin/cluster.py
+97:    seed_bacar_marker_idx = gen_seed_idx(seed_bacar_marker_url, contig_id_list=namelist)
+104:                    init=functools.partial(partial_seed_init, seed_idx=seed_bacar_marker_idx))
+115:def gen_seed_idx(seedURL: str, contig_id_list: List[str]) -> List[int]:
+129:    seed_idx = [name_map[seed_name] for seed_name in seed_list]
+130:    return seed_idx
+134:def partial_seed_init(X, n_clusters: int, random_state, seed_idx, n_local_trials=None) -> np.ndarray:
+136:    Partial initialization of KMeans centers with seeds from seed_idx.
+142:    :param seed_idx: Indices of seed points for initialization.
+167:    center_id = seed_idx[0]
+179:    for c, center_id in enumerate(seed_idx[1:], 1):
+191:    for c in range(len(seed_idx), n_clusters):
+393:        seed_bacar_marker_idx = gen_seed_idx(seed_file, contig_id_list=namelist)
+> build · nemotron-3.5-lightning-free
+[0m→ [0mRead /vol/data/repos/COMEBin/COMEBin/cluster.py [90m[offset=380, limit=30][0m
+[0m→ [0mRead /vol/data/repos/COMEBin/COMEBin/cluster.py [90m[limit=30, offset=112][0m
