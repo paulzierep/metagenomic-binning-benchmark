@@ -9224,3 +9224,68 @@ Index: /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md
  - [ ] After baseline: small end-to-end COMEBin + CheckM2/CheckM run via
 
 > build · big-pickle
+[0m$ [0mdate -u +"%Y-%m-%d %H:%M:%S UTC - docs: wrote docs/09-optimization-strategy.md (issue #7), README link, PROGRESS sync; triaging issues #6/#7/#8" >> /vol/data/repos/metagenomic-binning-benchmark/status/agent-activity.log
+cd /vol/data/repos/metagenomic-binning-benchmark
+exec 9>/tmp/bench-repo.lock
+flock 9
+git fetch origin -q
+git add docs/09-optimization-strategy.md README.md PROGRESS.md status/agent-activity.log
+git commit -m "docs: optimization strategy + decision flowchart (issues #6/#7); README link; PROGRESS sync" -q
+git pull --rebase origin main -q 2>&1 | tail -3
+git push origin main -q 2>&1 | tail -3
+git log --oneline -1
+f8dd2e4 docs: optimization strategy + decision flowchart (issues #6/#7); README link; PROGRESS sync
+> build · big-pickle
+Committed `f8dd2e4` and pushed. Now posting triage replies on the three new issues.
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark
+gh issue comment 6 -R paulzierep/metagenomic-binning-benchmark --body "Triage + plan (agent). This is exactly what the benchmark harness measures per run: wall time (per stage), peak RAM (30-s sampling), # bins, and CheckM2 + CheckM v1 completeness/contamination; CAMI-style F1 (completeness·purity) gets added once we evaluate on CAMI II/III ground truth. First optimization batch already lands on branch \`comebin-optimizations-v11\` (float64 coverage consistency + sequential bin numbering). 'Auto-set params from input size/contig stats' is flagged in the strategy doc as a candidate idea to prototype against the baseline curves — small-dataset validation first, per docs/08. Full criterion set + decision gate: docs/09-optimization-strategy.md (linked in README)." 2>&1 | tail -2
+gh issue comment 7 -R paulzierep/metagenomic-binning-benchmark --body "Delivered: optimization strategy + decision flowchart committed to \`main\` (f8dd2e4) in docs/09-optimization-strategy.md and linked from the README. Flow: candidate change → small functional test → benchmark on small/medium → gate on time AND quality (keep commit and continue, or revert/rework and combine with other surviving ideas) → large benchmark only after major commits. Metrics table includes runtime, peak RAM, bins, CheckM2/CheckM v1 means, CAMI-style F1. I'll keep the doc current per batch and mirror results in docs/03-fixes.md + results/." 2>&1 | tail -2
+gh issue comment 8 -R paulzierep/metagenomic-binning-benchmark --body "Happy to archive the benchmark data. What I need from you: (1) a Zenodo API token (zenodo.org → Settings/Log in → Access tokens — scoped to 'deposit:actions') or ok to prepare everything for manual upload; (2) metadata preferences: title, description, license (e.g. CC-BY-4.0), and author list. I will prepare, per dataset, a package with PROVENANCE (origin, filters, preparation commands), md5 checksums, sizes, and a deposit-ready JSON, and document the exact upload steps in the repo. Ready now: the small 94 MB dataset (300 contigs). Later: medium 3,000-contig set, COMEBin demo inputs, and CAMI II marine sample-0 inputs — each packaged after its run. Sandbox (sandbox.zenodo.org) is recommended for a dry run first. Can you create the token, or prefer manual upload?" 2>&1 | tail -2
+https://github.com/paulzierep/metagenomic-binning-benchmark/issues/6#issuecomment-5802797650
+https://github.com/paulzierep/metagenomic-binning-benchmark/issues/7#issuecomment-5802797931
+https://github.com/paulzierep/metagenomic-binning-benchmark/issues/8#issuecomment-5802798274
+> build · big-pickle
+[0m$ [0mdate -u +"%Y-%m-%d %H:%M:%S UTC - issues #6/#7/#8 replied (#6-5802797650, #7-5802797931, #8-5802798274); docs/09 + README pushed f8dd2e4" >> /vol/data/repos/metagenomic-binning-benchmark/status/agent-activity.log
+RUN=/vol/data/benchmark/runs/baseline_unmodified
+ps -eo pid,etime | grep -w 21545 >/dev/null && echo "train alive" || echo "train DEAD"
+echo "epochs: $(grep -c '^DEBUG:root:Epoch' "$RUN/comebin_out/comebin_res/training.log" 2>/dev/null)"
+date -u +"now UTC: %H:%M"
+touch /vol/data/benchmark/.heartbeat
+date -u +"%Y-%m-%d %H:%M:%S UTC - heartbeat" >> /vol/data/benchmark/.activity
+train alive
+epochs: 161
+now UTC: 20:56
+> build · big-pickle
+Done for this round:
+
+**Issues triaged** (3 new, all posted):
+- **#6 Optimization** → tied to benchmark metrics (time/RAM/bins/CheckM2/CheckM, CAMI-style F1) + fix branch + auto-param idea flagged in strategy doc → comment `5802797650`
+- **#7 Optimization plan** → **delivered**: `docs/09-optimization-strategy.md` (flowchart + decision gate) written, README-linked, committed `f8dd2e4` → comment `5802797931`
+- **#8 Benchmark data → Zenodo** → explained what I need (Zenodo token or manual upload, metadata prefs) and what I'll package per dataset → comment `5802798274`
+
+**Housekeeping**: PROGRESS.md updated (both copies), `agent-activity.log` appended, heartbeat + `.activity` touched. Commit pushed under `/tmp/bench-repo.lock` with only intended paths.
+
+**Baseline**: epoch **161/200**, alive and training. Standing by.
+[0m
+> build · big-pickle
+[0m$ [0mtest -f /vol/data/benchmark/TASK_COMPLETE && echo "TASK_COMPLETE exists" || echo "no TASK_COMPLETE"
+RUN=/vol/data/benchmark/runs/baseline_unmodified
+ps -eo pid,etime,args | grep -E '[m]ain.py train' | head -1 || echo "no train proc"
+echo "epochs: $(grep -c '^DEBUG:root:Epoch' "$RUN/comebin_out/comebin_res/training.log" 2>/dev/null)"
+grep -E 'exit_code|bins:' "$RUN/run_meta.txt" 2>/dev/null || true
+date -u +"now UTC: %H:%M"
+touch /vol/data/benchmark/.heartbeat
+no TASK_COMPLETE
+  21545    06:13:59 python main.py train --data /vol/data/benchmark/runs/baseline_unmodified/comebin_out/data_augmentation --temperature 0.15 --emb_szs_forcov 2048 --batch_size 1024 --emb_szs 2048 --n_views 6 --add_model_for_coverage --output_path /vol/data/benchmark/runs/baseline_unmodified/comebin_out/comebin_res --earlystop --addvars --vars_sqrt --num_threads 32
+epochs: 161
+now UTC: 20:57
+[0m$ [0mgh issue list -R paulzierep/metagenomic-binning-benchmark --state open --json number,title,updatedAt 2>&1 | head -60
+[{"number":8,"title":"Add benchmark data to zenodo","updatedAt":"2026-09-23T20:56:23Z"},{"number":7,"title":"Optimization plan","updatedAt":"2026-09-23T20:56:22Z"},{"number":6,"title":"Optimization","updatedAt":"2026-09-23T20:56:21Z"},{"number":2,"title":"Can you try to create a small benchmark dataset for comebin ?","updatedAt":"2026-09-23T19:19:23Z"},{"number":1,"title":"Idea inbox: benchmark ideas, COMEBin fixes, dataset requests","updatedAt":"2026-09-23T14:53:13Z"}]
+> build · big-pickle
+[0m$ [0mdate -u +"%Y-%m-%d %H:%M:%S UTC - heartbeat" >> /vol/data/benchmark/.activity
+touch /vol/data/benchmark/.heartbeat
+{"exit":0,"truncated":false,"output":"","status":"completed"}
+> build · big-pickle
+**Issues**: No new activity — the 20:56 `updatedAt` stamps on #6/#7/#8 are just my own replies. Nothing further to triage.
+
+**Baseline**: epoch **161/200**, healthy. Standing by.

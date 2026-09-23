@@ -13953,3 +13953,1002 @@ M PROGRESS.md
 ?? docs/09-optimization-strategy.md
 ?? docs/10-data-preservation.md
 ?? scripts/make_release_manifest.py
+> build · space-bunny-free
+[0m$ [0mgit diff -- README.md PROGRESS.md
+{"exit":0,"truncated":false,"output":"","status":"completed"}
+[0m$ [0msed -n '1,360p' docs/09-optimization-strategy.md
+# Optimization strategy (issue #7)
+
+Goal: **reduce COMEBin runtime and resource use while keeping quality the same or
+better**, judged with the exact same benchmark harness as the baseline so every
+decision is data-driven.
+
+## What we measure (fixed, per run)
+
+| Metric | Source | Why |
+|---|---|---|
+| Wall-clock time (total + per stage) | `runs/<run>/run_meta.txt` + run log | primary speed target |
+| Peak RAM | `logs/resources.tsv` (30-s samples) | primary resource target |
+| CPU time / core-hours | run log + resources.tsv | efficiency |
+| # bins (≥200 kb filter noted) | CheckM run output | productivity measure |
+| CheckM2 mean completeness / contamination | `run_eval.sh` | quality (main) |
+| CheckM v1 mean completeness / contamination | `run_eval.sh` | quality (cross-check) |
+| CAMI-style F1 (completeness · purity) | CAMI II/III GT once available | CAMI benchmark metric, see CAMI papers |
+
+"Good performance" is therefore: **more headroom on # bins / completeness /
+contamination / F1 per unit of time×RAM**. See `docs/04-evaluation.md` for
+metric definitions and the CAMI papers in the README references.
+
+## Process: batched commits with a decision gate
+
+Optimization work happens on a branch (`comebin-optimizations-v11`), **one commit
+per batch** (see `docs/07-fix-batches.md`). Each batch goes through the gate below.
+
+```mermaid
+flowchart TD
+    A[Pick candidate change / param from idea list] --> B[Small functional test<br/>small dataset, fast]
+    B -->|FAIL| G[Investigate, fix, or drop the idea]
+    G --> A
+    B -->|PASS| C[Benchmark on small/medium set]
+    C --> D{Better or equal<br/>time AND quality?}
+    D -->|YES| E[KEEP commit, record results in results/ and commit msg]
+    E --> F[Continue: next batch from this commit]
+    D -->|NO| H[Revert or rework this commit]
+    H --> I[Combine with other surviving ideas<br/>and re-test as a new batch]
+    I --> A
+    F --> J[After major commits: full large benchmark<br/>e.g. COMEBin demo / CAMI II marine / CAMI III]
+```
+
+Invariants:
+
+- **Never skip the small functional test.** Any change that breaks the small run
+  is not benchmarked further.
+- **Baseline first:** every optimization is compared against the unmodified
+  baseline run (`runs/baseline_unmodified`) and, where applicable, the previous
+  kept commit.
+- **One timed thing at a time:** no concurrent COMEBin/CheckM runs, so timings
+  stay comparable.
+- **Record or reject:** a commit is kept *only* if the evidence says keep;
+  otherwise it is reverted or reworked and combined with other ideas.
+- Cost guardrail: if we accrue several sequential failures, go back and pick a
+  different idea (per the flowchart) instead of spending more time on a dead end.
+
+## Parameter-tuning ideas (issue #6, live list)
+
+- **Adaptive parameters from input stats:** set `batch_size`, `emb_szs*`,
+  number of views/epochs, or `--emb_szs_forcov` automatically from contig count /
+  total bp / # scaffolds. The demo (29,434 contigs) and the marine sample (~42k
+  contigs) differ by little, but a 1.48 M-contig full set is not COMEBin-feasible
+  at current defaults — an adaptive path may extend that ceiling.
+- **Earlier stopping / faster augmentation** while checking the accuracy curve
+  against baseline's.
+- **Lower-precision coverage path**: batch 1 already made coverage math
+  float64-consistent (correctness, not perf); follow-up batches can look for
+  genuine perf wins (e.g. avoiding redundant dtype conversions).
+- Every idea above is validated on the small dataset → medium → (post-commit)
+  large, per the workflow in `docs/08-dataset-space-plan.md`.
+
+## Responsibilities
+
+- Agent: run the gate, record evidence in `docs/03-fixes.md`/`results/`, keep the
+  flowchart and this doc current.
+- Commit messages: one commit per batch, mention benchmark result summary.
+- Issues: optimization discussions tracked in issue #6 / #7; benchmark-data
+  archiving in issue #8.
+[0m$ [0mstat -c '%y %s %n' README.md PROGRESS.md docs/09-optimization-strategy.md docs/09-optimization-plan.md docs/10-data-preservation.md scripts/make_release_manifest.py; tail -80 /vol/data/benchmark/logs/agent-run.log
+- [ ] After baseline: small end-to-end COMEBin + CheckM2/CheckM run via
+      `scripts/run_small_test.sh` (runner now overlap-guarded and resource-logged)
+- [ ] After the small run passes: build/run the medium 3,000-contig derivative
+      (≤5 GB) via `scripts/make_medium_dataset.sh` (provenance+size in
+      PROVENANCE.txt, md5s) → COMEBin run+eval, then evaluate
+- [ ] Fix batch run on v1.1.0 base (`runs/fix_v11`, worktree COMEBin-v11) →
+      full large benchmark + eval (major commit) → README row
+- [ ] CAMI II marine sample 0 benchmark run → human host-associated sample →
+      CAMI III
+
+## Watchdog / restart
+
+`scripts/agent-watchdog.sh` (installed at `/vol/data/benchmark/bin/`, cron `*/5 * * * *`):
+stale heartbeat (>15 min) → `opencode run` continues session
+`ses_f31799c77ffeTq9gcYgqc4hBhg`; if that failed → fresh session with resume prompt.
+Both prompts first check GitHub issues for user instructions. On quota/token/context
+errors it forces `--model` rotation through the free model list; a successful run
+clears the flag (back to default). Rate limit 6 restarts / 6 h; stops when
+`TASK_COMPLETE` exists. **Agent: touch `/vol/data/benchmark/.heartbeat` regularly.**
+> build · big-pickle
+[0m← [0mEdit /vol/data/benchmark/PROGRESS.md
+Index: /vol/data/benchmark/PROGRESS.md
+===================================================================
+--- /vol/data/benchmark/PROGRESS.md
++++ /vol/data/benchmark/PROGRESS.md
+@@ -259,12 +259,18 @@
+       (c) large benchmarks only after major commits; (d) dataset/space plan
+       includes human host-associated CAMI II (Multisample HMP / Toy Human
+       Microbiome), 391 GB free, planned data ≤ ~105 GB. Replies posted.
+ - [~] **← CURRENT: baseline demo run in progress** (started 14:36 UTC, commit
+-      987db95d8d399f30b7c82a5f5f40ed6bfdc906c7, `-t 32`): training epoch ~116/200
+-      (checked 19:15 UTC; ~2.4 min/epoch → ETA ~22:30 UTC worst case;
++      987db95d8d399f30b7c82a5f5f40ed6bfdc906c7, `-t 32`): training epoch ~160/200
++      (checked 20:55 UTC; ~2.4 min/epoch → ETA ~22:45 UTC worst case;
+       `--earlystop` may cut short; banner shows LIVE epoch + loss/acc each 2 min) —
+       watch `runs/baseline_unmodified/comebin_run.log`
++- [x] **Issues #6/#7/#8 triaged (20:55 UTC)**: #6 optimization → strategy doc;
++      #7 optimization plan → `docs/09-optimization-strategy.md` + README link
++      (flowchart, decision gate, adaptive-param ideas); #8 zenodo data archiving →
++      reply posted with proposed package/prep + what I need (token or manual upload)
++- [x] **docs/09-optimization-strategy.md written and linked from README** (with
++      benchmark-repo commit)
+ - [ ] When baseline done: CheckM2 + CheckM v1 eval (`scripts/run_eval.sh`) → README
+       performance row (wall time per stage, peak RAM from resources.tsv, bins,
+       CheckM2/CheckM means) with linked commit → push
+ - [ ] After baseline: small end-to-end COMEBin + CheckM2/CheckM run via
+
+> build · big-pickle
+[0m✱ [0mGrep "← CURRENT: baseline demo run in progress" [90min /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md · 1 match[0m
+> build · big-pickle
+[0m→ [0mRead /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md [90m[limit=14, offset=260][0m
+> build · big-pickle
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md
+Index: /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md
++++ /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md
+@@ -259,12 +259,18 @@
+       (c) large benchmarks only after major commits; (d) dataset/space plan
+       includes human host-associated CAMI II (Multisample HMP / Toy Human
+       Microbiome), 391 GB free, planned data ≤ ~105 GB. Replies posted.
+ - [~] **← CURRENT: baseline demo run in progress** (started 14:36 UTC, commit
+-      987db95d8d399f30b7c82a5f5f40ed6bfdc906c7, `-t 32`): training epoch ~116/200
+-      (checked 19:15 UTC; ~2.4 min/epoch → ETA ~22:30 UTC worst case;
++      987db95d8d399f30b7c82a5f5f40ed6bfdc906c7, `-t 32`): training epoch ~160/200
++      (checked 20:55 UTC; ~2.4 min/epoch → ETA ~22:45 UTC worst case;
+       `--earlystop` may cut short; banner shows LIVE epoch + loss/acc each 2 min) —
+       watch `runs/baseline_unmodified/comebin_run.log`
++- [x] **Issues #6/#7/#8 triaged (20:55 UTC)**: #6 optimization → strategy doc;
++      #7 optimization plan → `docs/09-optimization-strategy.md` + README link
++      (flowchart, decision gate, adaptive-param ideas); #8 zenodo data archiving →
++      reply posted with proposed package/prep + what I need (token or manual upload)
++- [x] **docs/09-optimization-strategy.md written and linked from README** (with
++      benchmark-repo commit)
+ - [ ] When baseline done: CheckM2 + CheckM v1 eval (`scripts/run_eval.sh`) → README
+       performance row (wall time per stage, peak RAM from resources.tsv, bins,
+       CheckM2/CheckM means) with linked commit → push
+ - [ ] After baseline: small end-to-end COMEBin + CheckM2/CheckM run via
+
+> build · big-pickle
+stat: cannot statx 'README.md': No such file or directory
+stat: cannot statx 'PROGRESS.md': No such file or directory
+stat: cannot statx 'docs/09-optimization-strategy.md': No such file or directory
+stat: cannot statx 'docs/09-optimization-plan.md': No such file or directory
+stat: cannot statx 'docs/10-data-preservation.md': No such file or directory
+stat: cannot statx 'scripts/make_release_manifest.py': No such file or directory
+> build · space-bunny-free
+[0m$ [0mgit -C /vol/data/repos/metagenomic-binning-benchmark diff --stat; git -C /vol/data/repos/metagenomic-binning-benchmark diff -- README.md PROGRESS.md | head -240
+{"exit":0,"truncated":false,"output":"","status":"completed"}
+[0m$ [0mtail -140 /vol/data/benchmark/logs/agent-run.log
+run_eval.sh          CheckM2 + CheckM evaluation runner
+
+> build · big-pickle
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/README.md
+Index: /vol/data/repos/metagenomic-binning-benchmark/README.md
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/README.md
++++ /vol/data/repos/metagenomic-binning-benchmark/README.md
+@@ -58,8 +58,15 @@
+ - `main` — documentation, harness scripts, result tables.
+ - `comebin-optimizations` — COMEBin source changes, **batched fixes, one commit per
+   batch**; benchmark run recorded in the commit message and in `results/`.
+ 
++## Optimization strategy
++
++See [`docs/09-optimization-strategy.md`](docs/09-optimization-strategy.md) for the
++decision-gate flowchart: every optimization batch is compared against the baseline
++(timing + RAM + CheckM2/CheckM v1 + CAMI-style F1), committed only if it keeps or
++improves quality, with ideas combined after failures.
++
+ ## How to resume (for a human or a restarted agent)
+ 
+ 1. Read [`PROGRESS.md`](PROGRESS.md) — it contains the full task definition and the
+    current state checklist.
+
+> build · big-pickle
+[0m$ [0mtail -40 /vol/data/benchmark/PROGRESS.md
+- [x] **Supervisor hardening follow-up**: owner-scoped primary liveness,
+      successful-turn-only crash reset, 1 h agent/30 min supervisor timeouts,
+      child lock-FD closure, official service/API + actual remote-SHA checks,
+      source/installed checksum enforcement, safe benchmark PID/PGID/start
+      validation and atomic mode/source handoff, retryable issue markers with
+      before/after comment IDs, and shared repo locks. Small/fix/eval launchers
+      refuse overlap; small test now records its promised resource timeline.
+- [x] **Issue #2 directives recorded** (docs/08): (a) functional tests start
+      on the 94 MB small real-data set; (b) only after that end-to-end run
+      passes, build a medium derived set (target 3,000 contigs, hard cap 5 GB);
+      (c) large benchmarks only after major commits; (d) dataset/space plan
+      includes human host-associated CAMI II (Multisample HMP / Toy Human
+      Microbiome), 391 GB free, planned data ≤ ~105 GB. Replies posted.
+- [~] **← CURRENT: baseline demo run in progress** (started 14:36 UTC, commit
+      987db95d8d399f30b7c82a5f5f40ed6bfdc906c7, `-t 32`): training epoch ~116/200
+      (checked 19:15 UTC; ~2.4 min/epoch → ETA ~22:30 UTC worst case;
+      `--earlystop` may cut short; banner shows LIVE epoch + loss/acc each 2 min) —
+      watch `runs/baseline_unmodified/comebin_run.log`
+- [ ] When baseline done: CheckM2 + CheckM v1 eval (`scripts/run_eval.sh`) → README
+      performance row (wall time per stage, peak RAM from resources.tsv, bins,
+      CheckM2/CheckM means) with linked commit → push
+- [ ] After baseline: small end-to-end COMEBin + CheckM2/CheckM run via
+      `scripts/run_small_test.sh` (runner now overlap-guarded and resource-logged)
+- [ ] After the small run passes: build/run the medium 3,000-contig derivative
+      (≤5 GB) via `scripts/make_medium_dataset.sh` (provenance+size in
+      PROVENANCE.txt, md5s) → COMEBin run+eval, then evaluate
+- [ ] Fix batch run on v1.1.0 base (`runs/fix_v11`, worktree COMEBin-v11) →
+      full large benchmark + eval (major commit) → README row
+- [ ] CAMI II marine sample 0 benchmark run → human host-associated sample →
+      CAMI III
+
+## Watchdog / restart
+
+`scripts/agent-watchdog.sh` (installed at `/vol/data/benchmark/bin/`, cron `*/5 * * * *`):
+stale heartbeat (>15 min) → `opencode run` continues session
+`ses_f31799c77ffeTq9gcYgqc4hBhg`; if that failed → fresh session with resume prompt.
+Both prompts first check GitHub issues for user instructions. On quota/token/context
+errors it forces `--model` rotation through the free model list; a successful run
+clears the flag (back to default). Rate limit 6 restarts / 6 h; stops when
+`TASK_COMPLETE` exists. **Agent: touch `/vol/data/benchmark/.heartbeat` regularly.**
+> build · big-pickle
+[0m← [0mEdit /vol/data/benchmark/PROGRESS.md
+Index: /vol/data/benchmark/PROGRESS.md
+===================================================================
+--- /vol/data/benchmark/PROGRESS.md
++++ /vol/data/benchmark/PROGRESS.md
+@@ -259,12 +259,18 @@
+       (c) large benchmarks only after major commits; (d) dataset/space plan
+       includes human host-associated CAMI II (Multisample HMP / Toy Human
+       Microbiome), 391 GB free, planned data ≤ ~105 GB. Replies posted.
+ - [~] **← CURRENT: baseline demo run in progress** (started 14:36 UTC, commit
+-      987db95d8d399f30b7c82a5f5f40ed6bfdc906c7, `-t 32`): training epoch ~116/200
+-      (checked 19:15 UTC; ~2.4 min/epoch → ETA ~22:30 UTC worst case;
++      987db95d8d399f30b7c82a5f5f40ed6bfdc906c7, `-t 32`): training epoch ~160/200
++      (checked 20:55 UTC; ~2.4 min/epoch → ETA ~22:45 UTC worst case;
+       `--earlystop` may cut short; banner shows LIVE epoch + loss/acc each 2 min) —
+       watch `runs/baseline_unmodified/comebin_run.log`
++- [x] **Issues #6/#7/#8 triaged (20:55 UTC)**: #6 optimization → strategy doc;
++      #7 optimization plan → `docs/09-optimization-strategy.md` + README link
++      (flowchart, decision gate, adaptive-param ideas); #8 zenodo data archiving →
++      reply posted with proposed package/prep + what I need (token or manual upload)
++- [x] **docs/09-optimization-strategy.md written and linked from README** (with
++      benchmark-repo commit)
+ - [ ] When baseline done: CheckM2 + CheckM v1 eval (`scripts/run_eval.sh`) → README
+       performance row (wall time per stage, peak RAM from resources.tsv, bins,
+       CheckM2/CheckM means) with linked commit → push
+ - [ ] After baseline: small end-to-end COMEBin + CheckM2/CheckM run via
+
+> build · big-pickle
+[0m✱ [0mGrep "← CURRENT: baseline demo run in progress" [90min /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md · 1 match[0m
+> build · big-pickle
+[0m→ [0mRead /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md [90m[limit=14, offset=260][0m
+> build · big-pickle
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md
+Index: /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md
++++ /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md
+@@ -259,12 +259,18 @@
+       (c) large benchmarks only after major commits; (d) dataset/space plan
+       includes human host-associated CAMI II (Multisample HMP / Toy Human
+       Microbiome), 391 GB free, planned data ≤ ~105 GB. Replies posted.
+ - [~] **← CURRENT: baseline demo run in progress** (started 14:36 UTC, commit
+-      987db95d8d399f30b7c82a5f5f40ed6bfdc906c7, `-t 32`): training epoch ~116/200
+-      (checked 19:15 UTC; ~2.4 min/epoch → ETA ~22:30 UTC worst case;
++      987db95d8d399f30b7c82a5f5f40ed6bfdc906c7, `-t 32`): training epoch ~160/200
++      (checked 20:55 UTC; ~2.4 min/epoch → ETA ~22:45 UTC worst case;
+       `--earlystop` may cut short; banner shows LIVE epoch + loss/acc each 2 min) —
+       watch `runs/baseline_unmodified/comebin_run.log`
++- [x] **Issues #6/#7/#8 triaged (20:55 UTC)**: #6 optimization → strategy doc;
++      #7 optimization plan → `docs/09-optimization-strategy.md` + README link
++      (flowchart, decision gate, adaptive-param ideas); #8 zenodo data archiving →
++      reply posted with proposed package/prep + what I need (token or manual upload)
++- [x] **docs/09-optimization-strategy.md written and linked from README** (with
++      benchmark-repo commit)
+ - [ ] When baseline done: CheckM2 + CheckM v1 eval (`scripts/run_eval.sh`) → README
+       performance row (wall time per stage, peak RAM from resources.tsv, bins,
+       CheckM2/CheckM means) with linked commit → push
+ - [ ] After baseline: small end-to-end COMEBin + CheckM2/CheckM run via
+
+> build · big-pickle
+[0m$ [0mdate -u +"%Y-%m-%d %H:%M:%S UTC - docs: wrote docs/09-optimization-strategy.md (issue #7), README link, PROGRESS sync; triaging issues #6/#7/#8" >> /vol/data/repos/metagenomic-binning-benchmark/status/agent-activity.log
+cd /vol/data/repos/metagenomic-binning-benchmark
+exec 9>/tmp/bench-repo.lock
+flock 9
+git fetch origin -q
+git add docs/09-optimization-strategy.md README.md PROGRESS.md status/agent-activity.log
+git commit -m "docs: optimization strategy + decision flowchart (issues #6/#7); README link; PROGRESS sync" -q
+git pull --rebase origin main -q 2>&1 | tail -3
+git push origin main -q 2>&1 | tail -3
+git log --oneline -1
+f8dd2e4 docs: optimization strategy + decision flowchart (issues #6/#7); README link; PROGRESS sync
+> build · big-pickle
+[0m$ [0mrm -f docs/09-optimization-plan.md; git status --short --untracked-files=all
+?? docs/10-data-preservation.md
+?? scripts/make_release_manifest.py
+[0m$ [0mps -eo pid,ppid,etime,stat,args | grep -E '[o]pencode run --auto --session ses_f31799c77ffeTq9gcYgqc4hBhg|[a]gent-watchdog.sh|[m]eta-watchdog.sh'
+147588       1       23:11 S    bash /vol/data/benchmark/bin/agent-watchdog.sh
+ 155457  155454       03:12 Ss   /bin/sh -c /vol/data/benchmark/bin/meta-watchdog.sh
+ 155458  155457       03:12 S    bash /vol/data/benchmark/bin/meta-watchdog.sh
+ 156226  147588       02:13 S    timeout --foreground --kill-after=30s 3600s opencode run --auto --session ses_f31799c77ffeTq9gcYgqc4hBhg --title watchdog-restart Continue the metagenomic-binning-benchmark task you were working on; you may have been interrupted. First read /vol/data/benchmark/PROGRESS.md, verify the 'Current state' section against what is actually on disk, then check NEW/updated issues with: gh issue list -R paulzierep/metagenomic-binning-benchmark --state open --json number,title,updatedAt and gh issue list -R paulzierep/COMEBin --state open --json number,title,updatedAt. Triage and comment on actionable updates without duplicating an existing response. Resume from the first unfinished step. Update PROGRESS.md and /vol/data/benchmark/.activity, touch /vol/data/benchmark/.heartbeat in shell commands while active, and append one timestamped line per meaningful action to /vol/data/repos/metagenomic-binning-benchmark/status/agent-activity.log. Before final git stage/commit/push, acquire /tmp/bench-repo.lock and commit only intended paths. Never overlap the registered benchmark run. If /vol/data/benchmark/TASK_COMPLETE exists, do nothing and exit.
+ 156227  156226       02:13 Sl   opencode run --auto --session ses_f31799c77ffeTq9gcYgqc4hBhg --title watchdog-restart Continue the metagenomic-binning-benchmark task you were working on; you may have been interrupted. First read /vol/data/benchmark/PROGRESS.md, verify the 'Current state' section against what is actually on disk, then check NEW/updated issues with: gh issue list -R paulzierep/metagenomic-binning-benchmark --state open --json number,title,updatedAt and gh issue list -R paulzierep/COMEBin --state open --json number,title,updatedAt. Triage and comment on actionable updates without duplicating an existing response. Resume from the first unfinished step. Update PROGRESS.md and /vol/data/benchmark/.activity, touch /vol/data/benchmark/.heartbeat in shell commands while active, and append one timestamped line per meaningful action to /vol/data/repos/metagenomic-binning-benchmark/status/agent-activity.log. Before final git stage/commit/push, acquire /tmp/bench-repo.lock and commit only intended paths. Never overlap the registered benchmark run. If /vol/data/benchmark/TASK_COMPLETE exists, do nothing and exit.
+> build · space-bunny-free
+[0m$ [0mtail -50 /vol/data/benchmark/logs/agent-run.log; tail -20 /vol/data/benchmark/logs/supervisor-run.log
+- [ ] When baseline done: CheckM2 + CheckM v1 eval (`scripts/run_eval.sh`) → README
+       performance row (wall time per stage, peak RAM from resources.tsv, bins,
+       CheckM2/CheckM means) with linked commit → push
+ - [ ] After baseline: small end-to-end COMEBin + CheckM2/CheckM run via
+
+> build · big-pickle
+[0m✱ [0mGrep "← CURRENT: baseline demo run in progress" [90min /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md · 1 match[0m
+> build · big-pickle
+[0m→ [0mRead /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md [90m[limit=14, offset=260][0m
+> build · big-pickle
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md
+Index: /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md
++++ /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md
+@@ -259,12 +259,18 @@
+       (c) large benchmarks only after major commits; (d) dataset/space plan
+       includes human host-associated CAMI II (Multisample HMP / Toy Human
+       Microbiome), 391 GB free, planned data ≤ ~105 GB. Replies posted.
+ - [~] **← CURRENT: baseline demo run in progress** (started 14:36 UTC, commit
+-      987db95d8d399f30b7c82a5f5f40ed6bfdc906c7, `-t 32`): training epoch ~116/200
+-      (checked 19:15 UTC; ~2.4 min/epoch → ETA ~22:30 UTC worst case;
++      987db95d8d399f30b7c82a5f5f40ed6bfdc906c7, `-t 32`): training epoch ~160/200
++      (checked 20:55 UTC; ~2.4 min/epoch → ETA ~22:45 UTC worst case;
+       `--earlystop` may cut short; banner shows LIVE epoch + loss/acc each 2 min) —
+       watch `runs/baseline_unmodified/comebin_run.log`
++- [x] **Issues #6/#7/#8 triaged (20:55 UTC)**: #6 optimization → strategy doc;
++      #7 optimization plan → `docs/09-optimization-strategy.md` + README link
++      (flowchart, decision gate, adaptive-param ideas); #8 zenodo data archiving →
++      reply posted with proposed package/prep + what I need (token or manual upload)
++- [x] **docs/09-optimization-strategy.md written and linked from README** (with
++      benchmark-repo commit)
+ - [ ] When baseline done: CheckM2 + CheckM v1 eval (`scripts/run_eval.sh`) → README
+       performance row (wall time per stage, peak RAM from resources.tsv, bins,
+       CheckM2/CheckM means) with linked commit → push
+ - [ ] After baseline: small end-to-end COMEBin + CheckM2/CheckM run via
+
+> build · big-pickle
+[0m$ [0mdate -u +"%Y-%m-%d %H:%M:%S UTC - docs: wrote docs/09-optimization-strategy.md (issue #7), README link, PROGRESS sync; triaging issues #6/#7/#8" >> /vol/data/repos/metagenomic-binning-benchmark/status/agent-activity.log
+cd /vol/data/repos/metagenomic-binning-benchmark
+exec 9>/tmp/bench-repo.lock
+flock 9
+git fetch origin -q
+git add docs/09-optimization-strategy.md README.md PROGRESS.md status/agent-activity.log
+git commit -m "docs: optimization strategy + decision flowchart (issues #6/#7); README link; PROGRESS sync" -q
+git pull --rebase origin main -q 2>&1 | tail -3
+git push origin main -q 2>&1 | tail -3
+git log --oneline -1
+f8dd2e4 docs: optimization strategy + decision flowchart (issues #6/#7); README link; PROGRESS sync
+> build · big-pickle
+exec 9>/tmp/bench-repo.lock
+flock 9
+git fetch origin -q
+git add docs/09-optimization-strategy.md README.md PROGRESS.md status/agent-activity.log
+git commit -m "docs: optimization strategy + decision flowchart (issues #6/#7); README link; PROGRESS sync" -q
+git pull --rebase origin main -q 2>&1 | tail -3
+git push origin main -q 2>&1 | tail -3
+git log --oneline -1
+f8dd2e4 docs: optimization strategy + decision flowchart (issues #6/#7); README link; PROGRESS sync
+> build · big-pickle
+[0m$ [0mrm -f docs/09-optimization-plan.md; git status --short --untracked-files=all
+?? docs/10-data-preservation.md
+?? scripts/make_release_manifest.py
+[0m$ [0mps -eo pid,ppid,etime,stat,args | grep -E '[o]pencode run --auto --session ses_f31799c77ffeTq9gcYgqc4hBhg|[a]gent-watchdog.sh|[m]eta-watchdog.sh'
+147588       1       23:11 S    bash /vol/data/benchmark/bin/agent-watchdog.sh
+ 155457  155454       03:12 Ss   /bin/sh -c /vol/data/benchmark/bin/meta-watchdog.sh
+ 155458  155457       03:12 S    bash /vol/data/benchmark/bin/meta-watchdog.sh
+ 156226  147588       02:13 S    timeout --foreground --kill-after=30s 3600s opencode run --auto --session ses_f31799c77ffeTq9gcYgqc4hBhg --title watchdog-restart Continue the metagenomic-binning-benchmark task you were working on; you may have been interrupted. First read /vol/data/benchmark/PROGRESS.md, verify the 'Current state' section against what is actually on disk, then check NEW/updated issues with: gh issue list -R paulzierep/metagenomic-binning-benchmark --state open --json number,title,updatedAt and gh issue list -R paulzierep/COMEBin --state open --json number,title,updatedAt. Triage and comment on actionable updates without duplicating an existing response. Resume from the first unfinished step. Update PROGRESS.md and /vol/data/benchmark/.activity, touch /vol/data/benchmark/.heartbeat in shell commands while active, and append one timestamped line per meaningful action to /vol/data/repos/metagenomic-binning-benchmark/status/agent-activity.log. Before final git stage/commit/push, acquire /tmp/bench-repo.lock and commit only intended paths. Never overlap the registered benchmark run. If /vol/data/benchmark/TASK_COMPLETE exists, do nothing and exit.
+ 156227  156226       02:13 Sl   opencode run --auto --session ses_f31799c77ffeTq9gcYgqc4hBhg --title watchdog-restart Continue the metagenomic-binning-benchmark task you were working on; you may have been interrupted. First read /vol/data/benchmark/PROGRESS.md, verify the 'Current state' section against what is actually on disk, then check NEW/updated issues with: gh issue list -R paulzierep/metagenomic-binning-benchmark --state open --json number,title,updatedAt and gh issue list -R paulzierep/COMEBin --state open --json number,title,updatedAt. Triage and comment on actionable updates without duplicating an existing response. Resume from the first unfinished step. Update PROGRESS.md and /vol/data/benchmark/.activity, touch /vol/data/benchmark/.heartbeat in shell commands while active, and append one timestamped line per meaningful action to /vol/data/repos/metagenomic-binning-benchmark/status/agent-activity.log. Before final git stage/commit/push, acquire /tmp/bench-repo.lock and commit only intended paths. Never overlap the registered benchmark run. If /vol/data/benchmark/TASK_COMPLETE exists, do nothing and exit.
+> build · space-bunny-free
+[0m$ [0mgit -C /vol/data/repos/metagenomic-binning-benchmark status --short --untracked-files=all; git -C /vol/data/repos/metagenomic-binning-benchmark log -3 --oneline --decorate; git -C /vol/data/repos/metagenomic-binning-benchmark show --stat --oneline f8dd2e4
+?? docs/10-data-preservation.md
+?? scripts/make_release_manifest.py
+f8dd2e4 (HEAD -> main, origin/main) docs: optimization strategy + decision flowchart (issues #6/#7); README link; PROGRESS sync
+6e869a5 status: yes — baseline_unmodified epoch 159/200 loss 2.86026930809021 acc 98.94856262207031 model big-pickle — Baseline training epoch ~109/200 (~2.4 m 2026-09-23 20:33:11 UTC - heartbeat 2026-09-23 20:43:58 UTC - heartbeat
+a74605d status: yes — baseline_unmodified epoch 159/200 loss 2.86026930809021 acc 98.94856262207031 model big-pickle — Baseline training epoch ~109/200 (~2.4 m 2026-09-23 20:33:11 UTC - heartbeat 2026-09-23 20:43:58 UTC - heartbeat
+f8dd2e4 docs: optimization strategy + decision flowchart (issues #6/#7); README link; PROGRESS sync
+ PROGRESS.md                      | 10 ++++--
+ docs/09-optimization-strategy.md | 78 ++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 86 insertions(+), 2 deletions(-)
+[0m$ [0mfor n in 6 7 8; do echo "--- #$n ---"; gh issue view "$n" -R paulzierep/metagenomic-binning-benchmark --json state,updatedAt,comments --jq '{state,updatedAt,comments:[.comments[]|{id,body,createdAt}]}' ; done
+--- #6 ---
+{"comments":[],"state":"OPEN","updatedAt":"2026-09-23T20:46:38Z"}
+--- #7 ---
+{"comments":[],"state":"OPEN","updatedAt":"2026-09-23T20:48:42Z"}
+--- #8 ---
+{"comments":[],"state":"OPEN","updatedAt":"2026-09-23T20:50:05Z"}
+> build · space-bunny-free
+[0m$ [0msleep 5; tail -100 /vol/data/benchmark/logs/agent-run.log; printf '\n-- processes --\n'; ps -o pid,ppid,etime,stat,args -p 156226,156227,155458
+===================================================================
+--- /vol/data/benchmark/PROGRESS.md
++++ /vol/data/benchmark/PROGRESS.md
+@@ -259,12 +259,18 @@
+       (c) large benchmarks only after major commits; (d) dataset/space plan
+       includes human host-associated CAMI II (Multisample HMP / Toy Human
+       Microbiome), 391 GB free, planned data ≤ ~105 GB. Replies posted.
+ - [~] **← CURRENT: baseline demo run in progress** (started 14:36 UTC, commit
+-      987db95d8d399f30b7c82a5f5f40ed6bfdc906c7, `-t 32`): training epoch ~116/200
+-      (checked 19:15 UTC; ~2.4 min/epoch → ETA ~22:30 UTC worst case;
++      987db95d8d399f30b7c82a5f5f40ed6bfdc906c7, `-t 32`): training epoch ~160/200
++      (checked 20:55 UTC; ~2.4 min/epoch → ETA ~22:45 UTC worst case;
+       `--earlystop` may cut short; banner shows LIVE epoch + loss/acc each 2 min) —
+       watch `runs/baseline_unmodified/comebin_run.log`
++- [x] **Issues #6/#7/#8 triaged (20:55 UTC)**: #6 optimization → strategy doc;
++      #7 optimization plan → `docs/09-optimization-strategy.md` + README link
++      (flowchart, decision gate, adaptive-param ideas); #8 zenodo data archiving →
++      reply posted with proposed package/prep + what I need (token or manual upload)
++- [x] **docs/09-optimization-strategy.md written and linked from README** (with
++      benchmark-repo commit)
+ - [ ] When baseline done: CheckM2 + CheckM v1 eval (`scripts/run_eval.sh`) → README
+       performance row (wall time per stage, peak RAM from resources.tsv, bins,
+       CheckM2/CheckM means) with linked commit → push
+ - [ ] After baseline: small end-to-end COMEBin + CheckM2/CheckM run via
+
+> build · big-pickle
+[0m✱ [0mGrep "← CURRENT: baseline demo run in progress" [90min /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md · 1 match[0m
+> build · big-pickle
+[0m→ [0mRead /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md [90m[limit=14, offset=260][0m
+> build · big-pickle
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md
+Index: /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md
++++ /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md
+@@ -259,12 +259,18 @@
+       (c) large benchmarks only after major commits; (d) dataset/space plan
+       includes human host-associated CAMI II (Multisample HMP / Toy Human
+       Microbiome), 391 GB free, planned data ≤ ~105 GB. Replies posted.
+ - [~] **← CURRENT: baseline demo run in progress** (started 14:36 UTC, commit
+-      987db95d8d399f30b7c82a5f5f40ed6bfdc906c7, `-t 32`): training epoch ~116/200
+-      (checked 19:15 UTC; ~2.4 min/epoch → ETA ~22:30 UTC worst case;
++      987db95d8d399f30b7c82a5f5f40ed6bfdc906c7, `-t 32`): training epoch ~160/200
++      (checked 20:55 UTC; ~2.4 min/epoch → ETA ~22:45 UTC worst case;
+       `--earlystop` may cut short; banner shows LIVE epoch + loss/acc each 2 min) —
+       watch `runs/baseline_unmodified/comebin_run.log`
++- [x] **Issues #6/#7/#8 triaged (20:55 UTC)**: #6 optimization → strategy doc;
++      #7 optimization plan → `docs/09-optimization-strategy.md` + README link
++      (flowchart, decision gate, adaptive-param ideas); #8 zenodo data archiving →
++      reply posted with proposed package/prep + what I need (token or manual upload)
++- [x] **docs/09-optimization-strategy.md written and linked from README** (with
++      benchmark-repo commit)
+ - [ ] When baseline done: CheckM2 + CheckM v1 eval (`scripts/run_eval.sh`) → README
+       performance row (wall time per stage, peak RAM from resources.tsv, bins,
+       CheckM2/CheckM means) with linked commit → push
+ - [ ] After baseline: small end-to-end COMEBin + CheckM2/CheckM run via
+
+> build · big-pickle
+[0m$ [0mdate -u +"%Y-%m-%d %H:%M:%S UTC - docs: wrote docs/09-optimization-strategy.md (issue #7), README link, PROGRESS sync; triaging issues #6/#7/#8" >> /vol/data/repos/metagenomic-binning-benchmark/status/agent-activity.log
+cd /vol/data/repos/metagenomic-binning-benchmark
+exec 9>/tmp/bench-repo.lock
+flock 9
+git fetch origin -q
+git add docs/09-optimization-strategy.md README.md PROGRESS.md status/agent-activity.log
+git commit -m "docs: optimization strategy + decision flowchart (issues #6/#7); README link; PROGRESS sync" -q
+git pull --rebase origin main -q 2>&1 | tail -3
+git push origin main -q 2>&1 | tail -3
+git log --oneline -1
+f8dd2e4 docs: optimization strategy + decision flowchart (issues #6/#7); README link; PROGRESS sync
+> build · big-pickle
+Committed `f8dd2e4` and pushed. Now posting triage replies on the three new issues.
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark
+gh issue comment 6 -R paulzierep/metagenomic-binning-benchmark --body "Triage + plan (agent). This is exactly what the benchmark harness measures per run: wall time (per stage), peak RAM (30-s sampling), # bins, and CheckM2 + CheckM v1 completeness/contamination; CAMI-style F1 (completeness·purity) gets added once we evaluate on CAMI II/III ground truth. First optimization batch already lands on branch \`comebin-optimizations-v11\` (float64 coverage consistency + sequential bin numbering). 'Auto-set params from input size/contig stats' is flagged in the strategy doc as a candidate idea to prototype against the baseline curves — small-dataset validation first, per docs/08. Full criterion set + decision gate: docs/09-optimization-strategy.md (linked in README)." 2>&1 | tail -2
+gh issue comment 7 -R paulzierep/metagenomic-binning-benchmark --body "Delivered: optimization strategy + decision flowchart committed to \`main\` (f8dd2e4) in docs/09-optimization-strategy.md and linked from the README. Flow: candidate change → small functional test → benchmark on small/medium → gate on time AND quality (keep commit and continue, or revert/rework and combine with other surviving ideas) → large benchmark only after major commits. Metrics table includes runtime, peak RAM, bins, CheckM2/CheckM v1 means, CAMI-style F1. I'll keep the doc current per batch and mirror results in docs/03-fixes.md + results/." 2>&1 | tail -2
+gh issue comment 8 -R paulzierep/metagenomic-binning-benchmark --body "Happy to archive the benchmark data. What I need from you: (1) a Zenodo API token (zenodo.org → Settings/Log in → Access tokens — scoped to 'deposit:actions') or ok to prepare everything for manual upload; (2) metadata preferences: title, description, license (e.g. CC-BY-4.0), and author list. I will prepare, per dataset, a package with PROVENANCE (origin, filters, preparation commands), md5 checksums, sizes, and a deposit-ready JSON, and document the exact upload steps in the repo. Ready now: the small 94 MB dataset (300 contigs). Later: medium 3,000-contig set, COMEBin demo inputs, and CAMI II marine sample-0 inputs — each packaged after its run. Sandbox (sandbox.zenodo.org) is recommended for a dry run first. Can you create the token, or prefer manual upload?" 2>&1 | tail -2
+https://github.com/paulzierep/metagenomic-binning-benchmark/issues/6#issuecomment-5802797650
+https://github.com/paulzierep/metagenomic-binning-benchmark/issues/7#issuecomment-5802797931
+https://github.com/paulzierep/metagenomic-binning-benchmark/issues/8#issuecomment-5802798274
+> build · big-pickle
+[0m$ [0mdate -u +"%Y-%m-%d %H:%M:%S UTC - issues #6/#7/#8 replied (#6-5802797650, #7-5802797931, #8-5802798274); docs/09 + README pushed f8dd2e4" >> /vol/data/repos/metagenomic-binning-benchmark/status/agent-activity.log
+RUN=/vol/data/benchmark/runs/baseline_unmodified
+ps -eo pid,etime | grep -w 21545 >/dev/null && echo "train alive" || echo "train DEAD"
+echo "epochs: $(grep -c '^DEBUG:root:Epoch' "$RUN/comebin_out/comebin_res/training.log" 2>/dev/null)"
+date -u +"now UTC: %H:%M"
+touch /vol/data/benchmark/.heartbeat
+date -u +"%Y-%m-%d %H:%M:%S UTC - heartbeat" >> /vol/data/benchmark/.activity
+train alive
+epochs: 161
+now UTC: 20:56
+> build · big-pickle
+Done for this round:
+
+**Issues triaged** (3 new, all posted):
+- **#6 Optimization** → tied to benchmark metrics (time/RAM/bins/CheckM2/CheckM, CAMI-style F1) + fix branch + auto-param idea flagged in strategy doc → comment `5802797650`
+- **#7 Optimization plan** → **delivered**: `docs/09-optimization-strategy.md` (flowchart + decision gate) written, README-linked, committed `f8dd2e4` → comment `5802797931`
+- **#8 Benchmark data → Zenodo** → explained what I need (Zenodo token or manual upload, metadata prefs) and what I'll package per dataset → comment `5802798274`
+
+**Housekeeping**: PROGRESS.md updated (both copies), `agent-activity.log` appended, heartbeat + `.activity` touched. Commit pushed under `/tmp/bench-repo.lock` with only intended paths.
+
+**Baseline**: epoch **161/200**, alive and training. Standing by.
+
+-- processes --
+    PID    PPID     ELAPSED STAT COMMAND
+ 155458  155457       03:30 S    bash /vol/data/benchmark/bin/meta-watchdog.sh
+> build · space-bunny-free
+[0m$ [0mnl -ba README.md | sed -n '18,110p'; printf '\n-- PROGRESS tail --\n'; tail -50 PROGRESS.md; printf '\n-- status --\n'; git status --short --untracked-files=all; printf '\n-- issue comments --\n'; for n in 6 7 8; do gh issue view "$n" -R paulzierep/metagenomic-binning-benchmark --json comments --jq '.comments[-1] | {id,body}'; done
+18	
+    19	## Repository layout
+    20	
+    21	```
+    22	docs/
+    23	  00-setup.md          environment, tools, watchdog/agent restart design
+    24	  01-datasets.md       dataset provenance, checksums, preparation
+    25	  02-comebin-baseline.md  baseline run: command, parameters, timings, results
+    26	  03-fixes.md          fix batches: one section per commit on the branch
+    27	  04-evaluation.md     CheckM2 + CheckM procedure and metric definitions
+    28	  09-optimization-strategy.md  optimization strategy + decision flowchart (issues #6/#7)
+    29	scripts/
+    30	  agent-watchdog.sh    cron watchdog: restarts agent on abort/quota, model rotation
+    31	  run_comebin_baseline.sh  reproducible baseline runner
+    32	  run_eval.sh          CheckM2 + CheckM evaluation runner
+    33	envs/                  exported environment YAMLs
+    34	results/               committed result tables (CSV/MD), one file per run
+    35	PROGRESS.md            resume state (mirrors /vol/data/benchmark/PROGRESS.md)
+    36	```
+    37	
+    38	## Benchmark runs — performance
+    39	
+    40	Living table: **one row per benchmark run**, updated by the agent immediately after
+    41	each run (timings from `runs/<run>/run_meta.txt` + stage timings in the run log;
+    42	quality from the CheckM2/CheckM evaluation — see `docs/04-evaluation.md`).
+    43	Raw per-run outputs stay in `/vol/data/benchmark/runs/`, parsed CSVs in `results/`.
+    44	
+    45	| Run | Date | Source commit | Dataset | Threads | Wall time | Peak RAM | Bins | CheckM2 comp/cont % | CheckM comp/cont % | Status |
+    46	|---|---|---|---|---|---|---|---|---|---|---|
+    47	| `baseline_unmodified` | – | [987db95](https://github.com/paulzierep/COMEBin/commit/987db95d8d399f30b7c82a5f5f40ed6bfdc906c7) (upstream) | COMEBin demo (29,434 contigs) | 32 | – | – | – | – | – | ⏳ running · epoch 159/200 · loss 2.86026930809021 · top1 98.94856262207031 |
+    48	
+    49	Column contract: **Wall time** = total seconds (plus per-stage breakdown in
+    50	`docs/02-comebin-baseline.md`), **Bins** = bins exported (≥200 kb filter noted),
+    51	**comp/cont** = mean completeness / mean contamination, **HQ/MQ counts** live in
+    52	`results/<run>.csv`. **Source commit** is always a clickable link to that exact
+    53	commit on GitHub. Fix batches on `comebin-optimizations` get one row each, so
+    54	performance deltas vs. baseline are visible directly in this table.
+    55	
+    56	## Branch strategy
+    57	
+    58	- `main` — documentation, harness scripts, result tables.
+    59	- `comebin-optimizations` — COMEBin source changes, **batched fixes, one commit per
+    60	  batch**; benchmark run recorded in the commit message and in `results/`.
+    61	
+    62	## Optimization strategy
+    63	
+    64	See [`docs/09-optimization-strategy.md`](docs/09-optimization-strategy.md) for the
+    65	decision-gate flowchart: every optimization batch is compared against the baseline
+    66	(timing + RAM + CheckM2/CheckM v1 + CAMI-style F1), committed only if it keeps or
+    67	improves quality, with ideas combined after failures.
+    68	
+    69	## How to resume (for a human or a restarted agent)
+    70	
+    71	1. Read [`PROGRESS.md`](PROGRESS.md) — it contains the full task definition and the
+    72	   current state checklist.
+    73	2. Verify the checklist against what is on disk under `/vol/data`.
+    74	3. Continue from the first unfinished item; update `PROGRESS.md` after each step.
+    75	
+    76	See [`docs/00-setup.md`](docs/00-setup.md) for the agent watchdog that performs
+    77	automatic restart + free-model rotation on token exhaustion.
+    78	
+    79	## References
+    80	
+    81	- Wang Z. et al. *Effective binning of metagenomic contigs using contrastive
+    82	  multi-view representation learning.* Nat Commun 15, 585 (2024).
+    83	- Parks D.H. et al. *CheckM...* Genome Res 25(7):1043–1055 (2015). (CheckM v1)
+    84	- Chklovsky A. et al. *CheckM2...* Nat Biotechnol (2024). (CheckM2)
+
+-- PROGRESS tail --
+      the SAME session turn-after-turn; crash-guard markers only count FAILED
+      launches; **model in use is now logged** (watchdog.log `model=…` per turn;
+      status/current.md + status.log `model=` from the transcript; supervisor
+      meta-watchdog layer added). All committed @ `ec41276`
+- [x] **Supervisor hardening follow-up**: owner-scoped primary liveness,
+      successful-turn-only crash reset, 1 h agent/30 min supervisor timeouts,
+      child lock-FD closure, official service/API + actual remote-SHA checks,
+      source/installed checksum enforcement, safe benchmark PID/PGID/start
+      validation and atomic mode/source handoff, retryable issue markers with
+      before/after comment IDs, and shared repo locks. Small/fix/eval launchers
+      refuse overlap; small test now records its promised resource timeline.
+- [x] **Issue #2 directives recorded** (docs/08): (a) functional tests start
+      on the 94 MB small real-data set; (b) only after that end-to-end run
+      passes, build a medium derived set (target 3,000 contigs, hard cap 5 GB);
+      (c) large benchmarks only after major commits; (d) dataset/space plan
+      includes human host-associated CAMI II (Multisample HMP / Toy Human
+      Microbiome), 391 GB free, planned data ≤ ~105 GB. Replies posted.
+- [~] **← CURRENT: baseline demo run in progress** (started 14:36 UTC, commit
+      987db95d8d399f30b7c82a5f5f40ed6bfdc906c7, `-t 32`): training epoch ~160/200
+      (checked 20:55 UTC; ~2.4 min/epoch → ETA ~22:45 UTC worst case;
+      `--earlystop` may cut short; banner shows LIVE epoch + loss/acc each 2 min) —
+      watch `runs/baseline_unmodified/comebin_run.log`
+- [x] **Issues #6/#7/#8 triaged (20:55 UTC)**: #6 optimization → strategy doc;
+      #7 optimization plan → `docs/09-optimization-strategy.md` + README link
+      (flowchart, decision gate, adaptive-param ideas); #8 zenodo data archiving →
+      reply posted with proposed package/prep + what I need (token or manual upload)
+- [x] **docs/09-optimization-strategy.md written and linked from README** (with
+      benchmark-repo commit)
+- [ ] When baseline done: CheckM2 + CheckM v1 eval (`scripts/run_eval.sh`) → README
+      performance row (wall time per stage, peak RAM from resources.tsv, bins,
+      CheckM2/CheckM means) with linked commit → push
+- [ ] After baseline: small end-to-end COMEBin + CheckM2/CheckM run via
+      `scripts/run_small_test.sh` (runner now overlap-guarded and resource-logged)
+- [ ] After the small run passes: build/run the medium 3,000-contig derivative
+      (≤5 GB) via `scripts/make_medium_dataset.sh` (provenance+size in
+      PROVENANCE.txt, md5s) → COMEBin run+eval, then evaluate
+- [ ] Fix batch run on v1.1.0 base (`runs/fix_v11`, worktree COMEBin-v11) →
+      full large benchmark + eval (major commit) → README row
+- [ ] CAMI II marine sample 0 benchmark run → human host-associated sample →
+      CAMI III
+
+## Watchdog / restart
+
+`scripts/agent-watchdog.sh` (installed at `/vol/data/benchmark/bin/`, cron `*/5 * * * *`):
+stale heartbeat (>15 min) → `opencode run` continues session
+`ses_f31799c77ffeTq9gcYgqc4hBhg`; if that failed → fresh session with resume prompt.
+Both prompts first check GitHub issues for user instructions. On quota/token/context
+errors it forces `--model` rotation through the free model list; a successful run
+clears the flag (back to default). Rate limit 6 restarts / 6 h; stops when
+`TASK_COMPLETE` exists. **Agent: touch `/vol/data/benchmark/.heartbeat` regularly.**
+-- status --
+ M status/agent-activity.log
+?? docs/10-data-preservation.md
+?? scripts/make_release_manifest.py
+
+-- issue comments --
+{"body":"Triage + plan (agent). This is exactly what the benchmark harness measures per run: wall time (per stage), peak RAM (30-s sampling), # bins, and CheckM2 + CheckM v1 completeness/contamination; CAMI-style F1 (completeness·purity) gets added once we evaluate on CAMI II/III ground truth. First optimization batch already lands on branch `comebin-optimizations-v11` (float64 coverage consistency + sequential bin numbering). 'Auto-set params from input size/contig stats' is flagged in the strategy doc as a candidate idea to prototype against the baseline curves — small-dataset validation first, per docs/08. Full criterion set + decision gate: docs/09-optimization-strategy.md (linked in README).","id":"IC_kwDOUndL2c8AAAABWd-qUg"}
+{"body":"Delivered: optimization strategy + decision flowchart committed to `main` (f8dd2e4) in docs/09-optimization-strategy.md and linked from the README. Flow: candidate change → small functional test → benchmark on small/medium → gate on time AND quality (keep commit and continue, or revert/rework and combine with other surviving ideas) → large benchmark only after major commits. Metrics table includes runtime, peak RAM, bins, CheckM2/CheckM v1 means, CAMI-style F1. I'll keep the doc current per batch and mirror results in docs/03-fixes.md + results/.","id":"IC_kwDOUndL2c8AAAABWd-raw"}
+{"body":"Happy to archive the benchmark data. What I need from you: (1) a Zenodo API token (zenodo.org → Settings/Log in → Access tokens — scoped to 'deposit:actions') or ok to prepare everything for manual upload; (2) metadata preferences: title, description, license (e.g. CC-BY-4.0), and author list. I will prepare, per dataset, a package with PROVENANCE (origin, filters, preparation commands), md5 checksums, sizes, and a deposit-ready JSON, and document the exact upload steps in the repo. Ready now: the small 94 MB dataset (300 contigs). Later: medium 3,000-contig set, COMEBin demo inputs, and CAMI II marine sample-0 inputs — each packaged after its run. Sandbox (sandbox.zenodo.org) is recommended for a dry run first. Can you create the token, or prefer manual upload?","id":"IC_kwDOUndL2c8AAAABWd-swg"}
+> build · space-bunny-free
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/README.md
+Index: /vol/data/repos/metagenomic-binning-benchmark/README.md
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/README.md
++++ /vol/data/repos/metagenomic-binning-benchmark/README.md
+@@ -25,8 +25,9 @@
+   02-comebin-baseline.md  baseline run: command, parameters, timings, results
+   03-fixes.md          fix batches: one section per commit on the branch
+   04-evaluation.md     CheckM2 + CheckM procedure and metric definitions
+   09-optimization-strategy.md  optimization strategy + decision flowchart (issues #6/#7)
++  10-data-preservation.md       Zenodo release checklist and provenance manifest
+ scripts/
+   agent-watchdog.sh    cron watchdog: restarts agent on abort/quota, model rotation
+   run_comebin_baseline.sh  reproducible baseline runner
+   run_eval.sh          CheckM2 + CheckM evaluation runner
+
+> build · space-bunny-free
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/README.md
+Index: /vol/data/repos/metagenomic-binning-benchmark/README.md
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/README.md
++++ /vol/data/repos/metagenomic-binning-benchmark/README.md
+@@ -30,8 +30,9 @@
+ scripts/
+   agent-watchdog.sh    cron watchdog: restarts agent on abort/quota, model rotation
+   run_comebin_baseline.sh  reproducible baseline runner
+   run_eval.sh          CheckM2 + CheckM evaluation runner
++  make_release_manifest.py  streaming SHA-256 manifest for dataset releases
+ envs/                  exported environment YAMLs
+ results/               committed result tables (CSV/MD), one file per run
+ PROGRESS.md            resume state (mirrors /vol/data/benchmark/PROGRESS.md)
+ ```
+
+> build · space-bunny-free
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/README.md
+Index: /vol/data/repos/metagenomic-binning-benchmark/README.md
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/README.md
++++ /vol/data/repos/metagenomic-binning-benchmark/README.md
+@@ -67,8 +67,17 @@
+ decision-gate flowchart: every optimization batch is compared against the baseline
+ (timing + RAM + CheckM2/CheckM v1 + CAMI-style F1), committed only if it keeps or
+ improves quality, with ideas combined after failures.
+ 
++## Data preservation and Zenodo
++
++Newly generated benchmark data is staged for preservation with a streaming
++SHA-256 manifest and a provenance/license checklist. The current release plan,
++required owner inputs, and upload verification steps are in
++[`docs/10-data-preservation.md`](docs/10-data-preservation.md). No Zenodo upload
++is performed by the watchdogs; a verified DOI must be recorded before an issue
++is considered fully addressed.
++
+ ## How to resume (for a human or a restarted agent)
+ 
+ 1. Read [`PROGRESS.md`](PROGRESS.md) — it contains the full task definition and the
+    current state checklist.
+
+> build · space-bunny-free
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/docs/01-datasets.md
+Index: /vol/data/repos/metagenomic-binning-benchmark/docs/01-datasets.md
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/docs/01-datasets.md
++++ /vol/data/repos/metagenomic-binning-benchmark/docs/01-datasets.md
+@@ -36,9 +36,11 @@
+ 
+ The next gate is a **medium** derivative (initially N=3,000, hard cap 5 GB),
+ built only after the small COMEBin+CheckM run succeeds. Commands and the
+ space plan are in `docs/06-benchmark-commands.md` and
+-`docs/08-dataset-space-plan.md`.
++`docs/08-dataset-space-plan.md`. Before any public release, follow the checksum,
++licensing, and Zenodo verification checklist in
++[`docs/10-data-preservation.md`](10-data-preservation.md).
+ 
+ ## 2. CAMI II challenge data
+ 
+ | | |
+
+> build · space-bunny-free
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md
+Index: /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md
++++ /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md
+@@ -269,8 +269,12 @@
+       (flowchart, decision gate, adaptive-param ideas); #8 zenodo data archiving →
+       reply posted with proposed package/prep + what I need (token or manual upload)
+ - [x] **docs/09-optimization-strategy.md written and linked from README** (with
+       benchmark-repo commit)
++- [x] **Release preservation staged (issue #8)**: `docs/10-data-preservation.md`
++      and `scripts/make_release_manifest.py` document owner prerequisites,
++      provenance/checksum packaging, and DOI verification; no upload claimed
++      without an approved Zenodo token/manual deposit.
+ - [ ] When baseline done: CheckM2 + CheckM v1 eval (`scripts/run_eval.sh`) → README
+       performance row (wall time per stage, peak RAM from resources.tsv, bins,
+       CheckM2/CheckM means) with linked commit → push
+ - [ ] After baseline: small end-to-end COMEBin + CheckM2/CheckM run via
+
+> build · space-bunny-free
+[0m$ [0mcmp -s PROGRESS.md /vol/data/benchmark/PROGRESS.md; echo cmp_rc=$?; tail -35 /vol/data/benchmark/PROGRESS.md
+cmp_rc=1
+      includes human host-associated CAMI II (Multisample HMP / Toy Human
+      Microbiome), 391 GB free, planned data ≤ ~105 GB. Replies posted.
+- [~] **← CURRENT: baseline demo run in progress** (started 14:36 UTC, commit
+      987db95d8d399f30b7c82a5f5f40ed6bfdc906c7, `-t 32`): training epoch ~160/200
+      (checked 20:55 UTC; ~2.4 min/epoch → ETA ~22:45 UTC worst case;
+      `--earlystop` may cut short; banner shows LIVE epoch + loss/acc each 2 min) —
+      watch `runs/baseline_unmodified/comebin_run.log`
+- [x] **Issues #6/#7/#8 triaged (20:55 UTC)**: #6 optimization → strategy doc;
+      #7 optimization plan → `docs/09-optimization-strategy.md` + README link
+      (flowchart, decision gate, adaptive-param ideas); #8 zenodo data archiving →
+      reply posted with proposed package/prep + what I need (token or manual upload)
+- [x] **docs/09-optimization-strategy.md written and linked from README** (with
+      benchmark-repo commit)
+- [ ] When baseline done: CheckM2 + CheckM v1 eval (`scripts/run_eval.sh`) → README
+      performance row (wall time per stage, peak RAM from resources.tsv, bins,
+      CheckM2/CheckM means) with linked commit → push
+- [ ] After baseline: small end-to-end COMEBin + CheckM2/CheckM run via
+      `scripts/run_small_test.sh` (runner now overlap-guarded and resource-logged)
+- [ ] After the small run passes: build/run the medium 3,000-contig derivative
+      (≤5 GB) via `scripts/make_medium_dataset.sh` (provenance+size in
+      PROVENANCE.txt, md5s) → COMEBin run+eval, then evaluate
+- [ ] Fix batch run on v1.1.0 base (`runs/fix_v11`, worktree COMEBin-v11) →
+      full large benchmark + eval (major commit) → README row
+- [ ] CAMI II marine sample 0 benchmark run → human host-associated sample →
+      CAMI III
+
+## Watchdog / restart
+
+`scripts/agent-watchdog.sh` (installed at `/vol/data/benchmark/bin/`, cron `*/5 * * * *`):
+stale heartbeat (>15 min) → `opencode run` continues session
+`ses_f31799c77ffeTq9gcYgqc4hBhg`; if that failed → fresh session with resume prompt.
+Both prompts first check GitHub issues for user instructions. On quota/token/context
+errors it forces `--model` rotation through the free model list; a successful run
+clears the flag (back to default). Rate limit 6 restarts / 6 h; stops when
+`TASK_COMPLETE` exists. **Agent: touch `/vol/data/benchmark/.heartbeat` regularly.**
+> build · space-bunny-free
+[0m$ [0mcp PROGRESS.md /vol/data/benchmark/PROGRESS.md; cmp -s PROGRESS.md /vol/data/benchmark/PROGRESS.md; echo "PROGRESS mirrors identical"
+PROGRESS mirrors identical
+> build · space-bunny-free
+[0m$ [0mdu -sh /vol/data/datasets/comebin_small 2>/dev/null || true; find /vol/data/datasets/comebin_small -type f -printf '%s %p\n' 2>/dev/null | sort -n | tail -20
+94M	/vol/data/datasets/comebin_small
+0 /vol/data/datasets/comebin_small/bamfiles/bedtools.err
+10992 /vol/data/datasets/comebin_small/contig_names.txt
+14592 /vol/data/datasets/comebin_small/contigs.bed
+259016 /vol/data/datasets/comebin_small/bamfiles/reads.bam.bai
+3651343 /vol/data/datasets/comebin_small/contigs.fa
+94078937 /vol/data/datasets/comebin_small/bamfiles/reads.bam
+[0m$ [0mgit diff --check; git diff -- README.md PROGRESS.md docs/01-datasets.md; git status --short --untracked-files=all
+diff --git a/PROGRESS.md b/PROGRESS.md
+index ff84c42..9a3f99b 100644
+--- a/PROGRESS.md
++++ b/PROGRESS.md
+@@ -270,6 +270,10 @@ included; fixes land on branch `comebin-optimizations` in this repo.
+       reply posted with proposed package/prep + what I need (token or manual upload)
+ - [x] **docs/09-optimization-strategy.md written and linked from README** (with
+       benchmark-repo commit)
++- [x] **Release preservation staged (issue #8)**: `docs/10-data-preservation.md`
++      and `scripts/make_release_manifest.py` document owner prerequisites,
++      provenance/checksum packaging, and DOI verification; no upload claimed
++      without an approved Zenodo token/manual deposit.
+ - [ ] When baseline done: CheckM2 + CheckM v1 eval (`scripts/run_eval.sh`) → README
+       performance row (wall time per stage, peak RAM from resources.tsv, bins,
+       CheckM2/CheckM means) with linked commit → push
+diff --git a/README.md b/README.md
+index af776a8..d08dc77 100644
+--- a/README.md
++++ b/README.md
+@@ -26,10 +26,12 @@ docs/
+   03-fixes.md          fix batches: one section per commit on the branch
+   04-evaluation.md     CheckM2 + CheckM procedure and metric definitions
+   09-optimization-strategy.md  optimization strategy + decision flowchart (issues #6/#7)
++  10-data-preservation.md       Zenodo release checklist and provenance manifest
+ scripts/
+   agent-watchdog.sh    cron watchdog: restarts agent on abort/quota, model rotation
+   run_comebin_baseline.sh  reproducible baseline runner
+   run_eval.sh          CheckM2 + CheckM evaluation runner
++  make_release_manifest.py  streaming SHA-256 manifest for dataset releases
+ envs/                  exported environment YAMLs
+ results/               committed result tables (CSV/MD), one file per run
+ PROGRESS.md            resume state (mirrors /vol/data/benchmark/PROGRESS.md)
+@@ -66,6 +68,15 @@ decision-gate flowchart: every optimization batch is compared against the baseli
+ (timing + RAM + CheckM2/CheckM v1 + CAMI-style F1), committed only if it keeps or
+ improves quality, with ideas combined after failures.
+ 
++## Data preservation and Zenodo
++
++Newly generated benchmark data is staged for preservation with a streaming
++SHA-256 manifest and a provenance/license checklist. The current release plan,
++required owner inputs, and upload verification steps are in
++[`docs/10-data-preservation.md`](docs/10-data-preservation.md). No Zenodo upload
++is performed by the watchdogs; a verified DOI must be recorded before an issue
++is considered fully addressed.
++
+ ## How to resume (for a human or a restarted agent)
+ 
+ 1. Read [`PROGRESS.md`](PROGRESS.md) — it contains the full task definition and the
+diff --git a/docs/01-datasets.md b/docs/01-datasets.md
+index 2b89fae..c864edc 100644
+--- a/docs/01-datasets.md
++++ b/docs/01-datasets.md
+@@ -37,7 +37,9 @@ batches while keeping COMEBin's real pipeline logic.
+ The next gate is a **medium** derivative (initially N=3,000, hard cap 5 GB),
+ built only after the small COMEBin+CheckM run succeeds. Commands and the
+ space plan are in `docs/06-benchmark-commands.md` and
+-`docs/08-dataset-space-plan.md`.
++`docs/08-dataset-space-plan.md`. Before any public release, follow the checksum,
++licensing, and Zenodo verification checklist in
++[`docs/10-data-preservation.md`](10-data-preservation.md).
+ 
+ ## 2. CAMI II challenge data
+ 
+ M PROGRESS.md
+ M README.md
+ M docs/01-datasets.md
+ M status/agent-activity.log
+?? docs/10-data-preservation.md
+?? scripts/make_release_manifest.py
+[0m$ [0mpython3 -m py_compile scripts/make_release_manifest.py; python3 scripts/make_release_manifest.py --help | head -40
+usage: make_release_manifest.py [-h] [--metadata KEY=VALUE] [--exclude GLOB]
+                                [--force]
+                                dataset_dir output
+
+Create a deterministic, checksum-backed manifest for a dataset release. The
+manifest is deliberately independent of Zenodo: it is a reviewable staging
+artifact that can be attached to a deposition after an owner has approved the
+release and supplied credentials. Large benchmark inputs are never copied into
+this repository by this tool. Usage: python3 scripts/make_release_manifest.py
+DATASET_DIR OUTPUT.json \ --metadata source_commit=<sha> --metadata
+dataset=demo-small The output is JSON with sorted relative paths, byte sizes,
+and streaming SHA-256 hashes. Existing output is refused unless --force is
+supplied.
+
+positional arguments:
+  dataset_dir
+  output
+
+options:
+  -h, --help            show this help message and exit
+  --metadata KEY=VALUE  provenance field to include (repeatable)
+  --exclude GLOB        relative-path glob to omit (repeatable)
+  --force               replace an existing manifest
+> build · space-bunny-free
+[0m$ [0mmkdir -p /vol/data/benchmark/meta/release_manifests; python3 scripts/make_release_manifest.py /vol/data/datasets/comebin_small /vol/data/benchmark/meta/release_manifests/comebin_small.json --metadata source_commit=987db95d8d399f30b7c82a5f5f40ed6bfdc906c7 --metadata dataset=comebin_small --metadata source=COMEBin_demo_BATS --force; python3 - <<'PY'
+import json
+p='/vol/data/benchmark/meta/release_manifests/comebin_small.json'
+d=json.load(open(p))
+print('files', d['file_count'], 'bytes', d['total_bytes'])
+for f in d['files']:
+    print(f['path'], f['bytes'], f['sha256'][:16])
+PY
+wrote /vol/data/benchmark/meta/release_manifests/comebin_small.json (6 files, 98014880 bytes)
+files 6 bytes 98014880
+bamfiles/bedtools.err 0 e3b0c44298fc1c14
+bamfiles/reads.bam 94078937 6449b93f55c667ac
+bamfiles/reads.bam.bai 259016 fa68556ba1c0418e
+contig_names.txt 10992 c7a13e80a60a2bba
+contigs.bed 14592 3c4eccd142432409
+contigs.fa 3651343 0215f5a983a6e5ba
+> build · space-bunny-free
+[0m$ [0minstall -m 755 scripts/make_release_manifest.py /vol/data/benchmark/bin/make_release_manifest.py; cmp -s scripts/make_release_manifest.py /vol/data/benchmark/bin/make_release_manifest.py; echo "manifest tool deployed identical"
+manifest tool deployed identical
+> build · space-bunny-free
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/CHANGELOG.md
+Index: /vol/data/repos/metagenomic-binning-benchmark/CHANGELOG.md
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/CHANGELOG.md
++++ /vol/data/repos/metagenomic-binning-benchmark/CHANGELOG.md
+@@ -2,8 +2,18 @@
+ 
+ All notable changes to the metagenomic-binning-benchmark automation &
+ documentation.
+ 
++## 2026-09-23 — Reproducible dataset preservation staging
++
++- Added `docs/10-data-preservation.md` with the Zenodo release scope, owner/token
++  prerequisites, licensing and provenance checklist, and post-upload DOI
++  verification steps.
++- Added `scripts/make_release_manifest.py` to stream SHA-256 hashes and sizes
++  into a deterministic manifest outside the dataset directory; the small
++  derived dataset has a local manifest ready for review. No upload is claimed
++  until an approved Zenodo deposit is verified.
++
+ ## 2026-09-23 — Issues can now be closed when addressed (`issue-closer`)
+ 
+ ### Added — deterministic issue closing, zero LLM tokens
+ 
+
+> build · space-bunny-free
+[0m← [0mWrite /vol/data/benchmark/meta/.issues_done/7
+Created file successfully: /vol/data/benchmark/meta/.issues_done/7
+> build · space-bunny-free
+[0m$ [0mbash /vol/data/benchmark/bin/issue-closer.sh; rc=$?; echo issue_closer_rc=$rc; gh issue view 7 -R paulzierep/metagenomic-binning-benchmark --json state,closedAt,comments --jq '{state,closedAt,lastComment:.comments[-1].body}'; tail -20 /vol/data/benchmark/logs/issue-closer.log
+issue_closer_rc=0
+{"closedAt":"2026-09-23T20:57:42Z","lastComment":"Closed by automation — addressed: Verified complete — optimization decision flowchart, commit-selection gates, metrics, and README link are committed in f8dd2e4; issue comment 5802797931 records delivery.","state":"CLOSED"}
+2026-09-23T19:25:35+00:00 [issue-closer] #3 state lookup failed (OPEN); keeping marker for retry
+2026-09-23T19:25:35+00:00 [issue-closer] #4 state lookup failed (OPEN); keeping marker for retry
+2026-09-23T19:25:36+00:00 [issue-closer] #5 state lookup failed (OPEN); keeping marker for retry
+2026-09-23T19:25:36+00:00 [issue-closer] RESULT closed=0 (no failures)
+2026-09-23T19:25:50+00:00 [issue-closer] closed #3 (I think comebin is stuck): Verified healthy — training advancing normally (epoch 100+, loss falling), no restart needed; live epoch now shown in README banner so it never looks frozen again.
+2026-09-23T19:25:53+00:00 [issue-closer] closed #4 (Why agent often broken): Root cause fixed: opencode run --auto is single-turn in v2; watchdog now drives a persistent turn-loop on one session (crash-loop halved). Documented in docs/05 + CHANGELOG.
+2026-09-23T19:25:57+00:00 [issue-closer] closed #5 (I updated the comebin fork): Rebased onto user v1.1.0 fork (origin/master 1b476a4); baseline + evaluation scripts updated; verified via marine small-test prep.
+2026-09-23T19:25:59+00:00 [issue-closer] RESULT closed=3 (no failures)
+2026-09-23T19:26:22+00:00 [issue-closer] RESULT closed=0 (no failures)
+2026-09-23T20:57:43+00:00 [issue-closer] closed #7 (Optimization plan): Verified complete — optimization decision flowchart, commit-selection gates, metrics, and README link are committed in f8dd2e4; issue comment 5802797931 records delivery.
+2026-09-23T20:57:45+00:00 [issue-closer] RESULT closed=1 (no failures)
+> build · space-bunny-free
+[0m$ [0mgit status --short --untracked-files=all; git diff --stat; git diff --cached --name-status
+M CHANGELOG.md
+ M PROGRESS.md
+ M README.md
+ M docs/01-datasets.md
+ M status/agent-activity.log
+?? docs/10-data-preservation.md
+?? scripts/make_release_manifest.py
+ CHANGELOG.md              | 10 ++++++++++
+ PROGRESS.md               |  4 ++++
+ README.md                 | 11 +++++++++++
+ docs/01-datasets.md       |  4 +++-
+ status/agent-activity.log |  1 +
+ 5 files changed, 29 insertions(+), 1 deletion(-)
+[0m$ [0mps -o pid,ppid,pgid,etime,stat,args -p 19182,21545,155458; awk '{print $1,$2,$5,$6}' /vol/data/benchmark/.active_run; stat -c '%y %s' /vol/data/benchmark/runs/baseline_unmodified/comebin_run.log; grep -c '^DEBUG:root:Epoch' /vol/data/benchmark/runs/baseline_unmodified/comebin_out/comebin_res/training.log 2>/dev/null || true
+PID    PPID    PGID     ELAPSED STAT COMMAND
+  19182       1   19181    06:21:47 S    bash /vol/data/repos/metagenomic-binning-benchmark/scripts/run_comebin_baseline.sh
+  21545   19201   19181    06:14:19 Rl   python main.py train --data /vol/data/benchmark/runs/baseline_unmodified/comebin_out/data_augmentation --temperature 0.15 --emb_szs_forcov 2048 --batch_size 1024 --emb_szs 2048 --n_views 6 --add_model_for_coverage --output_path /vol/data/benchmark/runs/baseline_unmodified/comebin_out/comebin_res --earlystop --addvars --vars_sqrt --num_threads 32
+ 155458  155457  155457       04:51 S    bash /vol/data/benchmark/bin/meta-watchdog.sh
+19182 19181 1790175308 
+2026-09-23 20:57:51.425000000 +0000 287872
+161
+[0m$ [0mfor f in agent-watchdog.sh benchmark-watchdog.sh meta-watchdog.sh status-heartbeat.sh issue-closer.sh; do cmp -s "scripts/$f" "/vol/data/benchmark/bin/$f" || echo "MISMATCH $f"; done; cmp -s scripts/make_release_manifest.py /vol/data/benchmark/bin/make_release_manifest.py || echo 'MISMATCH manifest'; python3 -m py_compile scripts/make_release_manifest.py; git diff --check
+{"exit":0,"truncated":false,"output":"","status":"completed"}
+> build · space-bunny-free
+[0m$ [0mgit diff -- status/agent-activity.log; tail -8 status/agent-activity.log
+diff --git a/status/agent-activity.log b/status/agent-activity.log
+index ce2164c..2c0406e 100644
+--- a/status/agent-activity.log
++++ b/status/agent-activity.log
+@@ -40,3 +40,4 @@ while working; the status-heartbeat commits+pushes it with every tick.
+ 2026-09-23T21:26Z | Pre-completion verification during baseline wait: (1) marine contig-subset dry run on real anonymous_gsa.fasta.gz -> exactly 41,988 contigs >=2000bp in 12.9s; (2) CheckM2 db present (uniref100.KO.1.dmnd 3.08GB); (3) CheckM v1 data root = pkg DATA_CONFIG JSON -> /vol/data/benchmark/checkm_ref (checkm.hmm, marker sets, genome_tree all present) - eval will run cleanly post-baseline.
+ 2026-09-23T21:35Z | Supervisor context absorbed: issue #2 follow-up (19:19Z) codifies workflow (small test -> medium 3000ct/5GB -> large only post-major-commit) + runner hardening commit 899f7e7 (run_small_test/run_eval overlap guards confirmed in repo). issue-closer closed #3 #4 #5 (19:25Z) - user accepted resolutions. Wrote scripts/make_medium_dataset.sh (mirrors make_small_dataset.sh, N=3000, <=5GB cap, PROVENANCE.txt+md5s).
+ 2026-09-23 20:56:01 UTC - docs: wrote docs/09-optimization-strategy.md (issue #7), README link, PROGRESS sync; triaging issues #6/#7/#8
++2026-09-23 20:56:28 UTC - issues #6/#7/#8 replied (#6-5802797650, #7-5802797931, #8-5802798274); docs/09 + README pushed f8dd2e4
+2026-09-23T21:20Z | Validated prep_cami2_marine.sh awk filters (contig >=minlen subset + binning_gs subset) on synthetic mini-fasta - both correct. Run small-test CLI check: old baseline (987db95) getopts a:o:p:n:t:l:e:c:b: supports -b/-e/-c, so run_small_test.sh works on pristine + v1.1.0 sources. Disk OK (381G free on /vol/data).
+2026-09-23T21:22Z | Heartbeat turn: baseline verified healthy epoch 116/200 (2.3 min/epoch, ETA ~22:30 UTC). Repo clean on origin/main (supervisor docs/06+07 edits left uncommitted as theirs). README perf table confirmed: baseline row has live status col (heartbeat-driven); wall time/RAM/bins/CheckM2/CheckM cols fill post-run.
+2026-09-23T21:30Z | Wrote scripts/make_results_csv.py (results/<run>.csv contract from README+docs/04: means + MIMAG HQ/MQ counts); tested on synthetic eval tables - correct. docs/04 updated.
+2026-09-23T19:18Z | supervisor hardening: hardened liveness/timeouts/locks/issue markers/benchmark identity; small+medium issue #2 workflow documented; active baseline PID 19182 left untouched
+2026-09-23T21:26Z | Pre-completion verification during baseline wait: (1) marine contig-subset dry run on real anonymous_gsa.fasta.gz -> exactly 41,988 contigs >=2000bp in 12.9s; (2) CheckM2 db present (uniref100.KO.1.dmnd 3.08GB); (3) CheckM v1 data root = pkg DATA_CONFIG JSON -> /vol/data/benchmark/checkm_ref (checkm.hmm, marker sets, genome_tree all present) - eval will run cleanly post-baseline.
+2026-09-23T21:35Z | Supervisor context absorbed: issue #2 follow-up (19:19Z) codifies workflow (small test -> medium 3000ct/5GB -> large only post-major-commit) + runner hardening commit 899f7e7 (run_small_test/run_eval overlap guards confirmed in repo). issue-closer closed #3 #4 #5 (19:25Z) - user accepted resolutions. Wrote scripts/make_medium_dataset.sh (mirrors make_small_dataset.sh, N=3000, <=5GB cap, PROVENANCE.txt+md5s).
+2026-09-23 20:56:01 UTC - docs: wrote docs/09-optimization-strategy.md (issue #7), README link, PROGRESS sync; triaging issues #6/#7/#8
+2026-09-23 20:56:28 UTC - issues #6/#7/#8 replied (#6-5802797650, #7-5802797931, #8-5802798274); docs/09 + README pushed f8dd2e4
+> build · space-bunny-free

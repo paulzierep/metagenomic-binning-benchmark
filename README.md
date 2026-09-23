@@ -1,6 +1,6 @@
 <!--AGENT-STATUS-->
 
-> 🟢 **Agent status:** `running` · ⏱ `2026-09-23T22:56 CEST` · 🏃 train baseline_unmodified: epoch 159/200 · loss 2.86026930809021 · top1 98.94856262207031 · 🧠 `big-pickle` · [status.log](status/status.log)
+> 🟢 **Agent status:** `running` · ⏱ `2026-09-23T22:58 CEST` · 🏃 train baseline_unmodified: epoch 160/200 · loss 2.8754546642303467 · top1 98.88020324707031 · 🧠 `big-pickle` · [status.log](status/status.log)
 
 # metagenomic-binning-benchmark
 
@@ -26,10 +26,12 @@ docs/
   03-fixes.md          fix batches: one section per commit on the branch
   04-evaluation.md     CheckM2 + CheckM procedure and metric definitions
   09-optimization-strategy.md  optimization strategy + decision flowchart (issues #6/#7)
+  10-data-preservation.md       Zenodo release checklist and provenance manifest
 scripts/
   agent-watchdog.sh    cron watchdog: restarts agent on abort/quota, model rotation
   run_comebin_baseline.sh  reproducible baseline runner
   run_eval.sh          CheckM2 + CheckM evaluation runner
+  make_release_manifest.py  streaming SHA-256 manifest for dataset releases
 envs/                  exported environment YAMLs
 results/               committed result tables (CSV/MD), one file per run
 PROGRESS.md            resume state (mirrors /vol/data/benchmark/PROGRESS.md)
@@ -44,7 +46,7 @@ Raw per-run outputs stay in `/vol/data/benchmark/runs/`, parsed CSVs in `results
 
 | Run | Date | Source commit | Dataset | Threads | Wall time | Peak RAM | Bins | CheckM2 comp/cont % | CheckM comp/cont % | Status |
 |---|---|---|---|---|---|---|---|---|---|---|
-| `baseline_unmodified` | – | [987db95](https://github.com/paulzierep/COMEBin/commit/987db95d8d399f30b7c82a5f5f40ed6bfdc906c7) (upstream) | COMEBin demo (29,434 contigs) | 32 | – | – | – | – | – | ⏳ running · epoch 159/200 · loss 2.86026930809021 · top1 98.94856262207031 |
+| `baseline_unmodified` | – | [987db95](https://github.com/paulzierep/COMEBin/commit/987db95d8d399f30b7c82a5f5f40ed6bfdc906c7) (upstream) | COMEBin demo (29,434 contigs) | 32 | – | – | – | – | – | ⏳ running · epoch 160/200 · loss 2.8754546642303467 · top1 98.88020324707031 |
 
 Column contract: **Wall time** = total seconds (plus per-stage breakdown in
 `docs/02-comebin-baseline.md`), **Bins** = bins exported (≥200 kb filter noted),
@@ -65,6 +67,15 @@ See [`docs/09-optimization-strategy.md`](docs/09-optimization-strategy.md) for t
 decision-gate flowchart: every optimization batch is compared against the baseline
 (timing + RAM + CheckM2/CheckM v1 + CAMI-style F1), committed only if it keeps or
 improves quality, with ideas combined after failures.
+
+## Data preservation and Zenodo
+
+Newly generated benchmark data is staged for preservation with a streaming
+SHA-256 manifest and a provenance/license checklist. The current release plan,
+required owner inputs, and upload verification steps are in
+[`docs/10-data-preservation.md`](docs/10-data-preservation.md). No Zenodo upload
+is performed by the watchdogs; a verified DOI must be recorded before an issue
+is considered fully addressed.
 
 ## How to resume (for a human or a restarted agent)
 
