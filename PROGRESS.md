@@ -3,7 +3,8 @@
 > **Resume document.** If you (the agent) are reading this after a restart, start here,
 > verify "Current state" against what is actually on disk under `/vol/data`, and
 > continue from the first unfinished step. Update this file after every meaningful step.
-> Live copy: `/vol/data/benchmark/PROGRESS.md` (keep both in sync).
+> Live copy: `/vol/data/benchmark/PROGRESS.md` (keep both in sync: edit both, or copy
+> one over the other after each update).
 
 ## Task definition
 
@@ -21,6 +22,34 @@ Requirements from the user:
    **CheckM2 and CheckM (v1)**.
 4. Document everything in this repo.
 
+## Standing authorizations (user-confirmed 2026-09-23 — do NOT re-ask)
+
+1. **This VM, fully**: shell commands (incl. passwordless sudo), installing packages,
+   creating/modifying anything under `/vol/data` and `/home/ubuntu`, long-running
+   background jobs. Backed by `~/.config/opencode/opencode.json`
+   (permissions: `*`→allow incl. external_directory). OpenCode default already allows
+   `*`; the only rule that matters is `external_directory: * → allow` (that was the
+   source of the prompts, because `/vol/data` is outside the session location).
+2. **Both GitHub repos**: `paulzierep/metagenomic-binning-benchmark` AND
+   `paulzierep/COMEBin` — git commit/push (credential helper `~/.git-credentials`,
+   mode 600) and gh CLI (authenticated, `~/.config/gh/hosts.yml`).
+3. **Issues workflow**: the user files ideas/instructions as GitHub **issues**; the
+   agent reads them and **comments** back (see below). ⚠️ the Issues feature is
+   currently DISABLED on `paulzierep/COMEBin` (needs a token with Administration scope
+   or a manual repo-Settings toggle — user must flip it or grant scope). Ideas go to
+   the benchmark repo for now (idea box: issue #1).
+
+## Issues workflow (user-facing)
+
+- Where to file ideas: any issue in `paulzierep/metagenomic-binning-benchmark`
+  (inbox issue #1 documents the format), or — once enabled — `paulzierep/COMEBin`.
+- Agent behavior: at restart (watchdog prompt) and repeatedly during work, run
+  `gh issue list -R <repo> --state open --json number,title,updatedAt` on both repos;
+  act on new/updated issues; reply with `gh issue comment`; record in this file.
+- Commands:
+  `gh issue list -R paulzierep/metagenomic-binning-benchmark --state open --json number,title,updatedAt`
+  `gh issue comment -R paulzierep/metagenomic-binning-benchmark <#n> --body "..."`
+
 ## Decisions (confirmed by user)
 
 | Topic | Decision |
@@ -30,6 +59,7 @@ Requirements from the user:
 | Environment | micromamba + conda envs (no Docker for tool execution) |
 | Storage | all git repos, datasets, benchmark data under `/vol/data` |
 | Agent restart | cron watchdog `scripts/agent-watchdog.sh`: restarts on abort, rotates to free models on quota exhaustion |
+| Permissions | full authorization on VM + both repos (see above) |
 
 ## Directory layout (authoritative)
 
@@ -57,14 +87,14 @@ Requirements from the user:
   `opencode/mimo-v2.6-flash-free`, `opencode/muse-spark-1.3-contributor-free`,
   `opencode/ling-3.0-flash-fin-free`, `opencode/nemotron-3.5-lightning-free`.
 - Session ID of the primary agent session: `ses_f31799c77ffeTq9gcYgqc4hBhg` (cwd `/home/ubuntu`).
-- GitHub PAT stored in `~/.git-credentials` (600) via `credential.helper store`.
+- GitHub PAT stored in `~/.git-credentials` (600) + gh CLI (`~/.config/gh/hosts.yml`).
 
 ## COMEBin demo dataset
 
 - Google Drive file id `1xWpN2z8JTaAzWW4TcOl0Lr4Y_x--Fs5s` (gdown).
 - Contigs: `comebin_test_data/BATS_SAMN07137077_METAG.scaffolds.min500.fasta.f1k.fasta`
   — **29,434 sequences**, ≈53 MB.
-- BAM: `comebin_test_data/bamfiles/SRR5720343.bam` — 5.07 GB (already indexed? verify `.bai`).
+- BAM: `comebin_test_data/bamfiles/SRR5720343.bam` — 5.07 GB (verify/refresh `.bai`).
 - `excepted_output/` = upstream reference run incl. CheckM output → validate against it.
 - Quality scored by marker genes via CheckM2/CheckM; no read-level truth needed.
 
@@ -113,16 +143,18 @@ included; fixes land on branch `comebin-optimizations` in this repo.
 - [x] Base env `/vol/data/envs/comebin` installed (python3.10, numpy1.23, sklearn1.1,
       biopython1.81, pytorch-cpu, bedtools, bwa, samtools, hmmer, fraggenescan,
       prodigal, tensorboard, ...)
-- [x] GitHub PAT configured; this repo cloned to `/vol/data/repos/metagenomic-binning-benchmark`
-- [x] Watchdog installed (cron `*/5 * * * *`), free-model rotation on quota errors
-- [ ] **← CURRENT: finish env deps** (scanpy/igraph/leidenalg/hnswlib/checkm-genome
-      install running: `/vol/data/logs/env_comebin_deps2.log`) + verify binaries
-      (`run_FragGeneScan.pl`, `hmmsearch`, `bedtools`, `checkm` on PATH in env)
+- [x] Docs written & pushed to `main` (README, PROGRESS, docs/00–05, scripts/, .gitignore)
+- [x] gh CLI 2.45.0 installed + authenticated; idea-inbox issue #1 created
+- [x] Standing permissions configured (`~/.config/opencode/opencode.json`)
+- [x] Watchdog installed (cron `*/5 * * * *`), free-model rotation, prompts now check GitHub issues
+- [ ] **← CURRENT: env deps solve** (`scanpy/igraph/leidenalg/hnswlib/checkm-genome` on py3.10;
+      running since 14:12, still "Resolving" — if >15 min total, kill and split:
+      (a) scanpy-tier, (b) checkm-genome + hnswlib, detailed in docs/00-setup.md)
+- [ ] Verify binaries on PATH in env: `run_FragGeneScan.pl`, `hmmsearch`, `bedtools`, `checkm`
 - [ ] Check BAM index (`.bai`); if missing → `samtools index` (5 GB, ~min)
 - [ ] Run unmodified COMEBin → `benchmark/runs/baseline_unmodified/`
       (`scripts/run_comebin_baseline.sh`, `-t 32` to use all cores)
-- [ ] CheckM2 + CheckM envs; run on baseline bins → `benchmark/results/` +
-      `results/` tables committed here
+- [ ] CheckM2 + CheckM envs; run on baseline bins → `results/` tables committed
 - [ ] Fix batch 1 → commit on `comebin-optimizations` → re-run benchmark → record
 - [ ] ... further batches ...
 - [ ] CAMI II + CAMI III datasets, repeat
@@ -132,6 +164,7 @@ included; fixes land on branch `comebin-optimizations` in this repo.
 `scripts/agent-watchdog.sh` (installed at `/vol/data/benchmark/bin/`, cron `*/5 * * * *`):
 stale heartbeat (>15 min) → `opencode run` continues session
 `ses_f31799c77ffeTq9gcYgqc4hBhg`; if that failed → fresh session with resume prompt.
-On quota/token/context errors it forces `--model` rotation through the free model list;
-a successful run clears the flag (back to default). Rate limit 6 restarts / 6 h; stops
-when `TASK_COMPLETE` exists. **Agent: touch `/vol/data/benchmark/.heartbeat` regularly.**
+Both prompts first check GitHub issues for user instructions. On quota/token/context
+errors it forces `--model` rotation through the free model list; a successful run
+clears the flag (back to default). Rate limit 6 restarts / 6 h; stops when
+`TASK_COMPLETE` exists. **Agent: touch `/vol/data/benchmark/.heartbeat` regularly.**

@@ -82,10 +82,35 @@ mid-conversation**; switching happens only at watchdog **restart** time via
 Both continue-mode and fresh-mode prompts require the agent to:
 
 1. read `/vol/data/benchmark/PROGRESS.md` (mirror: this repo's `PROGRESS.md`),
-2. verify its "Current state" checklist **against disk** before acting,
-3. continue from the first unfinished step,
-4. keep touching `.heartbeat`,
-5. do nothing if `TASK_COMPLETE` exists.
+2. **check GitHub issues first** (both repos) — act on new/updated issues from the
+   user and reply with `gh issue comment` (see "Issues loop" below),
+3. verify its "Current state" checklist **against disk** before acting,
+4. continue from the first unfinished step,
+5. keep touching `.heartbeat`,
+6. do nothing if `TASK_COMPLETE` exists.
+
+## Issues loop (user files ideas as GitHub issues)
+
+The user can leave ideas/instructions as GitHub issues; the agent reads them and
+replies as comments. This is checked at every restart (via the prompt above) and
+periodically during work.
+
+| Repo | Issues | Status |
+|---|---|---|
+| `paulzierep/metagenomic-binning-benchmark` | **enabled** — idea inbox is issue #1 | working now |
+| `paulzierep/COMEBin` | **disabled** — the Issues feature is off on the fork | needs a token with `Administration` scope (or the user toggles *Settings → General → Features → Issues*) |
+
+Commands:
+
+```bash
+gh issue list -R paulzierep/metagenomic-binning-benchmark --state open --json number,title,updatedAt
+gh issue comment -R paulzierep/metagenomic-binning-benchmark <n> --body "..."
+```
+
+Whenever a user issue is acted on, the agent posts a comment summarizing what was
+done and documenting it in this repo (`docs/03-fixes.md` for code changes,
+`docs/01-datasets.md` for datasets, `results/` for benchmarks), then updates
+`PROGRESS.md`.
 
 ## Operational notes
 
