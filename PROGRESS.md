@@ -244,7 +244,7 @@ included; fixes land on branch `comebin-optimizations` in this repo.
       (Multisample HMP / Toy Human Microbiome 5 body sites); 391 GB free, plan ≤
       ~100 GB future → OK. Replies posted
 - [~] **← CURRENT: baseline demo run in progress** (started 14:36 UTC, commit
-      987db95d8d399f30b7c82a5f5f40ed6bfdc906c7, `-t 32`): training epoch ~108/200
+      987db95d8d399f30b7c82a5f5f40ed6bfdc906c7, `-t 32`): training epoch ~110/200
       (~2.4 min/epoch → ETA ~22:30 UTC worst case; `--earlystop` may cut short;
       banner shows LIVE epoch each 10 min) —
       watch `runs/baseline_unmodified/comebin_run.log`

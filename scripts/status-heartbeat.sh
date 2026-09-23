@@ -67,6 +67,27 @@ sync_agent_logs
 tsize=$(wc -c < status/agent-run.log 2>/dev/null || echo 0)
 wsize=$(wc -c < status/watchdog.log 2>/dev/null || echo 0)
 
+# ---- model of the (last) agent turn + live run progress --------------------- #
+# Model: parsed from the transcript's "> <agent> · <model>" lines (latest turn);
+# fallback to opencode's recorded default. Live run: epoch/batch probe so the
+# banner never looks frozen (issue #3 regression fix).
+last_model=$(grep -aoE '^> [^·]+ · [^ ]+' status/agent-run.log 2>/dev/null \
+             | tail -1 | sed -E 's/^> [^·]+ · //')
+if [ -z "$last_model" ]; then
+    last_model=$(sed -n 's/.*"modelID":"\([^"]*\)".*/\1/p' \
+                 /home/ubuntu/.local/state/opencode/model.json 2>/dev/null | head -1)
+fi
+last_model="${last_model:-unknown}"
+if [ -f "$BENCH/.active_run" ]; then
+    ardir=$(awk '{print $4}' "$BENCH/.active_run" 2>/dev/null)
+    if [ -n "$ardir" ] && [ -f "$ardir/comebin_out/comebin_res/training.log" ]; then
+        epoch=$(grep -c '^DEBUG:root:Epoch' "$ardir/comebin_out/comebin_res/training.log" 2>/dev/null || echo 0)
+        epoch=${epoch:-0}
+        [ "$epoch" -gt 0 ] 2>/dev/null \
+            && text="$text · run: epoch $epoch/200 · $(tail -c 300 "$ardir/comebin_run.log" 2>/dev/null | tr '\r' '\n' | grep -oE '[0-9]+/[0-9]+' | tail -1) batches"
+    fi
+fi
+
 # ---- 1. README first line: status banner (marker-replaced) ----------------- #
 case "$alive" in
   yes) dot="🟢"; state="running" ;;
@@ -109,14 +130,15 @@ session="ses_f31799c77ffeTq9gcYgqc4hBhg"
   echo "| 📌 Current work | $text |"
   echo "| ⚙️ Load · uptime | \`$load\` · $upt — 32 cores, 62 GiB, no GPU |"
   echo "| 💾 RAM used/total | \`$mem\` |"
-  echo "| 🔗 Session | \`$session\` (default model; watchdog rotates to free models on quota) |"
+  echo "| 🤖 Model | \`$last_model\` (last turn; watchdog rotates to free models on quota) |"
+  echo "| 🔗 Session | \`$session\` |"
   echo "| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push \`$lastcommit\` |"
   echo "| 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · \`${tsize} B\` — every run, command & tool result |"
   echo "| 📈 Timeline | [status/status.log](status/status.log) |"
 } > status/current.md
 
 # ---- 3. timeline ----------------------------------------------------------- #
-printf '%s\talive=%s\tmem=%s\tload=%s\ttranscript=%sB\twatchdog=%sB\t%s\n' "$now" "$alive" "$mem" "$load" "$tsize" "$wsize" "$text" >> status/status.log
+printf '%s\talive=%s\tmem=%s\tload=%s\ttranscript=%sB\twatchdog=%sB\tmodel=%s\t%s\n' "$now" "$alive" "$mem" "$load" "$tsize" "$wsize" "$last_model" "$text" >> status/status.log
 
 # ---- 4. sync per-run detailed logs into the repo (small files only) ------- #
 sync_run_logs() {
