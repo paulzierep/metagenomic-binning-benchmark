@@ -5322,3 +5322,271 @@ syntax OK both
 
 samtools 1.24
 > build · big-pickle
+Both tools present (samtools 1.24). Now updating docs/01 with the marine input decision — let me check its current tail:
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark
+tail -30 docs/01-datasets.md
+coverage input are prepared for COMEBin (per-sample BAMs).
+
+**Marine reads + per-sample inputs** (https://frl.publisso.de/data/frl:6425521/marine/):
+
+| Path | Size (approx) | Use |
+|---|---|---|
+| `short_read/marmgCAMI2_sample_N_{reads,bam,contigs}.tar.gz` | reads 5.2 G, bam 4.6–4.7 G, contigs 360–436 M | COMEBin input (bam = coverage; contigs = assembly) |
+| `long_read/marmgCAMI2_sample_N_{reads,bam,contigs}.tar.gz` | bam 5.9 G, reads 4.4 G, contigs 315–380 M | same, long-read mode |
+| `hybrid/*` | 11 G/sample, pooled 106 G | too big for now |
+| `marmgCAMI2_genomes.tar.gz` | 798 M | gold-standard reference genomes |
+
+Sample 0 (short-read) contigs+BAM pre-downloaded → `/vol/data/datasets/cami_II/marine_reads/`
+(2026-09-23; md5 `412b657ec10dda4d6510aaf39f0236f8` (contigs) / `1de385b6641a32b1acd0806f638d7aa6`
+(bam), `gzip -t` OK). **BAMs are supplied pre-mapped** — no read alignment step
+needed for COMEBin input (reads `_reads.tar.gz` 5.2 GB/sample NOT required).
+
+**Marine structure — observed (sample 0, short-read):**
+- `contigs/`: `anonymous_gsa.fasta.gz` (= pooled ground-truth contigs, names `S0C0…`),
+  `binning_gs.tsv` (ground truth bin→contig), `gsa_mapping.tsv.gz` (name map)
+- `bam/`: **590 per-genome BAMs** (4.7 G total; `Otu*.bam`, `RNODE_*`; each mapped to its
+  own genome assembly contigs `NODE_*`) + `.bai`
+- → COMEBin needs ONE coverage BAM over ONE contig set; per-genome BAMs do **not**
+  merge directly (duplicate `NODE_*` names across genomes). TODO at CAMI II phase:
+  pick contig set (pooled assembly from `marine/pooled/short/*.fasta`, or gsa contigs)
+  and map the sample reads (`short_read/.../reads.tar.gz`) to it (`bwa mem`, post-baseline,
+  CPU-bound) to build the coverage input.
+
+## 3. CAMI III challenge data (planned)
+
+TODO — same fields as above.
+> build · big-pickle
+The doc's "reads NOT required" line is now outdated (reads ARE needed for bwa mem). Updating docs/01 with the finalized decision:
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/docs/01-datasets.md
+Index: /vol/data/repos/metagenomic-binning-benchmark/docs/01-datasets.md
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/docs/01-datasets.md
++++ /vol/data/repos/metagenomic-binning-benchmark/docs/01-datasets.md
+@@ -65,21 +65,34 @@
+ | `marmgCAMI2_genomes.tar.gz` | 798 M | gold-standard reference genomes |
+ 
+ Sample 0 (short-read) contigs+BAM pre-downloaded → `/vol/data/datasets/cami_II/marine_reads/`
+ (2026-09-23; md5 `412b657ec10dda4d6510aaf39f0236f8` (contigs) / `1de385b6641a32b1acd0806f638d7aa6`
+-(bam), `gzip -t` OK). **BAMs are supplied pre-mapped** — no read alignment step
+-needed for COMEBin input (reads `_reads.tar.gz` 5.2 GB/sample NOT required).
++(bam), `gzip -t` OK). Reads archive `marmgCAMI2_sample_0_reads.tar.gz` (5.2 G) also
++downloaded + extracted (2026-09-23) → `reads_0/.../reads/`.
+ 
+ **Marine structure — observed (sample 0, short-read):**
+-- `contigs/`: `anonymous_gsa.fasta.gz` (= pooled ground-truth contigs, names `S0C0…`),
+-  `binning_gs.tsv` (ground truth bin→contig), `gsa_mapping.tsv.gz` (name map)
++- `contigs/`: `anonymous_gsa.fasta.gz` (= pooled ground-truth contigs, names `S0C0…`,
++  **1,475,972 contigs / 909 Mbp**), `binning_gs.tsv` (ground truth `S0C* → Otu genome`),
++  `gsa_mapping.tsv.gz` (name map)
++- `reads/`: `anonymous_reads.fq.gz` — single pooled **interleaved paired-end** file
++  (`@S0R0/1`+`@S0R0/2`, 35.25 M reads ≈ 17.6 M pairs); `reads_mapping.tsv.gz` maps
++  reads → **genome** (`Otu*`), NOT to contigs
+ - `bam/`: **590 per-genome BAMs** (4.7 G total; `Otu*.bam`, `RNODE_*`; each mapped to its
+   own genome assembly contigs `NODE_*`) + `.bai`
+-- → COMEBin needs ONE coverage BAM over ONE contig set; per-genome BAMs do **not**
+-  merge directly (duplicate `NODE_*` names across genomes). TODO at CAMI II phase:
+-  pick contig set (pooled assembly from `marine/pooled/short/*.fasta`, or gsa contigs)
+-  and map the sample reads (`short_read/.../reads.tar.gz`) to it (`bwa mem`, post-baseline,
+-  CPU-bound) to build the coverage input.
+ 
++**Input decision (2026-09-23, docs 01+06):** COMEBin needs ONE coverage BAM over ONE
++contig set; per-genome BAMs do **not** merge (duplicate `NODE_*` names). Both native
++contig sets are far too large for COMEBin training (gsa 1.48 M contigs, pooled Megahit
++1.69 M). Chosen approach (matches issue-#2 small-data methodology, real CAMI data):
++- contigs = `anonymous_gsa.fasta.gz` **subset to ≥ 2000 bp** → **41,988 contigs**
++  (≥1 kbp: 124,436 · ≥2 kbp: 41,988 · ≥5 kbp: 11,605)
++- reads = all `anonymous_reads.fq.gz` → `bwa mem -p -t 32` (interleaved) → single BAM
++  (reads of unkept contigs produce no alignment; `S0C*` names preserved)
++- ground truth = `binning_gs.tsv` subset to kept contigs → direct recall/ARI eval
++- prep: `scripts/prep_cami2_marine.sh` (bwa index/mem + samtools sort/index + input_meta)
++- run: `scripts/run_comebin_fix.sh` with `CONTIGS=…/marine_sample0_input/contigs.fa`,
++  `BAMDIR=…/bamfiles`, `MODE=cami2`, `SRC_COMEBIN=/vol/data/repos/COMEBin-v11`
++  (v1.1.0, `-d cpu`, `-s 42`)
++
+ ## 3. CAMI III challenge data (planned)
+ 
+ TODO — same fields as above.
+
+> build · big-pickle
+Now updating PROGRESS.md (both copies) and appending to the activity log:
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark
+grep -n "Current state\|epoch\|## " PROGRESS.md | head -20
+4:> verify "Current state" against what is actually on disk under `/vol/data`, and
+9:## Task definition
+25:## Standing authorizations (user-confirmed 2026-09-23 — do NOT re-ask)
+42:## Run logging — where everything is (per run: `runs/<run>/`)
+47:| `comebin_run.log` | **full stdout+stderr of `run_comebin.sh`** — verbose timestamps, every stage (`generate_aug_data`, coverage, FragGeneScan, epochs with progress bars, clustering) | live (tee) |
+71:## Run logging — how to read phases
+73:Watch progress: `tail -f runs/<run>/comebin_run.log` (epoch bars update in place, use
+76:## Resource policy (user: max resources for the benchmark, keep some for the agent, don't break anything)
+88:## Issues workflow (user-facing)
+99:## Decisions (confirmed by user)
+110:## Directory layout (authoritative)
+127:## Environment facts
+138:## COMEBin demo dataset
+147:## Known COMEBin bugs / perf issues (candidates for fix batches)
+184:## Current state
+204:      `status/agent-activity.log` — pushed every 10 min. Now embeds a **live epoch
+205:      probe** from the active run (banner shows `epoch N/200 · x/28 batches`), so
+209:      46/200 epochs, ETA ~6 h worst case): run is healthy; the frozen look was a
+248:      987db95d8d399f30b7c82a5f5f40ed6bfdc906c7, `-t 32`): training epoch ~110/200
+249:      (~2.4 min/epoch → ETA ~22:30 UTC worst case; `--earlystop` may cut short;
+> build · big-pickle
+[0m→ [0mRead /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md [90m[limit=40, offset=184][0m
+> build · big-pickle
+[0m→ [0mRead /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md [90m[limit=50, offset=224][0m
+> build · big-pickle
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md
+Index: /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md
++++ /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md
+@@ -213,10 +213,16 @@
+ - [x] Small benchmark dataset (issue #2): 300 top-length contigs + real overlapping reads
+       → `/vol/data/datasets/comebin_small` (94 MB); test-runner ready
+       (`scripts/run_small_test.sh`); TEST-RUN + GitHub comment **pending baseline
+       finish** (CPU policy: no concurrent timed runs)
+-- [x] CAMI II marine assemblies downloaded + **md5 verified** (`1c054a45…`), 9.42 GB;
+-      extraction running; marine short-reads URL recorded (docs/01)
++- [x] CAMI II marine sample 0 (short-read): reads archive downloaded (5.2 G, 2026-09-23)
++      + extracted → `reads_0/…/reads/anonymous_reads.fq.gz` (**interleaved paired-end**,
++      35.25 M reads ≈ 17.6 M pairs) + `reads_mapping.tsv.gz` (maps reads → **genome**,
++      not contig). **Input decision** (docs/01): contigs = `anonymous_gsa.fasta.gz`
++      subset ≥2,000 bp (**41,988 contigs**; full set 1.48 M is not COMEBin-feasible),
++      reads = all → `bwa mem -p` single BAM; ground truth = `binning_gs.tsv` subset.
++      `scripts/prep_cami2_marine.sh` + env-overridable `run_comebin_fix.sh`
++      (CONTIGS/BAMDIR/MODE=`cami2`) ready; prep is CPU-bound → runs post-baseline
+ - [x] checkm2 reference DB downloaded + extracted (`/vol/data/benchmark/checkm2db/`,
+       `uniref100.KO.1.dmnd` 3.08 GB); **checkm v1 reference data INSTALLED + verified**:
+       official tarball `checkm_data_2015_01_16.tar.gz` (288,590,617 B, `gzip -t` OK)
+       → extracted to `/vol/data/benchmark/checkm_ref/`, `checkm data setRoot` done,
+
+> build · big-pickle
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md
+Index: /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md
++++ /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md
+@@ -213,8 +213,10 @@
+ - [x] Small benchmark dataset (issue #2): 300 top-length contigs + real overlapping reads
+       → `/vol/data/datasets/comebin_small` (94 MB); test-runner ready
+       (`scripts/run_small_test.sh`); TEST-RUN + GitHub comment **pending baseline
+       finish** (CPU policy: no concurrent timed runs)
++- [x] CAMI II marine assemblies downloaded + **md5 verified** (`1c054a45…`), 9.42 GB;
++      extraction running; marine short-reads URL recorded (docs/01)
+ - [x] CAMI II marine sample 0 (short-read): reads archive downloaded (5.2 G, 2026-09-23)
+       + extracted → `reads_0/…/reads/anonymous_reads.fq.gz` (**interleaved paired-end**,
+       35.25 M reads ≈ 17.6 M pairs) + `reads_mapping.tsv.gz` (maps reads → **genome**,
+       not contig). **Input decision** (docs/01): contigs = `anonymous_gsa.fasta.gz`
+
+> build · big-pickle
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md
+Index: /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md
++++ /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md
+@@ -252,11 +252,11 @@
+       (c) large benchmarks only after major commits; (d) dataset/space plan
+       includes human host-associated CAMI II (Multisample HMP / Toy Human
+       Microbiome), 391 GB free, planned data ≤ ~105 GB. Replies posted.
+ - [~] **← CURRENT: baseline demo run in progress** (started 14:36 UTC, commit
+-      987db95d8d399f30b7c82a5f5f40ed6bfdc906c7, `-t 32`): training epoch ~110/200
+-      (~2.4 min/epoch → ETA ~22:30 UTC worst case; `--earlystop` may cut short;
+-      banner shows LIVE epoch each 10 min) —
++      987db95d8d399f30b7c82a5f5f40ed6bfdc906c7, `-t 32`): training epoch ~114/200
++      (checked 19:09 UTC; ~2.4 min/epoch → ETA ~22:30 UTC worst case;
++      `--earlystop` may cut short; banner shows LIVE epoch + loss/acc each 10 min) —
+       watch `runs/baseline_unmodified/comebin_run.log`
+ - [ ] When baseline done: CheckM2 + CheckM v1 eval (`scripts/run_eval.sh`) → README
+       performance row (wall time per stage, peak RAM from resources.tsv, bins,
+       CheckM2/CheckM means) with linked commit → push
+
+> build · big-pickle
+Now syncing PROGRESS to the benchmark copy, appending the activity log, and committing+pushing:
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark
+cp PROGRESS.md /vol/data/benchmark/PROGRESS.md
+echo '2026-09-23T21:14Z | Marine prep finalized (CAMI II sample 0): reads tar downloaded (5.2G) + extracted; anonymous_reads.fq.gz = interleaved PE, 35.25M reads; reads_mapping maps reads->genome (not contig) so read subsetting via that file is impossible -> plan = bwa mem -p all reads to gsa contigs >=2000bp (41,988), single BAM. Wrote scripts/prep_cami2_marine.sh; made run_comebin_fix.sh env-overridable (CONTIGS/BAMDIR/MODE) for the cami2 run. docs/01 + PROGRESS updated. Baseline epoch ~114/200.' >> status/agent-activity.log
+git add scripts/prep_cami2_marine.sh scripts/run_comebin_fix.sh docs/01-datasets.md PROGRESS.md status/agent-activity.log
+git commit -q -m "cami2 marine: input decision + prep script (gsa >=2kbp subset, bwa mem -p); run_comebin_fix env-overridable"
+git fetch -q origin
+git status -sb | head -2
+git log --oneline origin/main -2 | cat
+## main...origin/main [ahead 1]
+ M docs/06-benchmark-commands.md
+530f4ef status: yes — baseline_unmodified epoch 114/200 loss 2.9193015098571777 acc 98.359375 model big-pickle — Baseline training epoch ~109/200 (~2.4 m
+b876d96 ops: 2-min truthful heartbeat (live epoch/loss/acc + model + README perf table), fix C1 cron template
+> build · big-pickle
+Two new remote commits from the supervisor (a 2-min heartbeat rework + status tick), and my commit sits cleanly on top (`ahead 1`, no conflict). There's also an uncommitted `docs/06` change that's not mine — checking it briefly before pushing:
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark
+git diff --stat docs/06-benchmark-commands.md
+git diff docs/06-benchmark-commands.md | head -30
+git push -q && echo PUSHED
+git status -sb | head -1
+touch /vol/data/benchmark/.heartbeat
+docs/06-benchmark-commands.md | 29 +++++++++++++++++++++++------
+ 1 file changed, 23 insertions(+), 6 deletions(-)
+diff --git a/docs/06-benchmark-commands.md b/docs/06-benchmark-commands.md
+index 776c2a2..b9f4aaa 100644
+--- a/docs/06-benchmark-commands.md
++++ b/docs/06-benchmark-commands.md
+@@ -100,20 +100,37 @@ bash scripts/make_small_dataset.sh [outdir=/vol/data/datasets/comebin_small] [N=
+ Roughly: `samtools/seqkit` selection → `bedtools intersect -abam SRR5720343.bam
+ -b contigs.bed -u > reads.bam` → `samtools index`.
+ 
+-**Small-dataset test run** (correctness check for issue #2; minutes not hours):
+-`scripts/run_small_test.sh [rundir=runs/small_test] [threads=32]` — same wrapper
+-bookkeeping (run_meta with cmd lines, comebin_run.log, resources sampler) but on
+-`/vol/data/datasets/comebin_small/` (`contigs.fa` + `bamfiles/reads.bam`), using
+-the pristine baseline source. Underlying command:
++**Small-dataset test run** (correctness gate for issue #2; never overlaps the
++registered benchmark):
++
++```bash
++# Baseline smoke test (default source)
++bash scripts/run_small_test.sh /vol/data/benchmark/runs/small_test 8
++
++# Fix/version functional test (after its focused tests pass)
++SRC_COMEBIN=/vol/data/repos/COMEBin-v11 SEED=42 \
++  bash scripts/run_small_test.sh /vol/data/benchmark/runs/small_fix_v11 8
++```
++
++The runner uses reduced small-data defaults (`-b 256 -e 512 -c 512`), adds
++`-d cpu` and optional `-s` when supported by the source CLI, records the exact
++wrapper/training commands, captures a 30-second resource timeline, and refuses
++to overwrite an existing run or overlap `.active_run`. Underlying baseline
++command:
+PUSHED
+## main...origin/main
+> build · big-pickle
+Pushed cleanly. The `docs/06` edit is the supervisor's in-progress work — leaving it for them. Let me verify the small-test runner actually matches the reduced-defaults it's now documented with (so the post-baseline functional gate goes smoothly):
+[0m→ [0mRead /vol/data/repos/metagenomic-binning-benchmark/scripts/run_small_test.sh 
+> build · big-pickle
+`run_small_test.sh` matches the docs. One risk: its default source is the **pristine baseline**, and it passes `-b/-e/-c` flags — need to confirm the old CLI accepts them:
+[0m$ [0mcd /vol/data/repos/COMEBin
+git rev-parse --short HEAD
+grep -nE '\-b\||\-e\||\-c\||\-s\||\-d\||usage:' COMEBin/run_comebin.sh | head -20
+987db95
+> build · big-pickle
+No matches — the old baseline CLI may not support `-b/-e/-c`. Let me see its actual flag set:
+[0m$ [0mcd /vol/data/repos/COMEBin/COMEBin
+grep -n 'getopts\|case "\$\|^[a-z].*)\|^  [a-z])' run_comebin.sh | head -30
+echo "=== usage block ==="
+grep -n "Usage\|usage" run_comebin.sh | head -5
+10:help_message () {
+39:while getopts a:o:p:n:t:l:e:c:b: OPT; do
+41:  a) contig_file=$(realpath ${OPTARG})
+43:  o) output_dir=$(realpath ${OPTARG})
+45:  p) bam_file_path=$(realpath ${OPTARG})
+47:  n) n_views=${OPTARG}
+49:  t) num_threads=${OPTARG}
+51:  l) temperature=${OPTARG}
+53:  e) emb_szs=${OPTARG}
+55:  c) emb_szs_forcov=${OPTARG}
+57:  b) batch_size=${OPTARG}
+73:sequence_count=$(grep -c "^>" "${contig_file}")
+76:if (( sequence_count < ${batch_size} )); then
+105:current_path=$(pwd)
+=== usage block ===
+13:  echo "Usage: bash run_comebin.sh [options] -a contig_file -o output_dir -p bam_file_path"
+60:#    printf "[Usage] `date '+%F %T'` -i <INPUT_FILE> -o <OUTPUT_DIR> -o <P
+> build · big-pickle
