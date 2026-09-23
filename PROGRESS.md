@@ -246,6 +246,13 @@ included; fixes land on branch `comebin-optimizations` in this repo.
       launches; **model in use is now logged** (watchdog.log `model=…` per turn;
       status/current.md + status.log `model=` from the transcript; supervisor
       meta-watchdog layer added). All committed @ `ec41276`
+- [x] **Supervisor hardening follow-up**: owner-scoped primary liveness,
+      successful-turn-only crash reset, 1 h agent/30 min supervisor timeouts,
+      child lock-FD closure, official service/API + actual remote-SHA checks,
+      source/installed checksum enforcement, safe benchmark PID/PGID/start
+      validation and atomic mode/source handoff, retryable issue markers with
+      before/after comment IDs, and shared repo locks. Small/fix/eval launchers
+      refuse overlap; small test now records its promised resource timeline.
 - [x] **Issue #2 directives recorded** (docs/08): (a) functional tests start
       on the 94 MB small real-data set; (b) only after that end-to-end run
       passes, build a medium derived set (target 3,000 contigs, hard cap 5 GB);

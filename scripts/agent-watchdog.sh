@@ -32,14 +32,14 @@ STATUS="$BENCH/.watchdog_last_status"
 MODELIX="$BENCH/.watchdog_model_ix"
 FORCE_MODEL="$BENCH/.watchdog_force_model"
 COMPLETE="$BENCH/TASK_COMPLETE"
-LOCK=/tmp/agent-watchdog.lock
+LOCK=${AGENT_WATCHDOG_LOCK:-/tmp/agent-watchdog.lock}
 SESSION_ID="ses_f31799c77ffeTq9gcYgqc4hBhg"
 STALE_S=900            # heartbeat/transcript older than 15 min => agent presumed idle
-RUN_STALE_S=1500       # ...and no `opencode run` process alive
 WINDOW_MIN=360         # crash-loop rate-limit window
 MAX_ATTEMPTS=6         # max driver LAUNCHES per window
 MAX_TURNS=200          # hard cap per driver (avoids a runaway forever-loop)
 MAX_RUNTIME_S=28800    # hard cap per driver: 8 h; next cron tick relaunches
+TURN_TIMEOUT_S=3600    # hard cap for one opencode turn; prevents a hung child
 TURN_GAP_S=30          # pause between turns
 IDLE_GAP_S=600         # longer pause when the agent says it is waiting/idle
 QUOTA_RETRIES=3        # consecutive quota-limited runs before giving up to cron
@@ -67,13 +67,18 @@ hb_age=999999
 tl_age=999999
 [ -f "$AGENT_LOG" ] && tl_age=$(( $(date +%s) - $(stat -c %Y "$AGENT_LOG") ))
 run_alive=0
-pgrep -f "opencode run --auto" >/dev/null 2>&1 && run_alive=1
+# Match only the primary session's argv prefix. A broad "opencode run --auto"
+# search also matches supervisor runs and can falsely suppress the agent driver.
+if ps -eo args= | awk -v p="opencode run --auto --session $SESSION_ID" 'index($0,p)==1{found=1} END{exit !found}'; then
+    run_alive=1
+fi
 
 alive=0
 [ "$run_alive" = "1" ] && alive=1
-[ "$hb_age" -lt "$STALE_S" ] && alive=1
-[ "$tl_age" -lt "$STALE_S" ] && alive=1
-[ "$alive" = "1" ] && exit 0   # agent working (or a run in flight), nothing to do
+# Once this script owns the lock, no legitimate driver exists. A fresh global
+# heartbeat/transcript can be left by a dead driver (or the supervisor), so it
+# must not suppress a restart; the scoped live child is the reliable evidence.
+[ "$alive" = "1" ] && exit 0
 
 # ---- crash-loop guard (counts DRIVER LAUNCHES, not turns) ------------------- #
 n=$(find "$ATTDIR" -type f -mmin "-$WINDOW_MIN" 2>/dev/null | wc -l)
@@ -122,11 +127,11 @@ fi
 age=$(( hb_age < tl_age ? hb_age : tl_age ))
 log "agent idle (hb ${hb_age}s, transcript ${tl_age}s, run_alive=$run_alive) -> launching driver (model_args='${MODEL_ARGS[*]:-default}')"
 
-CONT_PPT="Continue the metagenomic-binning-benchmark task you were working on; you may have been interrupted. First read /vol/data/benchmark/PROGRESS.md, verify the 'Current state' section against what is actually on disk, then resume from the first unfinished step. Update PROGRESS.md as you go, touch /vol/data/benchmark/.heartbeat in your shell commands while active, and append one timestamped line per meaningful action to /vol/data/repos/metagenomic-binning-benchmark/status/agent-activity.log. If /vol/data/benchmark/TASK_COMPLETE exists, do nothing and exit."
-FRESH_PPT="You are resuming the metagenomic-binning-benchmark project after an agent restart (the previous session may have crashed, run out of context, or exhausted model tokens). Read /vol/data/benchmark/PROGRESS.md FIRST — it contains the full task definition and current state — then verify state on disk and continue from the first unfinished step. Update PROGRESS.md as you go, touch /vol/data/benchmark/.heartbeat in your shell commands while active, and append one timestamped line per meaningful action to /vol/data/repos/metagenomic-binning-benchmark/status/agent-activity.log. If /vol/data/benchmark/TASK_COMPLETE exists, do nothing and exit."
+CONT_PPT="Continue the metagenomic-binning-benchmark task you were working on; you may have been interrupted. First read /vol/data/benchmark/PROGRESS.md, verify the 'Current state' section against what is actually on disk, then check NEW/updated issues with: gh issue list -R paulzierep/metagenomic-binning-benchmark --state open --json number,title,updatedAt and gh issue list -R paulzierep/COMEBin --state open --json number,title,updatedAt. Triage and comment on actionable updates without duplicating an existing response. Resume from the first unfinished step. Update PROGRESS.md and /vol/data/benchmark/.activity, touch /vol/data/benchmark/.heartbeat in shell commands while active, and append one timestamped line per meaningful action to /vol/data/repos/metagenomic-binning-benchmark/status/agent-activity.log. Before final git stage/commit/push, acquire /tmp/bench-repo.lock and commit only intended paths. Never overlap the registered benchmark run. If /vol/data/benchmark/TASK_COMPLETE exists, do nothing and exit."
+FRESH_PPT="You are resuming the metagenomic-binning-benchmark project after an agent restart (the previous session may have crashed, run out of context, or exhausted model tokens). Read /vol/data/benchmark/PROGRESS.md FIRST, then check NEW/updated issues in paulzierep/metagenomic-binning-benchmark and paulzierep/COMEBin with gh issue list --state open --json number,title,updatedAt; triage and comment without duplicating an existing response. Verify state on disk and continue from the first unfinished step. Update PROGRESS.md and /vol/data/benchmark/.activity, touch /vol/data/benchmark/.heartbeat in shell commands while active, and append one timestamped line per meaningful action to /vol/data/repos/metagenomic-binning-benchmark/status/agent-activity.log. Before final git stage/commit/push, acquire /tmp/bench-repo.lock and commit only intended paths. Never overlap the registered benchmark run. If /vol/data/benchmark/TASK_COMPLETE exists, do nothing and exit."
 
 run_driver() {
-    local turns=0 start secs rc=0 quota_hits=0 before after
+    local turns=0 start rc=0 quota_hits=0 healthy_turns=0 before after
     start=$(date +%s)
     while :; do
         [ $(date +%s) -ge $(( start + MAX_RUNTIME_S )) ] && { log "driver hit ${MAX_RUNTIME_S}s runtime cap"; break; }
@@ -143,8 +148,9 @@ run_driver() {
 
         before=$(wc -c < "$AGENT_LOG" 2>/dev/null || echo 0)
         log "driver turn #$((turns+1)): model=${MODEL_ARGS[*]:-default} | opencode run ${sargs[*]:-fresh}"
-        opencode run --auto "${sargs[@]}" "${MODEL_ARGS[@]}" --title "watchdog-restart" \
-            "$prompt" >>"$AGENT_LOG" 2>&1
+        timeout --foreground --kill-after=30s "${TURN_TIMEOUT_S}s" \
+            opencode run --auto "${sargs[@]}" "${MODEL_ARGS[@]}" --title "watchdog-restart" \
+            "$prompt" >>"$AGENT_LOG" 2>&1 9>&-
         rc=$?
         after=$(wc -c < "$AGENT_LOG" 2>/dev/null || echo 0)
         log "driver turn #$((turns+1)) exited rc=$rc (transcript ${before}->${after}B)"
@@ -154,7 +160,10 @@ run_driver() {
         [ "$rc" = "0" ] && rm -f "$FORCE_MODEL"
 
         if [ "$rc" = "0" ]; then
-            [ "$after" -gt "$before" ] && quota_hits=0
+            if [ "$after" -gt "$before" ]; then
+                healthy_turns=$((healthy_turns + 1))
+                quota_hits=0
+            fi
             # done with a turn that made progress — keep going (next turn shortly)
             # if the agent ended the turn saying it is waiting, back off longer
             gap=$TURN_GAP_S
@@ -187,14 +196,14 @@ run_driver() {
 
         sleep "$TURN_GAP_S"
     done
-    # a driver that survived several turns proved the pipeline works: reset the
-    # crash-guard markers so healthy restarts are never rate-limited by history
-    if [ "$turns" -ge 2 ]; then
+    # Only verified successful, progress-producing turns clear crash history;
+    # failed/quota turns must never reset the guard by merely being counted.
+    if [ "$healthy_turns" -ge 2 ]; then
         find "$ATTDIR" -type f -delete 2>/dev/null
-        log "driver healthy after $turns turns: crash-guard markers cleared"
+        log "driver healthy after $healthy_turns successful turns: crash-guard markers cleared"
     fi
     echo "$rc" >"$STATUS"
-    log "driver ended after $turns turns (rc=$rc)"
+    log "driver ended after $turns turns ($healthy_turns successful; rc=$rc)"
 }
 
 run_driver

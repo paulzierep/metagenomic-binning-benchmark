@@ -1,10 +1,12 @@
 # 07 — Fix batches (COMEBin `comebin-optimizations` branch)
 
-One commit per batch; **functional validation always on the small benchmark
-dataset** (`/vol/data/datasets/comebin_small`, minutes); full benchmark runs
-(timed + CheckM2/CheckM eval) are run **only after major commits** (user
-directive, 2026-09-23, issue #2). Every run recorded in `runs/<run>/` + the
-README performance table. Baseline reference: commit
+One commit per batch. The user directive (issue #2) is a three-stage gate:
+**functional validation always starts on the small benchmark dataset**
+(`/vol/data/datasets/comebin_small`, minutes); after that end-to-end run passes,
+build/run a **medium derived benchmark** (initial target 3,000 contigs, hard cap
+5 GB); run the **large/full benchmark** (timed COMEBin + CheckM2/CheckM) only
+after major commits. Runs are never concurrent. Every run is recorded in
+`runs/<run>/` plus the README performance table. Baseline reference: commit
 `987db95d8d399f30b7c82a5f5f40ed6bfdc906c7` (pristine, `runs/baseline_unmodified/`).
 
 ## Fork update (2026-09-23): work now continues on COMEBin v1.1.0

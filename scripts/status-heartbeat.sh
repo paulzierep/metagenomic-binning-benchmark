@@ -44,6 +44,10 @@ MARKER='<!--AGENT-STATUS-->'
 
 exec 9>"$LOCK"
 flock -n 9 || { echo "$(date -Is) skipped: status lock held" >>"$SLOG"; exit 0; }
+# Hold the shared repository lock before generating files as well as during git.
+# This prevents status/meta publishers from interleaving writes with each other.
+exec 8>"$REPO_LOCK"
+flock -n 8 || { echo "$(date -Is) skipped: repository lock held" >>"$SLOG"; exit 0; }
 mkdir -p status status/meta
 
 now_utc=$(date -u +%Y-%m-%dT%H:%M:%SZ)   # full precision, UTC (internal/log)
@@ -60,9 +64,12 @@ if [ -f "$COMPLETE" ]; then
     alive=no; dot="✅"; state="done"; text="TASK COMPLETE — benchmark done, sentinel present"
 elif [ -f "$HB" ]; then
     age=$(( $(date +%s) - $(stat -c %Y "$HB") ))
-    if [ "$age" -lt "$STALE_S" ]; then
+    if [ "$age" -lt "$STALE_S" ] && [ "$primary_alive" -eq 1 ]; then
         alive=yes; state="running"; dot="🟢"
         text=$(cat "$ACT" 2>/dev/null || echo "working (no activity note set)")
+    elif [ "$age" -lt "$STALE_S" ] && [ "$primary_alive" -eq 0 ]; then
+        alive=no; state="stopped (watchdog will restart)"; dot="🔴"
+        text="heartbeat is fresh (${age}s) but no primary driver/run owns it — supervisor/maintenance heartbeat ignored"
     else
         alive=no; state="stopped (watchdog will restart)"; dot="🔴"
         text="heartbeat stale ${age}s — agent dead/idle, watchdog should restart within ~5 min"
@@ -242,34 +249,29 @@ git add README.md status/current.md status/status.log status/agent-activity.log 
 [ -e status/supervisor-run.log ] && git add status/supervisor-run.log
 [ -n "$(find status/meta -maxdepth 1 -type f 2>/dev/null | head -1)" ] && git add status/meta
 
-if git diff --cached --quiet; then
+if git diff --cached --quiet -- README.md status runs; then
     echo "$(date -Is) no change to commit (alive=$alive epoch=${run_epoch:-—} model=$last_model)" >>"$SLOG"
     exit 0
 fi
 
-( exec 8>"$REPO_LOCK"
-  flock -w 20 8 || exit 2
-  ok=0
-  git add README.md status/current.md status/status.log status/agent-activity.log runs
-  [ -e status/agent-run.log ] && git add status/agent-run.log
-  [ -e status/watchdog.log ] && git add status/watchdog.log
-  [ -e status/supervisor-run.log ] && git add status/supervisor-run.log
-  [ -n "$(find status/meta -maxdepth 1 -type f 2>/dev/null | head -1)" ] && git add status/meta
-  git diff --cached --quiet && exit 0
-  for i in 1 2 3; do
-      git commit -q -m "status: $alive — ${run_name:-agent} epoch ${run_epoch:-—}/${run_total:-200} loss ${run_loss:-—} acc ${run_acc:-—} model $last_model — $(echo "$note" | cut -c1-40)"
-      if git push -q; then
-          head=$(git rev-parse HEAD)
-          remote=$(git rev-parse refs/remotes/origin/main 2>/dev/null || echo none)
-          [ "$head" = "$remote" ] && { ok=1; break; }
-      fi
-      sleep 3
-  done
-  [ "$ok" = "1" ] && exit 0 || exit 1 )
-rc=$?
-case $rc in
-  0) echo "$(date -Is) pushed (or nothing to push): alive=$alive epoch=${run_epoch:-—} model=$last_model" >>"$SLOG" ;;
-  2) echo "$(date -Is) repo lock timeout — skipped this tick" >>"$SLOG" ;;
-  *) echo "$(date -Is) push failed after 3 tries" >>"$SLOG" ;;
-esac
+ok=0
+for i in 1 2 3; do
+    ready=0
+    if git diff --cached --quiet -- README.md status runs; then
+        ready=1
+    elif git commit -q --only -m "status: $alive — ${run_name:-agent} epoch ${run_epoch:-—}/${run_total:-200} loss ${run_loss:-—} acc ${run_acc:-—} model $last_model — $(echo "$note" | cut -c1-40)" -- README.md status runs; then
+        ready=1
+    fi
+    if [ "$ready" -eq 1 ] && git push -q; then
+        head=$(git rev-parse HEAD)
+        remote=$(git ls-remote origin refs/heads/main 2>/dev/null | awk 'NR==1{print $1}')
+        [ -n "$remote" ] && [ "$head" = "$remote" ] && { ok=1; break; }
+    fi
+    sleep 3
+done
+if [ "$ok" = "1" ]; then
+  echo "$(date -Is) pushed (or nothing to push): alive=$alive epoch=${run_epoch:-—} model=$last_model" >>"$SLOG"
+else
+  echo "$(date -Is) push failed after 3 tries" >>"$SLOG"
+fi
 exit 0

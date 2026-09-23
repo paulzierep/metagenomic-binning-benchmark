@@ -100,19 +100,36 @@ bash scripts/make_small_dataset.sh [outdir=/vol/data/datasets/comebin_small] [N=
 Roughly: `samtools/seqkit` selection → `bedtools intersect -abam SRR5720343.bam
 -b contigs.bed -u > reads.bam` → `samtools index`.
 
-**Small-dataset test run** (correctness check for issue #2; minutes not hours):
-`scripts/run_small_test.sh [rundir=runs/small_test] [threads=32]` — same wrapper
-bookkeeping (run_meta with cmd lines, comebin_run.log, resources sampler) but on
-`/vol/data/datasets/comebin_small/` (`contigs.fa` + `bamfiles/reads.bam`), using
-the pristine baseline source. Underlying command:
+**Small-dataset test run** (correctness gate for issue #2; never overlaps the
+registered benchmark):
+
+```bash
+# Baseline smoke test (default source)
+bash scripts/run_small_test.sh /vol/data/benchmark/runs/small_test 8
+
+# Fix/version functional test (after its focused tests pass)
+SRC_COMEBIN=/vol/data/repos/COMEBin-v11 SEED=42 \
+  bash scripts/run_small_test.sh /vol/data/benchmark/runs/small_fix_v11 8
+```
+
+The runner uses reduced small-data defaults (`-b 256 -e 512 -c 512`), adds
+`-d cpu` and optional `-s` when supported by the source CLI, records the exact
+wrapper/training commands, captures a 30-second resource timeline, and refuses
+to overwrite an existing run or overlap `.active_run`. Underlying baseline
+command:
 
 ```bash
 export MAMBA_ROOT_PREFIX=/vol/data/envs/.mamba
 micromamba run -p /vol/data/envs/comebin bash run_comebin.sh \
   -a /vol/data/datasets/comebin_small/contigs.fa \
   -p /vol/data/datasets/comebin_small/bamfiles \
-  -o <rundir>/comebin_out -n 6 -t 32
+  -o <rundir>/comebin_out -n 6 -t 8 -b 256 -e 512 -c 512
 ```
+
+Once this end-to-end run passes, build the medium 3,000-contig derivative
+(`bash scripts/make_small_dataset.sh /vol/data/datasets/comebin_medium 3000`),
+record its measured size/provenance and run the medium benchmark. Large data is
+reserved for post-major-commit runs. See `docs/08-dataset-space-plan.md`.
 
 CAMI II assemblies (downloads): see `docs/01-datasets.md` for the Zenodo/GigaDB
 records and md5 checksums.

@@ -1,12 +1,17 @@
 # 08 — Dataset & disk-space plan (issue #2)
 
-Workflow rule (user directive, 2026-09-23, issue #2):
-**ALL functional tests run on the small benchmark dataset
-(`/vol/data/datasets/comebin_small`, 94 MB) and are logged as usual; a full
-benchmark (timed COMEBin + CheckM2/CheckM eval) is run only after MAJOR
-commits** (new fix batches, new versions, new datasets). Small-data runs take
-minutes; full benchmark runs take hours and are never run concurrently
-(timing comparability).
+Workflow rule (user directive, 2026-09-23, issue #2), in order:
+
+1. **Small functional tests first:** every fix batch/version is exercised on
+   `/vol/data/datasets/comebin_small` (94 MB) and logged like every other run.
+2. **Medium benchmark after the small run passes:** derive and record a larger
+   real-data set (initial target: 3,000 top-length demo contigs plus overlapping
+   reads; cap at 5 GB and publish measured size/provenance). Run COMEBin and
+   CheckM2/CheckM on it only after the end-to-end small test succeeds.
+3. **Large benchmarks last:** run the multi-hour full dataset only after a
+   **major commit** (new fix batch, upstream release, or dataset change).
+
+Small/medium/full runs are never concurrent, so timing remains comparable.
 
 ## Disk budget (492 GB volume)
 
@@ -16,14 +21,25 @@ Current usage (2026-09-23): 76 GB used / **391 GB free**.
 |---|------|----------|--------------|--------|
 | 1 | COMEBin demo (BATS) | 6.4 GB + 5.2 GB zip | 6.4 GB (zip deletable → +5.2 GB) | baseline run in progress |
 | 2 | Small dataset (issue #2) | 94 MB | kept permanently | ready |
-| 3 | CAMI II marine — sample 0 short-read | 10 GB extracted (tars 4.6+0.36 GB) | keep **1–2 samples** (~11 GB/sample extracted) | sample 0 extracted |
-| 4 | Human host-associated (CAMI II) | – | **1–2 samples, ≤ 30 GB** | to download |
-| 5 | CAMI III (marine + human gut) | – | **≤ 50 GB** (verify sizes on frl.publisso.de before download) | to download |
-| 6 | Eval refs + envs | checkm_ref 1.4 GB + checkm2db 2.9 GB + envs ~8 GB | unchanged | ready |
+| 3 | Medium derived dataset | – | target 3,000 contigs, hard cap **5 GB** | build only after small test passes |
+| 4 | CAMI II marine — sample 0 short-read | 10 GB extracted (tars 4.6+0.36 GB) | keep **1–2 samples** (~11 GB/sample extracted) | sample 0 extracted |
+| 5 | Human host-associated (CAMI II) | – | **1–2 samples, ≤ 30 GB** | to download |
+| 6 | CAMI III (marine + human gut) | – | **≤ 50 GB** (verify sizes on frl.publisso.de before download) | to download |
+| 7 | Eval refs + envs | checkm_ref 1.4 GB + checkm2db 2.9 GB + envs ~8 GB | unchanged | ready |
 
-**Budget math:** demo 6.4 + small 0.1 + CAMI II marine 11 + human 30 + CAMI III
-50 ≈ **~100 GB future** → stays far below 492 GB with >50 GB headroom.
+**Budget math:** demo 6.4 + small 0.1 + medium ≤5 + CAMI II marine 11 + human
+30 + CAMI III 50 ≈ **~105 GB future** → stays far below 492 GB with >50 GB
+headroom.
 Delete `comebin_test_data.zip` (5.2 GB) after the baseline run if needed.
+
+## Medium derived benchmark (gated)
+
+After the 300-contig small run completes successfully through COMEBin (not just
+`py_compile`), rebuild with the same real-data method and `N=3000`, record the
+measured FASTA/BAM size and read count, then run COMEBin plus CheckM2/CheckM v1.
+If the result would exceed 5 GB, reduce N before downloading/extracting more
+data. This stage is intentionally **not** built while the active baseline is
+running and is not a substitute for the post-major-commit large benchmark.
 
 ## Human host-associated datasets (CAMI II, all real metagenome simulations)
 

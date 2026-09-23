@@ -96,7 +96,7 @@ agent-activity.log:
 ### Added — supervisor agent ("meta-watchdog", watches the watchers)
 
 New `bin/meta-watchdog.sh` (cron at `3,13,23,33,43,53`, i.e. offset 10 min)
-runs 8 deterministic health checks every 10 minutes, auto-fixes the cheap
+runs deterministic health checks every 10 minutes, auto-fixes the cheap
 breakages, and escalates to an on-demand LLM supervisor only when needed:
 
 | Check | Watches |
@@ -109,6 +109,7 @@ breakages, and escalates to an on-demand LLM supervisor only when needed:
 | C6 | benchmark run alive & log advancing (invokes benchmark-watchdog if hung) |
 | C7 | disk free on /vol/data |
 | C8 | **GitHub issues** — new/updated open issues → escalation |
+| C9 | meta artifacts actually committed and present at the remote SHA |
 
 Escalation is rate-limited to 3 LLM calls per 6 h (cost guard); the supervisor
 agent gets a full diagnostics bundle, fixes what it can, appends to
@@ -127,15 +128,18 @@ agent gets a full diagnostics bundle, fixes what it can, appends to
 
 - Scoped agent liveness to the primary session/driver lock so a supervisor's
   `opencode run` can no longer masquerade as the coding agent.
-- Issue `updatedAt` markers now advance only after successful triage; a
-  successful supervisor refreshes them after posting, preventing self-triggering
-  comment loops while retaining failed/over-budget updates for retry.
+- Issue `updatedAt` markers now advance only after successful triage. Comment
+  IDs are compared before/after so the automation's own response does not create
+  an endless self-trigger, while failed/over-budget updates remain retryable.
 - Replaced process-name and recent-local-commit heuristics with OpenCode's
-  documented service/API checks, exact `HEAD=origin/main` parity, verified runner
-  command matching, and shared repository locking (`git commit --only`).
-- Benchmark restarts now preserve baseline/fix/small mode + source, keep the
-  restart budget keyed to a stable run name, and kill only the registered process
-  group (no broad `pkill -f`).
+  documented service/API checks, actual remote-SHA verification, source/installed
+  checksums, owner-scoped heartbeat logic, and shared repository locking
+  (`git commit --only`). LLM and per-turn agent calls have hard timeouts and
+  children no longer inherit watchdog lock FDs.
+- Benchmark restarts preserve explicit mode/source/data, verify PID start +
+  PGID (including safe orphan groups), use a stable restart budget, hand off
+  `.active_run` atomically, and kill only the registered process group (no broad
+  `pkill -f`). Evaluation and small/fix runners share the launch guard.
 - Small-test runner now refuses overlap/overwrite, supports baseline or v1.1.0
   source, uses small-data CPU/seed parameters, and records the promised resource
   timeline. Issue #2's medium stage is documented (3,000 contigs, 5 GB cap) but

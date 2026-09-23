@@ -68,9 +68,10 @@ CMD_TEXT=$(printf '%q ' "$MM" run -p "$ENV" bash run_comebin.sh "${COMEBIN_ARGS[
 export MAMBA_ROOT_PREFIX=/vol/data/envs/.mamba
 cd "$SRC/COMEBin"   # upstream resolves ../auxiliary relative to CWD
 
-# Fields: pid pgid logfile rundir start_epoch mode source_repo.
-printf '%s %s %s %s %s %s %s\n' "$$" "$(ps -o pgid= -p $$ | tr -d ' ')" \
-  "$RUNDIR/comebin_run.log" "$RUNDIR" "$(date +%s)" "$MODE" "$SRC" > "$ACTIVE"
+# Fields: pid pgid logfile rundir start_epoch mode source_repo contigs bamdir.
+printf '%s %s %s %s %s %s %s %s %s\n' "$$" "$(ps -o pgid= -p $$ | tr -d ' ')" \
+  "$RUNDIR/comebin_run.log" "$RUNDIR" "$(date +%s)" "$MODE" "$SRC" "$CONTIGS" "$BAMDIR" > "$ACTIVE.tmp.$$"
+mv "$ACTIVE.tmp.$$" "$ACTIVE"
 
 SAMPLER_PID=""
 cleanup() {
