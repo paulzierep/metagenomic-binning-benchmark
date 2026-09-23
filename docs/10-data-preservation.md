@@ -56,11 +56,12 @@ python3 scripts/make_release_manifest.py \
   --metadata dataset=comebin_small
 ```
 
-The JSON contains sorted relative paths, byte sizes, and SHA-256 values. Add
-`--exclude` for intentionally omitted files, and use `--force` only when
-replacing a manifest deliberately. Keep the manifest and its own checksum with
-the release metadata. The same procedure applies to `comebin_medium` and any
-CAMI sample selected for publication.
+For a public copy, add `--omit-local-path` so the VM-specific `dataset_path`
+field is not exposed. The JSON contains sorted relative paths, byte sizes, and
+SHA-256 values. Add `--exclude` for intentionally omitted files, and use
+`--force` only when replacing a manifest deliberately. Keep the manifest and
+its own checksum with the release metadata. The same procedure applies to
+`comebin_medium` and any CAMI sample selected for publication.
 
 Before depositing, verify that:
 

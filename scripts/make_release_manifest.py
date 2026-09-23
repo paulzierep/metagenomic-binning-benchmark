@@ -69,6 +69,11 @@ def main() -> int:
         metavar="GLOB",
         help="relative-path glob to omit (repeatable)",
     )
+    parser.add_argument(
+        "--omit-local-path",
+        action="store_true",
+        help="omit the machine-specific dataset_path from a public manifest",
+    )
     parser.add_argument("--force", action="store_true", help="replace an existing manifest")
     args = parser.parse_args()
 
@@ -104,12 +109,13 @@ def main() -> int:
         "schema_version": 1,
         "dataset_name": dataset.name,
         "generated_at_utc": datetime.now(timezone.utc).replace(microsecond=0).isoformat(),
-        "dataset_path": str(dataset),
         "metadata": metadata,
         "file_count": len(files),
         "total_bytes": sum(int(item["bytes"]) for item in files),
         "files": files,
     }
+    if not args.omit_local_path:
+        manifest["dataset_path"] = str(dataset)
     output.parent.mkdir(parents=True, exist_ok=True)
     temporary = output.with_name(f".{output.name}.tmp.{os.getpid()}")
     with temporary.open("w", encoding="utf-8") as handle:
