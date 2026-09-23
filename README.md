@@ -1,6 +1,6 @@
 <!--AGENT-STATUS-->
 
-> 🔴 **Agent status:** `stopped (watchdog will restart)` · ⏱ `2026-09-23T17:30 CEST` · [status.log](status/status.log)
+> 🟢 **Agent status:** `running` · ⏱ `2026-09-23T17:40 CEST` · [status.log](status/status.log)
 
 # metagenomic-binning-benchmark
 
