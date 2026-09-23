@@ -14,7 +14,13 @@ decision is data-driven.
 | # bins (≥200 kb filter noted) | CheckM run output | productivity measure |
 | CheckM2 mean completeness / contamination | `run_eval.sh` | quality (main) |
 | CheckM v1 mean completeness / contamination | `run_eval.sh` | quality (cross-check) |
-| CAMI-style F1 (completeness · purity) | CAMI II/III GT once available | CAMI benchmark metric, see CAMI papers |
+| CAMI-style F1 (harmonic mean of completeness and purity) | CAMI II/III GT once available | CAMI benchmark metric, see CAMI papers |
+
+For a scored bin, F1 is `2 * completeness * purity /
+(completeness + purity)` after applying the official CAMI size and threshold
+rules; it is **not** the product of the two percentages. If no ground-truth
+binning exists, CheckM2/CheckM values remain separate quality proxies and must
+not be relabeled as CAMI F1.
 
 "Good performance" is therefore: **more headroom on # bins / completeness /
 contamination / F1 per unit of time×RAM**. See `docs/04-evaluation.md` for
