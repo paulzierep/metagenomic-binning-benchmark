@@ -8297,3 +8297,423 @@ Index: /vol/data/repos/metagenomic-binning-benchmark/docs/05-agent-restart.md
  - Uses a per-script `flock` plus the shared `/tmp/bench-repo.lock`, and commits
    only heartbeat-owned paths with `git commit --only`; it verifies
 
+> build · space-bunny-free
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/docs/05-agent-restart.md
+Index: /vol/data/repos/metagenomic-binning-benchmark/docs/05-agent-restart.md
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/docs/05-agent-restart.md
++++ /vol/data/repos/metagenomic-binning-benchmark/docs/05-agent-restart.md
+@@ -140,9 +140,9 @@
+   the agent-driver flock must be held or the exact primary-session `opencode run`
+   must exist. A fresh heartbeat left by a supervisor/maintenance process is
+   explicitly ignored. `TASK_COMPLETE` ⇒ "done".
+ - **Skip-if-unchanged**: generated files are only rewritten + committed when the
+-  meaningful status changed, so at 2-min cadence idle periods produce no commits.
++  meaningful status changed, so at 10-min cadence idle periods produce no commits.
+ - Uses a per-script `flock` plus the shared `/tmp/bench-repo.lock`, and commits
+   only heartbeat-owned paths with `git commit --only`; it verifies
+   `HEAD=origin/main` after push instead of mistaking a recent local commit for a
+   successful GitHub push.
+
+> build · space-bunny-free
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/docs/05-agent-restart.md
+Index: /vol/data/repos/metagenomic-binning-benchmark/docs/05-agent-restart.md
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/docs/05-agent-restart.md
++++ /vol/data/repos/metagenomic-binning-benchmark/docs/05-agent-restart.md
+@@ -143,10 +143,10 @@
+ - **Skip-if-unchanged**: generated files are only rewritten + committed when the
+   meaningful status changed, so at 10-min cadence idle periods produce no commits.
+ - Uses a per-script `flock` plus the shared `/tmp/bench-repo.lock`, and commits
+   only heartbeat-owned paths with `git commit --only`; it verifies
+-  `HEAD=origin/main` after push instead of mistaking a recent local commit for a
+-  successful GitHub push.
++  `HEAD=refs/heads/main` from `git ls-remote` after push instead of mistaking a
++  recent local commit or stale tracking ref for a successful GitHub push.
+ - Agent contract: keep `/vol/data/benchmark/.activity` current (one line: what you are
+   doing right now) — the heartbeat then tells the story on GitHub.
+ 
+ ## Benchmark hang watchdog (independent of the agent)
+
+> build · space-bunny-free
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/docs/05-agent-restart.md
+Index: /vol/data/repos/metagenomic-binning-benchmark/docs/05-agent-restart.md
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/docs/05-agent-restart.md
++++ /vol/data/repos/metagenomic-binning-benchmark/docs/05-agent-restart.md
+@@ -157,17 +157,20 @@
+ 
+ - Tracks the run registered in `/vol/data/benchmark/.active_run`: pid, pgid,
+   log file, rundir, start timestamp, mode and source repo. Legacy baseline
+   entries contain the first five fields and default to mode `baseline`.
+-- **Hung** (verified COMEBin runner alive, log silent > 40 min) → kills only
+-  its registered process group/wrapper; it refuses to kill a reused or
+-  unrelated PID and never uses broad `pkill -f`.
+-- **Crashed** (process gone, no `exit_code: 0` in run_meta.txt) → restarts.
+-- **Done** (`exit_code: 0`) → clears `.active_run`.
+-- Restarts preserve the registered mode/source (`baseline`, `fix`, or `small`),
+-  use a stable pre-autorestart name for the rolling 24 h budget, and write to a
+-  fresh `runs/<run>_autorestartN/` directory. Legacy five-field registrations
+-  default safely to the pristine baseline. `flock`-protected; logs to
++- **Hung** (verified COMEBin runner alive, log silent > 40 min) → validates
++  PID start time + actual PGID, then kills only that registered process group;
++  it refuses a reused/unrelated PID and never uses broad `pkill -f`.
++- **Orphaned wrapper** → a remaining process group is killed/restarted only when
++  every member is recognizably part of the registered rundir/runner.
++- **Crashed** (process gone, no `exit_code: 0`) or **Done** (`exit_code: 0`) →
++  restart or clear, respectively.
++- Restarts preserve mode/source (`baseline`, `fix`, `small`, or another explicit
++  runner mode), use a stable pre-autorestart name for the rolling 24 h budget,
++  close the watchdog lock FD in the child, and retain the old registration until
++  the replacement atomically writes its own. Legacy five-field registrations
++  default safely to the pristine baseline. Logs to
+   `logs/benchmark-watchdog.log`; stops when `TASK_COMPLETE` exists.
+ 
+ This is belt-and-braces on top of the agent watchdog: agent broken → agent restarts;
+ benchmark hung → benchmark restarts. Both are cron-driven and terminal-independent.
+
+> build · space-bunny-free
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/scripts/benchmark-watchdog.sh
+Index: /vol/data/repos/metagenomic-binning-benchmark/scripts/benchmark-watchdog.sh
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/scripts/benchmark-watchdog.sh
++++ /vol/data/repos/metagenomic-binning-benchmark/scripts/benchmark-watchdog.sh
+@@ -13,9 +13,9 @@
+ #   - flock-protected; exits immediately on TASK_COMPLETE
+ set -u
+ export HOME=/home/ubuntu
+ BENCH=/vol/data/benchmark
+-ACTIVE="$BENCH/.active_run"        # pid pgid logfile rundir start_ts [mode source]
++ACTIVE="$BENCH/.active_run"        # pid pgid logfile rundir start_ts mode source [contigs bamdir]
+ SLOG="$BENCH/logs/benchmark-watchdog.log"
+ LOCK=${BENCH_WATCHDOG_LOCK:-/tmp/benchmark-watchdog.lock}
+ HANG_S=${BENCH_HANG_S:-2400}       # 40 min without new log output => hung
+ MAX_PER_RUN=${BENCH_MAX_RESTARTS:-3}
+
+> build · space-bunny-free
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/scripts/benchmark-watchdog.sh
+Index: /vol/data/repos/metagenomic-binning-benchmark/scripts/benchmark-watchdog.sh
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/scripts/benchmark-watchdog.sh
++++ /vol/data/repos/metagenomic-binning-benchmark/scripts/benchmark-watchdog.sh
+@@ -26,9 +26,9 @@
+ flock -n 9 || exit 0
+ [ -f "$BENCH/TASK_COMPLETE" ] && exit 0
+ [ -f "$ACTIVE" ] || exit 0
+ 
+-read -r pid pgid logfile rundir start mode source < "$ACTIVE"
++read -r pid pgid logfile rundir start mode source contigs bamdir < "$ACTIVE"
+ name=$(basename "$rundir")
+ root_name=${name%%_autorestart*}
+ mode=${mode:-baseline}
+ source=${source:-/vol/data/repos/COMEBin}
+
+> build · space-bunny-free
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/scripts/benchmark-watchdog.sh
+Index: /vol/data/repos/metagenomic-binning-benchmark/scripts/benchmark-watchdog.sh
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/scripts/benchmark-watchdog.sh
++++ /vol/data/repos/metagenomic-binning-benchmark/scripts/benchmark-watchdog.sh
+@@ -31,13 +31,10 @@
+ name=$(basename "$rundir")
+ root_name=${name%%_autorestart*}
+ mode=${mode:-baseline}
+ source=${source:-/vol/data/repos/COMEBin}
+-case "$mode" in
+-  baseline|fix|small) ;;
+-  *) log "unsupported active-run mode '$mode'; refusing state change"; exit 0 ;;
+-esac
+-if { [ "$mode" = "fix" ] || [ "$mode" = "small" ]; } && [ ! -f "$source/COMEBin/run_comebin.sh" ]; then
++[[ "$mode" =~ ^[A-Za-z0-9._-]+$ ]] || { log "unsafe active-run mode '$mode'; refusing state change"; exit 0; }
++if [ "$mode" != "baseline" ] && [ ! -f "$source/COMEBin/run_comebin.sh" ]; then
+   log "registered $mode source is missing run_comebin.sh: $source; refusing state change"
+   exit 0
+ fi
+ 
+
+> build · space-bunny-free
+[0m→ [0mRead /vol/data/repos/metagenomic-binning-benchmark/scripts/benchmark-watchdog.sh [90m[offset=125, limit=50][0m
+> build · space-bunny-free
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/scripts/benchmark-watchdog.sh
+Index: /vol/data/repos/metagenomic-binning-benchmark/scripts/benchmark-watchdog.sh
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/scripts/benchmark-watchdog.sh
++++ /vol/data/repos/metagenomic-binning-benchmark/scripts/benchmark-watchdog.sh
+@@ -133,21 +133,23 @@
+ newdir="$BENCH/runs/$new"
+ # Keep the old registration until the replacement atomically overwrites it;
+ # BENCHMARK_WATCHDOG_REPLACE=1 tells guarded runners that this is an authorized
+ # handoff rather than a second independent launch.
++launch_env=(SRC_COMEBIN="$source" BENCHMARK_WATCHDOG_REPLACE=1)
+ case "$mode" in
+   baseline)
+     launch=(bash "$REPO/scripts/run_comebin_baseline.sh" "$newdir")
+     ;;
+-  fix)
+-    launch=(bash "$REPO/scripts/run_comebin_fix.sh" "$newdir")
+-    ;;
+   small)
+     launch=(bash "$REPO/scripts/run_small_test.sh" "$newdir")
+     ;;
+   *)
+-    log "cannot restart $name: unsupported mode '$mode'"; exit 0 ;;
++    launch=(bash "$REPO/scripts/run_comebin_fix.sh" "$newdir")
++    launch_env+=(MODE="$mode")
++    if [ -n "${contigs:-}" ]; then launch_env+=(CONTIGS="$contigs"); fi
++    if [ -n "${bamdir:-}" ]; then launch_env+=(BAMDIR="$bamdir"); fi
++    ;;
+ esac
+-nohup env SRC_COMEBIN="$source" BENCHMARK_WATCHDOG_REPLACE=1 "${launch[@]}" \
++nohup env "${launch_env[@]}" "${launch[@]}" \
+     >"$BENCH/logs/$new.launch.log" 2>&1 9>&- &
+ log "$name restart #$((restarts+1)) mode=$mode source=$source -> $newdir (launcher pid $!; run script re-registers .active_run)"
+ exit 0
+
+> build · space-bunny-free
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/scripts/run_comebin_fix.sh
+Index: /vol/data/repos/metagenomic-binning-benchmark/scripts/run_comebin_fix.sh
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/scripts/run_comebin_fix.sh
++++ /vol/data/repos/metagenomic-binning-benchmark/scripts/run_comebin_fix.sh
+@@ -67,11 +67,11 @@
+ 
+ export MAMBA_ROOT_PREFIX=/vol/data/envs/.mamba
+ cd "$SRC/COMEBin"   # upstream resolves ../auxiliary relative to CWD
+ 
+-# Fields: pid pgid logfile rundir start_epoch mode source_repo.
+-printf '%s %s %s %s %s %s %s\n' "$$" "$(ps -o pgid= -p $$ | tr -d ' ')" \
+-  "$RUNDIR/comebin_run.log" "$RUNDIR" "$(date +%s)" "$MODE" "$SRC" > "$ACTIVE.tmp.$$"
++# Fields: pid pgid logfile rundir start_epoch mode source_repo contigs bamdir.
++printf '%s %s %s %s %s %s %s %s %s\n' "$$" "$(ps -o pgid= -p $$ | tr -d ' ')" \
++  "$RUNDIR/comebin_run.log" "$RUNDIR" "$(date +%s)" "$MODE" "$SRC" "$CONTIGS" "$BAMDIR" > "$ACTIVE.tmp.$$"
+ mv "$ACTIVE.tmp.$$" "$ACTIVE"
+ 
+ SAMPLER_PID=""
+ cleanup() {
+
+> build · space-bunny-free
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/scripts/meta-watchdog.sh
+Index: /vol/data/repos/metagenomic-binning-benchmark/scripts/meta-watchdog.sh
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/scripts/meta-watchdog.sh
++++ /vol/data/repos/metagenomic-binning-benchmark/scripts/meta-watchdog.sh
+@@ -313,9 +313,9 @@
+   publish_ok=1
+ fi
+ [ "$publish_ok" -eq 1 ] || log "WARN: meta artifact commit/push not verified"
+ if [ "$publish_ok" -eq 1 ]; then
+-  check C9_repo_publish ok "meta artifacts committed and HEAD=origin/main"
++  check C9_repo_publish ok "meta artifacts committed and HEAD=remote main"
+ else
+   check C9_repo_publish broken "meta artifacts failed to commit/push cleanly"
+ fi
+ 
+
+> build · space-bunny-free
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/scripts/meta-watchdog.sh
+Index: /vol/data/repos/metagenomic-binning-benchmark/scripts/meta-watchdog.sh
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/scripts/meta-watchdog.sh
++++ /vol/data/repos/metagenomic-binning-benchmark/scripts/meta-watchdog.sh
+@@ -78,9 +78,9 @@
+ 3,13,23,33,43,53 * * * * /vol/data/benchmark/bin/meta-watchdog.sh|meta-watchdog.sh
+ EOF
+ if ! systemctl is-active --quiet cron.service; then cron_bad="$cron_bad cron.service(inactive)"; fi
+ if [ -z "$cron_bad" ]; then
+-  check C1_cron ok "all 4 exact jobs present; scripts executable; cron active"
++  check C1_cron ok "4 exact jobs; cron active; installed/source scripts identical + executable"
+ else
+   for job in agent-watchdog.sh status-heartbeat.sh benchmark-watchdog.sh meta-watchdog.sh; do
+     if [ -f "$REPO/scripts/$job" ]; then
+       cp "$REPO/scripts/$job" "/vol/data/benchmark/bin/.$job.deploy-new"
+
+> build · space-bunny-free
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/docs/05-agent-restart.md
+Index: /vol/data/repos/metagenomic-binning-benchmark/docs/05-agent-restart.md
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/docs/05-agent-restart.md
++++ /vol/data/repos/metagenomic-binning-benchmark/docs/05-agent-restart.md
+@@ -177,18 +177,24 @@
+ 
+ ## Meta-supervisor and issue updates
+ 
+ `scripts/meta-watchdog.sh` runs at minutes 3/13/23/33/43/53. It validates the
+-four exact cron entries and executable scripts, checks `opencode service status`
+-plus `/api/info`, uses the agent-driver flock and a primary-session-scoped process
+-match, checks real `HEAD=origin/main` parity, validates the registered benchmark
+-command/log, and records issue updates under `status/meta/`.
++four exact cron entries, executable bits, cron service, and source/installed
++checksums; checks `opencode service status` plus `/api/info`; uses the
++agent-driver flock and a primary-session-scoped process match; checks the real
++remote SHA with `git ls-remote`; validates registered benchmark command, PID
++start time, PGID and log; and records issue updates under `status/meta/`.
++C9 separately verifies that the meta artifact commit/push actually reached the
++remote.
+ 
+ An issue's `updatedAt` marker advances **only after a successful supervisor
+-triage**. Failed or over-budget escalations therefore remain pending. After a
+-successful response, the marker is refreshed to the issue's latest timestamp,
+-so the agent's own GitHub comment does not create an endless self-escalation
+-loop. `META_WATCHDOG_NO_LLM=1` provides a checks-only verification mode.
++triage**. Comment IDs are snapshotted before/after: a newly posted response may
++advance the marker to the latest issue timestamp, while a run with no new
++comment advances only to the original candidate. Failed/over-budget escalations
++therefore remain pending and a concurrent user comment is less likely to be
++silently absorbed. Issue text is explicitly treated as untrusted quoted data.
++The LLM call has a 30-minute hard timeout and its child closes the meta lock FD.
++`META_WATCHDOG_NO_LLM=1` provides a checks-only verification mode.
+ 
+ ## Operational notes
+ 
+ - **Disable / finish**: `touch /vol/data/benchmark/TASK_COMPLETE`.
+
+> build · space-bunny-free
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/docs/05-agent-restart.md
+Index: /vol/data/repos/metagenomic-binning-benchmark/docs/05-agent-restart.md
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/docs/05-agent-restart.md
++++ /vol/data/repos/metagenomic-binning-benchmark/docs/05-agent-restart.md
+@@ -197,10 +197,12 @@
+ 
+ ## Operational notes
+ 
+ - **Disable / finish**: `touch /vol/data/benchmark/TASK_COMPLETE`.
+-- **Force an immediate restart** (testing): `touch -d '30 min ago' /vol/data/benchmark/.heartbeat`
+-  then wait ≤5 min or run `/vol/data/benchmark/bin/agent-watchdog.sh` manually.
++- **Force an immediate driver check**: run
++  `/vol/data/benchmark/bin/agent-watchdog.sh`; it exits safely if the persistent
++  driver lock is held. Merely touching `.heartbeat` is intentionally insufficient
++  because only a scoped primary process/driver proves ownership.
+ - **Rate limit**: 6 restarts / 6 h. Raise `MAX_ATTEMPTS` in the script if needed.
+ - Restarts run with `opencode run --auto` (permissions auto-approved) so the agent can
+   work unattended — acceptable here because the task is confined to this machine/repo.
+ - After editing watchdog/heartbeat sources, deploy all four atomically and
+
+> build · space-bunny-free
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/docs/05-agent-restart.md
+Index: /vol/data/repos/metagenomic-binning-benchmark/docs/05-agent-restart.md
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/docs/05-agent-restart.md
++++ /vol/data/repos/metagenomic-binning-benchmark/docs/05-agent-restart.md
+@@ -155,10 +155,11 @@
+ `/vol/data/benchmark/bin/`) keeps the **active benchmark run** alive even if the agent
+ is dead/broken:
+ 
+ - Tracks the run registered in `/vol/data/benchmark/.active_run`: pid, pgid,
+-  log file, rundir, start timestamp, mode and source repo. Legacy baseline
+-  entries contain the first five fields and default to mode `baseline`.
++  log file, rundir, start timestamp, mode, source repo and (for non-small runs)
++  contigs/BAM paths. Legacy baseline entries contain the first five fields and
++  default to mode `baseline`.
+ - **Hung** (verified COMEBin runner alive, log silent > 40 min) → validates
+   PID start time + actual PGID, then kills only that registered process group;
+   it refuses a reused/unrelated PID and never uses broad `pkill -f`.
+ - **Orphaned wrapper** → a remaining process group is killed/restarted only when
+
+> build · space-bunny-free
+[0m→ [0mRead /vol/data/repos/metagenomic-binning-benchmark/CHANGELOG.md [90m[offset=75, limit=80][0m
+> build · space-bunny-free
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/CHANGELOG.md
+Index: /vol/data/repos/metagenomic-binning-benchmark/CHANGELOG.md
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/CHANGELOG.md
++++ /vol/data/repos/metagenomic-binning-benchmark/CHANGELOG.md
+@@ -95,9 +95,9 @@
+ 
+ ### Added — supervisor agent ("meta-watchdog", watches the watchers)
+ 
+ New `bin/meta-watchdog.sh` (cron at `3,13,23,33,43,53`, i.e. offset 10 min)
+-runs 8 deterministic health checks every 10 minutes, auto-fixes the cheap
++runs deterministic health checks every 10 minutes, auto-fixes the cheap
+ breakages, and escalates to an on-demand LLM supervisor only when needed:
+ 
+ | Check | Watches |
+ |---|---|
+
+> build · space-bunny-free
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/CHANGELOG.md
+Index: /vol/data/repos/metagenomic-binning-benchmark/CHANGELOG.md
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/CHANGELOG.md
++++ /vol/data/repos/metagenomic-binning-benchmark/CHANGELOG.md
+@@ -108,8 +108,9 @@
+ | C5 | GitHub push freshness (re-runs status-heartbeat) |
+ | C6 | benchmark run alive & log advancing (invokes benchmark-watchdog if hung) |
+ | C7 | disk free on /vol/data |
+ | C8 | **GitHub issues** — new/updated open issues → escalation |
++| C9 | meta artifacts actually committed and present at the remote SHA |
+ 
+ Escalation is rate-limited to 3 LLM calls per 6 h (cost guard); the supervisor
+ agent gets a full diagnostics bundle, fixes what it can, appends to
+ `logs/supervisor-actions.log`, and pushes — all recorded in
+
+> build · space-bunny-free
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/CHANGELOG.md
+Index: /vol/data/repos/metagenomic-binning-benchmark/CHANGELOG.md
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/CHANGELOG.md
++++ /vol/data/repos/metagenomic-binning-benchmark/CHANGELOG.md
+@@ -127,17 +127,20 @@
+ ### Supervisor hardening (2026-09-23 19:03 UTC)
+ 
+ - Scoped agent liveness to the primary session/driver lock so a supervisor's
+   `opencode run` can no longer masquerade as the coding agent.
+-- Issue `updatedAt` markers now advance only after successful triage; a
+-  successful supervisor refreshes them after posting, preventing self-triggering
+-  comment loops while retaining failed/over-budget updates for retry.
++- Issue `updatedAt` markers now advance only after successful triage. Comment
++  IDs are compared before/after so the automation's own response does not create
++  an endless self-trigger, while failed/over-budget updates remain retryable.
+ - Replaced process-name and recent-local-commit heuristics with OpenCode's
+-  documented service/API checks, exact `HEAD=origin/main` parity, verified runner
+-  command matching, and shared repository locking (`git commit --only`).
+-- Benchmark restarts now preserve baseline/fix/small mode + source, keep the
+-  restart budget keyed to a stable run name, and kill only the registered process
+-  group (no broad `pkill -f`).
++  documented service/API checks, actual remote-SHA verification, source/installed
++  checksums, owner-scoped heartbeat logic, and shared repository locking
++  (`git commit --only`). LLM and per-turn agent calls have hard timeouts and
++  children no longer inherit watchdog lock FDs.
++- Benchmark restarts preserve explicit mode/source/data, verify PID start +
++  PGID (including safe orphan groups), use a stable restart budget, hand off
++  `.active_run` atomically, and kill only the registered process group (no broad
++  `pkill -f`). Evaluation and small/fix runners share the launch guard.
+ - Small-test runner now refuses overlap/overwrite, supports baseline or v1.1.0
+   source, uses small-data CPU/seed parameters, and records the promised resource
+   timeline. Issue #2's medium stage is documented (3,000 contigs, 5 GB cap) but
+   correctly remains gated on the end-to-end small run.
+\ No newline at end of file
+
+> build · space-bunny-free
+[0m$ [0mset -e
+for f in scripts/*.sh; do bash -n "$f"; last=$(tail -c1 "$f" | od -An -t u1 | tr -d ' '); [ "$last" = 10 ] || printf '\n' >> "$f"; done
+git diff --check
+echo syntax-ok
+git status --short --branch
+syntax-ok
+## main...origin/main
+ M CHANGELOG.md
+ M docs/05-agent-restart.md
+ M docs/06-benchmark-commands.md
+ M docs/07-fix-batches.md
+ M docs/08-dataset-space-plan.md
+ M scripts/agent-watchdog.sh
+ M scripts/benchmark-watchdog.sh
+ M scripts/make_small_dataset.sh
+ M scripts/meta-watchdog.sh
+ M scripts/prep_cami2_marine.sh
+ M scripts/run_comebin_fix.sh
+ M scripts/run_eval.sh
+ M scripts/run_small_test.sh
+ M scripts/status-heartbeat.sh
+> build · space-bunny-free
+[0m$ [0mset -e
+for f in agent-watchdog.sh benchmark-watchdog.sh meta-watchdog.sh status-heartbeat.sh; do
+  cp "scripts/$f" "/vol/data/benchmark/bin/.$f.supervisor-new"
+  chmod 755 "/vol/data/benchmark/bin/.$f.supervisor-new"
+  mv "/vol/data/benchmark/bin/.$f.supervisor-new" "/vol/data/benchmark/bin/$f"
+  cmp -s "scripts/$f" "/vol/data/benchmark/bin/$f"
+done
+echo installed-sync-ok
+installed-sync-ok
+> build · space-bunny-free

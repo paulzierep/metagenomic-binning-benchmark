@@ -5815,3 +5815,177 @@ Baseline still training — no compute-hungry step can run during it (per policy
 5. Marine CAMI II sample 0: `scripts/prep_cami2_marine.sh` (gsa contigs ≥2 kbp = 41,988 + `bwa mem -p` all reads → one BAM) → COMEBin run (`MODE=cami2 CONTIGS=… BAMDIR=… SEED=42`) → eval.
 
 PROGRESS.md (both copies) epoch line updated to ~116, activity log appended, committed + pushed (`PUSHED`). Waiting on the baseline to finish; will proceed with eval immediately after.
+[0m
+> build · big-pickle
+[0m$ [0mecho "=== sentinel ==="
+ls /vol/data/benchmark/TASK_COMPLETE 2>/dev/null || echo "no TASK_COMPLETE - continuing"
+echo "=== baseline ==="
+RUN=/vol/data/benchmark/runs/baseline_unmodified
+ps -eo pid,etime,args | grep -E '[m]ain.py train' | head -1 || echo "no train proc -> likely finished"
+echo "epochs: $(grep -c '^DEBUG:root:Epoch' "$RUN/comebin_out/comebin_res/training.log" 2>/dev/null)"
+echo "--- run_meta tail ---"; tail -8 "$RUN/run_meta.txt" 2>/dev/null
+echo "--- run log tail ---"; tail -c 400 "$RUN/comebin_run.log" 2>/dev/null | tr '\r' '\n' | tail -4
+echo "=== now ==="; date -u +"now UTC: %H:%M"
+ls -la --time-style=+%H:%M "$RUN/comebin_run.log" 2>/dev/null | awk '{print "log mtime:", $6}'
+tail -1 /vol/data/repos/metagenomic-binning-benchmark/status/status.log 2>/dev/null
+touch /vol/data/benchmark/.heartbeat
+=== sentinel ===
+no TASK_COMPLETE - continuing
+=== baseline ===
+  21545    04:32:43 python main.py train --data /vol/data/benchmark/runs/baseline_unmodified/comebin_out/data_augmentation --temperature 0.15 --emb_szs_forcov 2048 --batch_size 1024 --emb_szs 2048 --n_views 6 --add_model_for_coverage --output_path /vol/data/benchmark/runs/baseline_unmodified/comebin_out/comebin_res --earlystop --addvars --vars_sqrt --num_threads 32
+epochs: 117
+--- run_meta tail ---
+date:       2026-09-23T14:36:06+00:00
+commit:     987db95d8d399f30b7c82a5f5f40ed6bfdc906c7
+contigs:    /vol/data/datasets/comebin_test_data/BATS_SAMN07137077_METAG.scaffolds.min500.fasta.f1k.fasta
+bamdir:     /vol/data/datasets/comebin_test_data/bamfiles
+threads:    32
+host:       32 cores, 62G RAM, gpu=none
+cmd_wrapper:  bash run_comebin.sh -a /vol/data/datasets/comebin_test_data/BATS_SAMN07137077_METAG.scaffolds.min500.fasta.f1k.fasta -p /vol/data/datasets/comebin_test_data/bamfiles -o /vol/data/benchmark/runs/baseline_unmodified/comebin_out -n 6 -t 32  # via: micromamba run -p /vol/data/envs/comebin
+cmd_train_py: python main.py train --data /vol/data/benchmark/runs/baseline_unmodified/comebin_out/data_augmentation --temperature 0.15 --emb_szs_forcov 2048 --batch_size 1024 --emb_szs 2048 --n_views 6 --add_model_for_coverage --output_path /vol/data/benchmark/runs/baseline_unmodified/comebin_out/comebin_res --earlystop --addvars --vars_sqrt --num_threads 32
+--- run log tail ---
+ 25%|██▌       | 7/28 [00:35<01:44,  4.96s/it]
+ 29%|██▊       | 8/28 [00:40<01:39,  4.99s/it]
+ 32%|███▏      | 9/28 [00:45<01:34,  4.97s/it]
+ 36%|███▌      | 10/28 [00:50<01:29,  4.96s/it]=== now ===
+now UTC: 19:16
+log mtime: 19:16
+2026-09-23T21:16 CEST	alive=yes	mem=7332/64295 MB	load=32.51 32.52 32.37	transcript=380758B	watchdog=3889B	model=big-pickle	epoch=116/200	loss=2.9281718730926514	acc=98.36588287353516	Baseline training epoch ~109/200 (~2.4 min/epoch, ETA ~22:35 UTC unless early-stop); next: baseline eval (run_eval.sh) → issue #2 small-dataset test → v1.1.0 fix run
+> build · big-pickle
+Baseline at **epoch 117/200**, ~2.3 min/epoch, ETA ~22:30 UTC. CPU-bound steps stay blocked. While waiting — verifying `parse_eval.py` produces the summary I expect post-run:
+[0m→ [0mRead /vol/data/repos/metagenomic-binning-benchmark/scripts/parse_eval.py 
+> build · big-pickle
+`parse_eval.py` is sound (CheckM2 `quality_report.tsv`, CheckM v1 `bin_stats_ext.tsv`, completeness/contamination means appended to run_meta). The README mentions `results/<run>.csv` with HQ/MQ counts — checking whether that generator exists or I need to create it:
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark
+ls results/ 2>/dev/null || echo "no results/ dir"
+grep -rln "HQ\|MQ\|results/" scripts/ docs/ 2>/dev/null | head
+find . -name '*.csv' -not -path './.git/*' 2>/dev/null | head
+README.md
+docs/05-agent-restart.md
+docs/03-fixes.md
+docs/04-evaluation.md
+docs/00-setup.md
+docs/02-comebin-baseline.md
+> build · big-pickle
+No CSV generator yet — I'll write it now (CPU-free) per the README contract. Checking the HQ/MQ thresholds in docs/04 first:
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark
+grep -n -i "HQ\|high-qual\|MQ\|medium-qual\|complet\|contamin" docs/04-evaluation.md | head -20
+3:Both tools score each bin's **completeness** and **contamination** from universal
+5:counts of medium/high-quality bins (MIMAG):
+7:- **HQ**: completeness >90 %, contamination <5 %
+8:- **MQ**: completeness ≥50 %, contamination <10 %
+41:checkm2_mean_completeness,checkm2_mean_contamination,
+42:checkm2_HQ,checkm2_MQ,
+43:checkm_mean_completeness,checkm_mean_contamination,
+44:checkm_HQ,checkm_MQ,
+> build · big-pickle
+[0m→ [0mRead /vol/data/repos/metagenomic-binning-benchmark/docs/04-evaluation.md [90m[limit=30, offset=20][0m
+> build · big-pickle
+Writing the missing CSV generator per the README/docs contract:
+[0m← [0mWrite /vol/data/repos/metagenomic-binning-benchmark/scripts/make_results_csv.py
+Created file successfully: /vol/data/repos/metagenomic-binning-benchmark/scripts/make_results_csv.py
+> build · big-pickle
+Fixing the output path — `results/` belongs in the repo, not under `/vol/data/benchmark`:
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/scripts/make_results_csv.py
+Index: /vol/data/repos/metagenomic-binning-benchmark/scripts/make_results_csv.py
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/scripts/make_results_csv.py
++++ /vol/data/repos/metagenomic-binning-benchmark/scripts/make_results_csv.py
+@@ -13,10 +13,10 @@
+ name = os.path.basename(run)
+ dataset = sys.argv[2] if len(sys.argv) > 2 else ""
+ threads = sys.argv[3] if len(sys.argv) > 3 else ""
+ meta = os.path.join(run, "run_meta.txt")
+-out = os.path.join(os.path.dirname(run), "..", "results", f"{name}.csv")
+-out = os.path.normpath(out)
++repo = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
++out = os.path.join(repo, "results", f"{name}.csv")
+ 
+ def meta_val(key):
+     with open(meta) as f:
+         for line in f:
+
+> build · big-pickle
+Testing on a synthetic rundir:
+[0m$ [0mcd /tmp/opencode
+rm -rf fake_run
+mkdir -p fake_run/eval/checkm2 fake_run/eval/checkm/out/storage
+cat > fake_run/run_meta.txt <<'EOF'
+run:        /vol/data/benchmark/runs/baseline_unmodified
+commit:     987db95d8d399f30b7c82a5f5f40ed6bfdc906c7
+bins: 12  -> /x/comebin_res_bins
+wall_s:     1234
+exit_code:  0
+EOF
+printf 'Name\tCompleteness\tContamination\nb1.fa\t98.5\t1.2\nb2.fa\t60.0\t3.0\nb3.fa\t40.0\t12.0\n' > fake_run/eval/checkm2/quality_report.tsv
+printf 'Bin Id\tCompleteness\tContamination\nb1\t95.1\t2.5\nb2\t55.5\t4.4\nb3\t35.5\t11.1\n' > fake_run/eval/checkm/out/storage/bin_stats_ext.tsv
+python3 /vol/data/repos/metagenomic-binning-benchmark/scripts/make_results_csv.py fake_run "COMEBin demo (29,434 contigs)" 32
+echo "--- csv ---"
+cat /vol/data/repos/metagenomic-binning-benchmark/results/fake_run.csv
+rm -rf fake_run /vol/data/repos/metagenomic-binning-benchmark/results/fake_run.csv
+touch /vol/data/benchmark/.heartbeat
+wrote /vol/data/repos/metagenomic-binning-benchmark/results/fake_run.csv
+fake_run,987db95d8d399f30b7c82a5f5f40ed6bfdc906c7,COMEBin demo (29,434 contigs),32,1234,12,66.17,5.40,1,2,62.03,6.00,1,2
+--- csv ---
+run,source_commit,dataset,threads,total_time_s,n_bins,checkm2_mean_completeness,checkm2_mean_contamination,checkm2_HQ,checkm2_MQ,checkm_mean_completeness,checkm_mean_contamination,checkm_HQ,checkm_MQ
+fake_run,987db95d8d399f30b7c82a5f5f40ed6bfdc906c7,"COMEBin demo (29,434 contigs)",32,1234,12,66.17,5.40,1,2,62.03,6.00,1,2
+> build · big-pickle
+Working correctly (HQ/MQ counts verified against the synthetic data). Committing + documenting:
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark
+cat >> docs/04-evaluation.md <<'EOF'
+
+Per-run CSV: `scripts/make_results_csv.py <rundir> [dataset] [threads]` writes the
+committed `results/<run>.csv` row (means + HQ/MQ counts, MIMAG thresholds above)
+from `run_meta.txt` + the two eval tables. `scripts/run_eval.sh` calls
+`parse_eval.py` (appends means to run_meta); then run `make_results_csv.py`.
+EOF
+echo '2026-09-23T21:30Z | Wrote scripts/make_results_csv.py (results/<run>.csv contract from README+docs/04: means + MIMAG HQ/MQ counts); tested on synthetic eval tables - correct. docs/04 updated.' >> status/agent-activity.log
+git add scripts/make_results_csv.py docs/04-evaluation.md status/agent-activity.log
+git commit -q -m "results: make_results_csv.py (per-run CSV: means + HQ/MQ counts), docs/04 note"
+git push -q && echo PUSHED
+grep -c '^DEBUG:root:Epoch' /vol/data/benchmark/runs/baseline_unmodified/comebin_out/comebin_res/training.log
+touch /vol/data/benchmark/.heartbeat
+PUSHED
+117
+> build · big-pickle
+All set for this turn:
+
+**State**
+- Baseline healthy at **epoch 117/200** (~2.3 min/epoch; **ETA ~22:30 UTC**). Nothing new in issues; repo clean on `origin/main`.
+
+**Closed a gap in the eval pipeline**
+- The README promised `results/<run>.csv` with HQ/MQ counts, but no generator existed. Wrote **`scripts/make_results_csv.py <rundir> [dataset] [threads]`** implementing the exact contract from `docs/04-evaluation.md` (means + MIMAG HQ: comp>90%/cont<5%, MQ: comp≥50%/cont<10%, per tool), reading `run_meta.txt` + the two eval tables. Tested on synthetic data — HQ/MQ tallies and means all correct. Docs/04 updated, committed, pushed.
+
+**Post-baseline queue** (still one command each): `run_eval.sh` → README row + `make_results_csv.py` → small-test (pristine) + issue #2 comment → small fix test → fix-v11 benchmark → marine prep + `MODE=cami2` run. Waiting on the baseline.
+[0m
+> build · big-pickle
+[0m$ [0mecho "=== sentinel ==="
+ls /vol/data/benchmark/TASK_COMPLETE 2>/dev/null || echo "no TASK_COMPLETE - continuing"
+RUN=/vol/data/benchmark/runs/baseline_unmodified
+echo "=== baseline train proc ==="
+ps -eo pid,etime,args | grep -E '[m]ain.py train' | head -1 || echo "no train proc"
+echo "epochs: $(grep -c '^DEBUG:root:Epoch' "$RUN/comebin_out/comebin_res/training.log" 2>/dev/null)"
+echo "run_meta tail:"; tail -5 "$RUN/run_meta.txt" 2>/dev/null
+echo "=== now ==="; date -u +"now UTC: %H:%M"
+tail -1 /vol/data/repos/metagenomic-binning-benchmark/status/status.log 2>/dev/null
+touch /vol/data/benchmark/.heartbeat
+=== sentinel ===
+no TASK_COMPLETE - continuing
+=== baseline train proc ===
+  21545    04:34:03 python main.py train --data /vol/data/benchmark/runs/baseline_unmodified/comebin_out/data_augmentation --temperature 0.15 --emb_szs_forcov 2048 --batch_size 1024 --emb_szs 2048 --n_views 6 --add_model_for_coverage --output_path /vol/data/benchmark/runs/baseline_unmodified/comebin_out/comebin_res --earlystop --addvars --vars_sqrt --num_threads 32
+epochs: 117
+run_meta tail:
+bamdir:     /vol/data/datasets/comebin_test_data/bamfiles
+threads:    32
+host:       32 cores, 62G RAM, gpu=none
+cmd_wrapper:  bash run_comebin.sh -a /vol/data/datasets/comebin_test_data/BATS_SAMN07137077_METAG.scaffolds.min500.fasta.f1k.fasta -p /vol/data/datasets/comebin_test_data/bamfiles -o /vol/data/benchmark/runs/baseline_unmodified/comebin_out -n 6 -t 32  # via: micromamba run -p /vol/data/envs/comebin
+cmd_train_py: python main.py train --data /vol/data/benchmark/runs/baseline_unmodified/comebin_out/data_augmentation --temperature 0.15 --emb_szs_forcov 2048 --batch_size 1024 --emb_szs 2048 --n_views 6 --add_model_for_coverage --output_path /vol/data/benchmark/runs/baseline_unmodified/comebin_out/comebin_res --earlystop --addvars --vars_sqrt --num_threads 32
+=== now ===
+now UTC: 19:17
+2026-09-23T21:16 CEST	alive=yes	mem=7332/64295 MB	load=32.51 32.52 32.37	transcript=380758B	watchdog=3889B	model=big-pickle	epoch=116/200	loss=2.9281718730926514	acc=98.36588287353516	Baseline training epoch ~109/200 (~2.4 min/epoch, ETA ~22:35 UTC unless early-stop); next: baseline eval (run_eval.sh) → issue #2 small-dataset test → v1.1.0 fix run
+> build · big-pickle
+Baseline still training at **epoch 117/200** (~2.5 min/epoch lately, **ETA ~22:45 UTC** worst case). No new issue activity, repo clean, all downstream steps prepped — nothing productive can run during the timed benchmark (CPU policy).
+
+Standing by. Next action remains: baseline finish → `run_eval.sh runs/baseline_unmodified` → README row + `make_results_csv.py` → issue #2 small tests → fix-v11 benchmark → marine.
+[0m
+> build · big-pickle
