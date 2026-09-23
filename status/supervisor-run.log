@@ -8732,3 +8732,217 @@ C9_repo_publish	ok	meta artifacts committed and HEAD=remote main
 2026-09-23T19:18:07+00:00 [meta] verification run: unresolved checks present but LLM escalation disabled
 2026-09-23T19:18:07+00:00 tick done: fixes=1 broken=1 degraded=0 escalated=1
 > build · space-bunny-free
+[0m$ [0mbash /vol/data/benchmark/bin/status-heartbeat.sh; rc=$?; echo "heartbeat rc=$rc"; tail -n 3 /vol/data/benchmark/logs/status-heartbeat.log; git status --short --branch; git log -3 --oneline --decorate
+heartbeat rc=0
+2026-09-23T19:18:03+00:00 skipped: status lock held
+2026-09-23T19:18:04+00:00 pushed (or nothing to push): alive=yes epoch=117 model=big-pickle
+2026-09-23T19:18:13+00:00 pushed (or nothing to push): alive=yes epoch=117 model=big-pickle
+## main...origin/main
+ M CHANGELOG.md
+ M docs/05-agent-restart.md
+ M docs/06-benchmark-commands.md
+ M docs/07-fix-batches.md
+ M docs/08-dataset-space-plan.md
+ M scripts/agent-watchdog.sh
+ M scripts/benchmark-watchdog.sh
+ M scripts/make_small_dataset.sh
+ M scripts/meta-watchdog.sh
+ M scripts/prep_cami2_marine.sh
+ M scripts/run_comebin_fix.sh
+ M scripts/run_eval.sh
+ M scripts/run_small_test.sh
+ M scripts/status-heartbeat.sh
+fbf1518 (HEAD -> main, origin/main) status: yes — baseline_unmodified epoch 117/200 loss 2.9210309982299805 acc 98.26171875 model big-pickle — Baseline training epoch ~109/200 (~2.4 m
+68c67a2 meta: supervise tick 2026-09-23T19:18:02Z — 1 fix(es)
+0dd08f1 status: yes — baseline_unmodified epoch 117/200 loss 2.9210309982299805 acc 98.26171875 model big-pickle — Baseline training epoch ~109/200 (~2.4 m
+> build · space-bunny-free
+[0m→ [0mRead /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md [90m[offset=232, limit=30][0m
+> build · space-bunny-free
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md
+Index: /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md
++++ /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md
+@@ -245,8 +245,15 @@
+       the SAME session turn-after-turn; crash-guard markers only count FAILED
+       launches; **model in use is now logged** (watchdog.log `model=…` per turn;
+       status/current.md + status.log `model=` from the transcript; supervisor
+       meta-watchdog layer added). All committed @ `ec41276`
++- [x] **Supervisor hardening follow-up**: owner-scoped primary liveness,
++      successful-turn-only crash reset, 1 h agent/30 min supervisor timeouts,
++      child lock-FD closure, official service/API + actual remote-SHA checks,
++      source/installed checksum enforcement, safe benchmark PID/PGID/start
++      validation and atomic mode/source handoff, retryable issue markers with
++      before/after comment IDs, and shared repo locks. Small/fix/eval launchers
++      refuse overlap; small test now records its promised resource timeline.
+ - [x] **Issue #2 directives recorded** (docs/08): (a) functional tests start
+       on the 94 MB small real-data set; (b) only after that end-to-end run
+       passes, build a medium derived set (target 3,000 contigs, hard cap 5 GB);
+       (c) large benchmarks only after major commits; (d) dataset/space plan
+
+> build · space-bunny-free
+[0m$ [0mcp PROGRESS.md /vol/data/benchmark/PROGRESS.md
+printf '%s | supervisor hardening: hardened liveness/timeouts/locks/issue markers/benchmark identity; small+medium issue #2 workflow documented; active baseline PID 19182 left untouched\n' "$(date -u +%Y-%m-%dT%H:%MZ)" >> status/agent-activity.log
+printf 'live PROGRESS synced; supervisor activity recorded\n'
+live PROGRESS synced; supervisor activity recorded
+> build · space-bunny-free
+[0m$ [0mset -e
+for f in scripts/*.sh; do bash -n "$f"; done
+git diff --check
+for f in agent-watchdog.sh benchmark-watchdog.sh meta-watchdog.sh status-heartbeat.sh; do
+  cp "scripts/$f" "/vol/data/benchmark/bin/.$f.supervisor-new"
+  chmod 755 "/vol/data/benchmark/bin/.$f.supervisor-new"
+  mv "/vol/data/benchmark/bin/.$f.supervisor-new" "/vol/data/benchmark/bin/$f"
+  cmp -s "scripts/$f" "/vol/data/benchmark/bin/$f"
+done
+before=$(awk '{print $1}' /vol/data/benchmark/.active_run)
+bash /vol/data/benchmark/bin/benchmark-watchdog.sh
+after=$(awk '{print $1}' /vol/data/benchmark/.active_run)
+[ "$before" = "$after" ] && [ "$before" = "19182" ]
+bash /vol/data/benchmark/bin/agent-watchdog.sh
+flock -n /tmp/agent-watchdog.lock -c true 2>/dev/null && { echo 'agent driver unexpectedly absent'; exit 1; } || true
+bash scripts/run_eval.sh /vol/data/benchmark/runs/does-not-exist 1 >/tmp/opencode/eval-guard.out 2>&1 && exit 1 || true
+grep -q 'refusing CheckM evaluation while benchmark pid 19182 is active' /tmp/opencode/eval-guard.out
+printf 'precommit verification passed; benchmark pid %s unchanged\n' "$after"
+precommit verification passed; benchmark pid 19182 unchanged
+> build · space-bunny-free
+[0m$ [0mgit status --short --branch; git diff --stat; git diff --check; git diff --name-only
+## main...origin/main
+ M CHANGELOG.md
+ M PROGRESS.md
+ M docs/05-agent-restart.md
+ M docs/06-benchmark-commands.md
+ M docs/07-fix-batches.md
+ M docs/08-dataset-space-plan.md
+ M scripts/agent-watchdog.sh
+ M scripts/benchmark-watchdog.sh
+ M scripts/make_small_dataset.sh
+ M scripts/meta-watchdog.sh
+ M scripts/prep_cami2_marine.sh
+ M scripts/run_comebin_fix.sh
+ M scripts/run_eval.sh
+ M scripts/run_small_test.sh
+ M scripts/status-heartbeat.sh
+ M status/agent-activity.log
+ CHANGELOG.md                  |  22 ++++---
+ PROGRESS.md                   |   7 +++
+ docs/05-agent-restart.md      |  84 +++++++++++++++----------
+ docs/06-benchmark-commands.md |  29 +++++++--
+ docs/07-fix-batches.md        |  12 ++--
+ docs/08-dataset-space-plan.md |  42 +++++++++----
+ scripts/agent-watchdog.sh     |  45 ++++++++------
+ scripts/benchmark-watchdog.sh | 126 +++++++++++++++++++++++++++++--------
+ scripts/make_small_dataset.sh |   2 +-
+ scripts/meta-watchdog.sh      | 100 ++++++++++++++++++++++--------
+ scripts/prep_cami2_marine.sh  |   2 +-
+ scripts/run_comebin_fix.sh    |   7 ++-
+ scripts/run_eval.sh           |  18 ++++--
+ scripts/run_small_test.sh     | 140 ++++++++++++++++++++++++++++++++++++------
+ scripts/status-heartbeat.sh   |  58 ++++++++---------
+ status/agent-activity.log     |   1 +
+ 16 files changed, 504 insertions(+), 191 deletions(-)
+CHANGELOG.md
+PROGRESS.md
+docs/05-agent-restart.md
+docs/06-benchmark-commands.md
+docs/07-fix-batches.md
+docs/08-dataset-space-plan.md
+scripts/agent-watchdog.sh
+scripts/benchmark-watchdog.sh
+scripts/make_small_dataset.sh
+scripts/meta-watchdog.sh
+scripts/prep_cami2_marine.sh
+scripts/run_comebin_fix.sh
+scripts/run_eval.sh
+scripts/run_small_test.sh
+scripts/status-heartbeat.sh
+status/agent-activity.log
+> build · space-bunny-free
+[0m$ [0mset -e
+exec 9>/tmp/bench-repo.lock
+flock 9
+timeout 30s git fetch -q origin main
+head=$(git rev-parse HEAD)
+remote=$(timeout 30s git ls-remote origin refs/heads/main | awk 'NR==1{print $1}')
+[ "$head" = "$remote" ]
+git add CHANGELOG.md PROGRESS.md docs/05-agent-restart.md docs/06-benchmark-commands.md docs/07-fix-batches.md docs/08-dataset-space-plan.md scripts/agent-watchdog.sh scripts/benchmark-watchdog.sh scripts/make_small_dataset.sh scripts/meta-watchdog.sh scripts/run_comebin_fix.sh scripts/run_eval.sh scripts/run_small_test.sh scripts/status-heartbeat.sh status/agent-activity.log
+actual=$(git diff --cached --name-only | sort)
+expected=$(printf '%s\n' CHANGELOG.md PROGRESS.md docs/05-agent-restart.md docs/06-benchmark-commands.md docs/07-fix-batches.md docs/08-dataset-space-plan.md scripts/agent-watchdog.sh scripts/benchmark-watchdog.sh scripts/make_small_dataset.sh scripts/meta-watchdog.sh scripts/run_comebin_fix.sh scripts/run_eval.sh scripts/run_small_test.sh scripts/status-heartbeat.sh status/agent-activity.log | sort)
+[ "$actual" = "$expected" ]
+git diff --cached --check
+git commit -q -m "ops: harden watchdogs, issue triage, and benchmark handoff"
+timeout 60s git push -q
+head=$(git rev-parse HEAD)
+remote=$(timeout 30s git ls-remote origin refs/heads/main | awk 'NR==1{print $1}')
+[ "$head" = "$remote" ]
+printf 'committed_and_pushed %s\n' "$head"
+committed_and_pushed 899f7e7a55674da709ee4183c43b911a347eb609
+> build · space-bunny-free
+[0m$ [0mgh issue comment 2 -R paulzierep/metagenomic-binning-benchmark --body $'## Supervisor follow-up: explicit medium stage + safe test runner\n\nAcknowledged the **18:51 UTC edit**. The workflow is now explicitly:\n\n1. run/log the real-pipeline functional test on the 94 MB small set;\n2. after that passes, build/run a medium derived benchmark (initial target 3,000 contigs, hard cap 5 GB, with measured provenance/size);\n3. reserve the large benchmark for post-major-commit runs.\n\nThis is now recorded in `docs/06-benchmark-commands.md`, `docs/07-fix-batches.md`, and `docs/08-dataset-space-plan.md`.\n\nSupervisor commit `899f7e7` also closes runner gaps found during verification: `run_small_test.sh` now refuses overlap/overwrite, supports either the pristine or v1.1.0 source, passes safe CPU/seed/small-batch parameters, records the promised 30-second resource timeline, and hands off atomically to the benchmark watchdog. `run_eval.sh` refuses to overlap the registered benchmark.\n\nNo small end-to-end result is being claimed yet, and the medium set has intentionally **not** been built while the active baseline is running. Those remain gated on the small COMEBin + CheckM2/CheckM run.'
+
+https://github.com/paulzierep/metagenomic-binning-benchmark/issues/2#issuecomment-5801330301
+> build · space-bunny-free
+[0m$ [0mset -e
+mkdir -p /vol/data/benchmark/meta/.issues_seen
+for n in 2 4 5; do
+  updated=$(gh issue view "$n" -R paulzierep/metagenomic-binning-benchmark --json updatedAt --jq .updatedAt)
+  epoch=$(date -d "$updated" +%s)
+  printf '%s\n' "$epoch" > "/vol/data/benchmark/meta/.issues_seen/$n"
+  printf '#%s %s %s\n' "$n" "$updated" "$epoch"
+done
+#2 2026-09-23T19:19:23Z 1790191163
+#4 2026-09-23T18:56:47Z 1790189807
+#5 2026-09-23T18:56:47Z 1790189807
+> build · space-bunny-free
+[0m$ [0mMETA_WATCHDOG_LOCK=/tmp/meta-watchdog-supervisor-final.lock META_WATCHDOG_NO_LLM=1 bash scripts/meta-watchdog.sh; rc=$?; echo "final meta verification rc=$rc"; cat /vol/data/benchmark/meta/checks.tsv; tail -n 3 /vol/data/benchmark/logs/meta-watchdog.log
+final meta verification rc=0
+C1_cron	ok	4 exact jobs; cron active; installed/source scripts identical + executable
+C2_service	ok	pid 5551; service status + /api/info healthy
+C3_agent	ok	run_alive=0 driver=1 hb=5s transcript=3s
+C4_ratelimit	ok	failed-launch markers=1 in 360min window
+C5_github	ok	HEAD=remote 899f7e7a5567; status clean; worktree edits=1; last commit 25s
+C6_benchmark	ok	pid 19182 mode=baseline alive, log 3s fresh
+C7_disk	ok	380 GiB free
+C8_issues	ok	5 open, none new
+C9_repo_publish	ok	meta artifacts committed and HEAD=remote main
+2026-09-23T19:18:07+00:00 [meta] verification run: unresolved checks present but LLM escalation disabled
+2026-09-23T19:18:07+00:00 tick done: fixes=1 broken=1 degraded=0 escalated=1
+2026-09-23T19:19:38+00:00 tick done: fixes=0 broken=0 degraded=0 escalated=0
+> build · space-bunny-free
+[0m$ [0mgit status --short --branch; git diff --summary; git diff -- scripts/prep_cami2_marine.sh; git log -4 --oneline --decorate
+## main...origin/main
+ M scripts/prep_cami2_marine.sh
+diff --git a/scripts/prep_cami2_marine.sh b/scripts/prep_cami2_marine.sh
+index 08c200b..9e8fa7a 100644
+--- a/scripts/prep_cami2_marine.sh
++++ b/scripts/prep_cami2_marine.sh
+@@ -58,4 +58,4 @@ grep -v '^@' "$GT" | awk -v K="$OUT/contigs.fa" '
+   md5sum "$OUT/contigs.fa" "$OUT/bamfiles/marine.bam" "$OUT/binning_gs_subset.tsv" \
+     | sed 's/^/    /'
+ } | tee "$OUT/logs/input_meta.txt"
+-echo "DONE -> $OUT"
+\ No newline at end of file
++echo "DONE -> $OUT"
+6f00bd5 (HEAD -> main, origin/main) meta: supervise tick 2026-09-23T19:19:34Z — 0 fix(es)
+899f7e7 ops: harden watchdogs, issue triage, and benchmark handoff
+fbf1518 status: yes — baseline_unmodified epoch 117/200 loss 2.9210309982299805 acc 98.26171875 model big-pickle — Baseline training epoch ~109/200 (~2.4 m
+68c67a2 meta: supervise tick 2026-09-23T19:18:02Z — 1 fix(es)
+> build · space-bunny-free
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/scripts/prep_cami2_marine.sh
+Index: /vol/data/repos/metagenomic-binning-benchmark/scripts/prep_cami2_marine.sh
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/scripts/prep_cami2_marine.sh
++++ /vol/data/repos/metagenomic-binning-benchmark/scripts/prep_cami2_marine.sh
+@@ -57,5 +57,5 @@
+   echo "  md5s:"
+   md5sum "$OUT/contigs.fa" "$OUT/bamfiles/marine.bam" "$OUT/binning_gs_subset.tsv" \
+     | sed 's/^/    /'
+ } | tee "$OUT/logs/input_meta.txt"
+-echo "DONE -> $OUT"
++echo "DONE -> $OUT"
+\ No newline at end of file
+
+> build · space-bunny-free
+[0m$ [0mgit status --short --branch; git diff --check
+## main...origin/main
+> build · space-bunny-free
