@@ -16464,3 +16464,241 @@ Run /vol/data/benchmark/bin/benchmark-watchdog.sh to triage/restart it; not star
 [0m$ [0mcat /vol/data/benchmark/.active_run 2>&1
 239956 239954 /vol/data/benchmark/runs/small_test/comebin_run.log /vol/data/benchmark/runs/small_test 1790204914 small /vol/data/repos/COMEBin
 > build · nemotron-3.5-lightning-free
+[0m$ [0mrm -f /vol/data/benchmark/.active_run && rm -rf /vol/data/benchmark/runs/small_test && bash /vol/data/repos/metagenomic-binning-benchmark/scripts/run_small_test.sh 2>&1 | tail -30
+2026-09-23 23:10:10,414 - Processed:/vol/data/benchmark/runs/small_test/comebin_out/data_augmentation/depth/reads.bam_0_depth.txt
+2026-09-23 23:10:10,464 - Finish calculating coverage variance for aug_1
+2026-09-23 23:10:12,071 - Processed:/vol/data/benchmark/runs/small_test/comebin_out/data_augmentation/depth/reads.bam_0_depth.txt
+2026-09-23 23:10:12,118 - Finish calculating coverage variance for aug_2
+2026-09-23 23:10:13,722 - Processed:/vol/data/benchmark/runs/small_test/comebin_out/data_augmentation/depth/reads.bam_0_depth.txt
+2026-09-23 23:10:13,773 - Finish calculating coverage variance for aug_3
+2026-09-23 23:10:15,379 - Processed:/vol/data/benchmark/runs/small_test/comebin_out/data_augmentation/depth/reads.bam_0_depth.txt
+2026-09-23 23:10:15,431 - Finish calculating coverage variance for aug_4
+2026-09-23 23:10:17,058 - Processed:/vol/data/benchmark/runs/small_test/comebin_out/data_augmentation/depth/reads.bam_0_depth.txt
+2026-09-23 23:10:17,128 - Finish calculating coverage variance for aug_5
+/vol/data/benchmark/runs/small_test/comebin_out/comebin_res does not exist.
+Running getting representation.
+2026-09-23 23:10:20,454 - train
+2026-09-23 23:10:20,455 - Generate features for the data.
+Traceback (most recent call last):
+  File "/vol/data/repos/COMEBin/COMEBin/main.py", line 369, in <module>
+    main()
+  File "/vol/data/repos/COMEBin/COMEBin/main.py", line 289, in main
+    train_CLmodel(logger,args)
+  File "/vol/data/repos/COMEBin/COMEBin/train_CLmodel.py", line 38, in train_CLmodel
+    dataset, namelist = get_ContrastiveLearningDataset(args.data, args.n_views,
+  File "/vol/data/repos/COMEBin/COMEBin/get_augfeature.py", line 155, in get_ContrastiveLearningDataset
+    dataset, namelist = get_kmer_coverage(data_path, n_views, kmer_model_path, device, nokmer, cov_meannormalize, cov_minmaxnormalize, cov_standardization,addvars,vars_sqrt,kmer_l2_normalize,kmerMetric_notl2normalize)
+  File "/vol/data/repos/COMEBin/COMEBin/get_augfeature.py", line 57, in get_kmer_coverage
+    compositMat = shuffled_compositMat[covIdxArr]
+IndexError: index 135282741276336 is out of bounds for axis 0 with size 300
+Something went wrong with running training network. Exiting.
+exit_code:  1
+wall_s:     41
+finished:   2026-09-23T23:10:21+00:00
+> build · nemotron-3.5-lightning-free
+Good progress! The gen_cov.py and gen_var.py KeyErrors are fixed. Now there's a new error in `get_augfeature.py`. Let me investigate:
+[0m$ [0mcat /vol/data/repos/COMEBin/COMEBin/get_augfeature.py 2>&1
+import numpy as np
+import pandas as pd
+import torch
+from utils import get_kmerMetric_emb
+from sklearn.preprocessing import normalize
+
+def get_kmer_coverage(data_path: str, n_views: int = 2, kmer_model_path: str = 'empty',
+                      device = torch.device('cpu'), nokmer: bool = False, cov_meannormalize: bool = False,
+                      cov_minmaxnormalize: bool = False, cov_standardization: bool = False, addvars: bool = False,
+                      vars_sqrt: bool = False, kmer_l2_normalize: bool = False, kmerMetric_notl2normalize: bool = False):
+    """
+    Get features
+
+    :param data_path: The path to the data directory.
+    :param n_views: The number of views (default: 2).
+    :param kmer_model_path: The path to the k-mer model (default: 'empty').
+    :param device: The device for computation (default: 'cpu').
+    :param nokmer: Flag to exclude k-mer data (default: False).
+    :param cov_meannormalize: Flag to mean normalize coverage data (default: False).
+    :param cov_minmaxnormalize: Flag to min-max normalize coverage data (default: False).
+    :param cov_standardization: Flag to standardize coverage data (default: False).
+    :param addvars: Flag to include additional variables (default: False).
+    :param vars_sqrt: Flag to take the square root of variables (default: False).
+    :param kmer_l2_normalize: Flag to L2 normalize k-mer data (default: False).
+    :param kmerMetric_notl2normalize: Flag to not L2 normalize k-mer metric data (default: False).
+
+    :return: A list of preprocessed data and a list of contig names.
+    """
+    namelist = pd.read_csv(data_path + 'aug0_datacoverage_mean.tsv', sep='\t', usecols=range(1)).values[:, 0]
+
+    mapObj = dict(zip(namelist, range(len(namelist))))
+    for view in range(n_views):
+        cov_file = data_path + 'aug' + str(view) + '_datacoverage_mean.tsv'
+        if not nokmer:
+            com_file = data_path + 'aug' + str(view) + '/kmer_4_f0.csv'
+
+        covHeader = pd.read_csv(cov_file, sep='\t', nrows=1)
+        shuffled_covMat = pd.read_csv(cov_file, sep='\t', usecols=range(1, covHeader.shape[1])).values
+        shuffled_namelist = pd.read_csv(cov_file, sep='\t', usecols=range(1)).values[:, 0]
+
+        covIdxArr = np.empty(len(mapObj), dtype=np.int)
+        for contigIdx in range(len(shuffled_namelist)):
+            if shuffled_namelist[contigIdx].split('_aug')[0] in mapObj:
+                covIdxArr[mapObj[shuffled_namelist[contigIdx].split('_aug')[0]]] = contigIdx
+        covMat = shuffled_covMat[covIdxArr]
+
+
+        if not nokmer:
+            compositHeader = pd.read_csv(com_file, sep=',', nrows=1)
+            shuffled_compositMat = pd.read_csv(com_file, sep=',', usecols=range(1, compositHeader.shape[1])).values
+            shuffled_namelist = pd.read_csv(com_file, sep=',', usecols=range(1)).values[:, 0]
+
+            covIdxArr = np.empty(len(mapObj), dtype=np.int)
+            for contigIdx in range(len(shuffled_namelist)):
+                if shuffled_namelist[contigIdx].split('_aug')[0] in mapObj:
+                    covIdxArr[mapObj[shuffled_namelist[contigIdx].split('_aug')[0]]] = contigIdx
+            compositMat = shuffled_compositMat[covIdxArr]
+
+        if addvars:
+            vars_file = data_path+'aug'+str(view)+'_datacoverage_var.tsv'
+
+            varsHeader = pd.read_csv(vars_file, sep='\t', nrows=1)
+            shuffled_varsMat = pd.read_csv(vars_file, sep='\t', usecols=range(1, varsHeader.shape[1])).values
+            shuffled_namelist = pd.read_csv(vars_file, sep='\t', usecols=range(1)).values[:, 0]
+
+            covIdxArr = np.empty(len(mapObj), dtype=np.int)
+            for contigIdx in range(len(shuffled_namelist)):
+                if shuffled_namelist[contigIdx].split('_aug')[0] in mapObj:
+                    covIdxArr[mapObj[shuffled_namelist[contigIdx].split('_aug')[0]]] = contigIdx
+            varsMat = shuffled_varsMat[covIdxArr]
+
+        if view == 0:
+            covMats = covMat
+            if addvars:
+                varsMats = varsMat
+            if not nokmer:
+                compositMats = compositMat
+
+        else:
+            covMats = np.vstack((covMats, covMat))
+            if addvars:
+                varsMats = np.vstack((varsMats, varsMat))
+            if not nokmer:
+                compositMats = np.vstack((compositMats, compositMat))
+
+    # use cov_maxnormalize
+    covMats = covMats + 1e-5
+    if addvars:
+        if vars_sqrt:
+            varsMats = np.sqrt(varsMats)
+        varsMats = varsMats + 1e-5
+
+    if cov_meannormalize:
+        covMats = covMats / covMats.mean(axis=0)[None, :]
+        if addvars:
+            varsMats = varsMats / varsMats.mean(axis=0)[None, :]
+
+    elif cov_minmaxnormalize:
+        covMats = (covMats - covMats.min(axis=0)[None, :])/ (covMats.max(axis=0)[None, :] - covMats.min(axis=0)[None, :] )
+        if addvars:
+            varsMats = (varsMats - varsMats.min(axis=0)[None, :])/ (varsMats.max(axis=0)[None, :] - varsMats.min(axis=0)[None, :] )
+
+    elif cov_standardization:
+        covMats = (covMats - covMats.mean(axis=0)[None, :])/ covMats.std(axis=0)[None, :]
+        if addvars:
+            varsMats = (varsMats - varsMats.mean(axis=0)[None, :])/ varsMats.std(axis=0)[None, :]
+    else:
+        covMats = covMats / covMats.max(axis=0)[None, :]
+        if addvars:
+            varsMats = varsMats / varsMats.max(axis=0)[None, :]
+
+    if not nokmer:
+        compositMats = compositMats + 1
+        compositMats = compositMats / compositMats.sum(axis=1)[:, None]
+        if kmer_l2_normalize:
+            compositMats = normalize(compositMats)
+        if kmer_model_path != 'empty':
+            compositMats = get_kmerMetric_emb(kmer_model_path, compositMats, device,kmerMetric_notl2normalize)
+
+    if not nokmer:
+        X_ts = np.hstack((covMats, compositMats))
+    else:
+        X_ts = covMats
+
+    if addvars:
+        X_ts = np.hstack((varsMats, X_ts))
+
+    return list(torch.split(torch.from_numpy(X_ts).float(), len(namelist))), namelist
+
+
+def get_ContrastiveLearningDataset(data_path: str, n_views: int = 2, kmer_model_path: str = 'empty',
+                                   device=torch.device('cpu'), nokmer: bool = False, cov_meannormalize: bool = False,
+                                   cov_minmaxnormalize: bool = False, cov_standardization: bool = False, addvars: bool = False,
+                                   vars_sqrt: bool = False, kmer_l2_normalize: bool = False, kmerMetric_notl2normalize: bool = False):
+    """
+    Get a Contrastive Learning dataset based on input parameters.
+
+    :param data_path: The path to the data.
+    :param n_views: The number of views for data (default: 2).
+    :param kmer_model_path: The path to the k-mer model (default: 'empty').
+    :param device: The device to use for computations (default: 'cpu').
+    :param nokmer: Whether to use k-mer features (default: False).
+    :param cov_meannormalize: Whether to mean normalize coverage (default: False).
+    :param cov_minmaxnormalize: Whether to min-max normalize coverage (default: False).
+    :param cov_standardization: Whether to standardize coverage (default: False).
+    :param addvars: Whether to add additional variables (default: False).
+    :param vars_sqrt: Whether to take the square root of additional variables (default: False).
+    :param kmer_l2_normalize: Whether to L2 normalize k-mer features (default: False).
+    :param kmerMetric_notl2normalize: Whether not to L2 normalize k-mer features (default: False).
+
+    :return: A tuple containing the dataset and a list of names.
+    """
+    if not data_path.endswith('/'):
+        data_path = data_path + '/'
+    dataset, namelist = get_kmer_coverage(data_path, n_views, kmer_model_path, device, nokmer, cov_meannormalize, cov_minmaxnormalize, cov_standardization,addvars,vars_sqrt,kmer_l2_normalize,kmerMetric_notl2normalize)
+    return dataset, namelist
+> build · nemotron-3.5-lightning-free
+[0m$ [0mhead -3 /vol/data/benchmark/runs/small_test/comebin_out/data_augmentation/aug0_datacoverage_mean.tsv 2>&1
+/vol/data/benchmark/runs/small_test/comebin_out/data_augmentation/depth/reads.bam_0_depth.txt_cov
+BATS_SAMN07137077_METAG-scaffold_71	19.77186799102852
+BATS_SAMN07137077_METAG-scaffold_137	19.58375135241468
+[0m$ [0mhead -3 /vol/data/benchmark/runs/small_test/comebin_out/data_augmentation/aug0/sequences_aug0.fasta.au_seq_info.tsv 2>&1
+head: cannot open '/vol/data/benchmark/runs/small_test/comebin_out/data_augmentation/aug0/sequences_aug0.fasta.au_seq_info.tsv' for reading: No such file or directory
+[0m$ [0mwc -l /vol/data/benchmark/runs/small_test/comebin_out/data_augmentation/aug0_datacoverage_mean.tsv 2>&1
+29435 /vol/data/benchmark/runs/small_test/comebin_out/data_augmentation/aug0_datacoverage_mean.tsv
+> build · nemotron-3.5-lightning-free
+[0m$ [0mhead -5 /vol/data/benchmark/runs/small_test/comebin_out/data_augmentation/aug1/kmer_4_f0.csv 2>&1
+,0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63,64,65,66,67,68,69,70,71,72,73,74,75,76,77,78,79,80,81,82,83,84,85,86,87,88,89,90,91,92,93,94,95,96,97,98,99,100,101,102,103,104,105,106,107,108,109,110,111,112,113,114,115,116,117,118,119,120,121,122,123,124,125,126,127,128,129,130,131,132,133,134,135
+BATS_SAMN07137077_METAG-scaffold_1_aug1,547.0,619.0,356.0,385.0,598.0,273.0,495.0,396.0,469.0,397.0,259.0,158.0,426.0,515.0,169.0,309.0,537.0,342.0,377.0,437.0,606.0,420.0,390.0,426.0,345.0,297.0,250.0,487.0,467.0,242.0,306.0,481.0,313.0,226.0,371.0,259.0,208.0,354.0,368.0,117.0,40.0,353.0,19.0,109.0,15.0,423.0,316.0,244.0,391.0,339.0,225.0,216.0,96.0,86.0,82.0,415.0,68.0,158.0,531.0,307.0,380.0,268.0,442.0,459.0,370.0,254.0,135.0,441.0,156.0,305.0,280.0,333.0,394.0,463.0,366.0,519.0,280.0,318.0,449.0,149.0,293.0,243.0,288.0,242.0,219.0,296.0,187.0,98.0,170.0,94.0,133.0,286.0,236.0,327.0,321.0,77.0,75.0,106.0,97.0,143.0,338.0,278.0,381.0,133.0,168.0,99.0,122.0,159.0,234.0,104.0,375.0,222.0,164.0,79.0,115.0,176.0,236.0,70.0,31.0,22.0,4.0,188.0,123.0,41.0,0.0,9.0,282.0,0.0,198.0,129.0,103.0,197.0,81.0,28.0,2.0,0.0
+BATS_SAMN07137077_METAG-scaffold_2_aug1,89.0,96.0,83.0,76.0,129.0,41.0,78.0,71.0,87.0,83.0,49.0,20.0,94.0,97.0,38.0,63.0,78.0,58.0,94.0,98.0,117.0,94.0,53.0,56.0,60.0,47.0,49.0,106.0,92.0,26.0,51.0,111.0,52.0,53.0,95.0,64.0,52.0,75.0,93.0,16.0,7.0,89.0,0.0,8.0,2.0,114.0,91.0,44.0,99.0,83.0,43.0,24.0,16.0,29.0,10.0,115.0,20.0,22.0,101.0,54.0,55.0,61.0,49.0,86.0,98.0,49.0,31.0,121.0,32.0,90.0,47.0,63.0,92.0,97.0,57.0,106.0,53.0,64.0,64.0,9.0,43.0,38.0,53.0,51.0,43.0,49.0,15.0,17.0,49.0,23.0,21.0,45.0,54.0,78.0,45.0,4.0,7.0,9.0,27.0,9.0,46.0,71.0,71.0,24.0,34.0,16.0,13.0,29.0,86.0,31.0,90.0,47.0,50.0,9.0,22.0,44.0,68.0,4.0,6.0,7.0,1.0,68.0,33.0,19.0,0.0,2.0,56.0,7.0,59.0,12.0,17.0,49.0,4.0,6.0,0.0,0.0
+BATS_SAMN07137077_METAG-scaffold_3_aug1,142.0,116.0,88.0,66.0,84.0,51.0,58.0,43.0,90.0,57.0,46.0,26.0,45.0,50.0,15.0,38.0,48.0,34.0,51.0,55.0,82.0,42.0,47.0,35.0,24.0,44.0,41.0,51.0,44.0,8.0,40.0,91.0,40.0,33.0,37.0,32.0,35.0,53.0,68.0,15.0,15.0,68.0,7.0,7.0,4.0,42.0,33.0,11.0,43.0,29.0,25.0,12.0,7.0,1.0,11.0,83.0,5.0,11.0,113.0,38.0,22.0,27.0,38.0,46.0,41.0,44.0,30.0,41.0,11.0,54.0,59.0,48.0,41.0,81.0,75.0,55.0,55.0,47.0,53.0,17.0,37.0,23.0,17.0,9.0,15.0,51.0,15.0,11.0,26.0,12.0,28.0,24.0,30.0,36.0,41.0,5.0,12.0,6.0,4.0,19.0,51.0,26.0,26.0,14.0,28.0,13.0,5.0,15.0,29.0,9.0,34.0,35.0,33.0,4.0,16.0,33.0,61.0,3.0,4.0,0.0,0.0,39.0,24.0,2.0,0.0,2.0,42.0,11.0,33.0,7.0,15.0,26.0,11.0,4.0,0.0,0.0
+BATS_SAMN07137077_METAG-scaffold_4_aug1,25.0,35.0,18.0,21.0,28.0,14.0,17.0,21.0,23.0,20.0,19.0,7.0,13.0,23.0,5.0,12.0,14.0,16.0,16.0,25.0,14.0,22.0,23.0,15.0,13.0,18.0,12.0,20.0,26.0,14.0,18.0,23.0,21.0,20.0,17.0,19.0,12.0,18.0,26.0,10.0,12.0,16.0,1.0,11.0,4.0,22.0,18.0,14.0,18.0,17.0,16.0,12.0,6.0,11.0,8.0,15.0,7.0,15.0,23.0,8.0,18.0,11.0,14.0,22.0,28.0,17.0,6.0,21.0,16.0,17.0,4.0,20.0,21.0,26.0,25.0,26.0,15.0,18.0,15.0,10.0,24.0,17.0,14.0,15.0,18.0,22.0,13.0,9.0,10.0,16.0,17.0,10.0,15.0,20.0,19.0,6.0,8.0,9.0,22.0,11.0,24.0,0.0,17.0,9.0,16.0,12.0,14.0,13.0,23.0,1.0,14.0,16.0,18.0,9.0,14.0,17.0,21.0,3.0,3.0,3.0,0.0,21.0,8.0,15.0,0.0,0.0,19.0,5.0,14.0,8.0,5.0,10.0,8.0,5.0,1.0,0.0
+[0m$ [0mhead -5 /vol/data/benchmark/runs/small_test/comebin_out/data_augmentation/aug1/sequences_aug1.fasta.au_seq_info.tsv 2>&1
+head: cannot open '/vol/data/benchmark/runs/small_test/comebin_out/data_augmentation/aug1/sequences_aug1.fasta.au_seq_info.tsv' for reading: No such file or directory
+> build · nemotron-3.5-lightning-free
+[0m$ [0mpython3 -c "
+import pandas as pd
+namelist = pd.read_csv('/vol/data/benchmark/runs/small_test/comebin_out/data_augmentation/aug0_datacoverage_mean.tsv', sep='\t', usecols=range(1)).values[:, 0]
+mapObj = dict(zip(namelist, range(len(namelist))))
+print('mapObj size:', len(mapObj))
+print('First 5 mapObj entries:')
+for i, (k, v) in enumerate(list(mapObj.items())[:5]):
+    print(f'  {k} -> {v}')
+" 2>&1
+Traceback (most recent call last):
+  File "<string>", line 2, in <module>
+ModuleNotFoundError: No module named 'pandas'
+> build · nemotron-3.5-lightning-free
+[0m$ [0m/vol/data/tools/bin/micromamba run -p /vol/data/envs/comebin python3 -c "
+import pandas as pd
+namelist = pd.read_csv('/vol/data/benchmark/runs/small_test/comebin_out/data_augmentation/aug0_datacoverage_mean.tsv', sep='\t', usecols=range(1)).values[:, 0]
+mapObj = dict(zip(namelist, range(len(namelist))))
+print('mapObj size:', len(mapObj))
+print('First 5 mapObj entries:')
+for i, (k, v) in enumerate(list(mapObj.items())[:5]):
+    print(f'  {k} -> {v}')
+" 2>&1
+mapObj size: 29434
+First 5 mapObj entries:
+  BATS_SAMN07137077_METAG-scaffold_71 -> 0
+  BATS_SAMN07137077_METAG-scaffold_137 -> 1
+  BATS_SAMN07137077_METAG-scaffold_211 -> 2
+  BATS_SAMN07137077_METAG-scaffold_239 -> 3
+  BATS_SAMN07137077_METAG-scaffold_263 -> 4
