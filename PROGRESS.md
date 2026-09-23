@@ -39,6 +39,52 @@ Requirements from the user:
    or a manual repo-Settings toggle — user must flip it or grant scope). Ideas go to
    the benchmark repo for now (idea box: issue #1).
 
+## Run logging — where everything is (per run: `runs/<run>/`)
+
+| Path | Content | Granularity |
+|---|---|---|
+| `run_meta.txt` | date, source commit, threads, dataset, exit_code, wall time, #bins | start + end |
+| `comebin_run.log` | **full stdout+stderr of `run_comebin.sh`** — verbose timestamps, every stage (`generate_aug_data`, coverage, FragGeneScan, epochs with progress bars, clustering) | live (tee) |
+| `logs/resources.tsv` | per-run resource sampler: every 30 s — CPU %, RSS (GB) of the wrapper pid, system mem used | 30 s |
+| `logs/sampler.out` | sampler stderr | — |
+| `comebin_out/` | ALL COMEBin internal artifacts: `data_augmentation/` (fasta, kmer, covariance, depth), trained `models/`, `tensorboard*/`, `cluster_res/` (embeddings, leiden runs, bins) | — |
+| (parent) `run_meta.txt` JSON-style CSV in `results/` | parsed metrics row | after eval |
+
+**Everything above is mirrored into this repo** at `runs/<run>/` (small log files
+only — `run_meta.txt`, `comebin_run.log`, `logs/resources.tsv`, `comebin_res/{comebin.log,
+training.log,config.yml}`; raw artifacts stay on disk). The status-heartbeat re-syncs
+every 10 min and at run end, so per-run runs logs are on GitHub within ~10 min.
+`runs/README.md` documents the layout.
+
+**Agent activity log** `status/agent-activity.log`: the VERBOSE companion to the
+1-line liveness timeline in `status/status.log`. The agent appends one UTC-timestamped
+line per meaningful action (started/finished X, decisions, errors) and it is pushed
+with every heartbeat. Watchdog restart prompts mandate this.
+
+**Command lines**: each run's `run_meta.txt` records the exact commands used
+(`cmd_wrapper:`, `cmd_train_py:`, `cmd_from_log:` lines); templates for every
+benchmark tool run — COMEBin, CheckM2, CheckM, dataset prep — live in
+`docs/06-benchmark-commands.md`.
+
+Global: `/vol/data/logs/*` = installs + launch logs; `/vol/data/benchmark/logs/*` = heartbeat, watchdog, benchmark-watchdog; `status/` in this repo = GitHub-visible status.
+
+## Run logging — how to read phases
+
+Watch progress: `tail -f runs/<run>/comebin_run.log` (epoch bars update in place, use
+`tr '\r' '\n'`). First run finished → `run_meta.txt` gets `exit_code: 0` and `wall_s:`.
+
+## Resource policy (user: max resources for the benchmark, keep some for the agent, don't break anything)
+
+- Benchmark runs use the full machine: **32 threads, full RAM** (host 32 cores / 62 GiB).
+  Measured during baseline training: load ~31, main.py ~3036% CPU, 7.6/62 GB used.
+- Agent keeps ~1–2 cores + light RAM (opencode serve, watchdog, status cron, git/gh).
+- Safe headroom is monitored every 10 min by the status heartbeat: every `status/status.log`
+  row includes `mem=` and `load=`; a RAM spike during clustering/HNSW would show there.
+- Safety rules:
+  - NEVER run CheckM2/CheckM evaluation concurrently with a COMEBin run (RAM/CPU spikes).
+  - NEVER kill or edit an in-progress benchmark (pristine source guarantees baseline validity).
+  - All long jobs are `nohup`-detached so terminal close / agent restart never kills them.
+
 ## Issues workflow (user-facing)
 
 - Where to file ideas: any issue in `paulzierep/metagenomic-binning-benchmark`
@@ -151,9 +197,12 @@ included; fixes land on branch `comebin-optimizations` in this repo.
       `README.md` → "Benchmark runs — performance" (wall time, peak RAM, bins,
       CheckM2/CheckM means) and push — user requirement.
 - [x] Status heartbeat: cron `scripts/status-heartbeat.sh` every 10 min pushes
-      `README.md` **line 1** (status banner: time+date+current work) +
-      `status/current.md` + appends `status/status.log`; agent keeps
-      `/vol/data/benchmark/.activity` up to date (user requirement)
+      `README.md` **line 1** (status banner: German local time `Europe/Berlin`,
+      minute precision, 🟢/+state, link to `status/status.log`) + `status/current.md`
+      (incl. mem + load); agent keeps `/vol/data/benchmark/.activity` up to date
+- [x] Benchmark hang watchdog: cron `scripts/benchmark-watchdog.sh` every 5 min —
+      restarts hung/crashed benchmark runs (40 min log-silence threshold), max 3
+      restarts/run/24 h, flock-protected, independent of the agent
 - [x] env deps COMPLETE: hnswlib + igraph + leidenalg + checkm-genome + tqdm +
       pyyaml installed. NOTE: scanpy/numPy/anndata were originally planned but are
       NOT imported anywhere in COMEBin (verified by grep) — dropped, that combined

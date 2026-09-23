@@ -25,10 +25,18 @@ echo "source commit: $COMMIT (dirty files: $DIRTY)"
   echo "bamdir:     $BAMDIR"
   echo "threads:    $THREADS"
   echo "host:       $(nproc) cores, $(free -g | awk '/Mem:/{print $2}')G RAM, gpu=$(nvidia-smi -L 2>/dev/null || echo none)"
+  echo "cmd_wrapper: bash run_comebin.sh -a $CONTIGS -p $BAMDIR -o $RUNDIR/comebin_out -n 6 -t $THREADS  # via: micromamba run -p $ENV"
 } | tee "$RUNDIR/run_meta.txt"
 
 export MAMBA_ROOT_PREFIX=/vol/data/envs/.mamba
 cd "$SRC/COMEBin"   # upstream resolves ../auxiliary relative to CWD
+
+# register this run for the benchmark watchdog (scripts/benchmark-watchdog.sh)
+printf '%s %s %s %s %s\n' "$$" "$(ps -o pgid= -p $$ | tr -d ' ')" "$RUNDIR/comebin_run.log" "$RUNDIR" "$(date +%s)" > /vol/data/benchmark/.active_run
+
+# capture the real main.py train command once training starts (non-blocking)
+( sleep 12; MCMD=$(pgrep -af 'main.py' 2>/dev/null | head -1 | cut -d' ' -f2-); \
+  [ -n "$MCMD" ] && echo "cmd_train_py: $MCMD" >> "$RUNDIR/run_meta.txt" ) &
 
 START=$(date +%s)
 set +e
@@ -51,4 +59,7 @@ if [ "$RC" -eq 0 ]; then
     echo "bins: $(ls "$BINS" | wc -l)  -> $BINS" | tee -a "$RUNDIR/run_meta.txt"
   fi
 fi
+# record helper-tool commands visible in the log (FragGeneScan/hmmsearch seed genes)
+grep -aE 'run_FragGeneScan|hmmsearch' "$RUNDIR/comebin_run.log" 2>/dev/null | head -2 \
+  | sed 's/^/cmd_from_log: /' | tee -a "$RUNDIR/run_meta.txt" >/dev/null || true
 exit "$RC"

@@ -129,6 +129,24 @@ issue comments:
 - Agent contract: keep `/vol/data/benchmark/.activity` current (one line: what you are
   doing right now) — the heartbeat then tells the story on GitHub.
 
+## Benchmark hang watchdog (independent of the agent)
+
+`scripts/benchmark-watchdog.sh` (cron `*/5 * * * *`, installed at
+`/vol/data/benchmark/bin/`) keeps the **active benchmark run** alive even if the agent
+is dead/broken:
+
+- Tracks the run registered in `/vol/data/benchmark/.active_run`
+  (written by `run_comebin_baseline.sh`: pid, pgid, log file, rundir, start ts).
+- **Hung** (process alive, log silent > 40 min) → kills the process group and restarts.
+- **Crashed** (process gone, no `exit_code: 0` in run_meta.txt) → restarts.
+- **Done** (`exit_code: 0`) → clears `.active_run`.
+- Restarts go into fresh `runs/<run>_autorestartN/` dirs (raw artifacts preserved per
+  attempt); max **3 auto-restarts per run per 24 h**; `flock`-protected; logs to
+  `logs/benchmark-watchdog.log` and stops when `TASK_COMPLETE` exists.
+
+This is belt-and-braces on top of the agent watchdog: agent broken → agent restarts;
+benchmark hung → benchmark restarts. Both are cron-driven and terminal-independent.
+
 ## Operational notes
 
 - **Disable / finish**: `touch /vol/data/benchmark/TASK_COMPLETE`.

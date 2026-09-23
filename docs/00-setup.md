@@ -1,5 +1,30 @@
 # 00 — Setup (environment, tools, agent watchdog)
 
+## Per-run logs (detailed)
+
+Every benchmark run stores **detailed, structured logs** under `runs/<run>/`, and
+the same content is **mirrored into this repo** at `runs/<run>/` (see
+[`runs/README.md`](../runs/README.md)) by the status-heartbeat every 10 min and at
+run end — the raw COMEBin artifacts stay on disk under `/vol/data/benchmark/runs/`:
+
+- `run_meta.txt` — date, commit, threads, dataset, exit code, wall-clock, #bins.
+- `comebin_run.log` — full stdout+stderr of `run_comebin.sh` (tee'd): stage log lines
+  (`generate_aug_data`, coverage/variance, FragGeneScan/HMMER seed genes, per-epoch
+  progress bars, clustering), timestamped by COMEBin's logger.
+- `logs/resources.tsv` — resource sampler (every 30 s): CPU % + RSS of the run's pid
+  and system memory — this is what fills the "Peak RAM" column of the README table.
+- `comebin_res/` — COMEBin's own logs: `comebin.log` (internal logger), `training.log`
+  (per-epoch loss/accuracy), `config.yml` (exact run config), tensorboard events.
+- `comebin_out/` (disk only) — every COMEBin artifact (augmented fasta/kmer/covariance/
+  depth, trained models, tensorboard events, cluster results, final bins).
+
+**Agent activity log** `status/agent-activity.log`: verbose, append-only record of
+what the agent does (one UTC-timestamped line per meaningful action), pushed to
+GitHub with every heartbeat. `status/status.log` stays the 1-line liveness timeline.
+
+Global logs: `/vol/data/logs/` (installs, launches), `/vol/data/benchmark/logs/`
+(watchdog, benchmark-watchdog, status). GitHub-visible status: `status/` in this repo.
+
 ## Host
 
 | | |
