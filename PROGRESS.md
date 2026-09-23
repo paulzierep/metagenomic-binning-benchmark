@@ -260,10 +260,16 @@ included; fixes land on branch `comebin-optimizations` in this repo.
       includes human host-associated CAMI II (Multisample HMP / Toy Human
       Microbiome), 391 GB free, planned data ≤ ~105 GB. Replies posted.
 - [~] **← CURRENT: baseline demo run in progress** (started 14:36 UTC, commit
-      987db95d8d399f30b7c82a5f5f40ed6bfdc906c7, `-t 32`): training epoch ~116/200
-      (checked 19:15 UTC; ~2.4 min/epoch → ETA ~22:30 UTC worst case;
+      987db95d8d399f30b7c82a5f5f40ed6bfdc906c7, `-t 32`): training epoch ~160/200
+      (checked 20:55 UTC; ~2.4 min/epoch → ETA ~22:45 UTC worst case;
       `--earlystop` may cut short; banner shows LIVE epoch + loss/acc each 2 min) —
       watch `runs/baseline_unmodified/comebin_run.log`
+- [x] **Issues #6/#7/#8 triaged (20:55 UTC)**: #6 optimization → strategy doc;
+      #7 optimization plan → `docs/09-optimization-strategy.md` + README link
+      (flowchart, decision gate, adaptive-param ideas); #8 zenodo data archiving →
+      reply posted with proposed package/prep + what I need (token or manual upload)
+- [x] **docs/09-optimization-strategy.md written and linked from README** (with
+      benchmark-repo commit)
 - [ ] When baseline done: CheckM2 + CheckM v1 eval (`scripts/run_eval.sh`) → README
       performance row (wall time per stage, peak RAM from resources.tsv, bins,
       CheckM2/CheckM means) with linked commit → push
