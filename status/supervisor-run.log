@@ -19232,3 +19232,553 @@ License: GPL3
 Location: /vol/data/envs/comebin/lib/python3.10/site-packages
 Requires: matplotlib, numpy, scipy
 Required-by:
+> build · space-bunny-free
+[0m← [0mWrite /tmp/opencode/benchmark-watchdog.sh.new
+Created file successfully: /tmp/opencode/benchmark-watchdog.sh.new
+> build · space-bunny-free
+[0m← [0mEdit /tmp/opencode/benchmark-watchdog.sh.new
+Index: /tmp/opencode/benchmark-watchdog.sh.new
+===================================================================
+--- /tmp/opencode/benchmark-watchdog.sh.new
++++ /tmp/opencode/benchmark-watchdog.sh.new
+@@ -230,9 +230,10 @@
+ 
+ # Restart into a fresh directory (keeps every attempt's raw artifacts). New
+ # registrations carry mode + source; legacy five-field baseline registrations
+ # default to mode=baseline above.
+-touch "$BENCH/.hang_restarts.$root_name.$(date +%s)"
++marker="$BENCH/.hang_restarts.$root_name.$(date +%s)"
++touch "$marker"
+ new="${root_name}_autorestart$((restarts+1))"
+ newdir="$BENCH/runs/$new"
+ # Keep the old registration until the replacement atomically overwrites it;
+ # BENCHMARK_WATCHDOG_REPLACE=1 tells guarded runners that this is an authorized
+
+> build · space-bunny-free
+[0m← [0mEdit /tmp/opencode/benchmark-watchdog.sh.new
+Index: /tmp/opencode/benchmark-watchdog.sh.new
+===================================================================
+--- /tmp/opencode/benchmark-watchdog.sh.new
++++ /tmp/opencode/benchmark-watchdog.sh.new
+@@ -246,9 +246,9 @@
+      if [ -n "${contigs:-}" ]; then launch_env+=("CONTIGS=$contigs"); fi
+      if [ -n "${bamdir:-}" ]; then launch_env+=("BAMDIR=$bamdir"); fi
+      ;;
+ esac
+-snapshot=$(make_snapshot "$rel") || { rm -f "$BENCH/.hang_restarts.$root_name.$(ls -1t "$BENCH"/.hang_restarts."$root_name".* 2>/dev/null | head -1 | xargs -r basename 2>/dev/null)"; exit 0; }
++snapshot=$(make_snapshot "$rel") || { rm -f "$marker"; exit 0; }
+ launch=(bash "$snapshot" "$newdir")
+ nohup env "${launch_env[@]}" "${launch[@]}" \
+     >"$BENCH/logs/$new.launch.log" 2>&1 9>&- &
+ log "$name restart #$((restarts+1)) mode=$mode source=$source -> $newdir (runner=$RUNNER_REF:$rel snapshot=$(basename "$snapshot"); launcher pid $!)"
+
+> build · space-bunny-free
+[0m$ [0mbash -n /tmp/opencode/benchmark-watchdog.sh.new; echo rc=$?; grep -nE 'touch|snapshot|terminal_reason|make_snapshot' /tmp/opencode/benchmark-watchdog.sh.new | tail -30
+rc=0
+14:#   - replacement runners are immutable snapshots from the committed repo
+27:SNAPSHOT_ROOT="$BENCH/.runner-snapshots"
+84:  log "$name registration changed while watchdog was inspecting it; leaving current state untouched"
+112:# A committed snapshot prevents a source edit made while a long benchmark is
+114:make_snapshot() {
+182:terminal_reason=""
+185:    terminal_reason="run_meta exit_code=$rc_done"
+187:    terminal_reason=$(tail -n 1 "$rundir/.watchdog_terminal" 2>/dev/null || true)
+195:        terminal_reason="terminal log evidence: $failure_line"
+200:  if [ -n "$terminal_reason" ]; then
+201:    record_terminal_failure "$terminal_reason"
+210:if [ "$alive" -eq 1 ] && [ -n "$terminal_reason" ]; then
+235:touch "$marker"
+250:snapshot=$(make_snapshot "$rel") || { rm -f "$marker"; exit 0; }
+251:launch=(bash "$snapshot" "$newdir")
+254:log "$name restart #$((restarts+1)) mode=$mode source=$source -> $newdir (runner=$RUNNER_REF:$rel snapshot=$(basename "$snapshot"); launcher pid $!)"
+> build · space-bunny-free
+[0m← [0mWrite /tmp/opencode/run_comebin_baseline.sh.new
+Created file successfully: /tmp/opencode/run_comebin_baseline.sh.new
+> build · space-bunny-free
+[0m$ [0mbash -n /tmp/opencode/run_comebin_baseline.sh.new; echo rc=$?; shellcheck /tmp/opencode/run_comebin_baseline.sh.new 2>/dev/null | head -100 || true
+rc=0
+> build · space-bunny-free
+[0m$ [0mcp /vol/data/repos/metagenomic-binning-benchmark/scripts/meta-watchdog.sh /tmp/opencode/meta-watchdog.sh.new
+python3 - <<'PY'
+from pathlib import Path
+p = Path('/tmp/opencode/meta-watchdog.sh.new')
+s = p.read_text()
+old = '''# ---- C6: registered benchmark alive, correct process, and progressing ------- #
+if [ -f "$BENCH/.active_run" ]; then
+  read -r bid bpgid blog bdir bstart bmode bsource < "$BENCH/.active_run" || true
+  b_alive=0
+  b_stat=$(ps -o stat= -p "${bid:-0}" 2>/dev/null | tr -d ' ' || true)
+  b_cmd=""
+  if [ -n "$b_stat" ] && kill -0 "${bid:-0}" 2>/dev/null && [[ "$b_stat" != Z* ]]; then
+    b_alive=1
+    b_cmd=$(tr '\\0' ' ' < "/proc/${bid:-0}/cmdline" 2>/dev/null || true)
+  fi
+  b_age=999999; [ -n "${blog:-}" ] && [ -f "$blog" ] && b_age=$((now - $(stat -c %Y "$blog")))
+  runner_ok=0
+  case "$b_cmd" in *run_comebin_baseline.sh*|*run_comebin_fix.sh*|*run_small_test.sh*) runner_ok=1 ;; esac
+  if [ "$b_alive" -eq 1 ] && [ "$runner_ok" -eq 0 ]; then
+    check C6_benchmark broken "pid $bid alive but command is not a registered COMEBin runner; refusing kill"
+  elif [ "$b_alive" -eq 0 ]; then
+    done_rc=$(grep -m1 '^exit_code:' "${bdir:-/nonexistent}/run_meta.txt" 2>/dev/null | awk '{print $2}' || true)
+    if [ "${done_rc:-}" = "0" ]; then
+      bash "$BENCH/bin/benchmark-watchdog.sh" >/dev/null 2>&1 || true
+      if [ ! -f "$BENCH/.active_run" ]; then
+        note_fix "completed benchmark registration cleared"
+        check C6_benchmark ok "run completed rc=0; stale active registration cleared"
+      else
+        check C6_benchmark broken "run completed rc=0 but active registration remains"
+      fi
+    else
+      bash "$BENCH/bin/benchmark-watchdog.sh" >/dev/null 2>&1 &
+      sleep 3
+      new_bid=0
+      [ -f "$BENCH/.active_run" ] && read -r new_bid _ < "$BENCH/.active_run" || true
+      if [ -n "$new_bid" ] && [ "$new_bid" != "${bid:-0}" ] && kill -0 "$new_bid" 2>/dev/null; then
+        note_fix "benchmark absent -> watchdog registered replacement pid $new_bid"
+        check C6_benchmark ok "auto-restarted benchmark as pid $new_bid"
+      else
+        check C6_benchmark broken "benchmark pid ${bid:-?} gone; restart not verified"
+      fi
+    fi
+  elif [ "$b_age" -lt "$HANG_S" ]; then
+    check C6_benchmark ok "pid $bid mode=${bmode:-baseline} alive, log ${b_age}s fresh"
+  else
+    bash "$BENCH/bin/benchmark-watchdog.sh" >/dev/null 2>&1 &
+    sleep 7
+    new_bid=0
+    [ -f "$BENCH/.active_run" ] && read -r new_bid _ < "$BENCH/.active_run" || true
+    if [ -n "$new_bid" ] && [ "$new_bid" != "${bid:-0}" ] && kill -0 "$new_bid" 2>/dev/null; then
+      note_fix "benchmark hung -> watchdog registered replacement pid $new_bid"
+      check C6_benchmark ok "auto-restarted hung benchmark as pid $new_bid"
+    else
+      check C6_benchmark broken "benchmark pid $bid hung; restart not verified"
+    fi
+  fi
+else
+  check C6_benchmark ok "no active run (idle is fine)"
+fi
+'''
+new = '''# ---- C6: registered benchmark alive, correct process, and progressing ------- #
+# The benchmark watchdog distinguishes a transient crash from a terminal
+# failure.  C6 must accept both outcomes without retrying a deterministic
+# failure forever, and must verify a replacement is an actual registered
+# runner rather than merely a live, possibly reused PID.
+if [ -f "$BENCH/.active_run" ]; then
+  read -r bid bpgid blog bdir bstart bmode bsource < "$BENCH/.active_run" || true
+  b_alive=0
+  b_stat=$(ps -o stat= -p "${bid:-0}" 2>/dev/null | tr -d ' ' || true)
+  b_cmd=""
+  if [ -n "$b_stat" ] && kill -0 "${bid:-0}" 2>/dev/null && [[ "$b_stat" != Z* ]]; then
+    b_alive=1
+    b_cmd=$(tr '\\0' ' ' < "/proc/${bid:-0}/cmdline" 2>/dev/null || true)
+  fi
+  b_age=999999; [ -n "${blog:-}" ] && [ -f "$blog" ] && b_age=$((now - $(stat -c %Y "$blog")))
+  runner_ok=0
+  case "$b_cmd" in *run_comebin_baseline.sh*|*run_comebin_fix.sh*|*run_small_test.sh*) runner_ok=1 ;; esac
+  if [ "$b_alive" -eq 1 ] && [ "$runner_ok" -eq 0 ]; then
+    check C6_benchmark broken "pid $bid alive but command is not a registered COMEBin runner; refusing kill"
+  elif [ "$b_alive" -eq 0 ]; then
+    done_rc=$(grep -m1 '^exit_code:' "${bdir:-/nonexistent}/run_meta.txt" 2>/dev/null | awk '{print $2}' || true)
+    # The watchdog clears both successful terminal runs and definitive failed
+    # runs.  Give it a moment only for the crash/hang replacement path.
+    bash "$BENCH/bin/benchmark-watchdog.sh" >/dev/null 2>&1 || true
+    if [ ! -f "$BENCH/.active_run" ]; then
+      if [[ "${done_rc:-}" =~ ^[0-9]+$ ]] && [ "$done_rc" != "0" ]; then
+        note_fix "benchmark failed rc=$done_rc; terminal state recorded and no retry started"
+        check C6_benchmark ok "benchmark failed rc=$done_rc; terminal state recorded; no automatic retry"
+      elif [ "${done_rc:-}" = "0" ]; then
+        note_fix "completed benchmark registration cleared"
+        check C6_benchmark ok "run completed rc=0; stale active registration cleared"
+      elif [ -s "$BENCH/.last_benchmark_failure" ]; then
+        note_fix "terminal benchmark failure classified; stale registration cleared"
+        check C6_benchmark ok "benchmark terminal failure recorded; no automatic retry"
+      else
+        check C6_benchmark broken "benchmark pid ${bid:-?} gone but watchdog did not classify it"
+      fi
+    else
+      # A live replacement must have a different PID and a recognizable
+      # COMEBin runner command; kill -0 alone is not sufficient.
+      new_bid=0
+      new_b_cmd=""
+      new_b_stat=$(ps -o stat= -p "${bid:-0}" 2>/dev/null | tr -d ' ' || true)
+      read -r new_bid _ < "$BENCH/.active_run" || true
+      if [ -n "$new_bid" ] && [ "$new_bid" != "${bid:-0}" ] && [ -n "$new_b_stat" ] && kill -0 "$new_bid" 2>/dev/null && [[ "$new_b_stat" != Z* ]]; then
+        new_b_cmd=$(tr '\\0' ' ' < "/proc/$new_bid/cmdline" 2>/dev/null || true)
+      fi
+      new_runner_ok=0
+      case "$new_b_cmd" in *run_comebin_baseline.sh*|*run_comebin_fix.sh*|*run_small_test.sh*) new_runner_ok=1 ;; esac
+      if [ "$new_runner_ok" -eq 1 ]; then
+        note_fix "benchmark absent -> watchdog registered replacement pid $new_bid"
+        check C6_benchmark ok "auto-restarted benchmark as pid $new_bid"
+      else
+        check C6_benchmark broken "benchmark pid ${bid:-?} gone; restart not verified as a COMEBin runner"
+      fi
+    fi
+  elif [ "$b_age" -lt "$HANG_S" ]; then
+    check C6_benchmark ok "pid $bid mode=${bmode:-baseline} alive, log ${b_age}s fresh"
+  else
+    bash "$BENCH/bin/benchmark-watchdog.sh" >/dev/null 2>&1 || true
+    new_bid=0
+    new_b_cmd=""
+    new_b_stat=$(ps -o stat= -p "$bid" 2>/dev/null | tr -d ' ' || true)
+    [ -f "$BENCH/.active_run" ] && read -r new_bid _ < "$BENCH/.active_run" || true
+    if [ -n "$new_bid" ] && [ "$new_bid" != "${bid:-0}" ] && [ -n "$new_b_stat" ] && kill -0 "$new_bid" 2>/dev/null && [[ "$new_b_stat" != Z* ]]; then
+      new_b_cmd=$(tr '\\0' ' ' < "/proc/$new_bid/cmdline" 2>/dev/null || true)
+    fi
+    new_runner_ok=0
+    case "$new_b_cmd" in *run_comebin_baseline.sh*|*run_comebin_fix.sh*|*run_small_test.sh*) new_runner_ok=1 ;; esac
+    if [ "$new_runner_ok" -eq 1 ]; then
+      note_fix "benchmark hung -> watchdog registered replacement pid $new_bid"
+      check C6_benchmark ok "auto-restarted hung benchmark as pid $new_bid"
+    else
+      check C6_benchmark broken "benchmark pid $bid hung; restart not verified as a COMEBin runner"
+    fi
+  fi
+else
+  if [ -s "$BENCH/.last_benchmark_failure" ]; then
+    failure_summary=$(tail -n 1 "$BENCH/.last_benchmark_failure" 2>/dev/null | cut -c1-240)
+    check C6_benchmark ok "no active run; last benchmark failure recorded (${failure_summary:-unknown}); no retry loop"
+  else
+    check C6_benchmark ok "no active run (idle is fine)"
+  fi
+fi
+'''
+if old not in s:
+    raise SystemExit('old C6 block not found')
+p.write_text(s.replace(old, new, 1))
+PY
+bash -n /tmp/opencode/meta-watchdog.sh.new
+git diff --no-index -- /vol/data/repos/metagenomic-binning-benchmark/scripts/meta-watchdog.sh /tmp/opencode/meta-watchdog.sh.new | sed -n '1,260p' || true
+diff --git a/vol/data/repos/metagenomic-binning-benchmark/scripts/meta-watchdog.sh b/tmp/opencode/meta-watchdog.sh.new
+index 18f50f4..47567bd 100755
+--- a/vol/data/repos/metagenomic-binning-benchmark/scripts/meta-watchdog.sh
++++ b/tmp/opencode/meta-watchdog.sh.new
+@@ -197,6 +197,10 @@ else
+ fi
+ 
+ # ---- C6: registered benchmark alive, correct process, and progressing ------- #
++# The benchmark watchdog distinguishes a transient crash from a terminal
++# failure.  C6 must accept both outcomes without retrying a deterministic
++# failure forever, and must verify a replacement is an actual registered
++# runner rather than merely a live, possibly reused PID.
+ if [ -f "$BENCH/.active_run" ]; then
+   read -r bid bpgid blog bdir bstart bmode bsource < "$BENCH/.active_run" || true
+   b_alive=0
+@@ -213,42 +217,68 @@ if [ -f "$BENCH/.active_run" ]; then
+     check C6_benchmark broken "pid $bid alive but command is not a registered COMEBin runner; refusing kill"
+   elif [ "$b_alive" -eq 0 ]; then
+     done_rc=$(grep -m1 '^exit_code:' "${bdir:-/nonexistent}/run_meta.txt" 2>/dev/null | awk '{print $2}' || true)
+-    if [ "${done_rc:-}" = "0" ]; then
+-      bash "$BENCH/bin/benchmark-watchdog.sh" >/dev/null 2>&1 || true
+-      if [ ! -f "$BENCH/.active_run" ]; then
++    # The watchdog clears both successful terminal runs and definitive failed
++    # runs.  Give it a moment only for the crash/hang replacement path.
++    bash "$BENCH/bin/benchmark-watchdog.sh" >/dev/null 2>&1 || true
++    if [ ! -f "$BENCH/.active_run" ]; then
++      if [[ "${done_rc:-}" =~ ^[0-9]+$ ]] && [ "$done_rc" != "0" ]; then
++        note_fix "benchmark failed rc=$done_rc; terminal state recorded and no retry started"
++        check C6_benchmark ok "benchmark failed rc=$done_rc; terminal state recorded; no automatic retry"
++      elif [ "${done_rc:-}" = "0" ]; then
+         note_fix "completed benchmark registration cleared"
+         check C6_benchmark ok "run completed rc=0; stale active registration cleared"
++      elif [ -s "$BENCH/.last_benchmark_failure" ]; then
++        note_fix "terminal benchmark failure classified; stale registration cleared"
++        check C6_benchmark ok "benchmark terminal failure recorded; no automatic retry"
+       else
+-        check C6_benchmark broken "run completed rc=0 but active registration remains"
++        check C6_benchmark broken "benchmark pid ${bid:-?} gone but watchdog did not classify it"
+       fi
+     else
+-      bash "$BENCH/bin/benchmark-watchdog.sh" >/dev/null 2>&1 &
+-      sleep 3
++      # A live replacement must have a different PID and a recognizable
++      # COMEBin runner command; kill -0 alone is not sufficient.
+       new_bid=0
+-      [ -f "$BENCH/.active_run" ] && read -r new_bid _ < "$BENCH/.active_run" || true
+-      if [ -n "$new_bid" ] && [ "$new_bid" != "${bid:-0}" ] && kill -0 "$new_bid" 2>/dev/null; then
++      new_b_cmd=""
++      new_b_stat=$(ps -o stat= -p "${bid:-0}" 2>/dev/null | tr -d ' ' || true)
++      read -r new_bid _ < "$BENCH/.active_run" || true
++      if [ -n "$new_bid" ] && [ "$new_bid" != "${bid:-0}" ] && [ -n "$new_b_stat" ] && kill -0 "$new_bid" 2>/dev/null && [[ "$new_b_stat" != Z* ]]; then
++        new_b_cmd=$(tr '\0' ' ' < "/proc/$new_bid/cmdline" 2>/dev/null || true)
++      fi
++      new_runner_ok=0
++      case "$new_b_cmd" in *run_comebin_baseline.sh*|*run_comebin_fix.sh*|*run_small_test.sh*) new_runner_ok=1 ;; esac
++      if [ "$new_runner_ok" -eq 1 ]; then
+         note_fix "benchmark absent -> watchdog registered replacement pid $new_bid"
+         check C6_benchmark ok "auto-restarted benchmark as pid $new_bid"
+       else
+-        check C6_benchmark broken "benchmark pid ${bid:-?} gone; restart not verified"
++        check C6_benchmark broken "benchmark pid ${bid:-?} gone; restart not verified as a COMEBin runner"
+       fi
+     fi
+   elif [ "$b_age" -lt "$HANG_S" ]; then
+     check C6_benchmark ok "pid $bid mode=${bmode:-baseline} alive, log ${b_age}s fresh"
+   else
+-    bash "$BENCH/bin/benchmark-watchdog.sh" >/dev/null 2>&1 &
+-    sleep 7
++    bash "$BENCH/bin/benchmark-watchdog.sh" >/dev/null 2>&1 || true
+     new_bid=0
++    new_b_cmd=""
++    new_b_stat=$(ps -o stat= -p "$bid" 2>/dev/null | tr -d ' ' || true)
+     [ -f "$BENCH/.active_run" ] && read -r new_bid _ < "$BENCH/.active_run" || true
+-    if [ -n "$new_bid" ] && [ "$new_bid" != "${bid:-0}" ] && kill -0 "$new_bid" 2>/dev/null; then
++    if [ -n "$new_bid" ] && [ "$new_bid" != "${bid:-0}" ] && [ -n "$new_b_stat" ] && kill -0 "$new_bid" 2>/dev/null && [[ "$new_b_stat" != Z* ]]; then
++      new_b_cmd=$(tr '\0' ' ' < "/proc/$new_bid/cmdline" 2>/dev/null || true)
++    fi
++    new_runner_ok=0
++    case "$new_b_cmd" in *run_comebin_baseline.sh*|*run_comebin_fix.sh*|*run_small_test.sh*) new_runner_ok=1 ;; esac
++    if [ "$new_runner_ok" -eq 1 ]; then
+       note_fix "benchmark hung -> watchdog registered replacement pid $new_bid"
+       check C6_benchmark ok "auto-restarted hung benchmark as pid $new_bid"
+     else
+-      check C6_benchmark broken "benchmark pid $bid hung; restart not verified"
++      check C6_benchmark broken "benchmark pid $bid hung; restart not verified as a COMEBin runner"
+     fi
+   fi
+ else
+-  check C6_benchmark ok "no active run (idle is fine)"
++  if [ -s "$BENCH/.last_benchmark_failure" ]; then
++    failure_summary=$(tail -n 1 "$BENCH/.last_benchmark_failure" 2>/dev/null | cut -c1-240)
++    check C6_benchmark ok "no active run; last benchmark failure recorded (${failure_summary:-unknown}); no retry loop"
++  else
++    check C6_benchmark ok "no active run (idle is fine)"
++  fi
+ fi
+ 
+ # ---- C7: disk ---------------------------------------------------------------- #
+> build · space-bunny-free
+[0m← [0mEdit /tmp/opencode/meta-watchdog.sh.new
+Index: /tmp/opencode/meta-watchdog.sh.new
+===================================================================
+--- /tmp/opencode/meta-watchdog.sh.new
++++ /tmp/opencode/meta-watchdog.sh.new
+@@ -234,13 +234,15 @@
+         check C6_benchmark broken "benchmark pid ${bid:-?} gone but watchdog did not classify it"
+       fi
+     else
+       # A live replacement must have a different PID and a recognizable
+-      # COMEBin runner command; kill -0 alone is not sufficient.
++      # COMEBin runner command; kill -0 alone is not sufficient.  The watchdog
++      # launches asynchronously, so allow its atomic handoff a moment to land.
++      sleep 2
+       new_bid=0
+       new_b_cmd=""
+-      new_b_stat=$(ps -o stat= -p "${bid:-0}" 2>/dev/null | tr -d ' ' || true)
+-      read -r new_bid _ < "$BENCH/.active_run" || true
++      [ -f "$BENCH/.active_run" ] && read -r new_bid _ < "$BENCH/.active_run" || true
++      new_b_stat=$(ps -o stat= -p "${new_bid:-0}" 2>/dev/null | tr -d ' ' || true)
+       if [ -n "$new_bid" ] && [ "$new_bid" != "${bid:-0}" ] && [ -n "$new_b_stat" ] && kill -0 "$new_bid" 2>/dev/null && [[ "$new_b_stat" != Z* ]]; then
+         new_b_cmd=$(tr '\0' ' ' < "/proc/$new_bid/cmdline" 2>/dev/null || true)
+       fi
+       new_runner_ok=0
+
+> build · space-bunny-free
+[0m← [0mEdit /tmp/opencode/meta-watchdog.sh.new
+Index: /tmp/opencode/meta-watchdog.sh.new
+===================================================================
+--- /tmp/opencode/meta-watchdog.sh.new
++++ /tmp/opencode/meta-watchdog.sh.new
+@@ -257,12 +257,13 @@
+   elif [ "$b_age" -lt "$HANG_S" ]; then
+     check C6_benchmark ok "pid $bid mode=${bmode:-baseline} alive, log ${b_age}s fresh"
+   else
+     bash "$BENCH/bin/benchmark-watchdog.sh" >/dev/null 2>&1 || true
++    sleep 2
+     new_bid=0
+     new_b_cmd=""
+-    new_b_stat=$(ps -o stat= -p "$bid" 2>/dev/null | tr -d ' ' || true)
+     [ -f "$BENCH/.active_run" ] && read -r new_bid _ < "$BENCH/.active_run" || true
++    new_b_stat=$(ps -o stat= -p "${new_bid:-0}" 2>/dev/null | tr -d ' ' || true)
+     if [ -n "$new_bid" ] && [ "$new_bid" != "${bid:-0}" ] && [ -n "$new_b_stat" ] && kill -0 "$new_bid" 2>/dev/null && [[ "$new_b_stat" != Z* ]]; then
+       new_b_cmd=$(tr '\0' ' ' < "/proc/$new_bid/cmdline" 2>/dev/null || true)
+     fi
+     new_runner_ok=0
+
+> build · space-bunny-free
+[0m$ [0mbash -n /tmp/opencode/meta-watchdog.sh.new; echo rc=$?; sed -n '195,305p' /tmp/opencode/meta-watchdog.sh.new
+rc=0
+    check C5_github broken "HEAD=${head_sha:0:12} remote=${remote_sha:0:12}; status_dirty=$(printf '%s' "$pending" | grep -c . || true) all_dirty=$dirty_count"
+  fi
+fi
+
+# ---- C6: registered benchmark alive, correct process, and progressing ------- #
+# The benchmark watchdog distinguishes a transient crash from a terminal
+# failure.  C6 must accept both outcomes without retrying a deterministic
+# failure forever, and must verify a replacement is an actual registered
+# runner rather than merely a live, possibly reused PID.
+if [ -f "$BENCH/.active_run" ]; then
+  read -r bid bpgid blog bdir bstart bmode bsource < "$BENCH/.active_run" || true
+  b_alive=0
+  b_stat=$(ps -o stat= -p "${bid:-0}" 2>/dev/null | tr -d ' ' || true)
+  b_cmd=""
+  if [ -n "$b_stat" ] && kill -0 "${bid:-0}" 2>/dev/null && [[ "$b_stat" != Z* ]]; then
+    b_alive=1
+    b_cmd=$(tr '\0' ' ' < "/proc/${bid:-0}/cmdline" 2>/dev/null || true)
+  fi
+  b_age=999999; [ -n "${blog:-}" ] && [ -f "$blog" ] && b_age=$((now - $(stat -c %Y "$blog")))
+  runner_ok=0
+  case "$b_cmd" in *run_comebin_baseline.sh*|*run_comebin_fix.sh*|*run_small_test.sh*) runner_ok=1 ;; esac
+  if [ "$b_alive" -eq 1 ] && [ "$runner_ok" -eq 0 ]; then
+    check C6_benchmark broken "pid $bid alive but command is not a registered COMEBin runner; refusing kill"
+  elif [ "$b_alive" -eq 0 ]; then
+    done_rc=$(grep -m1 '^exit_code:' "${bdir:-/nonexistent}/run_meta.txt" 2>/dev/null | awk '{print $2}' || true)
+    # The watchdog clears both successful terminal runs and definitive failed
+    # runs.  Give it a moment only for the crash/hang replacement path.
+    bash "$BENCH/bin/benchmark-watchdog.sh" >/dev/null 2>&1 || true
+    if [ ! -f "$BENCH/.active_run" ]; then
+      if [[ "${done_rc:-}" =~ ^[0-9]+$ ]] && [ "$done_rc" != "0" ]; then
+        note_fix "benchmark failed rc=$done_rc; terminal state recorded and no retry started"
+        check C6_benchmark ok "benchmark failed rc=$done_rc; terminal state recorded; no automatic retry"
+      elif [ "${done_rc:-}" = "0" ]; then
+        note_fix "completed benchmark registration cleared"
+        check C6_benchmark ok "run completed rc=0; stale active registration cleared"
+      elif [ -s "$BENCH/.last_benchmark_failure" ]; then
+        note_fix "terminal benchmark failure classified; stale registration cleared"
+        check C6_benchmark ok "benchmark terminal failure recorded; no automatic retry"
+      else
+        check C6_benchmark broken "benchmark pid ${bid:-?} gone but watchdog did not classify it"
+      fi
+    else
+      # A live replacement must have a different PID and a recognizable
+      # COMEBin runner command; kill -0 alone is not sufficient.  The watchdog
+      # launches asynchronously, so allow its atomic handoff a moment to land.
+      sleep 2
+      new_bid=0
+      new_b_cmd=""
+      [ -f "$BENCH/.active_run" ] && read -r new_bid _ < "$BENCH/.active_run" || true
+      new_b_stat=$(ps -o stat= -p "${new_bid:-0}" 2>/dev/null | tr -d ' ' || true)
+      if [ -n "$new_bid" ] && [ "$new_bid" != "${bid:-0}" ] && [ -n "$new_b_stat" ] && kill -0 "$new_bid" 2>/dev/null && [[ "$new_b_stat" != Z* ]]; then
+        new_b_cmd=$(tr '\0' ' ' < "/proc/$new_bid/cmdline" 2>/dev/null || true)
+      fi
+      new_runner_ok=0
+      case "$new_b_cmd" in *run_comebin_baseline.sh*|*run_comebin_fix.sh*|*run_small_test.sh*) new_runner_ok=1 ;; esac
+      if [ "$new_runner_ok" -eq 1 ]; then
+        note_fix "benchmark absent -> watchdog registered replacement pid $new_bid"
+        check C6_benchmark ok "auto-restarted benchmark as pid $new_bid"
+      else
+        check C6_benchmark broken "benchmark pid ${bid:-?} gone; restart not verified as a COMEBin runner"
+      fi
+    fi
+  elif [ "$b_age" -lt "$HANG_S" ]; then
+    check C6_benchmark ok "pid $bid mode=${bmode:-baseline} alive, log ${b_age}s fresh"
+  else
+    bash "$BENCH/bin/benchmark-watchdog.sh" >/dev/null 2>&1 || true
+    sleep 2
+    new_bid=0
+    new_b_cmd=""
+    [ -f "$BENCH/.active_run" ] && read -r new_bid _ < "$BENCH/.active_run" || true
+    new_b_stat=$(ps -o stat= -p "${new_bid:-0}" 2>/dev/null | tr -d ' ' || true)
+    if [ -n "$new_bid" ] && [ "$new_bid" != "${bid:-0}" ] && [ -n "$new_b_stat" ] && kill -0 "$new_bid" 2>/dev/null && [[ "$new_b_stat" != Z* ]]; then
+      new_b_cmd=$(tr '\0' ' ' < "/proc/$new_bid/cmdline" 2>/dev/null || true)
+    fi
+    new_runner_ok=0
+    case "$new_b_cmd" in *run_comebin_baseline.sh*|*run_comebin_fix.sh*|*run_small_test.sh*) new_runner_ok=1 ;; esac
+    if [ "$new_runner_ok" -eq 1 ]; then
+      note_fix "benchmark hung -> watchdog registered replacement pid $new_bid"
+      check C6_benchmark ok "auto-restarted hung benchmark as pid $new_bid"
+    else
+      check C6_benchmark broken "benchmark pid $bid hung; restart not verified as a COMEBin runner"
+    fi
+  fi
+else
+  if [ -s "$BENCH/.last_benchmark_failure" ]; then
+    failure_summary=$(tail -n 1 "$BENCH/.last_benchmark_failure" 2>/dev/null | cut -c1-240)
+    check C6_benchmark ok "no active run; last benchmark failure recorded (${failure_summary:-unknown}); no retry loop"
+  else
+    check C6_benchmark ok "no active run (idle is fine)"
+  fi
+fi
+
+# ---- C7: disk ---------------------------------------------------------------- #
+avail_kb=$(df -Pk /vol/data 2>/dev/null | awk 'NR==2{print $4}')
+if [ -n "${avail_kb:-0}" ] && [ "$avail_kb" -gt 5242880 ]; then
+  check C7_disk ok "$((avail_kb / 1024 / 1024)) GiB free"
+else
+  check C7_disk broken "$(( ${avail_kb:-0} / 1024 / 1024 )) GiB free on /vol/data"
+fi
+
+# ---- C8: GitHub issues (new/updated; markers advance only after triage) ----- #
+: > "$META/issues.tsv"
+new_issue=""
+issue_list_ok=0
+if timeout 45s gh issue list -R "$REPO_URL" --state open --json number,title,updatedAt \
+    -q '.[] | [.number, .title, .updatedAt] | @tsv' > "$META/issues.tsv" 2>/dev/null; then
+  issue_list_ok=1
+fi
+candidate_nums=()
+declare -A candidate_epoch
+if [ "$issue_list_ok" -eq 1 ]; then
+> build · space-bunny-free
+[0m$ [0mif flock -n /tmp/bench-repo.lock -c true; then echo free; else echo held; fi
+free
+[0m$ [0mgit -C /vol/data/repos/metagenomic-binning-benchmark status --short --branch; git -C /vol/data/repos/metagenomic-binning-benchmark diff -- scripts/run_comebin_baseline.sh scripts/benchmark-watchdog.sh scripts/meta-watchdog.sh; stat -c '%y %s %n' /vol/data/repos/metagenomic-binning-benchmark/scripts/run_comebin_baseline.sh /vol/data/repos/metagenomic-binning-benchmark/scripts/benchmark-watchdog.sh /vol/data/repos/metagenomic-binning-benchmark/scripts/meta-watchdog.sh
+## main...origin/main
+2026-09-23 15:11:19.781000000 +0000 2667 /vol/data/repos/metagenomic-binning-benchmark/scripts/run_comebin_baseline.sh
+2026-09-23 19:16:40.609000000 +0000 6938 /vol/data/repos/metagenomic-binning-benchmark/scripts/benchmark-watchdog.sh
+2026-09-23 19:24:43.637000000 +0000 21232 /vol/data/repos/metagenomic-binning-benchmark/scripts/meta-watchdog.sh
+[0m$ [0mtail -n 60 /vol/data/benchmark/logs/agent-run.log | sed -n '1,60p'; ps -p 174088 -o pid,etime,stat,args | head -2
+[0m$ [0m/vol/data/tools/bin/micromamba run -p /vol/data/envs/comebin python -c "import biolib; print(biolib.__version__)"
+0.1.9
+> build · nemotron-3.5-lightning-free
+Good, biolib is now installed. Let me check the seed file issue and the clustering script.
+[0m$ [0mgrep -r "2quarter_lencutoff" /vol/data/repos/COMEBin/COMEBin/ --include="*.py" 2>/dev/null | head -10
+{"exit":0,"truncated":false,"output":"","status":"completed"}
+[0m$ [0mls -la /vol/data/repos/COMEBin/COMEBin/scripts/ 2>/dev/null
+total 84
+drwxrwxr-x 4 ubuntu ubuntu  4096 Sep 23 14:36 .
+drwxrwxr-x 6 ubuntu ubuntu  4096 Sep 23 14:36 ..
+-rw-rw-r-- 1 ubuntu ubuntu  1001 Sep 23 13:56 Filter_tooshort.py
+-rw-rw-r-- 1 ubuntu ubuntu     0 Sep 23 13:56 __init__.py
+drwxrwxr-x 2 ubuntu ubuntu  4096 Sep 23 21:30 __pycache__
+drwxrwxr-x 2 ubuntu ubuntu  4096 Sep 23 13:56 checkm_ms
+-rwxrwxr-x 1 ubuntu ubuntu  2541 Sep 23 13:56 gen_bins_from_tsv.py
+-rw-rw-r-- 1 ubuntu ubuntu 11142 Sep 23 13:56 gen_cov_file.sh
+-rwxrwxr-x 1 ubuntu ubuntu   820 Sep 23 13:56 print_comment.py
+-rw-rw-r-- 1 ubuntu ubuntu 14550 Sep 23 13:56 seq_io.py
+-rw-rw-r-- 1 ubuntu ubuntu  2909 Sep 23 13:56 unitem_common.py
+-rw-rw-r-- 1 ubuntu ubuntu   571 Sep 23 13:56 unitem_defaults.py
+-rw-rw-r-- 1 ubuntu ubuntu  6578 Sep 23 13:56 unitem_markers.py
+-rwxrwxr-x 1 ubuntu ubuntu 10810 Sep 23 13:56 unitem_profile.py
+[0m$ [0m/vol/data/tools/bin/micromamba run -p /vol/data/envs/comebin python -c "
+import os
+seed_path = '/vol/data/datasets/comebin_test_data/BATS_SAMN07137077_METAG.scaffolds.min500.fasta.f1k.fasta.bacar_marker.2quarter_lencutoff_1001.seed'
+print('exists:', os.path.exists(seed_path))
+# Try to find any .seed files
+for root, dirs, files in os.walk('/vol/data/datasets/comebin_test_data'):
+    for f in files:
+        if f.endswith('.seed'):
+            print(os.path.join(root, f))
+"
+exists: False
+> build · nemotron-3.5-lightning-free
+[0m$ [0mgrep -r "2quarter_lencutoff" /vol/data/repos/COMEBin/COMEBin/ --include="*.py" 2>/dev/null | head -10
+{"exit":0,"truncated":false,"output":"","status":"completed"}
+[0m$ [0mls -la /vol/data/repos/COMEBin/auxiliary/ 2>/dev/null
+total 19172
+drwxrwxr-x 2 ubuntu ubuntu     4096 Sep 23 13:56 .
+drwxrwxr-x 6 ubuntu ubuntu     4096 Sep 23 13:56 ..
+-rw-rw-r-- 1 ubuntu ubuntu        0 Sep 23 13:56 __init__.py
+-rw-rw-r-- 1 ubuntu ubuntu  3671082 Sep 23 13:56 bacar_marker.hmm
+-rw-rw-r-- 1 ubuntu ubuntu 15929643 Sep 23 13:56 marker.hmm
+-rwxrwxr-x 1 ubuntu ubuntu    15054 Sep 23 13:56 test_getmarker_2quarter.pl
+[0m$ [0mfind /vol/data -name "test_getmarker_2quarter.pl" 2>/dev/null
+/vol/data/repos/COMEBin-v11/auxiliary/test_getmarker_2quarter.pl
+/vol/data/repos/COMEBin/auxiliary/test_getmarker_2quarter.pl
+/vol/data/repos/COMEBin-opt/auxiliary/test_getmarker_2quarter.pl
+> build · nemotron-3.5-lightning-free
+[0m→ [0mRead /vol/data/repos/COMEBin/auxiliary/test_getmarker_2quarter.pl 
+> build · nemotron-3.5-lightning-free
+Let me try running the marker test script to generate the seed file.
+[0m$ [0m/vol/data/tools/bin/micromamba run -p /vol/data/envs/comebin perl /vol/data/repos/COMEBin/auxiliary/test_getmarker_2quarter.pl /vol/data/datasets/comebin_test_data/BATS_SAMN07137077_METAG.scaffolds.min500.fasta.f1k.fasta.bacar_marker.hmmout /vol/data/datasets/comebin_test_data/BATS_SAMN07137077_METAG.scaffolds.min500.fasta.f1k.fasta 1001 /vol/data/datasets/comebin_test_data/BATS_SAMN07137077_METAG.scaffolds.min500.fasta.f1k.fasta.bacar_marker.2quarter_lencutoff_1001.seed 2>&1
+{"exit":0,"truncated":false,"output":"","status":"completed"}
+> build · nemotron-3.5-lightning-free
+[0m$ [0mls -la /vol/data/datasets/comebin_test_data/BATS_SAMN07137077_METAG.scaffolds.min500.fasta.f1k.fasta.bacar_marker.2quarter_lencutoff_1001.seed
+ls: cannot access '/vol/data/datasets/comebin_test_data/BATS_SAMN07137077_METAG.scaffolds.min500.fasta.f1k.fasta.bacar_marker.2quarter_lencutoff_1001.seed': No such file or directory
+> build · nemotron-3.5-lightning-free
+[0m$ [0m/vol/data/tools/bin/micromamba run -p /vol/data/envs/comebin perl /vol/data/repos/COMEBin/auxiliary/test_getmarker_2quarter.pl /vol/data/datasets/comebin_test_data/BATS_SAMN07137077_METAG.scaffolds.min500.fasta.f1k.fasta.bacar_marker.hmmout /vol/data/datasets/comebin_test_data/BATS_SAMN07137077_METAG.scaffolds.min500.fasta.f1k.fasta 1001 /vol/data/datasets/comebin_test_data/BATS_SAMN07137077_METAG.scaffolds.min500.fasta.f1k.fasta.bacar_marker.2quarter_lencutoff_1001.seed; echo "Exit: $?"
+Exit: 0
+    PID     ELAPSED STAT COMMAND
+ 174088       11:48 Sl   opencode run --auto --model opencode/nemotron-3.5-lightning-free --title watchdog-restart You are resuming the metagenomic-binning-benchmark project after an agent restart (the previous session may have crashed, run out of context, or exhausted model tokens). Read /vol/data/benchmark/PROGRESS.md FIRST, then check NEW/updated issues in paulzierep/metagenomic-binning-benchmark and paulzierep/COMEBin with gh issue list --state open --json number,title,updatedAt; triage and comment without duplicating an existing response. Verify state on disk and continue from the first unfinished step. Update PROGRESS.md and /vol/data/benchmark/.activity, touch /vol/data/benchmark/.heartbeat in shell commands while active, and append one timestamped line per meaningful action to /vol/data/repos/metagenomic-binning-benchmark/status/agent-activity.log. Before final git stage/commit/push, acquire /tmp/bench-repo.lock and commit only intended paths. Never overlap the registered benchmark run. If /vol/data/benchmark/TASK_COMPLETE exists, do nothing and exit.
+> build · space-bunny-free
+[0m→ [0mRead /vol/data/repos/metagenomic-binning-benchmark/docs/06-benchmark-commands.md [90m[offset=1, limit=220][0m
