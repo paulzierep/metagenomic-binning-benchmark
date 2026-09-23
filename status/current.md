@@ -3,13 +3,13 @@
 | | |
 |---|---|
 | Status | 🟢 `running` |
-| ⏱ Updated (Europe/Berlin) | `2026-09-23T23:58 CEST` |
-| 🏃 Last benchmark (not active) | `baseline_unmodified` — last observed **epoch 175/200** (log 1670s old) |
+| ⏱ Updated (Europe/Berlin) | `2026-09-24T00:00 CEST` |
+| 🏃 Last benchmark (not active) | `baseline_unmodified` — last observed **epoch 175/200** (log 1790s old) |
 | 🧠 Model (last turn) | `nemotron-3.5-lightning-free` (watchdog rotates to free models on quota) |
-| 📌 Agent note · **28 min old** | agent driver alive; transcript fresh (33s) while heartbeat is stale (1700s) |
-| ⚙️ Load · uptime | `0.02 0.16 5.30` · 8 hours, 22 minutes — 32 cores, 62 GiB, no GPU |
-| 💾 RAM used/total | `1686/64295 MB` |
+| 📌 Agent note · **30 min old** | agent driver alive; transcript fresh (64s) while heartbeat is stale (1820s) |
+| ⚙️ Load · uptime | `0.08 0.12 4.66` · 8 hours, 24 minutes — 32 cores, 62 GiB, no GPU |
+| 💾 RAM used/total | `1685/64295 MB` |
 | 🔗 Session | `ses_f31799c77ffeTq9gcYgqc4hBhg` |
-| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `b25ee4d status: yes — baseline_unmodified epoch 175/200 loss 2.849424839019775` |
-| 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `898975 B` — every run, command & tool result |
+| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `367e5ea status: yes — baseline_unmodified epoch 175/200 loss 2.849424839019775` |
+| 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `899014 B` — every run, command & tool result |
 | 📈 Timeline | [status/status.log](status/status.log) |
