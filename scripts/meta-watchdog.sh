@@ -197,6 +197,10 @@ else
 fi
 
 # ---- C6: registered benchmark alive, correct process, and progressing ------- #
+# The benchmark watchdog distinguishes a transient crash from a terminal
+# failure.  C6 must accept both outcomes without retrying a deterministic
+# failure forever, and must verify a replacement is an actual registered
+# runner rather than merely a live, possibly reused PID.
 if [ -f "$BENCH/.active_run" ]; then
   read -r bid bpgid blog bdir bstart bmode bsource < "$BENCH/.active_run" || true
   b_alive=0
@@ -213,42 +217,71 @@ if [ -f "$BENCH/.active_run" ]; then
     check C6_benchmark broken "pid $bid alive but command is not a registered COMEBin runner; refusing kill"
   elif [ "$b_alive" -eq 0 ]; then
     done_rc=$(grep -m1 '^exit_code:' "${bdir:-/nonexistent}/run_meta.txt" 2>/dev/null | awk '{print $2}' || true)
-    if [ "${done_rc:-}" = "0" ]; then
-      bash "$BENCH/bin/benchmark-watchdog.sh" >/dev/null 2>&1 || true
-      if [ ! -f "$BENCH/.active_run" ]; then
+    # The watchdog clears both successful terminal runs and definitive failed
+    # runs.  Give it a moment only for the crash/hang replacement path.
+    bash "$BENCH/bin/benchmark-watchdog.sh" >/dev/null 2>&1 || true
+    if [ ! -f "$BENCH/.active_run" ]; then
+      if [[ "${done_rc:-}" =~ ^[0-9]+$ ]] && [ "$done_rc" != "0" ]; then
+        note_fix "benchmark failed rc=$done_rc; terminal state recorded and no retry started"
+        check C6_benchmark ok "benchmark failed rc=$done_rc; terminal state recorded; no automatic retry"
+      elif [ "${done_rc:-}" = "0" ]; then
         note_fix "completed benchmark registration cleared"
         check C6_benchmark ok "run completed rc=0; stale active registration cleared"
+      elif [ -s "$BENCH/.last_benchmark_failure" ]; then
+        note_fix "terminal benchmark failure classified; stale registration cleared"
+        check C6_benchmark ok "benchmark terminal failure recorded; no automatic retry"
       else
-        check C6_benchmark broken "run completed rc=0 but active registration remains"
+        check C6_benchmark broken "benchmark pid ${bid:-?} gone but watchdog did not classify it"
       fi
     else
-      bash "$BENCH/bin/benchmark-watchdog.sh" >/dev/null 2>&1 &
-      sleep 3
+      # A live replacement must have a different PID and a recognizable
+      # COMEBin runner command; kill -0 alone is not sufficient.  The watchdog
+      # launches asynchronously, so allow its atomic handoff a moment to land.
+      sleep 2
       new_bid=0
+      new_b_cmd=""
       [ -f "$BENCH/.active_run" ] && read -r new_bid _ < "$BENCH/.active_run" || true
-      if [ -n "$new_bid" ] && [ "$new_bid" != "${bid:-0}" ] && kill -0 "$new_bid" 2>/dev/null; then
+      new_b_stat=$(ps -o stat= -p "${new_bid:-0}" 2>/dev/null | tr -d ' ' || true)
+      if [ -n "$new_bid" ] && [ "$new_bid" != "${bid:-0}" ] && [ -n "$new_b_stat" ] && kill -0 "$new_bid" 2>/dev/null && [[ "$new_b_stat" != Z* ]]; then
+        new_b_cmd=$(tr '\0' ' ' < "/proc/$new_bid/cmdline" 2>/dev/null || true)
+      fi
+      new_runner_ok=0
+      case "$new_b_cmd" in *run_comebin_baseline.sh*|*run_comebin_fix.sh*|*run_small_test.sh*) new_runner_ok=1 ;; esac
+      if [ "$new_runner_ok" -eq 1 ]; then
         note_fix "benchmark absent -> watchdog registered replacement pid $new_bid"
         check C6_benchmark ok "auto-restarted benchmark as pid $new_bid"
       else
-        check C6_benchmark broken "benchmark pid ${bid:-?} gone; restart not verified"
+        check C6_benchmark broken "benchmark pid ${bid:-?} gone; restart not verified as a COMEBin runner"
       fi
     fi
   elif [ "$b_age" -lt "$HANG_S" ]; then
     check C6_benchmark ok "pid $bid mode=${bmode:-baseline} alive, log ${b_age}s fresh"
   else
-    bash "$BENCH/bin/benchmark-watchdog.sh" >/dev/null 2>&1 &
-    sleep 7
+    bash "$BENCH/bin/benchmark-watchdog.sh" >/dev/null 2>&1 || true
+    sleep 2
     new_bid=0
+    new_b_cmd=""
     [ -f "$BENCH/.active_run" ] && read -r new_bid _ < "$BENCH/.active_run" || true
-    if [ -n "$new_bid" ] && [ "$new_bid" != "${bid:-0}" ] && kill -0 "$new_bid" 2>/dev/null; then
+    new_b_stat=$(ps -o stat= -p "${new_bid:-0}" 2>/dev/null | tr -d ' ' || true)
+    if [ -n "$new_bid" ] && [ "$new_bid" != "${bid:-0}" ] && [ -n "$new_b_stat" ] && kill -0 "$new_bid" 2>/dev/null && [[ "$new_b_stat" != Z* ]]; then
+      new_b_cmd=$(tr '\0' ' ' < "/proc/$new_bid/cmdline" 2>/dev/null || true)
+    fi
+    new_runner_ok=0
+    case "$new_b_cmd" in *run_comebin_baseline.sh*|*run_comebin_fix.sh*|*run_small_test.sh*) new_runner_ok=1 ;; esac
+    if [ "$new_runner_ok" -eq 1 ]; then
       note_fix "benchmark hung -> watchdog registered replacement pid $new_bid"
       check C6_benchmark ok "auto-restarted hung benchmark as pid $new_bid"
     else
-      check C6_benchmark broken "benchmark pid $bid hung; restart not verified"
+      check C6_benchmark broken "benchmark pid $bid hung; restart not verified as a COMEBin runner"
     fi
   fi
 else
-  check C6_benchmark ok "no active run (idle is fine)"
+  if [ -s "$BENCH/.last_benchmark_failure" ]; then
+    failure_summary=$(tail -n 1 "$BENCH/.last_benchmark_failure" 2>/dev/null | cut -c1-240)
+    check C6_benchmark ok "no active run; last benchmark failure recorded (${failure_summary:-unknown}); no retry loop"
+  else
+    check C6_benchmark ok "no active run (idle is fine)"
+  fi
 fi
 
 # ---- C7: disk ---------------------------------------------------------------- #

@@ -14,6 +14,17 @@ THREADS=32 bash /vol/data/repos/metagenomic-binning-benchmark/scripts/run_comebi
   /vol/data/benchmark/runs/<run_name>
 ```
 
+For a long run, the benchmark watchdog launches an immutable snapshot of the
+committed runner rather than reading the mutable worktree file. If a manual
+launch is necessary while the source is being edited, use the same snapshot
+form (and never edit a runner in place while it is executing):
+
+```bash
+git -C /vol/data/repos/metagenomic-binning-benchmark \
+  show HEAD:scripts/run_comebin_baseline.sh \
+  | bash -s -- /vol/data/benchmark/runs/<run_name>
+```
+
 Which internally runs the unmodified pipeline (source commit recorded in
 `run_meta.txt`, tree must be clean):
 

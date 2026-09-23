@@ -3,6 +3,22 @@
 All notable changes to the metagenomic-binning-benchmark automation &
 documentation.
 
+## 2026-09-23 — Supervisor hardening: terminal benchmark failures
+
+- Fixed the C6 failure path: a benchmark wrapper that records a nonzero exit,
+  or whose log contains a terminal traceback/failure, is now recorded and
+  cleared instead of being retried forever. Only a crash without terminal
+  evidence is eligible for the bounded restart budget.
+- Benchmark replacement launches now execute immutable snapshots from the
+  committed repository. A source edit can no longer change a shell script
+  while a long run is still reading it (the failure seen in the 21:30 UTC
+  baseline log).
+- Baseline bookkeeping now honors `SRC_COMEBIN`, records a terminal
+  `exit_code` on ordinary failures, tolerates historical `__pycache__` entries
+  without treating them as source edits, and disables new bytecode writes in
+  the pristine checkout. C6 verifies the replacement command, not just
+  `kill -0`.
+
 ## 2026-09-23 — Reproducible dataset preservation staging
 
 - Added `docs/10-data-preservation.md` with the Zenodo release scope, owner/token

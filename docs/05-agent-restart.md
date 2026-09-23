@@ -187,12 +187,19 @@ is dead/broken:
   it refuses a reused/unrelated PID and never uses broad `pkill -f`.
 - **Orphaned wrapper** → a remaining process group is killed/restarted only when
   every member is recognizably part of the registered rundir/runner.
-- **Crashed** (process gone, no `exit_code: 0`) or **Done** (`exit_code: 0`) →
-  restart or clear, respectively.
+- **Crashed** (process gone with no terminal evidence) → bounded restart;
+  **terminal failure** (nonzero `exit_code`, a recorded terminal marker, or a
+  terminal traceback in the run log) → write the reason to the run's
+  `.watchdog_terminal`/`run_meta.txt`, clear the registration, and do not retry
+  the deterministic failure.
+- **Done** (`exit_code: 0`) → clear `.active_run` without signalling a possibly
+  reused PID.
 - Restarts preserve mode/source (`baseline`, `fix`, `small`, or another explicit
   runner mode), use a stable pre-autorestart name for the rolling 24 h budget,
   close the watchdog lock FD in the child, and retain the old registration until
-  the replacement atomically writes its own. Legacy five-field registrations
+  the replacement atomically writes its own. Replacement runners are immutable
+  snapshots read from the committed repository, so editing the worktree cannot
+  change a script while Bash is still reading it. Legacy five-field registrations
   default safely to the pristine baseline. Logs to
   `logs/benchmark-watchdog.log`; stops when `TASK_COMPLETE` exists.
 
