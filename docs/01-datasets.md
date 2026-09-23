@@ -26,12 +26,18 @@ Notes:
 ### Small derived test set (GitHub issue #2)
 
 `scripts/make_small_dataset.sh` builds a tiny but real benchmark input from the
-demo data: **top-300 contigs by length** (3.56 Mbp; longest contigs carry the
-marker genes COMEBin needs for its seed-gene step) + **all reads overlapping
-them** (real alignment via `bedtools intersect`, not simulated) →
-`/vol/data/datasets/comebin_small/` (94 MB). Purpose: fast iteration for fix
-batches (a run is minutes, not hours) while keeping COMEBin's real pipeline
-logic. Build and usage are documented in `scripts/` + `docs/06-benchmark-commands.md`.
+demo data: **top-N contigs by length** (default 300; 3.56 Mbp, with longest
+contigs most likely to carry marker genes) + **all reads overlapping them**
+(real alignments, not simulated) → `/vol/data/datasets/comebin_small/`
+(94 MB). The existing set was originally extracted with `bedtools intersect`;
+the committed reconstruction uses indexed `samtools view -L`, which is faster
+and deterministic for a contig-name list. Purpose: fast iteration for fix
+batches while keeping COMEBin's real pipeline logic.
+
+The next gate is a **medium** derivative (initially N=3,000, hard cap 5 GB),
+built only after the small COMEBin+CheckM run succeeds. Commands and the
+space plan are in `docs/06-benchmark-commands.md` and
+`docs/08-dataset-space-plan.md`.
 
 ## 2. CAMI II challenge data
 
@@ -60,19 +66,32 @@ coverage input are prepared for COMEBin (per-sample BAMs).
 
 Sample 0 (short-read) contigs+BAM pre-downloaded → `/vol/data/datasets/cami_II/marine_reads/`
 (2026-09-23; md5 `412b657ec10dda4d6510aaf39f0236f8` (contigs) / `1de385b6641a32b1acd0806f638d7aa6`
-(bam), `gzip -t` OK). **BAMs are supplied pre-mapped** — no read alignment step
-needed for COMEBin input (reads `_reads.tar.gz` 5.2 GB/sample NOT required).
+(bam), `gzip -t` OK). Reads archive `marmgCAMI2_sample_0_reads.tar.gz` (5.2 G) also
+downloaded + extracted (2026-09-23) → `reads_0/.../reads/`.
 
 **Marine structure — observed (sample 0, short-read):**
-- `contigs/`: `anonymous_gsa.fasta.gz` (= pooled ground-truth contigs, names `S0C0…`),
-  `binning_gs.tsv` (ground truth bin→contig), `gsa_mapping.tsv.gz` (name map)
+- `contigs/`: `anonymous_gsa.fasta.gz` (= pooled ground-truth contigs, names `S0C0…`,
+  **1,475,972 contigs / 909 Mbp**), `binning_gs.tsv` (ground truth `S0C* → Otu genome`),
+  `gsa_mapping.tsv.gz` (name map)
+- `reads/`: `anonymous_reads.fq.gz` — single pooled **interleaved paired-end** file
+  (`@S0R0/1`+`@S0R0/2`, 35.25 M reads ≈ 17.6 M pairs); `reads_mapping.tsv.gz` maps
+  reads → **genome** (`Otu*`), NOT to contigs
 - `bam/`: **590 per-genome BAMs** (4.7 G total; `Otu*.bam`, `RNODE_*`; each mapped to its
   own genome assembly contigs `NODE_*`) + `.bai`
-- → COMEBin needs ONE coverage BAM over ONE contig set; per-genome BAMs do **not**
-  merge directly (duplicate `NODE_*` names across genomes). TODO at CAMI II phase:
-  pick contig set (pooled assembly from `marine/pooled/short/*.fasta`, or gsa contigs)
-  and map the sample reads (`short_read/.../reads.tar.gz`) to it (`bwa mem`, post-baseline,
-  CPU-bound) to build the coverage input.
+
+**Input decision (2026-09-23, docs 01+06):** COMEBin needs ONE coverage BAM over ONE
+contig set; per-genome BAMs do **not** merge (duplicate `NODE_*` names). Both native
+contig sets are far too large for COMEBin training (gsa 1.48 M contigs, pooled Megahit
+1.69 M). Chosen approach (matches issue-#2 small-data methodology, real CAMI data):
+- contigs = `anonymous_gsa.fasta.gz` **subset to ≥ 2000 bp** → **41,988 contigs**
+  (≥1 kbp: 124,436 · ≥2 kbp: 41,988 · ≥5 kbp: 11,605)
+- reads = all `anonymous_reads.fq.gz` → `bwa mem -p -t 32` (interleaved) → single BAM
+  (reads of unkept contigs produce no alignment; `S0C*` names preserved)
+- ground truth = `binning_gs.tsv` subset to kept contigs → direct recall/ARI eval
+- prep: `scripts/prep_cami2_marine.sh` (bwa index/mem + samtools sort/index + input_meta)
+- run: `scripts/run_comebin_fix.sh` with `CONTIGS=…/marine_sample0_input/contigs.fa`,
+  `BAMDIR=…/bamfiles`, `MODE=cami2`, `SRC_COMEBIN=/vol/data/repos/COMEBin-v11`
+  (v1.1.0, `-d cpu`, `-s 42`)
 
 ## 3. CAMI III challenge data (planned)
 

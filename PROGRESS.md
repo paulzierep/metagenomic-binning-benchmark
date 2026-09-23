@@ -216,6 +216,14 @@ included; fixes land on branch `comebin-optimizations` in this repo.
       finish** (CPU policy: no concurrent timed runs)
 - [x] CAMI II marine assemblies downloaded + **md5 verified** (`1c054a45…`), 9.42 GB;
       extraction running; marine short-reads URL recorded (docs/01)
+- [x] CAMI II marine sample 0 (short-read): reads archive downloaded (5.2 G, 2026-09-23)
+      + extracted → `reads_0/…/reads/anonymous_reads.fq.gz` (**interleaved paired-end**,
+      35.25 M reads ≈ 17.6 M pairs) + `reads_mapping.tsv.gz` (maps reads → **genome**,
+      not contig). **Input decision** (docs/01): contigs = `anonymous_gsa.fasta.gz`
+      subset ≥2,000 bp (**41,988 contigs**; full set 1.48 M is not COMEBin-feasible),
+      reads = all → `bwa mem -p` single BAM; ground truth = `binning_gs.tsv` subset.
+      `scripts/prep_cami2_marine.sh` + env-overridable `run_comebin_fix.sh`
+      (CONTIGS/BAMDIR/MODE=`cami2`) ready; prep is CPU-bound → runs post-baseline
 - [x] checkm2 reference DB downloaded + extracted (`/vol/data/benchmark/checkm2db/`,
       `uniref100.KO.1.dmnd` 3.08 GB); **checkm v1 reference data INSTALLED + verified**:
       official tarball `checkm_data_2015_01_16.tar.gz` (288,590,617 B, `gzip -t` OK)
@@ -238,23 +246,26 @@ included; fixes land on branch `comebin-optimizations` in this repo.
       launches; **model in use is now logged** (watchdog.log `model=…` per turn;
       status/current.md + status.log `model=` from the transcript; supervisor
       meta-watchdog layer added). All committed @ `ec41276`
-- [x] **Issue #2 new directives recorded** (docs/08): (a) functional tests
-      ALWAYS on the small dataset, full benchmarks only after MAJOR commits;
-      (b) dataset/disk-space plan incl. human host-associated CAMI II datasets
-      (Multisample HMP / Toy Human Microbiome 5 body sites); 391 GB free, plan ≤
-      ~100 GB future → OK. Replies posted
+- [x] **Issue #2 directives recorded** (docs/08): (a) functional tests start
+      on the 94 MB small real-data set; (b) only after that end-to-end run
+      passes, build a medium derived set (target 3,000 contigs, hard cap 5 GB);
+      (c) large benchmarks only after major commits; (d) dataset/space plan
+      includes human host-associated CAMI II (Multisample HMP / Toy Human
+      Microbiome), 391 GB free, planned data ≤ ~105 GB. Replies posted.
 - [~] **← CURRENT: baseline demo run in progress** (started 14:36 UTC, commit
-      987db95d8d399f30b7c82a5f5f40ed6bfdc906c7, `-t 32`): training epoch ~110/200
-      (~2.4 min/epoch → ETA ~22:30 UTC worst case; `--earlystop` may cut short;
-      banner shows LIVE epoch each 10 min) —
+      987db95d8d399f30b7c82a5f5f40ed6bfdc906c7, `-t 32`): training epoch ~114/200
+      (checked 19:09 UTC; ~2.4 min/epoch → ETA ~22:30 UTC worst case;
+      `--earlystop` may cut short; banner shows LIVE epoch + loss/acc each 10 min) —
       watch `runs/baseline_unmodified/comebin_run.log`
 - [ ] When baseline done: CheckM2 + CheckM v1 eval (`scripts/run_eval.sh`) → README
       performance row (wall time per stage, peak RAM from resources.tsv, bins,
       CheckM2/CheckM means) with linked commit → push
-- [ ] Small-dataset test run (`scripts/run_small_test.sh runs/small_test`) on
-      baseline source → issue #2 GitHub comment with dataset location + results
+- [ ] After baseline: small end-to-end COMEBin + CheckM2/CheckM run via
+      `scripts/run_small_test.sh` (runner now overlap-guarded and resource-logged)
+- [ ] After the small run passes: build/run the medium 3,000-contig derivative
+      (≤5 GB), record provenance + measured size, then evaluate
 - [ ] Fix batch run on v1.1.0 base (`runs/fix_v11`, worktree COMEBin-v11) →
-      full benchmark + eval (major commit) → README row
+      full large benchmark + eval (major commit) → README row
 - [ ] CAMI II marine sample 0 benchmark run → human host-associated sample →
       CAMI III
 
