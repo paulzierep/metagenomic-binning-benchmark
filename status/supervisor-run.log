@@ -22734,3 +22734,30 @@ progress_sync=0
 d0febd4b48a1abffe2b620a25e58557b1e3e0a35
 d0febd4b48a1abffe2b620a25e58557b1e3e0a35
 > build · space-bunny-free
+Completed the supervisor remediation.
+
+- Diagnosed baseline PID `19182` as a terminal failure, not a hang. Training reached epoch 175, then clustering failed because the marker HMM produced no seed file; `biolib` was also initially missing. No COMEBin process remained when remediation began, so no active training process was signalled or restarted.
+- Fixed and deployed:
+  - Terminal-failure classification and safe stale-registration cleanup in `benchmark-watchdog.sh`.
+  - Committed immutable runner snapshots to prevent in-place script edits during long runs.
+  - Reliable `exit_code`/cleanup traps, `SRC_COMEBIN` handoff, overlap protection, and bytecode-cache hygiene in `run_comebin_baseline.sh`.
+  - C6 verification of actual replacement runner processes.
+  - Truthful status for stale heartbeats and cleared/non-active benchmark runs in `status-heartbeat.sh`.
+- Removed stale autorestart directories/markers and generated COMEBin `__pycache__` files.
+- Recovered the stale primary agent driver after its 504 failure. No cron or OpenCode service restart was performed.
+- No new or updated GitHub issues were present; no duplicate comments, issue markers, or closures were created.
+- Updated `PROGRESS.md`, documentation, and changelog to record the terminal baseline failure and next steps.
+
+Verification completed:
+
+- No-LLM meta-watchdog run: **C1–C9 all `ok`**.
+- C6 now reports the terminal failure with no retry loop.
+- No `.active_run` or stale autorestart directories remain.
+- Installed scripts are byte-identical to source and pass `bash -n`.
+- Cron is active with the four expected jobs.
+- Git worktree is clean and `HEAD` matches `origin/main`.
+- Appended the required timestamped line to `/vol/data/benchmark/logs/supervisor-actions.log`.
+
+Pushed commits include `2d61909`, `73aa0dd`, and `67c6d05`; final verified remote `main` is `d0febd4`.
+
+The baseline itself is explicitly recorded as **failed, not successful**. No CheckM/CheckM2 results are claimed; the next scientific step is small/fix-branch validation followed by a deliberate baseline rerun.
