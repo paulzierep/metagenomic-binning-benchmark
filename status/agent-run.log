@@ -4992,3 +4992,51 @@ HEARTBEAT RAN
 10:| 🤖 Model | `big-pickle` (last turn; watchdog rotates to free models on quota) |
 > build · big-pickle
 Heartbeat fully working: `model=big-pickle` + live `epoch 110/200 · 15/28 batches` in both status.log and current.md, fresh banner timestamp. Committing:
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark
+echo '2026-09-23T21:22Z | Restored live epoch probe + model reporting in status-heartbeat.sh (supervisor edit had been clobbered by deploy; now in repo+installed, identical): status.log/current.md show model=big-pickle + "epoch N/200 · x/28 batches"; .activity refreshed; validated with a manual tick. Baseline epoch ~110.' >> status/agent-activity.log
+python3 - <<'EOF'
+p='PROGRESS.md'
+s=open(p).read()
+s=s.replace('training epoch ~108/200','training epoch ~110/200')
+open(p,'w').write(s)
+EOF
+cp PROGRESS.md /vol/data/benchmark/PROGRESS.md
+git add scripts/status-heartbeat.sh PROGRESS.md status/agent-activity.log README.md status/status.log status/current.md
+git commit -q -m "heartbeat: model reporting + live epoch probe (restored), .activity refreshed"
+git push -q && echo PUSHED
+git log --oneline -2
+echo "=== baseline ==="
+grep -c '^DEBUG:root:Epoch' /vol/data/benchmark/runs/baseline_unmodified/comebin_out/comebin_res/training.log
+touch /vol/data/benchmark/.heartbeat
+To https://github.com/paulzierep/metagenomic-binning-benchmark
+ ! [remote rejected] main -> main (cannot lock ref 'refs/heads/main': is at 656d32234ea27725ff2cb78affdfc43ec00d88e8 but expected 3ac09f137f9ee87bd33922ed41abc6cadbbe104a)
+error: failed to push some refs to 'https://github.com/paulzierep/metagenomic-binning-benchmark'
+656d322 status: yes — Baseline training epoch ~109/200 (~2.4 min/epoch, ETA ~22:35
+d0610f2 heartbeat: model reporting + live epoch probe (restored), .activity refreshed
+=== baseline ===
+110
+> build · big-pickle
+Push rejected — remote `main` advanced concurrently (the shared repo is also touched by the supervisor agent). Let me fetch, inspect, and rebase my commit onto the latest remote:
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark
+echo "=== local vs remote ==="
+git log --oneline -4
+echo "--- origin/main ---"
+git fetch -q origin 2>&1 | tail -2
+git log --oneline origin/main -6 | cat
+echo "=== what is on origin/main but not local main? ==="
+git log --oneline main..origin/main | cat
+touch /vol/data/benchmark/.heartbeat
+=== local vs remote ===
+656d322 status: yes — Baseline training epoch ~109/200 (~2.4 min/epoch, ETA ~22:35
+d0610f2 heartbeat: model reporting + live epoch probe (restored), .activity refreshed
+3ac09f1 status: yes — Baseline training epoch ~109/200 (~2.4 min/epoch, ETA ~22:35
+ae5eb22 docs: v1.1.0 rebase notes (07), dataset/disk-space plan incl. human host-associated (08), marine sample-0 md5s (01), PROGRESS current state
+--- origin/main ---
+656d322 status: yes — Baseline training epoch ~109/200 (~2.4 min/epoch, ETA ~22:35
+d0610f2 heartbeat: model reporting + live epoch probe (restored), .activity refreshed
+3ac09f1 status: yes — Baseline training epoch ~109/200 (~2.4 min/epoch, ETA ~22:35
+ae5eb22 docs: v1.1.0 rebase notes (07), dataset/disk-space plan incl. human host-associated (08), marine sample-0 md5s (01), PROGRESS current state
+ec41276 ops: persistent agent driver + model reporting + crash-guard fix (issues #4/#5)
+37365a0 meta: supervise tick 2026-09-23T18:53:01Z — 0 fix(es)
+=== what is on origin/main but not local main? ===
+> build · big-pickle

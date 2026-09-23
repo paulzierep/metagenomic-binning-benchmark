@@ -3761,3 +3761,139 @@ Index: /vol/data/repos/metagenomic-binning-benchmark/scripts/benchmark-watchdog.
  rc_done=$(grep -m1 '^exit_code:' "$rundir/run_meta.txt" 2>/dev/null | awk '{print $2}')
  if [ "$rc_done" = "0" ]; then
 
+> build · space-bunny-free
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/scripts/benchmark-watchdog.sh
+Index: /vol/data/repos/metagenomic-binning-benchmark/scripts/benchmark-watchdog.sh
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/scripts/benchmark-watchdog.sh
++++ /vol/data/repos/metagenomic-binning-benchmark/scripts/benchmark-watchdog.sh
+@@ -66,10 +66,10 @@
+ 
+ # healthy?
+ [ "$alive" = "1" ] && [ "$age" -lt "$HANG_S" ] && exit 0
+ 
+-# budget check (rolling 24 h)
+-restarts=$(find "$BENCH" -maxdepth 1 -name ".hang_restarts.$name.*" -mmin -1440 2>/dev/null | wc -l)
++# budget check (rolling 24 h), keyed to the stable pre-autorestart run name
++restarts=$(find "$BENCH" -maxdepth 1 -name ".hang_restarts.$root_name.*" -mmin -1440 2>/dev/null | wc -l)
+ if [ "$restarts" -ge "$MAX_PER_RUN" ]; then
+     log "$name needs restart but budget exhausted ($restarts/$MAX_PER_RUN) — leaving to agent"
+     exit 0
+ fi
+
+> build · space-bunny-free
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/scripts/benchmark-watchdog.sh
+Index: /vol/data/repos/metagenomic-binning-benchmark/scripts/benchmark-watchdog.sh
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/scripts/benchmark-watchdog.sh
++++ /vol/data/repos/metagenomic-binning-benchmark/scripts/benchmark-watchdog.sh
+@@ -73,21 +73,36 @@
+     log "$name needs restart but budget exhausted ($restarts/$MAX_PER_RUN) — leaving to agent"
+     exit 0
+ fi
+ 
+-# kill old tree (best effort)
++# Kill only the registered process group and wrapper. Never use pkill -f on a
++# run name: prompts and status commands may contain that text too.
+ if [ "$alive" = "1" ]; then
+-    log "$name HUNG: log silent ${age}s -> killing pid $pid pgid ${pgid:-?}"
+-    [ -n "${pgid:-}" ] && kill -9 -- -"$pgid" 2>/dev/null
+-    kill -9 "$pid" 2>/dev/null
+-    pkill -9 -f "$name" 2>/dev/null
++    log "$name HUNG: log silent ${age}s -> killing pid $pid pgid $pgid"
++    kill -9 -- -"$pgid" 2>/dev/null || true
++    kill -9 "$pid" 2>/dev/null || true
+     sleep 3
+ fi
+ 
+-# restart into a fresh runs/ dir (keeps raw baseline artifacts per attempt intact)
+-touch "$BENCH/.hang_restarts.$name.$(date +%s)"
+-new="${name}_autorestart$((restarts+1))"
++# Restart into a fresh directory (keeps every attempt's raw artifacts). New
++# registrations carry mode + source; legacy five-field baseline registrations
++# default to mode=baseline above.
++touch "$BENCH/.hang_restarts.$root_name.$(date +%s)"
++new="${root_name}_autorestart$((restarts+1))"
+ newdir="$BENCH/runs/$new"
+-nohup bash /vol/data/repos/metagenomic-binning-benchmark/scripts/run_comebin_baseline.sh "$newdir" \
++case "$mode" in
++  baseline)
++    launch=(bash "$REPO/scripts/run_comebin_baseline.sh" "$newdir")
++    ;;
++  fix)
++    launch=(bash "$REPO/scripts/run_comebin_fix.sh" "$newdir")
++    ;;
++  small)
++    launch=(bash "$REPO/scripts/run_small_test.sh" "$newdir")
++    ;;
++  *)
++    log "cannot restart $name: unsupported mode '$mode'"; exit 0 ;;
++esac
++nohup env SRC_COMEBIN="$source" "${launch[@]}" \
+     >"$BENCH/logs/$new.launch.log" 2>&1 &
+-log "$name restart #$((restarts+1)) -> $newdir (launcher pid $!; run script re-registers .active_run)"
++log "$name restart #$((restarts+1)) mode=$mode source=$source -> $newdir (launcher pid $!; run script re-registers .active_run)"
+ exit 0
+\ No newline at end of file
+
+> build · space-bunny-free
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/scripts/benchmark-watchdog.sh
+Index: /vol/data/repos/metagenomic-binning-benchmark/scripts/benchmark-watchdog.sh
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/scripts/benchmark-watchdog.sh
++++ /vol/data/repos/metagenomic-binning-benchmark/scripts/benchmark-watchdog.sh
+@@ -88,8 +88,11 @@
+ # default to mode=baseline above.
+ touch "$BENCH/.hang_restarts.$root_name.$(date +%s)"
+ new="${root_name}_autorestart$((restarts+1))"
+ newdir="$BENCH/runs/$new"
++# The replacement runner registers its own PID. Remove the dead/hung
++# registration first; guarded runners intentionally refuse stale state.
++rm -f "$ACTIVE"
+ case "$mode" in
+   baseline)
+     launch=(bash "$REPO/scripts/run_comebin_baseline.sh" "$newdir")
+     ;;
+
+> build · space-bunny-free
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/scripts/status-heartbeat.sh
+Index: /vol/data/repos/metagenomic-binning-benchmark/scripts/status-heartbeat.sh
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/scripts/status-heartbeat.sh
++++ /vol/data/repos/metagenomic-binning-benchmark/scripts/status-heartbeat.sh
+@@ -23,9 +23,10 @@
+ BENCH=/vol/data/benchmark
+ HB="$BENCH/.heartbeat"
+ ACT="$BENCH/.activity"
+ COMPLETE="$BENCH/TASK_COMPLETE"
+-LOCK=/tmp/status-heartbeat.lock
++LOCK=${STATUS_HEARTBEAT_LOCK:-/tmp/status-heartbeat.lock}
++REPO_LOCK=${BENCH_REPO_LOCK:-/tmp/bench-repo.lock}
+ SLOG="$BENCH/logs/status-heartbeat.log"
+ STALE_S=900
+ MARKER='<!--AGENT-STATUS-->'
+ 
+
+> build · space-bunny-free
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/scripts/status-heartbeat.sh
+Index: /vol/data/repos/metagenomic-binning-benchmark/scripts/status-heartbeat.sh
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/scripts/status-heartbeat.sh
++++ /vol/data/repos/metagenomic-binning-benchmark/scripts/status-heartbeat.sh
+@@ -30,9 +30,13 @@
+ STALE_S=900
+ MARKER='<!--AGENT-STATUS-->'
+ 
+ exec 9>"$LOCK"
+-flock -n 9 || { echo "$(date -Is) skipped: lock held" >>"$SLOG"; exit 0; }
++flock -n 9 || { echo "$(date -Is) skipped: status lock held" >>"$SLOG"; exit 0; }
++# Serialize all generated-file writes and git operations with meta-watchdog.
++# This lock is separate from the per-script lock above.
++exec 8>"$REPO_LOCK"
++flock -n 8 || { echo "$(date -Is) skipped: repository lock held" >>"$SLOG"; exit 0; }
+ mkdir -p status
+ 
+ now_utc=$(date -u +%Y-%m-%dT%H:%M:%SZ)   # full precision, UTC (internal/log)
+ now=$(TZ=Europe/Berlin date +'%Y-%m-%dT%H:%M %Z')   # German local time, minute precision (display)
+
+> build · space-bunny-free
