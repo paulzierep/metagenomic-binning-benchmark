@@ -53,7 +53,7 @@ Requirements from the user:
 **Everything above is mirrored into this repo** at `runs/<run>/` (small log files
 only — `run_meta.txt`, `comebin_run.log`, `logs/resources.tsv`, `comebin_res/{comebin.log,
 training.log,config.yml}`; raw artifacts stay on disk). The status-heartbeat re-syncs
-every 10 min and at run end, so per-run runs logs are on GitHub within ~10 min.
+every 2 min and at run end, so per-run logs reach GitHub within ~2 min.
 `runs/README.md` documents the layout.
 
 **Agent activity log** `status/agent-activity.log`: the VERBOSE companion to the
@@ -78,7 +78,7 @@ Watch progress: `tail -f runs/<run>/comebin_run.log` (epoch bars update in place
 - Benchmark runs use the full machine: **32 threads, full RAM** (host 32 cores / 62 GiB).
   Measured during baseline training: load ~31, main.py ~3036% CPU, 7.6/62 GB used.
 - Agent keeps ~1–2 cores + light RAM (opencode serve, watchdog, status cron, git/gh).
-- Safe headroom is monitored every 10 min by the status heartbeat: every `status/status.log`
+- Safe headroom is monitored every 2 min by the status heartbeat: every `status/status.log`
   row includes `mem=` and `load=`; a RAM spike during clustering/HNSW would show there.
 - Safety rules:
   - NEVER run CheckM2/CheckM evaluation concurrently with a COMEBin run (RAM/CPU spikes).
@@ -194,20 +194,20 @@ included; fixes land on branch `comebin-optimizations` in this repo.
 - [x] Docs written & pushed to `main` (README, PROGRESS, docs/00–06, scripts/, .gitignore)
 - [x] gh CLI 2.45.0 installed + authenticated; idea-inbox issue #1 created
 - [x] Standing permissions configured (`~/.config/opencode/opencode.json`)
-- [x] Watchdogs installed (cron `*/5` agent + `*/5` benchmark-hang + `*/10` status-heartbeat)
+- [x] Watchdogs installed (cron `*/5` agent + `*/5` benchmark-hang + `*/2` status-heartbeat)
 - [x] Per-run detailed logs mirrored into repo `runs/<run>/` (run_meta, comebin_run.log,
       resources.tsv, comebin_res/*) — baseline row already live on GitHub
 - [x] Command lines documented: `docs/06-benchmark-commands.md`; per-run `run_meta.txt`
       records `cmd_wrapper:` / `cmd_train_py:` / `cmd_from_log:`
 - [x] Status heartbeat live: German-time (Europe/Berlin) banner on README line 1 +
       `status/current.md` (mem+load) + `status/status.log` + verbose
-      `status/agent-activity.log` — pushed every 10 min. Now embeds a **live epoch
+      `status/agent-activity.log` — pushed every 2 min. Now embeds a **live epoch
       probe** from the active run (banner shows `epoch N/200 · x/28 batches`), so
       status never looks frozen.
 - [x] Issue #3 "I think comebin is stuck" — answered 2026-09-23 16:33 UTC with
       live evidence (main.py ~3120% CPU on 32 cores, loss 3.33→3.16, Top1→94%,
       46/200 epochs, ETA ~6 h worst case): run is healthy; the frozen look was a
-      stale 10-min banner snapshot → fixed with the live probe above.
+      stale banner snapshot → fixed with the live probe above.
 - [x] Binaries verified: run_FragGeneScan.pl, hmmsearch, bedtools, bwa, samtools, checkm
 - [x] BAM indexed (`SRR5720343.bam.bai`)
 - [x] Small benchmark dataset (issue #2): 300 top-length contigs + real overlapping reads
@@ -262,7 +262,7 @@ included; fixes land on branch `comebin-optimizations` in this repo.
 - [~] **← CURRENT: baseline demo run in progress** (started 14:36 UTC, commit
       987db95d8d399f30b7c82a5f5f40ed6bfdc906c7, `-t 32`): training epoch ~116/200
       (checked 19:15 UTC; ~2.4 min/epoch → ETA ~22:30 UTC worst case;
-      `--earlystop` may cut short; banner shows LIVE epoch + loss/acc each 10 min) —
+      `--earlystop` may cut short; banner shows LIVE epoch + loss/acc each 2 min) —
       watch `runs/baseline_unmodified/comebin_run.log`
 - [ ] When baseline done: CheckM2 + CheckM v1 eval (`scripts/run_eval.sh`) → README
       performance row (wall time per stage, peak RAM from resources.tsv, bins,

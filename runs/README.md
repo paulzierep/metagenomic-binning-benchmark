@@ -1,7 +1,7 @@
 # Per-run detailed logs
 
 Every benchmark run mirrors its **detailed logs** into this directory on
-GitHub (`runs/<run>/`), synced by `scripts/status-heartbeat.sh` every 10 minutes
+GitHub (`runs/<run>/`), synced by `scripts/status-heartbeat.sh` every 2 minutes
 and again at run end. Only small log files are committed; the heavyweight COMEBin
 artifacts (augmented data, kmer tables, trained models, tensorboard events, bins)
 stay on disk under `/vol/data/benchmark/runs/<run>/`.

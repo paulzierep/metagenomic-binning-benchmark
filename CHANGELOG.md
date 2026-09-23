@@ -79,7 +79,7 @@ Supporting behavior:
 
 ### Added — full agent logging pushed to GitHub
 
-`bin/status-heartbeat.sh` (cron */10) now mirrors **everything the agent did**
+`bin/status-heartbeat.sh` (cron */2) now mirrors **everything the agent did**
 into the repo, in addition to the existing banner / current.md / status.log /
 agent-activity.log:
 

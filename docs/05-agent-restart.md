@@ -119,9 +119,9 @@ done and documenting it in this repo (`docs/03-fixes.md` for code changes,
 `docs/01-datasets.md` for datasets, `results/` for benchmarks), then updates
 `PROGRESS.md`.
 
-## GitHub status heartbeat (every 10 min)
+## GitHub status heartbeat (every 2 min)
 
-`scripts/status-heartbeat.sh` (cron `*/10 * * * *`) pushes the agent's liveness and
+`scripts/status-heartbeat.sh` (cron `*/2 * * * *`) pushes the agent's liveness and
 **what is actually happening** to GitHub so the user can monitor it without the
 agent spamming issue comments:
 
@@ -141,7 +141,7 @@ agent spamming issue comments:
   must exist. A fresh heartbeat left by a supervisor/maintenance process is
   explicitly ignored. `TASK_COMPLETE` ⇒ "done".
 - **Skip-if-unchanged**: generated files are only rewritten + committed when the
-  meaningful status changed, so at 10-min cadence idle periods produce no commits.
+  meaningful status changed, so at 2-min cadence idle periods produce no commits.
 - Uses a per-script `flock` plus the shared `/tmp/bench-repo.lock`, and commits
   only heartbeat-owned paths with `git commit --only`; it verifies
   `HEAD=refs/heads/main` from `git ls-remote` after push instead of mistaking a

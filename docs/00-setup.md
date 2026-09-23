@@ -4,7 +4,7 @@
 
 Every benchmark run stores **detailed, structured logs** under `runs/<run>/`, and
 the same content is **mirrored into this repo** at `runs/<run>/` (see
-[`runs/README.md`](../runs/README.md)) by the status-heartbeat every 10 min and at
+[`runs/README.md`](../runs/README.md)) by the status-heartbeat every 2 min and at
 run end — the raw COMEBin artifacts stay on disk under `/vol/data/benchmark/runs/`:
 
 - `run_meta.txt` — date, commit, threads, dataset, exit code, wall-clock, #bins.
