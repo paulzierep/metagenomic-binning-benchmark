@@ -6048,3 +6048,701 @@ index b0988aa..bcbebfb
  exit 0
 \ No newline at end of file
 > build · space-bunny-free
+[0m$ [0mbash /vol/data/benchmark/bin/status-heartbeat.sh; rc=$?; echo "heartbeat rc=$rc"; tail -n 3 /vol/data/benchmark/logs/status-heartbeat.log; git status --short --branch; git log -3 --oneline --decorate
+heartbeat rc=0
+2026-09-23T19:02:50+00:00 pushed (or nothing to push): alive=yes epoch=110 model=big-pickle
+2026-09-23T19:03:01+00:00 pushed (or nothing to push): alive=yes epoch=110 model=big-pickle
+2026-09-23T19:05:02+00:00 alive=yes text='Baseline training epoch ~109/200 (~2.4 min/epoch, ETA ~22:35 UTC unless early-stop); next: baseline eval (run_eval.sh) → issue #2 small-dataset test → v1.1.0 fix run · run: epoch 112/200 · 19/28 batches' pushed=1
+## main...origin/main
+ M CHANGELOG.md
+ M PROGRESS.md
+ M docs/01-datasets.md
+ M docs/05-agent-restart.md
+ M docs/06-benchmark-commands.md
+ M docs/07-fix-batches.md
+ M docs/08-dataset-space-plan.md
+ M scripts/agent-watchdog.sh
+ M scripts/benchmark-watchdog.sh
+ M scripts/make_small_dataset.sh
+ M scripts/meta-watchdog.sh
+ M scripts/run_comebin_fix.sh
+ M scripts/run_small_test.sh
+ M scripts/status-heartbeat.sh
+7c52537 (HEAD -> main, origin/main) status: yes — Baseline training epoch ~109/200 (~2.4 min/epoch, ETA ~22:35
+bd89752 meta: supervise tick 2026-09-23T19:03:40Z — 0 fix(es)
+8e1131f status: yes — baseline_unmodified epoch 110/200 (97.74739074707031%) model big-pickle — Baseline training epoch ~109/200 (~2.4 m
+> build · space-bunny-free
+[0m$ [0mbefore=$(awk '{print $1}' /vol/data/benchmark/.active_run); before_mtime=$(stat -c %Y /vol/data/benchmark/runs/baseline_unmodified/comebin_run.log); bash /vol/data/benchmark/bin/benchmark-watchdog.sh; rc=$?; after=$(awk '{print $1}' /vol/data/benchmark/.active_run); after_mtime=$(stat -c %Y /vol/data/benchmark/runs/baseline_unmodified/comebin_run.log); echo "benchmark-watchdog rc=$rc pid=$before->$after log_mtime=$before_mtime->$after_mtime"; ps -o pid,etime,stat,%cpu,cmd -p "$after"
+benchmark-watchdog rc=0 pid=19182->19182 log_mtime=1790190303->1790190303
+    PID     ELAPSED STAT %CPU CMD
+  19182    04:29:01 S     0.0 bash /vol/data/repos/metagenomic-binning-benchmark/scripts/run_comebin_baseline.sh
+> build · space-bunny-free
+[0m$ [0mbash /vol/data/benchmark/bin/agent-watchdog.sh; rc=$?; echo "agent-watchdog rc=$rc"; tail -n 3 /vol/data/benchmark/logs/watchdog.log; flock -n /tmp/agent-watchdog.lock -c 'echo lock-free' || echo lock-held
+agent-watchdog rc=0
+2026-09-23T19:00:01+00:00 [watchdog] skipped: another driver holds the lock
+2026-09-23T19:05:01+00:00 [watchdog] skipped: another driver holds the lock
+2026-09-23T19:05:11+00:00 [watchdog] skipped: another driver holds the lock
+lock-held
+> build · space-bunny-free
+[0m✗ [0mEdit /vol/data/repos/metagenomic-binning-benchmark/scripts/meta-watchdog.sh failed
+[91m[1mError: [0mInvalid arguments for tool "edit":
+- oldString: Missing key
+
+Arguments provided:
+{
+  "path": "/vol/data/repos/metagenomic-binning-benchmark/scripts/meta-watchdog.sh",
+  "newString": "  if [ \"$b_alive\" -eq 1 ] && [ \"$runner_ok\" -eq 1 ] && [ \"$b_age\" -lt \"$HANG_S\" ]; then\n    check C6_benchmark ok \"pid $bid mode=${bmode:-baseline} alive, log ${b_age}s fresh\"\n  elif [ \"$b_alive\" -eq 1 ] && [ \"$runner_ok\" -eq 0 ]; then\n    check C6_benchmark broken \"pid $bid alive but command is not a registered COMEBin runner; refusing kill\"\n  elif [ \"$b_alive\" -eq 0 ]; then\n    done_rc=$(grep -m1 '^exit_code:' \"${bdir:-/nonexistent}/run_meta.txt\" 2>/dev/null | awk '{print $2}' || true)\n    if [ \"${done_rc:-}\" = \"0\" ]; then\n      bash \"$BENCH/bin/benchmark-watchdog.sh\" >/dev/null 2>&1 || true\n      if [ ! -f \"$BENCH/.active_run\" ]; then\n        note_fix \"completed benchmark registration cleared\"\n        check C6_benchmark ok \"run completed rc=0; stale active registration cleared\"\n      else\n        check C6_benchmark broken \"run completed rc=0 but active registration remains\"\n      fi\n    else",
+  "replaceAll": false
+}
+
+Update the arguments and call the tool again.
+> build · space-bunny-free
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/scripts/meta-watchdog.sh
+Index: /vol/data/repos/metagenomic-binning-benchmark/scripts/meta-watchdog.sh
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/scripts/meta-watchdog.sh
++++ /vol/data/repos/metagenomic-binning-benchmark/scripts/meta-watchdog.sh
+@@ -186,9 +186,19 @@
+   if [ "$b_alive" -eq 1 ] && [ "$runner_ok" -eq 1 ] && [ "$b_age" -lt "$HANG_S" ]; then
+     check C6_benchmark ok "pid $bid mode=${bmode:-baseline} alive, log ${b_age}s fresh"
+   elif [ "$b_alive" -eq 1 ] && [ "$runner_ok" -eq 0 ]; then
+     check C6_benchmark broken "pid $bid alive but command is not a registered COMEBin runner; refusing kill"
+-  else
++  elif [ "$b_alive" -eq 0 ]; then
++    done_rc=$(grep -m1 '^exit_code:' "${bdir:-/nonexistent}/run_meta.txt" 2>/dev/null | awk '{print $2}' || true)
++    if [ "${done_rc:-}" = "0" ]; then
++      bash "$BENCH/bin/benchmark-watchdog.sh" >/dev/null 2>&1 || true
++      if [ ! -f "$BENCH/.active_run" ]; then
++        note_fix "completed benchmark registration cleared"
++        check C6_benchmark ok "run completed rc=0; stale active registration cleared"
++      else
++        check C6_benchmark broken "run completed rc=0 but active registration remains"
++      fi
++    else
+     bash "$BENCH/bin/benchmark-watchdog.sh" >/dev/null 2>&1 &
+     sleep 3
+     new_bid=0
+     [ -f "$BENCH/.active_run" ] && read -r new_bid _ < "$BENCH/.active_run" || true
+
+> build · space-bunny-free
+[0m→ [0mRead /vol/data/repos/metagenomic-binning-benchmark/scripts/meta-watchdog.sh [90m[offset=190, limit=100][0m
+> build · space-bunny-free
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/scripts/meta-watchdog.sh
+Index: /vol/data/repos/metagenomic-binning-benchmark/scripts/meta-watchdog.sh
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/scripts/meta-watchdog.sh
++++ /vol/data/repos/metagenomic-binning-benchmark/scripts/meta-watchdog.sh
+@@ -197,17 +197,18 @@
+       else
+         check C6_benchmark broken "run completed rc=0 but active registration remains"
+       fi
+     else
+-    bash "$BENCH/bin/benchmark-watchdog.sh" >/dev/null 2>&1 &
+-    sleep 3
+-    new_bid=0
+-    [ -f "$BENCH/.active_run" ] && read -r new_bid _ < "$BENCH/.active_run" || true
+-    if [ -n "$new_bid" ] && [ "$new_bid" != "${bid:-0}" ] && kill -0 "$new_bid" 2>/dev/null; then
+-      note_fix "benchmark absent/hung -> watchdog registered replacement pid $new_bid"
+-      check C6_benchmark ok "auto-restarted benchmark as pid $new_bid"
+-    else
+-      check C6_benchmark broken "benchmark pid ${bid:-?} gone/hung; restart not verified"
++      bash "$BENCH/bin/benchmark-watchdog.sh" >/dev/null 2>&1 &
++      sleep 3
++      new_bid=0
++      [ -f "$BENCH/.active_run" ] && read -r new_bid _ < "$BENCH/.active_run" || true
++      if [ -n "$new_bid" ] && [ "$new_bid" != "${bid:-0}" ] && kill -0 "$new_bid" 2>/dev/null; then
++        note_fix "benchmark absent/hung -> watchdog registered replacement pid $new_bid"
++        check C6_benchmark ok "auto-restarted benchmark as pid $new_bid"
++      else
++        check C6_benchmark broken "benchmark pid ${bid:-?} gone/hung; restart not verified"
++      fi
+     fi
+   fi
+ else
+   check C6_benchmark ok "no active run (idle is fine)"
+
+> build · space-bunny-free
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/scripts/meta-watchdog.sh
+Index: /vol/data/repos/metagenomic-binning-benchmark/scripts/meta-watchdog.sh
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/scripts/meta-watchdog.sh
++++ /vol/data/repos/metagenomic-binning-benchmark/scripts/meta-watchdog.sh
+@@ -266,12 +266,11 @@
+   if ! git diff --cached --quiet -- status/meta; then
+     git commit -q --only -m "meta: supervise tick $now_utc — $fixes fix(es)" -- status/meta || exit 0
+   fi
+   git push -q || exit 0
+-  [ "$(git rev-parse HEAD)" = "$(git rev-parse refs/remotes/origin/main)" ] && publish_ok=1
+ )
+-# The assignment above is intentionally evaluated through a marker file because
+-# a subshell cannot export a shell variable. Publish success is reflected below.
++# Verify outside the publish subshell: a failed commit/push must not look healthy
++# merely because an older local commit already equals origin/main.
+ if [ "$(git -C "$REPO" rev-parse HEAD 2>/dev/null || echo none)" = "$(git -C "$REPO" rev-parse refs/remotes/origin/main 2>/dev/null || echo none)" ] \
+    && [ -z "$(git -C "$REPO" status --porcelain -- status/meta 2>/dev/null || true)" ]; then
+   publish_ok=1
+ fi
+
+> build · space-bunny-free
+[0m$ [0mbash scripts/run_comebin_fix.sh /vol/data/benchmark/runs/should_not_start; rc=$?; echo "fix runner overlap-guard rc=$rc"; exit 0
+ERROR: another benchmark launch holds /tmp/benchmark-start.lock
+fix runner overlap-guard rc=1
+[0m$ [0mgit diff --numstat; git diff --summary; stat -c '%a %n' scripts/*.sh | sort
+19	1	CHANGELOG.md
+11	8	PROGRESS.md
+12	6	docs/01-datasets.md
+33	11	docs/05-agent-restart.md
+23	6	docs/06-benchmark-commands.md
+7	5	docs/07-fix-batches.md
+29	13	docs/08-dataset-space-plan.md
+9	6	scripts/agent-watchdog.sh
+52	18	scripts/benchmark-watchdog.sh
+0	0	scripts/make_small_dataset.sh
+253	137	scripts/meta-watchdog.sh
+47	12	scripts/run_comebin_fix.sh
+119	16	scripts/run_small_test.sh
+20	4	scripts/status-heartbeat.sh
+ mode change 100644 => 100755 scripts/benchmark-watchdog.sh
+ mode change 100644 => 100755 scripts/make_small_dataset.sh
+755 scripts/benchmark-watchdog.sh
+755 scripts/make_small_dataset.sh
+775 scripts/agent-watchdog.sh
+775 scripts/meta-watchdog.sh
+775 scripts/run_comebin_baseline.sh
+775 scripts/run_comebin_fix.sh
+775 scripts/run_eval.sh
+775 scripts/run_small_test.sh
+775 scripts/status-heartbeat.sh
+[0m$ [0mfor f in scripts/*.sh; do bash -n "$f" || exit 1; done; git diff --check; echo 'all shell syntax + diff whitespace checks passed'
+all shell syntax + diff whitespace checks passed
+[0m$ [0mbash scripts/run_small_test.sh /vol/data/benchmark/runs/should_not_start 1; rc=$?; echo "small runner overlap-guard rc=$rc"; exit 0
+ERROR: benchmark already active: pid=19182 dir=/vol/data/benchmark/runs/baseline_unmodified mode=baseline
+Small functional tests and full benchmarks must never overlap; try again after that run finishes.
+small runner overlap-guard rc=1
+> build · space-bunny-free
+[0m✗ [0mEdit /vol/data/repos/metagenomic-binning-benchmark/scripts/benchmark-watchdog.sh failed
+[91m[1mError: [0mInvalid arguments for tool "edit":
+- oldString: Missing key
+
+Arguments provided:
+{
+  "path": "/vol/data/repos/metagenomic-binning-benchmark/scripts/benchmark-watchdog.sh",
+  "newString": "case \"$pid:$pgid\" in\n  *[!0-9:]*|:*|*:) log \"invalid active-run pid/pgid '${pid:-}/${pgid:-}'; refusing process action\"; exit 0 ;;\nesac\n[ \"$pid\" -gt 0 ] && [ \"$pgid\" -gt 1 ] || { log \"unsafe active-run pid/pgid $pid/$pgid; refusing process action\"; exit 0; }",
+  "replaceAll": false
+}
+
+Update the arguments and call the tool again.
+> build · space-bunny-free
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/scripts/benchmark-watchdog.sh
+Index: /vol/data/repos/metagenomic-binning-benchmark/scripts/benchmark-watchdog.sh
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/scripts/benchmark-watchdog.sh
++++ /vol/data/repos/metagenomic-binning-benchmark/scripts/benchmark-watchdog.sh
+@@ -35,9 +35,9 @@
+ 
+ case "$pid:$pgid" in
+   *[!0-9:]*|:*|*:) log "invalid active-run pid/pgid '${pid:-}/${pgid:-}'; refusing process action"; exit 0 ;;
+ esac
+-[ "$pgid" -gt 1 ] || { log "unsafe active-run pgid $pgid; refusing process action"; exit 0; }
++[ "$pid" -gt 0 ] && [ "$pgid" -gt 1 ] || { log "unsafe active-run pid/pgid $pid/$pgid; refusing process action"; exit 0; }
+ 
+ # log age = silence of the run
+ [ -f "$logfile" ] || logfile="$rundir/comebin_run.log"
+ if [ -f "$logfile" ]; then
+
+> build · space-bunny-free
+[0m$ [0mfor f in scripts/*.sh; do last=$(tail -c 1 "$f" | od -An -t u1 | tr -d ' '); [ "$last" = "10" ] || printf '\n' >> "$f"; done; git diff --check; bash -n scripts/meta-watchdog.sh; bash -n scripts/benchmark-watchdog.sh; echo ready
+ready
+> build · space-bunny-free
+[0m$ [0mset -e
+for f in agent-watchdog.sh benchmark-watchdog.sh meta-watchdog.sh status-heartbeat.sh; do
+  cp "scripts/$f" "/vol/data/benchmark/bin/.$f.supervisor-new"
+  chmod 755 "/vol/data/benchmark/bin/.$f.supervisor-new"
+  mv "/vol/data/benchmark/bin/.$f.supervisor-new" "/vol/data/benchmark/bin/$f"
+  cmp -s "scripts/$f" "/vol/data/benchmark/bin/$f"
+done
+echo 'installed watchdog copies synchronized'
+installed watchdog copies synchronized
+> build · space-bunny-free
+[0m$ [0mset -e
+T=$(mktemp -d /tmp/opencode/bm-watchdog-test.XXXXXX)
+mkdir -p "$T/bench/logs" "$T/bench/runs/small_test" "$T/repo/scripts"
+cat > "$T/repo/scripts/run_small_test.sh" <<EOF
+#!/usr/bin/env bash
+set -eu
+new=\$1
+mkdir -p "\$new"
+printf 'date: %s\\n' "\$(date -Is)" > "\$new/run_meta.txt"
+printf '999998 999997 %s %s 0 small /fake/source\\n' "\$new/comebin_run.log" "\$new" > "$T/bench/.active_run"
+EOF
+chmod +x "$T/repo/scripts/run_small_test.sh"
+sed -e "s#^BENCH=/vol/data/benchmark#BENCH=$T/bench#" -e "s#^REPO=/vol/data/repos/metagenomic-binning-benchmark#REPO=$T/repo#" scripts/benchmark-watchdog.sh > "$T/watchdog.sh"
+chmod +x "$T/watchdog.sh"
+printf '999999 999998 %s %s 0 small /fake/source\n' "$T/bench/runs/small_test/comebin_run.log" "$T/bench/runs/small_test" > "$T/bench/.active_run"
+BENCH_WATCHDOG_LOCK="$T/lock" bash "$T/watchdog.sh"
+sleep 1
+first=$(cat "$T/bench/.active_run")
+BENCH_WATCHDOG_LOCK="$T/lock" bash "$T/watchdog.sh"
+sleep 1
+second=$(cat "$T/bench/.active_run")
+count=$(find "$T/bench" -maxdepth 1 -name '.hang_restarts.small_test.*' | wc -l)
+printf 'first=%s\nsecond=%s\nstable_budget_markers=%s\n' "$first" "$second" "$count"
+[ "$count" -eq 2 ]
+[ -f "$T/bench/runs/small_test_autorestart1/run_meta.txt" ]
+[ -f "$T/bench/runs/small_test_autorestart2/run_meta.txt" ]
+rm -rf "$T"
+echo 'benchmark-watchdog isolated mode/source + stable-budget test passed'
+first=999998 999997 /tmp/opencode/bm-watchdog-test.odarLZ/bench/runs/small_test_autorestart1/comebin_run.log /tmp/opencode/bm-watchdog-test.odarLZ/bench/runs/small_test_autorestart1 0 small /fake/source
+second=999998 999997 /tmp/opencode/bm-watchdog-test.odarLZ/bench/runs/small_test_autorestart2/comebin_run.log /tmp/opencode/bm-watchdog-test.odarLZ/bench/runs/small_test_autorestart2 0 small /fake/source
+stable_budget_markers=2
+benchmark-watchdog isolated mode/source + stable-budget test passed
+> build · space-bunny-free
+[0m$ [0mset -e
+T=$(mktemp -d /tmp/opencode/small-runner-test.XXXXXX)
+mkdir -p "$T/src/COMEBin" "$T/data/bamfiles" "$T/bin" "$T/runs"
+git -C "$T/src" init -q
+git -C "$T/src" config user.email test@example.invalid
+git -C "$T/src" config user.name Test
+cat > "$T/src/COMEBin/run_comebin.sh" <<'EOF'
+#!/usr/bin/env bash
+help='-d STR device; -s INT random seed'
+exit 0
+EOF
+chmod +x "$T/src/COMEBin/run_comebin.sh"
+git -C "$T/src" add COMEBin/run_comebin.sh
+git -C "$T/src" commit -qm init
+printf '>c1\nACGT\n>c2\nACGT\n' > "$T/data/contigs.fa"
+printf 'bam\n' > "$T/data/bamfiles/reads.bam"
+cat > "$T/bin/micromamba" <<EOF
+#!/usr/bin/env bash
+set -eu
+out=''
+while [ \$# -gt 0 ]; do
+  if [ "\$1" = "-o" ]; then out=\$2; shift 2; else shift; fi
+done
+printf '%s\n' "\$@" > "$T/comebin.args"
+mkdir -p "\$out/comebin_res/comebin_res_bins"
+printf '>bin1\nACGT\n' > "\$out/comebin_res/comebin_res_bins/bin.1.fasta"
+sleep 1
+EOF
+chmod +x "$T/bin/micromamba"
+sed \
+  -e "s#^MM=.*#MM=$T/bin/micromamba#" \
+  -e "s#^ENV=.*#ENV=$T/env#" \
+  -e "s#^SRC=.*#SRC=$T/src#" \
+  -e "s#^DATA=.*#DATA=$T/data#" \
+  -e "s#^START_LOCK=.*#START_LOCK=$T/start.lock#" \
+  -e "s#^ACTIVE=.*#ACTIVE=$T/active_run#" \
+  scripts/run_small_test.sh > "$T/run_small_test.sh"
+chmod +x "$T/run_small_test.sh"
+SRC_COMEBIN="$T/src" SEED=42 bash "$T/run_small_test.sh" "$T/runs/small" 2
+[ ! -e "$T/active_run" ]
+[ -f "$T/runs/small/logs/resources.tsv" ]
+[ "$(wc -l < "$T/runs/small/logs/resources.tsv")" -ge 2 ]
+grep -q -- '-d cpu' "$T/comebin.args"
+grep -q -- '-s 42' "$T/comebin.args"
+grep -q 'exit_code:  0' "$T/runs/small/run_meta.txt"
+printf '%s\n' '--- fake COMEBin args ---'
+cat "$T/comebin.args"
+printf '%s\n' '--- resource samples ---'
+cat "$T/runs/small/logs/resources.tsv"
+rm -rf "$T"
+echo 'run_small_test isolated source/args/sampler/cleanup test passed'
+source commit: f439272f38aff5b0fa8ecb8ed61a820b2ef9fa57 branch=master (tracked dirty files: 0) — small-dataset test run
+run:        /tmp/opencode/small-runner-test.D0BWps/runs/small
+date:       2026-09-23T19:06:55+00:00
+source:     /tmp/opencode/small-runner-test.D0BWps/src
+branch:     master
+commit:     f439272f38aff5b0fa8ecb8ed61a820b2ef9fa57
+contigs:    /tmp/opencode/small-runner-test.D0BWps/data/contigs.fa  (2 contigs, 4.0K)
+bamdir:     /tmp/opencode/small-runner-test.D0BWps/data/bamfiles
+threads:    2
+batch_size: 256
+emb_size:   512
+seed:       42
+host:       32 cores, 62G RAM
+cmd_wrapper: /tmp/opencode/small-runner-test.D0BWps/bin/micromamba run -p /tmp/opencode/small-runner-test.D0BWps/env bash run_comebin.sh -a /tmp/opencode/small-runner-test.D0BWps/data/contigs.fa -p /tmp/opencode/small-runner-test.D0BWps/data/bamfiles -o /tmp/opencode/small-runner-test.D0BWps/runs/small/comebin_out -n 6 -t 2 -b 256 -e 512 -c 512 -d cpu -s 42 
+exit_code:  0
+wall_s:     1
+finished:   2026-09-23T19:06:56+00:00
+bins: 1  -> /tmp/opencode/small-runner-test.D0BWps/runs/small/comebin_out/comebin_res/comebin_res_bins
+> build · space-bunny-free
+[0m→ [0mRead /tmp/opencode/small-runner-test.D0BWps 
+[0m→ [0mRead /tmp/opencode/small-runner-test.D0BWps/comebin.args 
+[0m→ [0mRead /tmp/opencode/small-runner-test.D0BWps/runs/small/run_meta.txt 
+[0m→ [0mRead /tmp/opencode/small-runner-test.D0BWps/runs/small/logs/resources.tsv 
+> build · space-bunny-free
+[0m$ [0mT=/tmp/opencode/small-runner-test.D0BWps
+[ ! -e "$T/active_run" ]
+[ -f "$T/runs/small/logs/resources.tsv" ]
+[ "$(wc -l < "$T/runs/small/logs/resources.tsv")" -ge 2 ]
+grep -q -- '-d cpu' "$T/runs/small/run_meta.txt"
+grep -q -- '-s 42' "$T/runs/small/run_meta.txt"
+grep -q 'exit_code:  0' "$T/runs/small/run_meta.txt"
+rm -rf "$T"
+echo 'run_small_test isolated source/args/sampler/cleanup test passed (assertions checked run_meta)'
+run_small_test isolated source/args/sampler/cleanup test passed (assertions checked run_meta)
+> build · space-bunny-free
+[0m→ [0mRead /vol/data/repos/metagenomic-binning-benchmark/scripts/meta-watchdog.sh [90m[offset=1, limit=420][0m
+[0m→ [0mRead /vol/data/repos/metagenomic-binning-benchmark/scripts/run_small_test.sh [90m[offset=1, limit=240][0m
+[0m→ [0mRead /vol/data/repos/metagenomic-binning-benchmark/scripts/run_comebin_fix.sh [90m[offset=1, limit=180][0m
+[0m→ [0mRead /vol/data/repos/metagenomic-binning-benchmark/scripts/benchmark-watchdog.sh [90m[offset=1, limit=180][0m
+[0m→ [0mRead /vol/data/repos/metagenomic-binning-benchmark/scripts/status-heartbeat.sh [90m[offset=1, limit=240][0m
+> build · space-bunny-free
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/scripts/meta-watchdog.sh
+Index: /vol/data/repos/metagenomic-binning-benchmark/scripts/meta-watchdog.sh
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/scripts/meta-watchdog.sh
++++ /vol/data/repos/metagenomic-binning-benchmark/scripts/meta-watchdog.sh
+@@ -182,11 +182,9 @@
+   fi
+   b_age=999999; [ -n "${blog:-}" ] && [ -f "$blog" ] && b_age=$((now - $(stat -c %Y "$blog")))
+   runner_ok=0
+   case "$b_cmd" in *run_comebin_baseline.sh*|*run_comebin_fix.sh*|*run_small_test.sh*) runner_ok=1 ;; esac
+-  if [ "$b_alive" -eq 1 ] && [ "$runner_ok" -eq 1 ] && [ "$b_age" -lt "$HANG_S" ]; then
+-    check C6_benchmark ok "pid $bid mode=${bmode:-baseline} alive, log ${b_age}s fresh"
+-  elif [ "$b_alive" -eq 1 ] && [ "$runner_ok" -eq 0 ]; then
++  if [ "$b_alive" -eq 1 ] && [ "$runner_ok" -eq 0 ]; then
+     check C6_benchmark broken "pid $bid alive but command is not a registered COMEBin runner; refusing kill"
+   elif [ "$b_alive" -eq 0 ]; then
+     done_rc=$(grep -m1 '^exit_code:' "${bdir:-/nonexistent}/run_meta.txt" 2>/dev/null | awk '{print $2}' || true)
+     if [ "${done_rc:-}" = "0" ]; then
+@@ -202,14 +200,27 @@
+       sleep 3
+       new_bid=0
+       [ -f "$BENCH/.active_run" ] && read -r new_bid _ < "$BENCH/.active_run" || true
+       if [ -n "$new_bid" ] && [ "$new_bid" != "${bid:-0}" ] && kill -0 "$new_bid" 2>/dev/null; then
+-        note_fix "benchmark absent/hung -> watchdog registered replacement pid $new_bid"
++        note_fix "benchmark absent -> watchdog registered replacement pid $new_bid"
+         check C6_benchmark ok "auto-restarted benchmark as pid $new_bid"
+       else
+-        check C6_benchmark broken "benchmark pid ${bid:-?} gone/hung; restart not verified"
++        check C6_benchmark broken "benchmark pid ${bid:-?} gone; restart not verified"
+       fi
+     fi
++  elif [ "$b_age" -lt "$HANG_S" ]; then
++    check C6_benchmark ok "pid $bid mode=${bmode:-baseline} alive, log ${b_age}s fresh"
++  else
++    bash "$BENCH/bin/benchmark-watchdog.sh" >/dev/null 2>&1 &
++    sleep 3
++    new_bid=0
++    [ -f "$BENCH/.active_run" ] && read -r new_bid _ < "$BENCH/.active_run" || true
++    if [ -n "$new_bid" ] && [ "$new_bid" != "${bid:-0}" ] && kill -0 "$new_bid" 2>/dev/null; then
++      note_fix "benchmark hung -> watchdog registered replacement pid $new_bid"
++      check C6_benchmark ok "auto-restarted hung benchmark as pid $new_bid"
++    else
++      check C6_benchmark broken "benchmark pid $bid hung; restart not verified"
++    fi
+   fi
+ else
+   check C6_benchmark ok "no active run (idle is fine)"
+ fi
+
+> build · space-bunny-free
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/scripts/meta-watchdog.sh
+Index: /vol/data/repos/metagenomic-binning-benchmark/scripts/meta-watchdog.sh
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/scripts/meta-watchdog.sh
++++ /vol/data/repos/metagenomic-binning-benchmark/scripts/meta-watchdog.sh
+@@ -70,8 +70,12 @@
+ if ! systemctl is-active --quiet cron.service; then cron_bad="$cron_bad cron.service(inactive)"; fi
+ if [ -z "$cron_bad" ]; then
+   check C1_cron ok "all 4 exact jobs present; scripts executable; cron active"
+ else
++  chmod +x /vol/data/benchmark/bin/agent-watchdog.sh \
++    /vol/data/benchmark/bin/status-heartbeat.sh \
++    /vol/data/benchmark/bin/benchmark-watchdog.sh \
++    /vol/data/benchmark/bin/meta-watchdog.sh 2>/dev/null || true
+   { printf '%s\n' "$cron_text" | grep -vE 'agent-watchdog\.sh|status-heartbeat\.sh|benchmark-watchdog\.sh|meta-watchdog\.sh' || true
+     echo '*/5 * * * * /vol/data/benchmark/bin/agent-watchdog.sh'
+     echo '*/10 * * * * /vol/data/benchmark/bin/status-heartbeat.sh'
+     echo '*/5 * * * * /vol/data/benchmark/bin/benchmark-watchdog.sh'
+
+> build · space-bunny-free
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/scripts/meta-watchdog.sh
+Index: /vol/data/repos/metagenomic-binning-benchmark/scripts/meta-watchdog.sh
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/scripts/meta-watchdog.sh
++++ /vol/data/repos/metagenomic-binning-benchmark/scripts/meta-watchdog.sh
+@@ -82,9 +82,13 @@
+     echo '3,13,23,33,43,53 * * * * /vol/data/benchmark/bin/meta-watchdog.sh'
+   } | crontab -
+   cron_rc=$?
+   systemctl is-active --quiet cron.service || sudo -n systemctl restart cron.service
+-  if [ "$cron_rc" -eq 0 ] && systemctl is-active --quiet cron.service; then
++  scripts_ok=1
++  for job in agent-watchdog.sh status-heartbeat.sh benchmark-watchdog.sh meta-watchdog.sh; do
++    [ -x "/vol/data/benchmark/bin/$job" ] || scripts_ok=0
++  done
++  if [ "$cron_rc" -eq 0 ] && [ "$scripts_ok" -eq 1 ] && systemctl is-active --quiet cron.service; then
+     note_fix "reinstalled cron jobs and verified cron.service (was:$cron_bad)"
+     check C1_cron ok "reinstalled: 4 exact jobs, cron active"
+   else
+     check C1_cron broken "cron repair failed (was:$cron_bad)"
+
+> build · space-bunny-free
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/scripts/meta-watchdog.sh
+Index: /vol/data/repos/metagenomic-binning-benchmark/scripts/meta-watchdog.sh
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/scripts/meta-watchdog.sh
++++ /vol/data/repos/metagenomic-binning-benchmark/scripts/meta-watchdog.sh
+@@ -136,21 +136,14 @@
+ 
+ # ---- C4: crash-guard is not deadlocked ------------------------------------- #
+ attempts=$(find "$BENCH/.watchdog_attempts" -type f -mmin "-$RATE_WINDOW_MIN" 2>/dev/null | wc -l)
+ if [ "$attempts" -ge 6 ]; then
+-  find "$BENCH/.watchdog_attempts" -type f -delete 2>/dev/null || true
+-  note_fix "cleared $attempts stale crash-guard markers (healthy launch markers no longer count)"
+   if [ "$run_alive" -eq 1 ] || [ "$drv_alive" -eq 1 ]; then
++    find "$BENCH/.watchdog_attempts" -type f -delete 2>/dev/null || true
++    note_fix "cleared $attempts stale crash-guard markers while driver/run is healthy"
+     check C4_ratelimit ok "cleared stale markers=$attempts; driver/run alive"
+   else
+-    bash "$BENCH/bin/agent-watchdog.sh" >/dev/null 2>&1 &
+-    sleep 2
+-    if ! flock -n "$AGENT_LOCK" -c true 2>/dev/null; then
+-      drv_alive=1
+-      check C4_ratelimit ok "cleared deadlock markers=$attempts; driver relaunched"
+-    else
+-      check C4_ratelimit broken "markers cleared but driver did not launch"
+-    fi
++    check C4_ratelimit broken "$attempts failed launches in window and no driver; preserving crash guard"
+   fi
+ else
+   check C4_ratelimit ok "failed-launch markers=$attempts in ${RATE_WINDOW_MIN}min window"
+ fi
+
+> build · space-bunny-free
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/scripts/meta-watchdog.sh
+Index: /vol/data/repos/metagenomic-binning-benchmark/scripts/meta-watchdog.sh
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/scripts/meta-watchdog.sh
++++ /vol/data/repos/metagenomic-binning-benchmark/scripts/meta-watchdog.sh
+@@ -211,9 +211,9 @@
+   elif [ "$b_age" -lt "$HANG_S" ]; then
+     check C6_benchmark ok "pid $bid mode=${bmode:-baseline} alive, log ${b_age}s fresh"
+   else
+     bash "$BENCH/bin/benchmark-watchdog.sh" >/dev/null 2>&1 &
+-    sleep 3
++    sleep 7
+     new_bid=0
+     [ -f "$BENCH/.active_run" ] && read -r new_bid _ < "$BENCH/.active_run" || true
+     if [ -n "$new_bid" ] && [ "$new_bid" != "${bid:-0}" ] && kill -0 "$new_bid" 2>/dev/null; then
+       note_fix "benchmark hung -> watchdog registered replacement pid $new_bid"
+
+> build · space-bunny-free
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/scripts/benchmark-watchdog.sh
+Index: /vol/data/repos/metagenomic-binning-benchmark/scripts/benchmark-watchdog.sh
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/scripts/benchmark-watchdog.sh
++++ /vol/data/repos/metagenomic-binning-benchmark/scripts/benchmark-watchdog.sh
+@@ -31,8 +31,12 @@
+ name=$(basename "$rundir")
+ root_name=${name%%_autorestart*}
+ mode=${mode:-baseline}
+ source=${source:-/vol/data/repos/COMEBin}
++case "$mode" in
++  baseline|fix|small) ;;
++  *) log "unsupported active-run mode '$mode'; refusing state change"; exit 0 ;;
++esac
+ 
+ case "$pid:$pgid" in
+   *[!0-9:]*|:*|*:) log "invalid active-run pid/pgid '${pid:-}/${pgid:-}'; refusing process action"; exit 0 ;;
+ esac
+
+> build · space-bunny-free
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/scripts/benchmark-watchdog.sh
+Index: /vol/data/repos/metagenomic-binning-benchmark/scripts/benchmark-watchdog.sh
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/scripts/benchmark-watchdog.sh
++++ /vol/data/repos/metagenomic-binning-benchmark/scripts/benchmark-watchdog.sh
+@@ -35,8 +35,12 @@
+ case "$mode" in
+   baseline|fix|small) ;;
+   *) log "unsupported active-run mode '$mode'; refusing state change"; exit 0 ;;
+ esac
++if { [ "$mode" = "fix" ] || [ "$mode" = "small" ]; } && [ ! -f "$source/COMEBin/run_comebin.sh" ]; then
++  log "registered $mode source is missing run_comebin.sh: $source; refusing state change"
++  exit 0
++fi
+ 
+ case "$pid:$pgid" in
+   *[!0-9:]*|:*|*:) log "invalid active-run pid/pgid '${pid:-}/${pgid:-}'; refusing process action"; exit 0 ;;
+ esac
+
+> build · space-bunny-free
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/scripts/benchmark-watchdog.sh
+Index: /vol/data/repos/metagenomic-binning-benchmark/scripts/benchmark-watchdog.sh
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/scripts/benchmark-watchdog.sh
++++ /vol/data/repos/metagenomic-binning-benchmark/scripts/benchmark-watchdog.sh
+@@ -44,8 +44,15 @@
+ case "$pid:$pgid" in
+   *[!0-9:]*|:*|*:) log "invalid active-run pid/pgid '${pid:-}/${pgid:-}'; refusing process action"; exit 0 ;;
+ esac
+ [ "$pid" -gt 0 ] && [ "$pgid" -gt 1 ] || { log "unsafe active-run pid/pgid $pid/$pgid; refusing process action"; exit 0; }
++own_pgid=$(ps -o pgid= -p $$ 2>/dev/null | tr -d ' ' || true)
++[ "$pgid" != "${own_pgid:-0}" ] || { log "registered pgid $pgid equals watchdog group; refusing process action"; exit 0; }
++registered_pgid=$(ps -o pgid= -p "$pid" 2>/dev/null | tr -d ' ' || true)
++if [ -n "$registered_pgid" ] && [ "$registered_pgid" != "$pgid" ]; then
++  log "registered pgid $pgid does not match pid $pid current pgid $registered_pgid; refusing process action"
++  exit 0
++fi
+ 
+ # log age = silence of the run
+ [ -f "$logfile" ] || logfile="$rundir/comebin_run.log"
+ if [ -f "$logfile" ]; then
+
+> build · space-bunny-free
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/scripts/benchmark-watchdog.sh
+Index: /vol/data/repos/metagenomic-binning-benchmark/scripts/benchmark-watchdog.sh
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/scripts/benchmark-watchdog.sh
++++ /vol/data/repos/metagenomic-binning-benchmark/scripts/benchmark-watchdog.sh
+@@ -60,8 +60,17 @@
+ else
+     age=999999
+ fi
+ 
++# A recorded successful exit is authoritative and safe to clear even if the
++# old PID has since been reused; no process signal is sent on this path.
++rc_done=$(grep -m1 '^exit_code:' "$rundir/run_meta.txt" 2>/dev/null | awk '{print $2}')
++if [ "$rc_done" = "0" ]; then
++    rm -f "$ACTIVE"
++    log "$name finished rc=0 — active-run cleared"
++    exit 0
++fi
++
+ alive=0
+ pid_stat=$(ps -o stat= -p "$pid" 2>/dev/null | tr -d ' ' || true)
+ if [ -n "$pid_stat" ] && kill -0 "$pid" 2>/dev/null && [[ "$pid_stat" != Z* ]]; then
+     pid_cmd=$(tr '\0' ' ' < "/proc/$pid/cmdline" 2>/dev/null || true)
+
+> build · space-bunny-free
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/scripts/benchmark-watchdog.sh
+Index: /vol/data/repos/metagenomic-binning-benchmark/scripts/benchmark-watchdog.sh
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/scripts/benchmark-watchdog.sh
++++ /vol/data/repos/metagenomic-binning-benchmark/scripts/benchmark-watchdog.sh
+@@ -79,16 +79,8 @@
+       *) log "pid $pid is alive but is not a registered COMEBin runner; refusing kill/restart: $pid_cmd" ; exit 0 ;;
+     esac
+ fi
+ 
+-# finished successfully?
+-rc_done=$(grep -m1 '^exit_code:' "$rundir/run_meta.txt" 2>/dev/null | awk '{print $2}')
+-if [ "$rc_done" = "0" ]; then
+-    rm -f "$ACTIVE"
+-    log "$name finished rc=0 — active-run cleared"
+-    exit 0
+-fi
+-
+ # healthy?
+ [ "$alive" = "1" ] && [ "$age" -lt "$HANG_S" ] && exit 0
+ 
+ # budget check (rolling 24 h), keyed to the stable pre-autorestart run name
+
+> build · space-bunny-free
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/scripts/run_small_test.sh
+Index: /vol/data/repos/metagenomic-binning-benchmark/scripts/run_small_test.sh
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/scripts/run_small_test.sh
++++ /vol/data/repos/metagenomic-binning-benchmark/scripts/run_small_test.sh
+@@ -15,9 +15,9 @@
+ SRC=${SRC_COMEBIN:-/vol/data/repos/COMEBin}
+ DATA=/vol/data/datasets/comebin_small
+ CONTIGS="$DATA/contigs.fa"
+ BAMDIR="$DATA/bamfiles"
+-RUNDIR=${1:-/vol/data/benchmark/runs/small_test}
++RUNDIR=$(realpath -m "${1:-/vol/data/benchmark/runs/small_test}")
+ THREADS=${2:-8}
+ BATCH_SIZE=${BATCH_SIZE:-256}
+ EMB_SIZE=${EMB_SIZE:-512}
+ SEED=${SEED:-}
+
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/scripts/run_comebin_fix.sh
+Index: /vol/data/repos/metagenomic-binning-benchmark/scripts/run_comebin_fix.sh
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/scripts/run_comebin_fix.sh
++++ /vol/data/repos/metagenomic-binning-benchmark/scripts/run_comebin_fix.sh
+@@ -9,9 +9,9 @@
+ SRC=${SRC_COMEBIN:-/vol/data/repos/COMEBin-v11}
+ DATA=/vol/data/datasets/comebin_test_data
+ CONTIGS="$DATA/BATS_SAMN07137077_METAG.scaffolds.min500.fasta.f1k.fasta"
+ BAMDIR="$DATA/bamfiles"
+-RUNDIR=${1:-/vol/data/benchmark/runs/fix_v11}
++RUNDIR=$(realpath -m "${1:-/vol/data/benchmark/runs/fix_v11}")
+ THREADS=${THREADS:-32}
+ SEED=${SEED:-}
+ START_LOCK=/tmp/benchmark-start.lock
+ ACTIVE=/vol/data/benchmark/.active_run
+
+> build · space-bunny-free
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/scripts/run_comebin_fix.sh
+Index: /vol/data/repos/metagenomic-binning-benchmark/scripts/run_comebin_fix.sh
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/scripts/run_comebin_fix.sh
++++ /vol/data/repos/metagenomic-binning-benchmark/scripts/run_comebin_fix.sh
+@@ -34,9 +34,9 @@
+   echo "ERROR: refusing to overwrite existing run directory: $RUNDIR"
+   exit 1
+ fi
+ 
+-mkdir -p "$RUNDIR"
++mkdir -p "$RUNDIR/logs"
+ COMMIT=$(git -C "$SRC" rev-parse HEAD)
+ DIRTY=$(git -C "$SRC" status --porcelain --untracked-files=no | wc -l)
+ BRANCH=$(git -C "$SRC" branch --show-current)
+ echo "source: $SRC (branch $BRANCH) commit: $COMMIT (dirty files: $DIRTY)"
+
+> build · space-bunny-free
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/scripts/run_comebin_fix.sh
+Index: /vol/data/repos/metagenomic-binning-benchmark/scripts/run_comebin_fix.sh
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/scripts/run_comebin_fix.sh
++++ /vol/data/repos/metagenomic-binning-benchmark/scripts/run_comebin_fix.sh
+@@ -68,8 +68,43 @@
+ # Fields: pid pgid logfile rundir start_epoch mode source_repo.
+ printf '%s %s %s %s %s %s %s\n' "$$" "$(ps -o pgid= -p $$ | tr -d ' ')" \
+   "$RUNDIR/comebin_run.log" "$RUNDIR" "$(date +%s)" fix "$SRC" > "$ACTIVE"
+ 
++SAMPLER_PID=""
++cleanup() {
++  rc=$?
++  trap - EXIT
++  if [ -n "$SAMPLER_PID" ] && kill -0 "$SAMPLER_PID" 2>/dev/null; then
++    kill "$SAMPLER_PID" 2>/dev/null || true
++    wait "$SAMPLER_PID" 2>/dev/null || true
++  fi
++  if [ "$rc" -eq 0 ] && [ -f "$ACTIVE" ]; then
++    read -r current_pid _ < "$ACTIVE" || true
++    [ "${current_pid:-}" = "$$" ] && rm -f "$ACTIVE"
++  fi
++  exit "$rc"
++}
++trap cleanup EXIT
++trap 'exit 130' INT TERM
++
++sample_resources() {
++  printf 'timestamp\tpids\tcpu_pct\trss_gb\tsystem_mem_mb\n'
++  while :; do
++    read -r pids cpu_pct rss_kb <<<"$(ps -eo pid=,pcpu=,rss=,args= | awk -v out="$RUNDIR/comebin_out" '
++      index($0, out) && $4 !~ /^awk/ {
++        p = p ? p "," $1 : $1; c += $2; r += $3
++      }
++      END { printf "%s %.1f %.0f", p, c, r }
++    ')"
++    system_mem_mb=$(free -m | awk '/Mem:/{print $3}')
++    printf '%s\t%s\t%s\t%.3f\t%s\n' "$(date -Is)" "${pids:-none}" \
++      "${cpu_pct:-0}" "$(awk -v kb="${rss_kb:-0}" 'BEGIN{print kb/1048576}')" "$system_mem_mb"
++    sleep 30 & wait $!
++  done
++}
++sample_resources > "$RUNDIR/logs/resources.tsv" 2> "$RUNDIR/logs/sampler.out" &
++SAMPLER_PID=$!
++
+ # capture the real main.py train command once training starts (non-blocking)
+ ( sleep 12; MCMD=$(pgrep -af 'main.py train' 2>/dev/null | head -1 | cut -d' ' -f2-); \
+   [ -n "$MCMD" ] && echo "cmd_train_py: $MCMD" >> "$RUNDIR/run_meta.txt" ) &
+ 
+

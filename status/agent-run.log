@@ -5139,3 +5139,61 @@ touch /vol/data/benchmark/.heartbeat
 -rw-rw-r-- 1 ubuntu ubuntu 5293M Jun 22  2021 /vol/data/datasets/cami_II/marine_reads/marmgCAMI2_sample_0_reads.tar.gz
 > build · big-pickle
 Reads download **already finished** (5293M). No per-sample assemblies exist (pooled only), and per-genome BAMs have no companion fasta → the feasible path is the **CAMI-official pooled MEGAHIT assembly + mapped sample-0 reads**. Checking that assembly's size + the reads archive layout:
+[0m$ [0mecho "=== official MEGAHIT pooled assembly (Megahit_v1.1.4-2.fa) ==="
+FA=/vol/data/datasets/cami_II/marine/pooled/short/Megahit_v1.1.4-2.fa
+ls -la --block-size=M "$FA"
+grep -c '^>' "$FA"
+awk '/^>/{next}{s+=length($0);n++}END{printf "bases: %.1f M, avg len %.0f\n", s/1e6, s/n}' "$FA"
+echo "=== reads archive layout (file list, no extract) ==="
+tar -tzf /vol/data/datasets/cami_II/marine_reads/marmgCAMI2_sample_0_reads.tar.gz 2>/dev/null | head -8
+echo "total entries: $(tar -tzf /vol/data/datasets/cami_II/marine_reads/marmgCAMI2_sample_0_reads.tar.gz 2>/dev/null | wc -l)"
+echo "=== fq file count + first names ==="
+tar -tzf /vol/data/datasets/cami_II/marine_reads/marmgCAMI2_sample_0_reads.tar.gz 2>/dev/null | grep -cE '\.fq|\.fastq' 
+tar -tzf /vol/data/datasets/cami_II/marine_reads/marmgCAMI2_sample_0_reads.tar.gz 2>/dev/null | grep -E '\.fq|\.fastq' | head -3
+touch /vol/data/benchmark/.heartbeat
+=== official MEGAHIT pooled assembly (Megahit_v1.1.4-2.fa) ===
+-rw-r--r-- 1 ubuntu ubuntu 1656M Jun 23  2021 /vol/data/datasets/cami_II/marine/pooled/short/Megahit_v1.1.4-2.fa
+1690733
+bases: 1663.6 M, avg len 984
+=== reads archive layout (file list, no extract) ===
+simulation_short_read/2018.08.15_09.49.32_sample_0/reads/anonymous_reads.fq.gz
+simulation_short_read/2018.08.15_09.49.32_sample_0/reads/reads_mapping.tsv.gz
+total entries: 2
+=== fq file count + first names ===
+1
+
+
+Command exceeded timeout of 120000 ms. Retry with a larger timeout if the command is expected to take longer.
+> build · big-pickle
+Key discovery: the reads archive is **`anonymous_reads.fq.gz`** (single pooled anonymous read file) + `reads_mapping.tsv.gz`. Both native contig sets (~1.5–1.7M contigs) are far too large for COMEBin, so I'll use the **issue-#2 methodology scaled up**: top-K gsa contigs + only their reads (via the mapping file) — real CAMI data, feasible size. Checking the mapping format:
+[0m$ [0mcd /vol/data/datasets/cami_II/marine_reads
+echo "=== reads_mapping.tsv.gz format (head, streamed) ==="
+zcat $(find . -name 'reads_mapping.tsv.gz' | head -1) 2>/dev/null | head -4
+echo ""
+echo "=== anonymous_reads.fq.gz read name + pairing info (streamed) ==="
+zcat $(find . -name 'anonymous_reads.fq.gz' | head -1) 2>/dev/null | head -4
+echo ""
+echo "=== gsa contig length histogram (streamed quick) ==="
+zcat contigs_0/simulation_short_read/2018.08.15_09.49.32_sample_0/contigs/anonymous_gsa.fasta.gz | awk '/^>/{if(seq!=""){print len}; name=$0; len=0; next}{len+=length($0)}END{print len}' | sort -n | awk '{a[NR]=$1}END{for(p in "500000 100000 50000 20000 10000 5000"){...}}' 2>/dev/null | head
+echo "=== simpler: count contigs >= 2000 bp and >= 1000 bp ==="
+zcat contigs_0/simulation_short_read/2018.08.15_09.49.32_sample_0/contigs/anonymous_gsa.fasta.gz | awk 'BEGIN{n1000=0;n2000=0;n5000=0}{if(substr($0,1,1)==">"){if(len>=1000)n1000++; if(len>=2000)n2000++; if(len>=5000)n5000++; len=0}else{len+=length($0)}}END{print ">=1000bp:", n1000, " >=2000bp:", n2000, " >=5000bp:", n5000}' 
+touch /vol/data/benchmark/.heartbeat
+=== reads_mapping.tsv.gz format (head, streamed) ===
+
+=== anonymous_reads.fq.gz read name + pairing info (streamed) ===
+
+=== gsa contig length histogram (streamed quick) ===
+=== simpler: count contigs >= 2000 bp and >= 1000 bp ===
+>=1000bp: 124436  >=2000bp: 41988  >=5000bp: 11605
+> build · big-pickle
+The mapping/reads files are still **inside the tarball** (not extracted yet) — that's why they streamed empty. The gsa length distribution is perfect though: **41,988 contigs ≥ 2 kbp** — a clean, binning-appropriate, COMEBin-feasible subset. Extracting the reads archive's two files (background) and writing the prep/run scripts:
+[0m$ [0mcd /vol/data/datasets/cami_II/marine_reads
+mkdir -p reads_0
+nohup tar -xzf marmgCAMI2_sample_0_reads.tar.gz -C reads_0 > /tmp/opencode/tar_reads.log 2>&1 &
+echo "extraction started pid $! (whole stream must decompress; ~2-5 min)"
+touch /vol/data/benchmark/.heartbeat
+extraction started pid 104706 (whole stream must decompress; ~2-5 min)
+> build · big-pickle
+While extraction runs, writing the marine prep + run scripts:
+[0m← [0mWrite /vol/data/repos/metagenomic-binning-benchmark/scripts/prep_cami2_marine.sh
+Created file successfully: /vol/data/repos/metagenomic-binning-benchmark/scripts/prep_cami2_marine.sh
