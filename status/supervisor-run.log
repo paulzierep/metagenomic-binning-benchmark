@@ -15599,3 +15599,285 @@ head=32c3fa7cb9d2862b587790893ceefa49059bd31c remote=32c3fa7cb9d2862b587790893ce
 #8 OPEN comments=2
 issue state/marker checks OK
 > build · space-bunny-free
+[0m$ [0mcat /vol/data/benchmark/meta/issues_closed.tsv; tail -5 /vol/data/benchmark/meta/close-log.txt; cat /vol/data/benchmark/meta/.issues_closed/7
+closed_at	number	title	reason
+2026-09-23T19:25:50Z	3	I think comebin is stuck	Verified healthy — training advancing normally (epoch 100+, loss falling), no restart needed; live epoch now shown in README banner so it never looks frozen again.
+2026-09-23T19:25:53Z	4	Why agent often broken	Root cause fixed: opencode run --auto is single-turn in v2; watchdog now drives a persistent turn-loop on one session (crash-loop halved). Documented in docs/05 + CHANGELOG.
+2026-09-23T19:25:57Z	5	I updated the comebin fork	Rebased onto user v1.1.0 fork (origin/master 1b476a4); baseline + evaluation scripts updated; verified via marine small-test prep.
+2026-09-23T20:57:43Z	7	Optimization plan	Verified complete — optimization decision flowchart, commit-selection gates, metrics, and README link are committed in f8dd2e4; issue comment 5802797931 records delivery.
+2026-09-23T19:25:50Z	closed #3 (I think comebin is stuck)
+2026-09-23T19:25:53Z	closed #4 (Why agent often broken)
+2026-09-23T19:25:57Z	closed #5 (I updated the comebin fork)
+2026-09-23T20:57:43Z	closed #7 (Optimization plan)
+Verified complete — optimization decision flowchart, commit-selection gates, metrics, and README link are committed in f8dd2e4; issue comment 5802797931 records delivery.
+[0m$ [0mgit show --stat --oneline c65969a; git show --stat --oneline 32c3fa7; git show --stat --oneline ffaf983
+c65969a docs: stage reproducible dataset preservation workflow
+ CHANGELOG.md                     |  10 ++++
+ PROGRESS.md                      |   4 ++
+ docs/01-datasets.md              |   4 +-
+ docs/10-data-preservation.md     |  99 +++++++++++++++++++++++++++++++
+ scripts/make_release_manifest.py | 124 +++++++++++++++++++++++++++++++++++++++
+ 5 files changed, 240 insertions(+), 1 deletion(-)
+32c3fa7 docs: define CAMI F1 metric precisely
+ docs/09-optimization-strategy.md | 8 +++++++-
+ 1 file changed, 7 insertions(+), 1 deletion(-)
+ffaf983 status: record preservation manifest verification
+ status/agent-activity.log | 1 +
+ 1 file changed, 1 insertion(+)
+[0m$ [0mgit log --oneline --all -- docs/10-data-preservation.md scripts/make_release_manifest.py docs/09-optimization-strategy.md | head -10
+32c3fa7 docs: define CAMI F1 metric precisely
+c65969a docs: stage reproducible dataset preservation workflow
+f8dd2e4 docs: optimization strategy + decision flowchart (issues #6/#7); README link; PROGRESS sync
+> build · space-bunny-free
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/scripts/make_release_manifest.py
+Index: /vol/data/repos/metagenomic-binning-benchmark/scripts/make_release_manifest.py
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/scripts/make_release_manifest.py
++++ /vol/data/repos/metagenomic-binning-benchmark/scripts/make_release_manifest.py
+@@ -68,8 +68,13 @@
+         default=[],
+         metavar="GLOB",
+         help="relative-path glob to omit (repeatable)",
+     )
++    parser.add_argument(
++        "--omit-local-path",
++        action="store_true",
++        help="omit the machine-specific dataset_path from a public manifest",
++    )
+     parser.add_argument("--force", action="store_true", help="replace an existing manifest")
+     args = parser.parse_args()
+ 
+     dataset = args.dataset_dir.expanduser().resolve()
+
+> build · space-bunny-free
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/scripts/make_release_manifest.py
+Index: /vol/data/repos/metagenomic-binning-benchmark/scripts/make_release_manifest.py
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/scripts/make_release_manifest.py
++++ /vol/data/repos/metagenomic-binning-benchmark/scripts/make_release_manifest.py
+@@ -108,14 +108,15 @@
+     manifest = {
+         "schema_version": 1,
+         "dataset_name": dataset.name,
+         "generated_at_utc": datetime.now(timezone.utc).replace(microsecond=0).isoformat(),
+-        "dataset_path": str(dataset),
+         "metadata": metadata,
+         "file_count": len(files),
+         "total_bytes": sum(int(item["bytes"]) for item in files),
+         "files": files,
+     }
++    if not args.omit_local_path:
++        manifest["dataset_path"] = str(dataset)
+     output.parent.mkdir(parents=True, exist_ok=True)
+     temporary = output.with_name(f".{output.name}.tmp.{os.getpid()}")
+     with temporary.open("w", encoding="utf-8") as handle:
+         json.dump(manifest, handle, indent=2, sort_keys=True)
+
+> build · space-bunny-free
+[0m$ [0mnl -ba docs/10-data-preservation.md | sed -n '38,90p'
+38	4. **Release contents and size:** confirm which samples/files are in scope,
+    39	   whether raw reads are included, and the expected compressed size. The current
+    40	   disk plan keeps the small set permanently and caps the derived medium set at
+    41	   5 GB; future human/CAMI additions are budgeted separately.
+    42	5. **Provenance:** source URLs/DOIs and checksums, generation commands, source
+    43	   repository commit, environment/tool versions, parameters, and the manifest
+    44	   SHA-256.
+    45	
+    46	## Manifest first
+    47	
+    48	Generate a manifest outside the dataset directory. It streams SHA-256 hashes and
+    49	records every regular file, so the file can be reviewed before upload:
+    50	
+    51	```bash
+    52	python3 scripts/make_release_manifest.py \
+    53	  /vol/data/datasets/comebin_small \
+    54	  /vol/data/benchmark/meta/release_manifests/comebin_small.json \
+    55	  --metadata source_commit=<comebin-commit> \
+    56	  --metadata dataset=comebin_small
+    57	```
+    58	
+    59	The JSON contains sorted relative paths, byte sizes, and SHA-256 values. Add
+    60	`--exclude` for intentionally omitted files, and use `--force` only when
+    61	replacing a manifest deliberately. Keep the manifest and its own checksum with
+    62	the release metadata. The same procedure applies to `comebin_medium` and any
+    63	CAMI sample selected for publication.
+    64	
+    65	Before depositing, verify that:
+    66	
+    67	- the manifest has no absolute source paths in the public metadata (the local
+    68	  `dataset_path` field should be removed or rewritten in the public copy);
+    69	- every selected file is present and readable after extraction from a clean
+    70	  temporary directory;
+    71	- BAM/FASTA indexes and checksums are included where required;
+    72	- no credentials, personal data, or unreviewed third-party material are present;
+    73	- the repository documentation names the Zenodo DOI and release version.
+    74	
+    75	## Deposit and verification
+    76	
+    77	After owner approval, create a **new version** rather than overwriting a prior
+    78	record. Upload the selected archive/files and the public manifest/provenance,
+    79	wait for Zenodo's checksum processing, and verify the returned record and DOI
+    80	with a fresh unauthenticated request. Save the DOI, deposition URL, version,
+    81	uploaded filenames, and final checksums in:
+    82	
+    83	- `docs/01-datasets.md` (dataset provenance and citation);
+    84	- the relevant issue comment;
+    85	- `results/` or `status/meta/` only as small text/CSV artifacts, never as a
+    86	  substitute for the DOI.
+    87	
+    88	If the upload is incomplete or verification fails, retain the local data and
+    89	report the failure; do not claim that preservation is complete.
+    90
+> build · space-bunny-free
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/docs/10-data-preservation.md
+Index: /vol/data/repos/metagenomic-binning-benchmark/docs/10-data-preservation.md
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/docs/10-data-preservation.md
++++ /vol/data/repos/metagenomic-binning-benchmark/docs/10-data-preservation.md
+@@ -55,13 +55,14 @@
+   --metadata source_commit=<comebin-commit> \
+   --metadata dataset=comebin_small
+ ```
+ 
+-The JSON contains sorted relative paths, byte sizes, and SHA-256 values. Add
+-`--exclude` for intentionally omitted files, and use `--force` only when
+-replacing a manifest deliberately. Keep the manifest and its own checksum with
+-the release metadata. The same procedure applies to `comebin_medium` and any
+-CAMI sample selected for publication.
++For a public copy, add `--omit-local-path` so the VM-specific `dataset_path`
++field is not exposed. The JSON contains sorted relative paths, byte sizes, and
++SHA-256 values. Add `--exclude` for intentionally omitted files, and use
++`--force` only when replacing a manifest deliberately. Keep the manifest and
++its own checksum with the release metadata. The same procedure applies to
++`comebin_medium` and any CAMI sample selected for publication.
+ 
+ Before depositing, verify that:
+ 
+ - the manifest has no absolute source paths in the public metadata (the local
+
+> build · space-bunny-free
+[0m$ [0mset -euo pipefail
+python3 -m py_compile scripts/make_release_manifest.py
+install -m 755 scripts/make_release_manifest.py /vol/data/benchmark/bin/make_release_manifest.py
+python3 scripts/make_release_manifest.py /vol/data/datasets/comebin_small /vol/data/benchmark/meta/release_manifests/comebin_small.public.json --omit-local-path --metadata source_commit=987db95d8d399f30b7c82a5f5f40ed6bfdc906c7 --metadata dataset=comebin_small --force
+python3 - <<'PY'
+import json
+p='/vol/data/benchmark/meta/release_manifests/comebin_small.public.json'
+d=json.load(open(p))
+assert 'dataset_path' not in d
+assert d['file_count']==6 and d['total_bytes']==98014880
+print('public manifest verified')
+PY
+sha256sum /vol/data/benchmark/meta/release_manifests/comebin_small.public.json
+wrote /vol/data/benchmark/meta/release_manifests/comebin_small.public.json (6 files, 98014880 bytes)
+public manifest verified
+b666af6c8cc83189a6d3e05e86d842a0c9e788cd4045129294d59a08ca5a6f17  /vol/data/benchmark/meta/release_manifests/comebin_small.public.json
+> build · space-bunny-free
+[0m$ [0mset -euo pipefail
+exec 9>/tmp/bench-repo.lock
+flock -x 9
+git fetch -q origin main
+head=$(git rev-parse HEAD)
+remote=$(git ls-remote origin refs/heads/main | awk 'NR==1{print $1}')
+[ "$head" = "$remote" ]
+[ -z "$(git diff --cached --name-only)" ]
+git add docs/10-data-preservation.md scripts/make_release_manifest.py
+expected=$(printf '%s\n' docs/10-data-preservation.md scripts/make_release_manifest.py | sort)
+actual=$(git diff --cached --name-only | sort)
+[ "$actual" = "$expected" ]
+git diff --cached --check
+git commit -q -m "docs: support sanitized public release manifests"
+git push -q origin main
+head=$(git rev-parse HEAD)
+remote=$(git ls-remote origin refs/heads/main | awk 'NR==1{print $1}')
+[ "$head" = "$remote" ]
+[ -z "$(git status --porcelain -- docs/10-data-preservation.md scripts/make_release_manifest.py)" ]
+printf 'pushed %s\n' "$head"
+pushed c7fd185e240c77b212634fb50e10db97bf575928
+> build · space-bunny-free
+[0m$ [0mpid=$(awk '{print $1}' /vol/data/benchmark/.active_run); start=$(awk '{print $5}' /vol/data/benchmark/.active_run); logfile=$(awk '{print $3}' /vol/data/benchmark/.active_run); age=$(( $(date +%s) - $(stat -c %Y "$logfile") )); kill -0 "$pid"; [ "$pid" = 19182 ] && [ "$start" = 1790175308 ] && [ "$age" -lt 1200 ]; printf 'active run pid=%s start=%s age=%ss unchanged\n' "$pid" "$start" "$age"
+active run pid=19182 start=1790175308 age=1s unchanged
+[0m$ [0mset -e
+awk -F '\t' '$2 != "ok" {print; bad=1} END {exit bad}' /vol/data/benchmark/meta/checks.tsv
+for f in agent-watchdog.sh benchmark-watchdog.sh meta-watchdog.sh status-heartbeat.sh issue-closer.sh; do cmp -s "scripts/$f" "/vol/data/benchmark/bin/$f"; done
+cmp -s scripts/make_release_manifest.py /vol/data/benchmark/bin/make_release_manifest.py
+python3 -m py_compile scripts/make_release_manifest.py
+echo 'C1-C9/source parity OK'
+C1-C9/source parity OK
+[0m$ [0mset -e
+for p in /vol/data/benchmark/meta/release_manifests/comebin_small.json /vol/data/benchmark/meta/release_manifests/comebin_small.public.json; do python3 - "$p" <<'PY'
+import json,sys
+p=sys.argv[1]; d=json.load(open(p)); assert d['file_count']==len(d['files']); assert d['total_bytes']==sum(x['bytes'] for x in d['files']); print(p, 'OK')
+PY
+done
+printf 'public_sha='; sha256sum /vol/data/benchmark/meta/release_manifests/comebin_small.public.json | cut -d' ' -f1
+/vol/data/benchmark/meta/release_manifests/comebin_small.json OK
+/vol/data/benchmark/meta/release_manifests/comebin_small.public.json OK
+public_sha=b666af6c8cc83189a6d3e05e86d842a0c9e788cd4045129294d59a08ca5a6f17
+[0m$ [0mgit fetch -q origin main; head=$(git rev-parse HEAD); remote=$(git ls-remote origin refs/heads/main | awk 'NR==1{print $1}'); printf 'head=%s remote=%s\n' "$head" "$remote"; git status --short --branch; git diff --cached --name-only
+head=c7fd185e240c77b212634fb50e10db97bf575928 remote=c7fd185e240c77b212634fb50e10db97bf575928
+## main...origin/main
+> build · space-bunny-free
+[0m$ [0mset -euo pipefail
+before_pid=$(awk '{print $1}' /vol/data/benchmark/.active_run)
+before_start=$(awk '{print $5}' /vol/data/benchmark/.active_run)
+META_WATCHDOG_LOCK=/tmp/meta-watchdog-supervisor-final-verify-20260923b.lock META_WATCHDOG_NO_LLM=1 bash /vol/data/benchmark/bin/meta-watchdog.sh
+after_pid=$(awk '{print $1}' /vol/data/benchmark/.active_run)
+after_start=$(awk '{print $5}' /vol/data/benchmark/.active_run)
+[ "$before_pid" = "$after_pid" ] && [ "$before_start" = "$after_start" ]
+awk -F '\t' '$2 != "ok" {print; bad=1} END {exit bad}' /vol/data/benchmark/meta/checks.tsv
+printf 'post-fix watchdog OK; benchmark pid=%s start=%s unchanged\n' "$after_pid" "$after_start"
+post-fix watchdog OK; benchmark pid=19182 start=1790175308 unchanged
+> build · space-bunny-free
+[0m$ [0mcat /vol/data/benchmark/meta/checks.tsv; tail -5 /vol/data/benchmark/logs/meta-watchdog.log; tail -1 /vol/data/benchmark/logs/supervisor-actions.log
+C1_cron	ok	4 exact jobs; cron active; installed/source scripts identical + executable
+C2_service	ok	pid 5551; service status + /api/info healthy
+C3_agent	ok	run_alive=0 driver=1 hb=17s transcript=15s
+C4_ratelimit	ok	failed-launch markers=0 in 360min window
+C5_github	ok	HEAD=remote after concurrent publisher; worktree edits=0
+C6_benchmark	ok	pid 19182 mode=baseline alive, log -2s fresh
+C7_disk	ok	380 GiB free
+C8_issues	ok	4 open, none new
+C8b_issue_close	ok	no issues marked addressed
+C9_repo_publish	ok	meta artifacts committed and HEAD=remote main
+2026-09-23T20:33:09+00:00 tick done: fixes=1 broken=0 degraded=0 escalated=0
+2026-09-23T20:43:07+00:00 tick done: fixes=0 broken=0 degraded=0 escalated=0
+2026-09-23T20:53:12+00:00 [meta] escalating to LLM supervisor (esc #2/3): /vol/data/benchmark/meta/escalate-1790196787.txt
+2026-09-23T20:59:17+00:00 tick done: fixes=0 broken=0 degraded=0 escalated=0
+2026-09-23T21:03:00+00:00 tick done: fixes=0 broken=0 degraded=0 escalated=0
+2026-09-23T20:59:24+00:00 [supervisor] Triaged #6/#7/#8: verified and closed #7 via deterministic marker, staged Zenodo preservation docs/manifest and concise issue updates, ran safe no-LLM watchdog verification with C1-C9 ok, left active baseline PID 19182 unchanged, and performed no cron/service/driver restart.
+[0m$ [0mpid=$(awk '{print $1}' /vol/data/benchmark/.active_run); start=$(awk '{print $5}' /vol/data/benchmark/.active_run); logfile=$(awk '{print $3}' /vol/data/benchmark/.active_run); age=$(( $(date +%s) - $(stat -c %Y "$logfile") )); kill -0 "$pid"; [ "$pid" = 19182 ] && [ "$start" = 1790175308 ] && [ "$age" -lt 1200 ]; printf 'benchmark unchanged pid=%s start=%s log_age=%ss\n' "$pid" "$start" "$age"
+benchmark unchanged pid=19182 start=1790175308 log_age=3s
+[0m$ [0mgit fetch -q origin main; head=$(git rev-parse HEAD); remote=$(git ls-remote origin refs/heads/main | awk 'NR==1{print $1}'); printf 'head=%s remote=%s\n' "$head" "$remote"; git status --short --branch; git diff --cached --name-only
+head=2d5fb8695b0acf6b0a3725e25e5a4d1ef702cd8e remote=2d5fb8695b0acf6b0a3725e25e5a4d1ef702cd8e
+## main...origin/main
+[0m$ [0mfor n in 6 7 8; do gh issue view "$n" -R paulzierep/metagenomic-binning-benchmark --json number,state,updatedAt,comments --jq '"#\(.number) \(.state) updated=\(.updatedAt) comments=\(.comments|length)"'; done; for n in 6 7 8; do printf '#%s seen=' "$n"; cat "/vol/data/benchmark/meta/.issues_seen/$n"; done
+#6 OPEN updated=2026-09-23T20:56:21Z comments=1
+#7 CLOSED updated=2026-09-23T20:57:42Z comments=2
+#8 OPEN updated=2026-09-23T20:58:44Z comments=2
+#6 seen=1790196981
+#7 seen=1790197063
+#8 seen=1790197124
+> build · space-bunny-free
+## Supervisor actions completed
+
+- Resolved the C8 escalation for issues #6–#8.
+- **#7 Optimization plan:** verified the committed strategy and README link, created `/vol/data/benchmark/meta/.issues_done/7`, and let `issue-closer.sh` close it deterministically. No direct issue-close command was used.
+- **#8 Zenodo preservation:** added and deployed:
+  - `docs/10-data-preservation.md`
+  - `scripts/make_release_manifest.py`
+  - README/PROGRESS/CHANGELOG updates
+- Generated and verified local/public manifests for `comebin_small`; the public manifest excludes VM-local paths.
+- Corrected the CAMI F1 documentation to use the harmonic mean of completeness and purity.
+- Posted concise updates on #6 and #8. #6 and #8 remain open because measured optimization results and an approved Zenodo deposit are still pending.
+- Pushed changes through `c7fd185` and subsequent verified metadata commits.
+
+## Verification
+
+- C1–C9: **all `ok`**
+- Cron, OpenCode service, watchdog, rate-limit guard, disk, GitHub parity, and issue checks verified.
+- Source and installed scripts match; manifest tool is executable and deployed.
+- Repository is clean and `HEAD == origin/main`.
+- Active benchmark was not touched: PID `19182`, original start time preserved, log advancing normally.
+- No cron reinstall or service/driver restart was performed.
+- Required audit line appended to `/vol/data/benchmark/logs/supervisor-actions.log`.
