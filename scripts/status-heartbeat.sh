@@ -48,11 +48,25 @@ else
     alive=no; text="no heartbeat file — agent not started"
 fi
 
+# ---- live run progress probe (so the banner never looks frozen) ------------ #
+runprog=""
+if [ -f "$BENCH/.active_run" ]; then
+    ardir=$(awk '{print $4}' "$BENCH/.active_run" 2>/dev/null)
+    if [ -n "$ardir" ] && [ -f "$ardir/comebin_out/comebin_res/training.log" ]; then
+        epoch=$(grep -c '^DEBUG:root:Epoch' "$ardir/comebin_out/comebin_res/training.log" 2>/dev/null || echo 0)
+        epoch=${epoch:-0}
+        [ "$epoch" -gt 0 ] 2>/dev/null && runprog="epoch $epoch/200 · $(tail -c 300 "$ardir/comebin_run.log" 2>/dev/null | tr '\r' '\n' | grep -oE '[0-9]+/[0-9]+' | tail -1) batches"
+    fi
+fi
+[ -n "$runprog" ] && text="$text — ⏳ $runprog"
+
 # ---- 1. README first line: status banner (marker-replaced) ----------------- #
 case "$alive" in
   yes) dot="🟢"; state="running" ;;
   no)  if [ -f "$COMPLETE" ]; then dot="✅"; state="done"; else dot="🔴"; state="stopped (watchdog will restart)"; fi ;;
 esac
+mid=""
+[ -n "$runprog" ] && mid=" · \`$runprog\`"
 # Banner block (L1 invisible marker, L3 visible status line, per user spec):
 #   <!--AGENT-STATUS-->
 #   (blank)
@@ -69,7 +83,7 @@ rm -f README.tmp
 {
   echo "$MARKER"
   echo
-  echo "> $dot **Agent status:** \`$state\` · ⏱ \`$now\` · [status.log](status/status.log)"
+  echo "> $dot **Agent status:** \`$state\` · ⏱ \`$now\`$mid · [status.log](status/status.log)"
   echo
   cat README.new
 } > README.staged && mv README.staged README.md
@@ -88,6 +102,7 @@ session="ses_f31799c77ffeTq9gcYgqc4hBhg"
   echo "| Status | $dot \`$state\` |"
   echo "| ⏱ Updated (Europe/Berlin) | \`$now\` |"
   echo "| 📌 Current work | $text |"
+  echo "| 🔬 Live run | ${runprog:-no active run} |"
   echo "| ⚙️ Load · uptime | \`$load\` · $upt — 32 cores, 62 GiB, no GPU |"
   echo "| 💾 RAM used/total | \`$mem\` |"
   echo "| 🔗 Session | \`$session\` (default model; watchdog rotates to free models on quota) |"
