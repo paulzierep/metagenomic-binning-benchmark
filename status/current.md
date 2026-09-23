@@ -2,11 +2,11 @@
 
 | | |
 |---|---|
-| Status | 🟢 `running` |
-| ⏱ Updated (Europe/Berlin) | `2026-09-23T17:20 CEST` |
-| 📌 Current work | Answering GitHub issues: building small COMEBin benchmark dataset (issue #2), CAMI II marine downloading, baseline training. Watch benchmark/status. |
-| ⚙️ Load · uptime | `32.21 31.97 29.13` · 1 hour, 44 minutes — 32 cores, 62 GiB, no GPU |
-| 💾 RAM used/total | `8018/64295 MB` |
+| Status | 🔴 `stopped (watchdog will restart)` |
+| ⏱ Updated (Europe/Berlin) | `2026-09-23T17:30 CEST` |
+| 📌 Current work | heartbeat stale 1049s — agent dead/idle, watchdog should restart within ~5 min |
+| ⚙️ Load · uptime | `32.08 32.18 30.62` · 1 hour, 54 minutes — 32 cores, 62 GiB, no GPU |
+| 💾 RAM used/total | `6056/64295 MB` |
 | 🔗 Session | `ses_f31799c77ffeTq9gcYgqc4hBhg` (default model; watchdog rotates to free models on quota) |
-| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `2becdf4 heartbeat: clean up temp banner files (README.new/README.staged)` |
+| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `91c839d status: yes — Answering GitHub issues: building small COMEBin benchmar` |
 | 📈 Timeline | [status/status.log](status/status.log) |
