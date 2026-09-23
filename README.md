@@ -1,6 +1,6 @@
 <!--AGENT-STATUS-->
 
-> 🟢 **Agent status:** `running` · ⏱ `2026-09-23T22:54 CEST` · 🏃 train baseline_unmodified: epoch 159/200 · loss 2.86026930809021 · top1 98.94856262207031 · 🧠 `big-pickle` · [status.log](status/status.log)
+> 🟢 **Agent status:** `running` · ⏱ `2026-09-23T22:56 CEST` · 🏃 train baseline_unmodified: epoch 159/200 · loss 2.86026930809021 · top1 98.94856262207031 · 🧠 `big-pickle` · [status.log](status/status.log)
 
 # metagenomic-binning-benchmark
 
@@ -25,6 +25,7 @@ docs/
   02-comebin-baseline.md  baseline run: command, parameters, timings, results
   03-fixes.md          fix batches: one section per commit on the branch
   04-evaluation.md     CheckM2 + CheckM procedure and metric definitions
+  09-optimization-strategy.md  optimization strategy + decision flowchart (issues #6/#7)
 scripts/
   agent-watchdog.sh    cron watchdog: restarts agent on abort/quota, model rotation
   run_comebin_baseline.sh  reproducible baseline runner
@@ -57,6 +58,13 @@ performance deltas vs. baseline are visible directly in this table.
 - `main` — documentation, harness scripts, result tables.
 - `comebin-optimizations` — COMEBin source changes, **batched fixes, one commit per
   batch**; benchmark run recorded in the commit message and in `results/`.
+
+## Optimization strategy
+
+See [`docs/09-optimization-strategy.md`](docs/09-optimization-strategy.md) for the
+decision-gate flowchart: every optimization batch is compared against the baseline
+(timing + RAM + CheckM2/CheckM v1 + CAMI-style F1), committed only if it keeps or
+improves quality, with ideas combined after failures.
 
 ## How to resume (for a human or a restarted agent)
 
