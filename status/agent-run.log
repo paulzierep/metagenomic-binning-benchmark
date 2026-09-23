@@ -16814,3 +16814,35 @@ Line 0: ',0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26
 Line 1: 'BATS_SAMN07137077_METAG-scaffold_1,1346.0,1727.0,1215.0,1268.0,1821.0,766.0,1589.0,1355.0,1775.0,1460.0,942.0,628.0,1618.0,1901.0,747.0,1099.0,1575.0,945.0,1147.0,1426.0,1841.0,1401.0,1328.0,1359.0,11'
 Line 2: 'BATS_SAMN07137077_METAG-scaffold_2,752.0,1022.0,617.0,660.0,1226.0,444.0,884.0,716.0,894.0,835.0,366.0,241.0,912.0,1042.0,276.0,435.0,1024.0,612.0,706.0,842.0,1297.0,799.0,595.0,742.0,749.0,543.0,510.'
 > build · nemotron-3.5-lightning-free
+[91m[1mError: [0mStreaming response failed: [504] Upstream idle timeout exceeded
+> build · nemotron-3.5-lightning-free
+[0m$ [0m/vol/data/tools/bin/micromamba run -p /vol/data/envs/comebin python3 -c "
+# Check what format the kmer file actually uses
+with open('/vol/data/benchmark/runs/small_test/comebin_out/data_augmentation/aug0/kmer_4_f0.csv', 'r') as f:
+    lines = f.readlines()
+    print('Total lines:', len(lines))
+    print('Line 0 (header):', repr(lines[0][:100]))
+    print('Line 1:', repr(lines[1][:100]))
+    print('Line 2:', repr(lines[2][:100]))
+    # Check if there are tabs anywhere
+    has_tabs = '\\t' in lines[0]
+    print('Has tabs in header:', has_tabs)
+    # Check first few characters of each field
+    fields = lines[0].strip().split(',')
+    print('Header fields count:', len(fields))
+    print('First 5 header fields:', fields[:5])
+" 2>&1
+Total lines: 301
+Line 0 (header): ',0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,3'
+Line 1: 'BATS_SAMN07137077_METAG-scaffold_1,1346.0,1727.0,1215.0,1268.0,1821.0,766.0,1589.0,1355.0,1775.0,146'
+Line 2: 'BATS_SAMN07137077_METAG-scaffold_2,752.0,1022.0,617.0,660.0,1226.0,444.0,884.0,716.0,894.0,835.0,366'
+Has tabs in header: False
+Header fields count: 137
+First 5 header fields: ['', '0', '1', '2', '3']
+> build · nemotron-3.5-lightning-free
+The kmer files use comma separators, but the code reads them with `sep='\t'`. Let me fix this in `get_augfeature.py`:
+[0m✗ [0mEdit /vol/data/repos/COMEBin/COMEBin/get_augfeature.py failed
+[91m[1mError: [0mCould not find oldString in /vol/data/repos/COMEBin/COMEBin/get_augfeature.py. It must match exactly, including whitespace and indentation.
+> build · nemotron-3.5-lightning-free
+[0m→ [0mRead /vol/data/repos/COMEBin/COMEBin/get_augfeature.py 
+> build · nemotron-3.5-lightning-free
