@@ -54,12 +54,15 @@ esac
 #   <!--AGENT-STATUS-->
 #   (blank)
 #   > 🟢 Agent status: running · ⏱ 2026-...Z UTC · [status.log](status/status.log)
+# Strip any existing banner: canonical 4-line block at top AND any legacy
+# inline line (marker + text on one line) anywhere else.
 if [ "$(head -1 README.md)" = "$MARKER" ]; then
-    sed '1,4d' README.md > README.new
+    sed '1,4d' README.md > README.tmp
 else
-    # legacy formats put the marker inline with text — strip any such line
-    grep -v "^$MARKER" README.md > README.new || true
+    cp README.md README.tmp
 fi
+grep -v "^$MARKER" README.tmp > README.new || true
+rm -f README.tmp
 {
   echo "$MARKER"
   echo
