@@ -147,6 +147,9 @@ included; fixes land on branch `comebin-optimizations` in this repo.
 - [x] gh CLI 2.45.0 installed + authenticated; idea-inbox issue #1 created
 - [x] Standing permissions configured (`~/.config/opencode/opencode.json`)
 - [x] Watchdog installed (cron `*/5 * * * *`), free-model rotation, prompts now check GitHub issues
+- [ ] README performance table: after EVERY benchmark run, add/update its row in
+      `README.md` → "Benchmark runs — performance" (wall time, peak RAM, bins,
+      CheckM2/CheckM means) and push — user requirement.
 - [ ] **← CURRENT: env deps solve** (`scanpy/igraph/leidenalg/hnswlib/checkm-genome` on py3.10;
       running since 14:12, still "Resolving" — if >15 min total, kill and split:
       (a) scanpy-tier, (b) checkm-genome + hnswlib, detailed in docs/00-setup.md)

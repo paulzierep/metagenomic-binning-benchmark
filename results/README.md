@@ -11,3 +11,6 @@ Column contract is defined in `docs/04-evaluation.md`. Every row must state:
 - CheckM v1 mean completeness/contamination + HQ/MQ counts.
 
 Current status: **no runs yet** — baseline is next (see `PROGRESS.md`).
+
+After writing a CSV here, always also update the row in the
+[Benchmark runs — performance table](../README.md#benchmark-runs--performance) and push.

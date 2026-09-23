@@ -47,6 +47,23 @@ results/               committed result tables (CSV/MD), one file per run
 PROGRESS.md            resume state (mirrors /vol/data/benchmark/PROGRESS.md)
 ```
 
+## Benchmark runs — performance
+
+Living table: **one row per benchmark run**, updated by the agent immediately after
+each run (timings from `runs/<run>/run_meta.txt` + stage timings in the run log;
+quality from the CheckM2/CheckM evaluation — see `docs/04-evaluation.md`).
+Raw per-run outputs stay in `/vol/data/benchmark/runs/`, parsed CSVs in `results/`.
+
+| Run | Date | Source commit | Dataset | Threads | Wall time | Peak RAM | Bins | CheckM2 comp/cont % | CheckM comp/cont % | Status |
+|---|---|---|---|---|---|---|---|---|---|---|
+| `baseline_unmodified` | – | `987db95` (upstream) | COMEBin demo (29,434 contigs) | 32 | – | – | – | – | – | ⏳ env finishing, next step |
+
+Column contract: **Wall time** = total seconds (plus per-stage breakdown in
+`docs/02-comebin-baseline.md`), **Bins** = bins exported (≥200 kb filter noted),
+**comp/cont** = mean completeness / mean contamination, **HQ/MQ counts** live in
+`results/<run>.csv`. Fix batches on `comebin-optimizations` get one row each, so
+performance deltas vs. baseline are visible directly in this table.
+
 ## Branch strategy
 
 - `main` — documentation, harness scripts, result tables.
