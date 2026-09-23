@@ -73,6 +73,7 @@ rm -f README.tmp
 
 # ---- 2. status/current.md -------------------------------------------------- #
 load=$(cut -d' ' -f1-3 /proc/loadavg)
+mem=$(free -m | awk '/Mem:/{printf "%d/%d MB", $3, $2}')
 upt=$(uptime -p 2>/dev/null | sed 's/^up //')
 session="ses_f31799c77ffeTq9gcYgqc4hBhg"
 {
@@ -84,13 +85,14 @@ session="ses_f31799c77ffeTq9gcYgqc4hBhg"
   echo "| ⏱ Updated (UTC) | \`$now\` |"
   echo "| 📌 Current work | $text |"
   echo "| ⚙️ Load · uptime | \`$load\` · $upt — 32 cores, 62 GiB, no GPU |"
+  echo "| 💾 RAM used/total | \`$mem\` |"
   echo "| 🔗 Session | \`$session\` (default model; watchdog rotates to free models on quota) |"
   echo "| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push \`$lastcommit\` |"
   echo "| 📈 Timeline | [status/status.log](status/status.log) |"
 } > status/current.md
 
 # ---- 3. timeline ----------------------------------------------------------- #
-printf '%s\talive=%s\t%s\n' "$now" "$alive" "$text" >> status/status.log
+printf '%s\talive=%s\tmem=%s\tload=%s\t%s\n' "$now" "$alive" "$mem" "$load" "$text" >> status/status.log
 
 ok=0
 for i in 1 2 3; do
