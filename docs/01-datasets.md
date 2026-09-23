@@ -49,6 +49,19 @@ Other fractions in the same record: `plant_associated.zip` (3.9 GB),
 (contigs per sample, ground-truth bins), pick samples, and record how contigs +
 coverage input are prepared for COMEBin (per-sample BAMs).
 
+**Marine reads + per-sample inputs** (https://frl.publisso.de/data/frl:6425521/marine/):
+
+| Path | Size (approx) | Use |
+|---|---|---|
+| `short_read/marmgCAMI2_sample_N_{reads,bam,contigs}.tar.gz` | reads 5.2 G, bam 4.6–4.7 G, contigs 360–436 M | COMEBin input (bam = coverage; contigs = assembly) |
+| `long_read/marmgCAMI2_sample_N_{reads,bam,contigs}.tar.gz` | bam 5.9 G, reads 4.4 G, contigs 315–380 M | same, long-read mode |
+| `hybrid/*` | 11 G/sample, pooled 106 G | too big for now |
+| `marmgCAMI2_genomes.tar.gz` | 798 M | gold-standard reference genomes |
+
+Sample 0 (short-read) contigs+BAM pre-downloaded → `/vol/data/datasets/cami_II/marine_reads/`
+(2026-09-23; md5 TBD on completion). **BAMs are supplied pre-mapped** — no read
+alignment step needed for COMEBin input.
+
 ## 3. CAMI III challenge data (planned)
 
 TODO — same fields as above.
