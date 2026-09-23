@@ -22052,3 +22052,154 @@ echo status-heartbeat-deployed
 
 status-heartbeat-deployed
 > build · space-bunny-free
+[0m$ [0mset -e
+if flock -n /tmp/bench-repo.lock -c true; then echo repo-lock-free; else echo repo-lock-held; fi
+/vol/data/benchmark/bin/status-heartbeat.sh
+printf '%s\n' '--- status log tail ---'
+tail -n 5 /vol/data/repos/metagenomic-binning-benchmark/status/status.log
+printf '%s\n' '--- current ---'
+sed -n '1,40p' /vol/data/repos/metagenomic-binning-benchmark/status/current.md
+
+repo-lock-free
+--- status log tail ---
+2026-09-23 21:28:29 UTC - heartbeat
+2026-09-23 21:29:07 UTC - heartbeat
+2026-09-23T23:46 CEST	alive=no	mem=1749/64295 MB	load=0.06 1.42 11.49	transcript=818450B	watchdog=65419B	model=nemotron-3.5-lightning-free	epoch=175/200	loss=2.8494248390197754	acc=99.12760162353516	heartbeat stale 980s — agent dead/idle, watchdog should restart within ~5 min
+2026-09-23T23:48 CEST	alive=no	mem=1769/64295 MB	load=0.30 1.05 10.13	transcript=836180B	watchdog=65895B	model=nemotron-3.5-lightning-free	epoch=175/200	loss=2.8494248390197754	acc=99.12760162353516	heartbeat stale 1100s — agent dead/idle, watchdog should restart within ~5 min
+2026-09-23T23:49 CEST	alive=yes	mem=1778/64295 MB	load=0.15 0.87 9.50	transcript=841620B	watchdog=65895B	model=nemotron-3.5-lightning-free	epoch=175/200	loss=2.8494248390197754	acc=99.12760162353516	agent driver alive; transcript fresh (32s) while heartbeat is stale (1162s)
+--- current ---
+# 🤖 Agent status
+
+| | |
+|---|---|
+| Status | 🟢 `running` |
+| ⏱ Updated (Europe/Berlin) | `2026-09-23T23:49 CEST` |
+| 🏃 Live benchmark | `baseline_unmodified` — **epoch 175/200** · loss `2.8494248390197754` · top1 acc `99.12760162353516` (log 1132s fresh) |
+| 🧠 Model (last turn) | `nemotron-3.5-lightning-free` (watchdog rotates to free models on quota) |
+| 📌 Agent note · **19 min old** | agent driver alive; transcript fresh (32s) while heartbeat is stale (1162s) |
+| ⚙️ Load · uptime | `0.15 0.87 9.50` · 8 hours, 13 minutes — 32 cores, 62 GiB, no GPU |
+| 💾 RAM used/total | `1778/64295 MB` |
+| 🔗 Session | `ses_f31799c77ffeTq9gcYgqc4hBhg` |
+| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `2475db8 meta: supervise tick 2026-09-23T21:48:09Z — 0 fix(es)` |
+| 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `841620 B` — every run, command & tool result |
+| 📈 Timeline | [status/status.log](status/status.log) |
+> build · space-bunny-free
+[0m→ [0mRead /vol/data/repos/metagenomic-binning-benchmark/README.md [90m[offset=1, limit=35][0m
+> build · space-bunny-free
+[0m✱ [0mGrep "baseline_unmodified" [90min /vol/data/repos/metagenomic-binning-benchmark · 2 matches[0m
+> build · space-bunny-free
+[0m→ [0mRead /vol/data/repos/metagenomic-binning-benchmark/scripts/status-heartbeat.sh [90m[offset=105, limit=115][0m
+> build · space-bunny-free
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/scripts/status-heartbeat.sh
+Index: /vol/data/repos/metagenomic-binning-benchmark/scripts/status-heartbeat.sh
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/scripts/status-heartbeat.sh
++++ /vol/data/repos/metagenomic-binning-benchmark/scripts/status-heartbeat.sh
+@@ -112,15 +112,19 @@
+ note="${text:-}"
+ 
+ # ---- LIVE benchmark truth: epoch/loss/acc from the actual training.log ------- #
+ # Run root comes from .active_run (field 4); fall back to the newest config.yml
+-# under runs/<run>/comebin_out/<stage>/.
++# under runs/<run>/comebin_out/<stage>/ for a last-run summary.  A fallback is
++# explicitly non-live: terminal failures must not keep appearing as a running
++# benchmark after .active_run has been cleared.
+ run_epoch="" run_total="" run_loss="" run_acc="" run_name="" train_log_age=""
+-run_dir=""
++run_dir="" run_registered=0
+ if [ -f "$BENCH/.active_run" ]; then
+     run_dir=$(awk '{print $4}' "$BENCH/.active_run" 2>/dev/null)
++    [ -n "$run_dir" ] && run_registered=1
+ fi
+ if [ -z "$run_dir" ] || [ ! -d "$run_dir" ]; then
++    run_registered=0
+     newest=""
+     for cfg in "$BENCH"/runs/*/comebin_out/*/config.yml; do
+         [ -f "$cfg" ] || continue
+         if [ -z "$newest" ] || [ "$(stat -c %Y "$cfg")" -gt "$(stat -c %Y "$newest")" ]; then
+
+> build · space-bunny-free
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/scripts/status-heartbeat.sh
+Index: /vol/data/repos/metagenomic-binning-benchmark/scripts/status-heartbeat.sh
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/scripts/status-heartbeat.sh
++++ /vol/data/repos/metagenomic-binning-benchmark/scripts/status-heartbeat.sh
+@@ -158,12 +158,14 @@
+ [ "$sig" != "$old_sig" ] && changed=1
+ 
+ if [ "$changed" = "1" ]; then
+     # ---- 1. README banner ------------------------------------------------ #
+-    if [ -n "$run_epoch" ]; then
++    if [ -n "$run_epoch" ] && [ "$run_registered" -eq 1 ]; then
+         perf="train ${run_name}: epoch ${run_epoch}/${run_total:-200} · loss ${run_loss:-—} · top1 ${run_acc:-—}"
++    elif [ -n "$run_epoch" ]; then
++        perf="last run ${run_name}: epoch ${run_epoch}/${run_total:-200} · not active"
+     else
+-        perf="no run log parsed"
++        perf="no active benchmark"
+     fi
+     if [ "$(head -1 README.md)" = "$MARKER" ]; then
+         sed '1,4d' README.md > README.tmp
+     else
+
+> build · space-bunny-free
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/scripts/status-heartbeat.sh
+Index: /vol/data/repos/metagenomic-binning-benchmark/scripts/status-heartbeat.sh
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/scripts/status-heartbeat.sh
++++ /vol/data/repos/metagenomic-binning-benchmark/scripts/status-heartbeat.sh
+@@ -182,11 +182,15 @@
+     } > README.staged && mv README.staged README.md
+     rm -f README.new README.staged
+ 
+     # ---- 1b. README "Benchmark runs — performance" table Status cell ------ #
+-    # Replace ONLY the final (Status) cell of the row for the active run.
++    # Replace ONLY the final (Status) cell of the row for the observed run.
+     if [ -n "$run_epoch" ]; then
+-        st="⏳ running · epoch ${run_epoch}/${run_total:-200} · loss ${run_loss:-—} · top1 ${run_acc:-—}"
++        if [ "$run_registered" -eq 1 ]; then
++            st="⏳ running · epoch ${run_epoch}/${run_total:-200} · loss ${run_loss:-—} · top1 ${run_acc:-—}"
++        else
++            st="⏹ not active · last observed epoch ${run_epoch}/${run_total:-200}"
++        fi
+         awk -v rn="$run_name" -v st="$st" '
+           $0 ~ "^\\| *`" rn "` *\\|" {
+             n = split($0, a, "|")
+             out = a[1]
+
+> build · space-bunny-free
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/scripts/status-heartbeat.sh
+Index: /vol/data/repos/metagenomic-binning-benchmark/scripts/status-heartbeat.sh
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/scripts/status-heartbeat.sh
++++ /vol/data/repos/metagenomic-binning-benchmark/scripts/status-heartbeat.sh
+@@ -214,10 +214,14 @@
+       echo "| | |"
+       echo "|---|---|"
+       echo "| Status | $dot \`$state\` |"
+       echo "| ⏱ Updated (Europe/Berlin) | \`$now\` |"
+-      if [ -n "$run_epoch" ]; then
++      if [ -n "$run_epoch" ] && [ "$run_registered" -eq 1 ]; then
+           echo "| 🏃 Live benchmark | \`$run_name\` — **epoch ${run_epoch}/${run_total:-200}** · loss \`${run_loss:-—}\` · top1 acc \`${run_acc:-—}\` (log ${train_log_age:-?}s fresh) |"
++      elif [ -n "$run_epoch" ]; then
++          echo "| 🏃 Last benchmark (not active) | \`$run_name\` — last observed **epoch ${run_epoch}/${run_total:-200}** (log ${train_log_age:-?}s old) |"
++      else
++          echo "| 🏃 Benchmark | no active run |"
+       fi
+       echo "| 🧠 Model (last turn) | \`$last_model\` (watchdog rotates to free models on quota) |"
+       if [ -n "$act_age_min" ]; then
+           echo "| 📌 Agent note · **${act_age_min} min old** | $note |"
+
+> build · space-bunny-free
+[0m✗ [0mEdit /vol/data/repos/metagenomic-binning-benchmark/scripts/status-heartbeat.sh failed
+[91m[1mError: [0mInvalid arguments for tool "edit":
+- oldString: Missing key
+
+Arguments provided:
+{
+  "path": "/vol/data/repos/metagenomic-binning-benchmark/scripts/status-heartbeat.sh",
+  "newString": "sig=\"alive=$alive|state=$state|note=$note|tsize=$tsize|wsize=$wsize|model=$last_model|epoch=$run_epoch|loss=$run_loss|acc=$run_acc|run=$run_name|run_registered=$run_registered\"",
+  "replaceAll": false
+}
+
+Update the arguments and call the tool again.
