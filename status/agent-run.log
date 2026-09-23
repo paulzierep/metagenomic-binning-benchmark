@@ -3860,3 +3860,303 @@ copied
 no --model flag -> uses provider default
 no force-model file -> default model active
 > build · big-pickle
+[0m← [0mEdit /tmp/opencode/agent-watchdog.new
+Index: /tmp/opencode/agent-watchdog.new
+===================================================================
+--- /tmp/opencode/agent-watchdog.new
++++ /tmp/opencode/agent-watchdog.new
+@@ -115,9 +115,11 @@
+     log "rotating free model after failure: $pick"
+ fi
+ 
+ # ---- launch ONE driver (it loops turns itself) ------------------------------ #
+-touch "$ATTDIR/$(date +%s)"
++# Count a launch toward the crash-loop budget only after a FAILED run, so
++# healthy steady-state relaunches never accumulate markers (issue #4 fix).
++[ "$last" = "0" ] || touch "$ATTDIR/$(date +%s)"
+ age=$(( hb_age < tl_age ? hb_age : tl_age ))
+ log "agent idle (hb ${hb_age}s, transcript ${tl_age}s, run_alive=$run_alive) -> launching driver (model_args='${MODEL_ARGS[*]:-default}')"
+ 
+ CONT_PPT="Continue the metagenomic-binning-benchmark task you were working on; you may have been interrupted. First read /vol/data/benchmark/PROGRESS.md, verify the 'Current state' section against what is actually on disk, then resume from the first unfinished step. Update PROGRESS.md as you go, touch /vol/data/benchmark/.heartbeat in your shell commands while active, and append one timestamped line per meaningful action to /vol/data/repos/metagenomic-binning-benchmark/status/agent-activity.log. If /vol/data/benchmark/TASK_COMPLETE exists, do nothing and exit."
+
+[0m← [0mEdit /tmp/opencode/agent-watchdog.new
+Index: /tmp/opencode/agent-watchdog.new
+===================================================================
+--- /tmp/opencode/agent-watchdog.new
++++ /tmp/opencode/agent-watchdog.new
+@@ -141,9 +141,9 @@
+         fi
+         [ -f "$FORCE_MODEL" ] || MODEL_ARGS=()
+ 
+         before=$(wc -c < "$AGENT_LOG" 2>/dev/null || echo 0)
+-        log "driver turn #$((turns+1)): opencode run ${sargs[*]:-fresh} ${MODEL_ARGS[*]:-default}"
++        log "driver turn #$((turns+1)): model=${MODEL_ARGS[*]:-default} | opencode run ${sargs[*]:-fresh}"
+         opencode run --auto "${sargs[@]}" "${MODEL_ARGS[@]}" --title "watchdog-restart" \
+             "$prompt" >>"$AGENT_LOG" 2>&1
+         rc=$?
+         after=$(wc -c < "$AGENT_LOG" 2>/dev/null || echo 0)
+
+> build · big-pickle
+[0m✗ [0mEdit /tmp/opencode/status-heartbeat.new failed
+[91m[1mError: [0mCould not find oldString in /tmp/opencode/status-heartbeat.new. It must match exactly, including whitespace and indentation.
+[0m✗ [0mEdit /tmp/opencode/status-heartbeat.new failed
+[91m[1mError: [0mCould not find oldString in /tmp/opencode/status-heartbeat.new. It must match exactly, including whitespace and indentation.
+> build · big-pickle
+[0m$ [0mgrep -n "runprog" /tmp/opencode/status-heartbeat.new | head
+echo "---"
+sed -n '62,66p' /tmp/opencode/status-heartbeat.new | cat -A | head -8
+---
+    cp "$BENCH/logs/watchdog.log"       status/watchdog.log       2>/dev/null || true$
+    cp "$BENCH/logs/supervisor-run.log" status/supervisor-run.log 2>/dev/null || true$
+    cp "$BENCH/meta/"*.txt "$BENCH/meta/"*.jsonl status/meta/ 2>/dev/null || true$
+}$
+sync_agent_logs$
+> build · big-pickle
+The repo's `status-heartbeat.sh` differs from what I printed earlier — it's been updated. Let me diff and get the current true content:
+[0m$ [0mdiff /vol/data/repos/metagenomic-binning-benchmark/scripts/status-heartbeat.sh /tmp/opencode/status-heartbeat.new && echo "copies identical"
+echo "=== current repo file: runprog present? ==="
+grep -cn "runprog" /vol/data/repos/metagenomic-binning-benchmark/scripts/status-heartbeat.sh
+echo "=== git status of repo (was it updated?) ==="
+cd /vol/data/repos/metagenomic-binning-benchmark
+git log --oneline -3
+git diff HEAD --stat scripts/status-heartbeat.sh
+grep -n "runprog\|summary\|model" scripts/status-heartbeat.sh | head
+copies identical
+=== current repo file: runprog present? ===
+0
+=== git status of repo (was it updated?) ===
+ac2e2d9 status: yes — Baseline training epoch ~37/200 (~1.8-2.6 min/epoch, eta hou
+f59a6ea docs: CHANGELOG — persistent agent loop, GitHub logging, supervisor (2026-09-23)
+508a3bb meta: supervise tick 2026-09-23T18:45:57Z — 0 fix(es)
+ scripts/status-heartbeat.sh | 41 +++++++++++++++++++++++++----------------
+ 1 file changed, 25 insertions(+), 16 deletions(-)
+112:  echo "| 🔗 Session | \`$session\` (default model; watchdog rotates to free models on quota) |"
+> build · big-pickle
+Let me look at the actual installed script (cron uses `/vol/data/benchmark/bin/status-heartbeat.sh`, not the repo copy) and the uncommitted delta:
+[0m$ [0mecho "=== installed vs repo ==="
+diff /vol/data/benchmark/bin/status-heartbeat.sh /vol/data/repos/metagenomic-binning-benchmark/scripts/status-heartbeat.sh >/dev/null 2>&1 && echo "IDENTICAL" || echo "DIFFER"
+echo "=== uncommitted repo delta (HEAD vs working) ==="
+cd /vol/data/repos/metagenomic-binning-benchmark
+git diff HEAD -- scripts/status-heartbeat.sh | head -80
+echo "=== installed file: runprog/model present? ==="
+grep -cn runprog /vol/data/benchmark/bin/status-heartbeat.sh
+grep -cn model /vol/data/benchmark/bin/status-heartbeat.sh
+ls -la --time-style=+%H:%M /vol/data/benchmark/bin/status-heartbeat.sh /vol/data/repos/metagenomic-binning-benchmark/scripts/status-heartbeat.sh
+=== installed vs repo ===
+DIFFER
+=== uncommitted repo delta (HEAD vs working) ===
+diff --git a/scripts/status-heartbeat.sh b/scripts/status-heartbeat.sh
+index b74be56..d997a14 100755
+--- a/scripts/status-heartbeat.sh
++++ b/scripts/status-heartbeat.sh
+@@ -6,6 +6,9 @@
+ #   3. status/status.log     — 1-line-per-tick liveness + mem/load timeline
+ #   4. status/agent-activity.log — VERBOSE agent action log (agent appends lines)
+ #   +  runs/<run>/           — per-run detailed logs synced from /vol/data/benchmark/runs/
++#   +  status/agent-run.log  — FULL transcript of every `opencode run` (all agent
++#                              commands, tool results, "Turn complete" summaries)
++#   +  status/watchdog.log   — agent/watchdog restart history
+ #
+ # Honesty rule: liveness is read from the REAL agent heartbeat, not assumed.
+ #   - heartbeat fresh            -> "alive: yes" + /vol/data/benchmark/.activity
+@@ -48,25 +51,27 @@ else
+     alive=no; text="no heartbeat file — agent not started"
+ fi
+ 
+-# ---- live run progress probe (so the banner never looks frozen) ------------ #
+-runprog=""
+-if [ -f "$BENCH/.active_run" ]; then
+-    ardir=$(awk '{print $4}' "$BENCH/.active_run" 2>/dev/null)
+-    if [ -n "$ardir" ] && [ -f "$ardir/comebin_out/comebin_res/training.log" ]; then
+-        epoch=$(grep -c '^DEBUG:root:Epoch' "$ardir/comebin_out/comebin_res/training.log" 2>/dev/null || echo 0)
+-        epoch=${epoch:-0}
+-        [ "$epoch" -gt 0 ] 2>/dev/null && runprog="epoch $epoch/200 · $(tail -c 300 "$ardir/comebin_run.log" 2>/dev/null | tr '\r' '\n' | grep -oE '[0-9]+/[0-9]+' | tail -1) batches"
+-    fi
+-fi
+-[ -n "$runprog" ] && text="$text — ⏳ $runprog"
++# ---- mirror full agent transcript + watchdog + supervisor logs into repo ---- #
++# agent-run.log = stdout/stderr of every `opencode run` (whole turns: prompts,
++# every $ command, tool output, "Turn complete" summaries); watchdog.log =
++# restart decisions; supervisor-run.log = meta-watchdog escalations. Must run
++# BEFORE current.md/status.log because those report the sizes.
++sync_agent_logs() {
++    mkdir -p status status/meta
++    cp "$BENCH/logs/agent-run.log"      status/agent-run.log      2>/dev/null || true
++    cp "$BENCH/logs/watchdog.log"       status/watchdog.log       2>/dev/null || true
++    cp "$BENCH/logs/supervisor-run.log" status/supervisor-run.log 2>/dev/null || true
++    cp "$BENCH/meta/"*.txt "$BENCH/meta/"*.jsonl status/meta/ 2>/dev/null || true
++}
++sync_agent_logs
++tsize=$(wc -c < status/agent-run.log 2>/dev/null || echo 0)
++wsize=$(wc -c < status/watchdog.log 2>/dev/null || echo 0)
+ 
+ # ---- 1. README first line: status banner (marker-replaced) ----------------- #
+ case "$alive" in
+   yes) dot="🟢"; state="running" ;;
+   no)  if [ -f "$COMPLETE" ]; then dot="✅"; state="done"; else dot="🔴"; state="stopped (watchdog will restart)"; fi ;;
+ esac
+-mid=""
+-[ -n "$runprog" ] && mid=" · \`$runprog\`"
+ # Banner block (L1 invisible marker, L3 visible status line, per user spec):
+ #   <!--AGENT-STATUS-->
+ #   (blank)
+@@ -83,7 +88,7 @@ rm -f README.tmp
+ {
+   echo "$MARKER"
+   echo
+-  echo "> $dot **Agent status:** \`$state\` · ⏱ \`$now\`$mid · [status.log](status/status.log)"
++  echo "> $dot **Agent status:** \`$state\` · ⏱ \`$now\` · [status.log](status/status.log)"
+   echo
+   cat README.new
+ } > README.staged && mv README.staged README.md
+@@ -102,16 +107,16 @@ session="ses_f31799c77ffeTq9gcYgqc4hBhg"
+   echo "| Status | $dot \`$state\` |"
+   echo "| ⏱ Updated (Europe/Berlin) | \`$now\` |"
+   echo "| 📌 Current work | $text |"
+-  echo "| 🔬 Live run | ${runprog:-no active run} |"
+   echo "| ⚙️ Load · uptime | \`$load\` · $upt — 32 cores, 62 GiB, no GPU |"
+   echo "| 💾 RAM used/total | \`$mem\` |"
+   echo "| 🔗 Session | \`$session\` (default model; watchdog rotates to free models on quota) |"
+   echo "| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push \`$lastcommit\` |"
++  echo "| 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · \`${tsize} B\` — every run, command & tool result |"
+   echo "| 📈 Timeline | [status/status.log](status/status.log) |"
+ } > status/current.md
+ 
+ # ---- 3. timeline ----------------------------------------------------------- #
+-printf '%s\talive=%s\tmem=%s\tload=%s\t%s\n' "$now" "$alive" "$mem" "$load" "$text" >> status/status.log
++printf '%s\talive=%s\tmem=%s\tload=%s\ttranscript=%sB\twatchdog=%sB\t%s\n' "$now" "$alive" "$mem" "$load" "$tsize" "$wsize" "$text" >> status/status.log
+=== installed file: runprog/model present? ===
+0
+1
+-rwxrwxr-x 1 ubuntu ubuntu 7233 18:51 /vol/data/benchmark/bin/status-heartbeat.sh
+-rwxrwxr-x 1 ubuntu ubuntu 7010 18:47 /vol/data/repos/metagenomic-binning-benchmark/scripts/status-heartbeat.sh
+> build · big-pickle
+The heartbeat script was reworked (uncommitted) by a prior turn to mirror the full agent transcript — my added `model` reporting must go on top of the **current** installed version. Let me check the installed/repo diffs and confirm my watchdog edit base is current:
+[0m$ [0mecho "=== bin/ contents ==="
+ls -la --time-style=+%m-%d\ %H:%M /vol/data/benchmark/bin/
+echo "=== my watchdog .new vs installed (should show ONLY my 2 edits) ==="
+diff /vol/data/benchmark/bin/agent-watchdog.sh /tmp/opencode/agent-watchdog.new
+echo "=== installed heartbeat model/runprog markers ==="
+grep -n 'transcript=\|tsize\|model' /vol/data/benchmark/bin/status-heartbeat.sh | head
+=== bin/ contents ===
+total 44
+drwxrwxr-x  2 ubuntu ubuntu  4096 09-23 18:43 .
+drwxrwxr-x 10 ubuntu ubuntu  4096 09-23 18:40 ..
+-rwxrwxr-x  1 ubuntu ubuntu 10181 09-23 18:46 agent-watchdog.sh
+-rwxrwxr-x  1 ubuntu ubuntu  2955 09-23 14:55 benchmark-watchdog.sh
+-rwxrwxr-x  1 ubuntu ubuntu 10684 09-23 18:44 meta-watchdog.sh
+-rwxrwxr-x  1 ubuntu ubuntu  7233 09-23 18:51 status-heartbeat.sh
+=== my watchdog .new vs installed (should show ONLY my 2 edits) ===
+119c119,121
+< touch "$ATTDIR/$(date +%s)"
+---
+> # Count a launch toward the crash-loop budget only after a FAILED run, so
+> # healthy steady-state relaunches never accumulate markers (issue #4 fix).
+> [ "$last" = "0" ] || touch "$ATTDIR/$(date +%s)"
+143c145
+<         log "driver turn #$((turns+1)): opencode run ${sargs[*]:-fresh} ${MODEL_ARGS[*]:-default}"
+---
+>         log "driver turn #$((turns+1)): model=${MODEL_ARGS[*]:-default} | opencode run ${sargs[*]:-fresh}"
+=== installed heartbeat model/runprog markers ===
+65:tsize=$(wc -c < status/agent-run.log 2>/dev/null || echo 0)
+69:sig="$alive|$state|$text|$tsize|$wsize"
+109:      echo "| 🔗 Session | \`$session\` (default model; watchdog rotates to free models on quota) |"
+111:      echo "| 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · \`${tsize} B\` — every run, command & tool result |"
+116:    printf '%s\talive=%s\tmem=%s\tload=%s\ttranscript=%sB\twatchdog=%sB\t%s\n' \
+117:        "$now" "$alive" "${mem:-?}" "${load:-?}" "$tsize" "$wsize" "$text" >> status/status.log
+> build · big-pickle
+My watchdog edit base is current (exactly my 2 intended edits). Now reading the installed heartbeat to add model reporting precisely, and checking what the repo tracks:
+[0m→ [0mRead /vol/data/benchmark/bin/status-heartbeat.sh 
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark
+echo "=== repo tracks watchdog/meta scripts? ==="
+git ls-files | grep -E "watchdog|supervisor|heartbeat" 
+echo "=== docs present ==="
+ls docs/
+echo "=== meta-watchdog.sh (head 40) ==="
+head -40 /vol/data/benchmark/bin/meta-watchdog.sh
+=== repo tracks watchdog/meta scripts? ===
+scripts/agent-watchdog.sh
+scripts/benchmark-watchdog.sh
+scripts/status-heartbeat.sh
+status/watchdog.log
+=== docs present ===
+00-setup.md
+01-datasets.md
+02-comebin-baseline.md
+03-fixes.md
+04-evaluation.md
+05-agent-restart.md
+06-benchmark-commands.md
+07-fix-batches.md
+=== meta-watchdog.sh (head 40) ===
+#!/usr/bin/env bash
+# meta-watchdog.sh — supervisor of the whole automation (cron every 10 min).
+#   Watches the WATCHERS. Runs deterministic health checks against the
+#   automation architecture (cron jobs, opencode service, agent driver,
+#   watchdog rate-limiter, GitHub push, benchmark run, disk, GitHub issues).
+#   It auto-fixes the cheap deterministic breakages and, when something needs
+#   judgement (or a fix failed), escalates to an LLM supervisor agent
+#   (`opencode run --auto --title supervisor-fix`), whose transcript is logged
+#   and pushed to GitHub.
+#
+# Check results are pushed to the repo under status/meta/ (checks.tsv +
+# last.txt + issues.tsv), so the whole ops history is public on GitHub.
+#
+# Issues checking: every open issue is compared against
+#   $BENCH/meta/.issues_seen/<number>   (epoch of last known updatedAt)
+# A NEW or UPDATED issue triggers an LLM escalation (triage / respond). The
+# marker is refreshed after escalation so the same issue is not re-fired.
+set -u
+export HOME=/home/ubuntu
+export PATH=/home/ubuntu/.opencode/bin:/home/ubuntu/.local/bin:/usr/local/bin:/usr/bin:/bin
+export GIT_TERMINAL_PROMPT=0
+
+BENCH=/vol/data/benchmark
+REPO=/vol/data/repos/metagenomic-binning-benchmark
+META="$BENCH/meta"
+SEEN="$META/.issues_seen"
+ESCAL="$META/.escalations"
+LOG="$BENCH/logs/meta-watchdog.log"
+SUPLOG="$BENCH/logs/supervisor-run.log"
+LOCK=/tmp/meta-watchdog.lock
+REPO_LOCK=/tmp/bench-repo.lock
+COMPLETE="$BENCH/TASK_COMPLETE"
+REPO_URL=paulzierep/metagenomic-binning-benchmark
+
+STALE_S=900
+RATE_WINDOW_MIN=360
+MAX_ESCAL=3          # LLM escalations per window (cost guard)
+ISSUE_ESCAL_MIN=120  # don't re-escalate the same issue update within 2 h
+HANG_S=2400
+> build · big-pickle
+The reworked heartbeat already **detects** the model (`last_model`, line 68-78) but never **displays** it — that's the gap for #4. Let me verify the remaining pieces (repo copies, crontab, model.json, and what model actually appears in the transcript):
+[0m$ [0mecho "=== crontab now ==="
+crontab -l 2>/dev/null
+echo "=== repo agent-watchdog vs installed ==="
+diff /vol/data/repos/metagenomic-binning-benchmark/scripts/agent-watchdog.sh /vol/data/benchmark/bin/agent-watchdog.sh >/dev/null 2>&1 && echo IDENTICAL || echo DIFFER
+echo "=== model.json present? ==="
+cat /home/ubuntu/.local/state/opencode/model.json 2>/dev/null | head -c 300; echo
+echo "=== last model lines in agent-run.log ==="
+grep -aoE '^> [^·]+ · [^ ]+' /vol/data/benchmark/logs/agent-run.log 2>/dev/null | tail -3
+echo "=== is meta-watchdog in cron any crontab? (root/system) ==="
+sudo -n crontab -l 2>/dev/null | grep -v '^#' | head; echo "---"
+ls /etc/cron.d/ 2>/dev/null
+touch /vol/data/benchmark/.heartbeat
+=== crontab now ===
+*/5 * * * * /vol/data/benchmark/bin/agent-watchdog.sh
+*/10 * * * * /vol/data/benchmark/bin/status-heartbeat.sh
+*/5 * * * * /vol/data/benchmark/bin/benchmark-watchdog.sh
+3,13,23,33,43,53 * * * * /vol/data/benchmark/bin/meta-watchdog.sh
+=== repo agent-watchdog vs installed ===
+IDENTICAL
+=== model.json present? ===
+{"recent":[{"providerID":"opencode","modelID":"big-pickle"}],"favorite":[],"variant":{}}
+=== last model lines in agent-run.log ===
+> build · big-pickle
+> build · big-pickle
+> build · big-pickle
+=== is meta-watchdog in cron any crontab? (root/system) ===
+---
+e2scrub_all
+sysstat
+> build · big-pickle

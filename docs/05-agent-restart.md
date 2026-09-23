@@ -24,36 +24,38 @@ plus verification against disk — the agent never relies on conversation memory
 | Watchdog script (source, in repo) | `scripts/agent-watchdog.sh` |
 | Installed copy (what cron runs) | `/vol/data/benchmark/bin/agent-watchdog.sh` |
 | Cron entry | `*/5 * * * * /vol/data/benchmark/bin/agent-watchdog.sh` |
+| Supervisor script (source, in repo) | `scripts/meta-watchdog.sh` |
+| Installed copy (what cron runs) | `/vol/data/benchmark/bin/meta-watchdog.sh` |
+| Supervisor cron entry | `3,13,23,33,43,53 * * * * /vol/data/benchmark/bin/meta-watchdog.sh` |
 | Liveness signal | `/vol/data/benchmark/.heartbeat` (agent `touch`es it while working) |
 | Stop sentinel | `/vol/data/benchmark/TASK_COMPLETE` (existence ⇒ watchdog exits forever) |
 | Restart attempt markers | `/vol/data/benchmark/.watchdog_attempts/` (rate limiting) |
 | Last exit code | `/vol/data/benchmark/.watchdog_last_status` |
 | Model rotation index | `/vol/data/benchmark/.watchdog_model_ix`, `.watchdog_force_model` |
-| Logs | `/vol/data/benchmark/logs/watchdog.log`, `logs/agent-run.log` |
+| Logs | `/vol/data/benchmark/logs/watchdog.log`, `logs/agent-run.log`, `logs/meta-watchdog.log`, `logs/supervisor-run.log` |
 
 ## Decision flow (every 5 minutes)
 
+`opencode run` is a **single-turn** command in OpenCode v2: it sends the prompt,
+the agent completes ONE assistant turn ("Turn complete") and exits 0. So the
+watchdog no longer runs "one turn per cron tick" — it drives a **persistent
+loop**:
+
 ```
 TASK_COMPLETE exists?                       -> exit (task done)
-restarts in last 6h >= 6?                   -> exit (crash-loop guard)
-heartbeat younger than 15 min?              -> exit (agent alive)
+another driver holds the flock?             -> exit (only ONE driver at a time)
+run/`opencode run --auto` alive, heartbeat or transcript < 15 min old? -> exit (working)
+launches in last 6h >= 6?                   -> exit (crash-loop guard)
 
-classify previous failure from agent-run.log tail:
-  matches rate.?limit|quota|429|tokens exhausted|context window...  -> QUOTA=1
-  previous exit code != 0                                           -> plain failure
-
-model selection:
-  QUOTA=1                -> force --model <next free model> (rotation, see below),
-                            set .watchdog_force_model
-  previous exit == 0     -> clear forced flag (back to default model)
-  forced + failed again  -> rotate to next free model
-
-session selection:
-  previous exit == 0     -> opencode run --session ses_... (continue, keeps context)
-  previous exit != 0     -> opencode run            (fresh session, prompt says:
-                            "read PROGRESS.md first, verify disk, continue")
-
-append attempt marker, log everything, run agent with --auto
+start driver (this cron invocation IS the driver, it runs for hours):
+  while (not TASK_COMPLETE, turns < 200, runtime < 8h):
+    turn:  opencode run --auto [--session ses_...] --title watchdog-restart "$CONTINUE_PROMPT"
+    exit 0 && transcript grew  -> healthy: sleep 30s; next turn (idle phrase
+                                 seen in the turn? sleep 10 min instead)
+    exit != 0 && looks like quota/context exhaustion -> rotate to next
+                                 free model, retry (max 3), else stop (cron relaunches)
+    exit != 0 (other)           -> stop; cron relaunches (fresh session next time)
+  driver surviving >= 2 turns clears .watchdog_attempts (healthy restart)
 ```
 
 ## Model switching

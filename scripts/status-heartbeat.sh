@@ -6,6 +6,9 @@
 #   3. status/status.log     — 1-line-per-tick liveness + mem/load timeline
 #   4. status/agent-activity.log — VERBOSE agent action log (agent appends lines)
 #   +  runs/<run>/           — per-run detailed logs synced from /vol/data/benchmark/runs/
+#   +  status/agent-run.log  — FULL transcript of every `opencode run` (all agent
+#                              commands, tool results, "Turn complete" summaries)
+#   +  status/watchdog.log   — agent/watchdog restart history
 #
 # Honesty rule: liveness is read from the REAL agent heartbeat, not assumed.
 #   - heartbeat fresh            -> "alive: yes" + /vol/data/benchmark/.activity
@@ -48,25 +51,27 @@ else
     alive=no; text="no heartbeat file — agent not started"
 fi
 
-# ---- live run progress probe (so the banner never looks frozen) ------------ #
-runprog=""
-if [ -f "$BENCH/.active_run" ]; then
-    ardir=$(awk '{print $4}' "$BENCH/.active_run" 2>/dev/null)
-    if [ -n "$ardir" ] && [ -f "$ardir/comebin_out/comebin_res/training.log" ]; then
-        epoch=$(grep -c '^DEBUG:root:Epoch' "$ardir/comebin_out/comebin_res/training.log" 2>/dev/null || echo 0)
-        epoch=${epoch:-0}
-        [ "$epoch" -gt 0 ] 2>/dev/null && runprog="epoch $epoch/200 · $(tail -c 300 "$ardir/comebin_run.log" 2>/dev/null | tr '\r' '\n' | grep -oE '[0-9]+/[0-9]+' | tail -1) batches"
-    fi
-fi
-[ -n "$runprog" ] && text="$text — ⏳ $runprog"
+# ---- mirror full agent transcript + watchdog + supervisor logs into repo ---- #
+# agent-run.log = stdout/stderr of every `opencode run` (whole turns: prompts,
+# every $ command, tool output, "Turn complete" summaries); watchdog.log =
+# restart decisions; supervisor-run.log = meta-watchdog escalations. Must run
+# BEFORE current.md/status.log because those report the sizes.
+sync_agent_logs() {
+    mkdir -p status status/meta
+    cp "$BENCH/logs/agent-run.log"      status/agent-run.log      2>/dev/null || true
+    cp "$BENCH/logs/watchdog.log"       status/watchdog.log       2>/dev/null || true
+    cp "$BENCH/logs/supervisor-run.log" status/supervisor-run.log 2>/dev/null || true
+    cp "$BENCH/meta/"*.txt "$BENCH/meta/"*.jsonl status/meta/ 2>/dev/null || true
+}
+sync_agent_logs
+tsize=$(wc -c < status/agent-run.log 2>/dev/null || echo 0)
+wsize=$(wc -c < status/watchdog.log 2>/dev/null || echo 0)
 
 # ---- 1. README first line: status banner (marker-replaced) ----------------- #
 case "$alive" in
   yes) dot="🟢"; state="running" ;;
   no)  if [ -f "$COMPLETE" ]; then dot="✅"; state="done"; else dot="🔴"; state="stopped (watchdog will restart)"; fi ;;
 esac
-mid=""
-[ -n "$runprog" ] && mid=" · \`$runprog\`"
 # Banner block (L1 invisible marker, L3 visible status line, per user spec):
 #   <!--AGENT-STATUS-->
 #   (blank)
@@ -83,7 +88,7 @@ rm -f README.tmp
 {
   echo "$MARKER"
   echo
-  echo "> $dot **Agent status:** \`$state\` · ⏱ \`$now\`$mid · [status.log](status/status.log)"
+  echo "> $dot **Agent status:** \`$state\` · ⏱ \`$now\` · [status.log](status/status.log)"
   echo
   cat README.new
 } > README.staged && mv README.staged README.md
@@ -102,16 +107,16 @@ session="ses_f31799c77ffeTq9gcYgqc4hBhg"
   echo "| Status | $dot \`$state\` |"
   echo "| ⏱ Updated (Europe/Berlin) | \`$now\` |"
   echo "| 📌 Current work | $text |"
-  echo "| 🔬 Live run | ${runprog:-no active run} |"
   echo "| ⚙️ Load · uptime | \`$load\` · $upt — 32 cores, 62 GiB, no GPU |"
   echo "| 💾 RAM used/total | \`$mem\` |"
   echo "| 🔗 Session | \`$session\` (default model; watchdog rotates to free models on quota) |"
   echo "| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push \`$lastcommit\` |"
+  echo "| 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · \`${tsize} B\` — every run, command & tool result |"
   echo "| 📈 Timeline | [status/status.log](status/status.log) |"
 } > status/current.md
 
 # ---- 3. timeline ----------------------------------------------------------- #
-printf '%s\talive=%s\tmem=%s\tload=%s\t%s\n' "$now" "$alive" "$mem" "$load" "$text" >> status/status.log
+printf '%s\talive=%s\tmem=%s\tload=%s\ttranscript=%sB\twatchdog=%sB\t%s\n' "$now" "$alive" "$mem" "$load" "$tsize" "$wsize" "$text" >> status/status.log
 
 # ---- 4. sync per-run detailed logs into the repo (small files only) ------- #
 sync_run_logs() {
@@ -133,6 +138,10 @@ sync_run_logs
 ok=0
 for i in 1 2 3; do
     git add README.md status/current.md status/status.log status/agent-activity.log runs
+    [ -e status/agent-run.log ] && git add status/agent-run.log
+    [ -e status/watchdog.log ] && git add status/watchdog.log
+    [ -e status/supervisor-run.log ] && git add status/supervisor-run.log
+    [ -n "$(find status/meta -maxdepth 1 -type f 2>/dev/null | head -1)" ] && git add status/meta
     git commit -q -m "status: $alive — $(echo "$text" | cut -c1-60)"
     if git push -q; then ok=1; break; fi
     sleep 3
