@@ -9,6 +9,23 @@
 | Disk | `/vol/data` (ext4, 492 GB) — **all** repos/datasets/results live here |
 | OS | Ubuntu 24.04, Docker available (not used for tool runs), no system conda |
 
+## Directory layout (this machine)
+
+Internal-only — the public README deliberately excludes these machine paths.
+
+| Path | Content |
+|---|---|
+| `/vol/data/repos/COMEBin` | pristine upstream clone (baseline source, commit recorded per run) |
+| `/vol/data/repos/metagenomic-binning-benchmark` | this repo |
+| `/vol/data/datasets/` | datasets (`comebin_test_data/`, later `cami_II/`, `cami_III/`) |
+| `/vol/data/envs/` | micromamba environments (`comebin`, later `checkm2`, `checkm`) |
+| `/vol/data/tools/bin/micromamba` | micromamba 2.9.0 |
+| `/vol/data/benchmark/runs/` | raw outputs, one directory per run |
+| `/vol/data/benchmark/results/` | parsed result tables |
+| `/vol/data/benchmark/logs/` | install/run/watchdog logs |
+| `/vol/data/benchmark/PROGRESS.md` | live resume document for the agent |
+| `/vol/data/benchmark/TASK_COMPLETE` | sentinel — watchdog stops when present |
+
 ## Package management: micromamba
 
 ```bash

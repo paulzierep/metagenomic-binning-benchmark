@@ -16,23 +16,6 @@ Benchmarking metagenomic genome binners, starting with
 3. Record for every run: dataset, exact parameters, wall-clock/CPU time, and
    CheckM2/CheckM quality metrics — so results are comparable across commits.
 
-## Where everything lives (this machine)
-
-All data, repos and results are on the `/vol/data` volume (492 GB disk):
-
-| Path | Content |
-|---|---|
-| `/vol/data/repos/COMEBin` | pristine upstream clone (baseline source, commit recorded per run) |
-| `/vol/data/repos/metagenomic-binning-benchmark` | this repo |
-| `/vol/data/datasets/` | datasets (`comebin_test_data/`, later `cami_II/`, `cami_III/`) |
-| `/vol/data/envs/` | micromamba environments (`comebin`, later `checkm2`, `checkm`) |
-| `/vol/data/tools/bin/micromamba` | micromamba 2.9.0 |
-| `/vol/data/benchmark/runs/` | raw outputs, one directory per run |
-| `/vol/data/benchmark/results/` | parsed result tables |
-| `/vol/data/benchmark/logs/` | install/run/watchdog logs |
-| `/vol/data/benchmark/PROGRESS.md` | live resume document for the agent |
-| `/vol/data/benchmark/TASK_COMPLETE` | sentinel — watchdog stops when present |
-
 ## Repository layout
 
 ```
