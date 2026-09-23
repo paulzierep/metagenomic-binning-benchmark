@@ -6478,3 +6478,108 @@ touch /vol/data/benchmark/.heartbeat
 21545    04:42:26 python main.py train --data /vol/data/benchmark/runs/baseline_unmodified/comebin_out/data_augmentation --temperature 0.15 --emb_szs_forcov 2048 --batch_size 1024 --emb_szs 2048 --n_views 6 --add_model_for_coverage --output_path /vol/data/benchmark/runs/baseline_unmodified/comebin_out/comebin_res --earlystop --addvars --vars_sqrt --num_threads 32
 epochs: 121
 now UTC: 19:26
+> build · big-pickle
+Baseline at **epoch 121/200**, training normally. Standing by.
+[0m
+> build · big-pickle
+[0m$ [0mRUN=/vol/data/benchmark/runs/baseline_unmodified
+ps -eo pid,etime,args | grep -E '[m]ain.py train' | head -1 || echo "no train proc"
+echo "epochs: $(grep -c '^DEBUG:root:Epoch' "$RUN/comebin_out/comebin_res/training.log" 2>/dev/null)"
+grep -E 'exit_code|bins:' "$RUN/run_meta.txt" 2>/dev/null || true
+date -u +"now UTC: %H:%M"
+touch /vol/data/benchmark/.heartbeat
+21545    04:42:47 python main.py train --data /vol/data/benchmark/runs/baseline_unmodified/comebin_out/data_augmentation --temperature 0.15 --emb_szs_forcov 2048 --batch_size 1024 --emb_szs 2048 --n_views 6 --add_model_for_coverage --output_path /vol/data/benchmark/runs/baseline_unmodified/comebin_out/comebin_res --earlystop --addvars --vars_sqrt --num_threads 32
+epochs: 121
+now UTC: 19:26
+> build · big-pickle
+[0m$ [0mgh issue list -R paulzierep/metagenomic-binning-benchmark --state open --json number,title,updatedAt -q '.[] | "#\(.number) \(.title) [\(.updatedAt)]"' 2>&1
+touch /vol/data/benchmark/.heartbeat
+#2 Can you try to create a small benchmark dataset for comebin ? [2026-09-23T19:19:23Z]
+#1 Idea inbox: benchmark ideas, COMEBin fixes, dataset requests [2026-09-23T14:53:13Z]
+> build · big-pickle
+Issue list changed — #3/#4/#5 closed, and #2 was updated recently. Checking the details:
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark
+echo "=== #2 comments (newest first) ==="
+gh issue view 2 -R paulzierep/metagenomic-binning-benchmark --comments 2>/dev/null | tail -25
+echo "=== closed issues ==="
+gh issue list -R paulzierep/metagenomic-binning-benchmark --state closed --json number,title,closedAt -q '.[] | "#\(.number) \(.title) [closed \(.closedAt)]"' 2>&1
+touch /vol/data/benchmark/.heartbeat
+=== #2 comments (newest first) ===
+=== closed issues ===
+#5 I updated the comebin fork [closed 2026-09-23T19:25:56Z]
+#4 Why agent often broken [closed 2026-09-23T19:25:53Z]
+#3 I think comebin is stuck [closed 2026-09-23T19:25:49Z]
+> build · big-pickle
+User closed #3/#4/#5 (my resolutions accepted). #2 was touched too — fetching its full content:
+[0m$ [0mgh issue view 2 -R paulzierep/metagenomic-binning-benchmark --json title,body,comments -q '.title, .body, (.comments[] | "---COMMENT (by \(.author.login) @ \(.createdAt))---\n\(.body)")' 2>&1 | tail -50
+touch /vol/data/benchmark/.heartbeat
+Can you try to create a small benchmark dataset for comebin ?
+Use bioinformatic tools to make a small test benchmark dataset (maybe based on one of the dataset already used), and potentially fix issues with the tool if it does not work with the small dataset. Make the dataset as small as possible. But the tool should still use its real logic. Parameters can be changed, though.
+---COMMENT (by paulzierep @ 2026-09-23T17:41:54Z)---
+U should for all functional tests use the small test data, log it as always, then make a medium size benchmakr dataset once the tests work and and only after major commits run on big benchmark data
+---COMMENT (by paulzierep @ 2026-09-23T17:43:46Z)---
+Also make a plan which benchmark data to use human as host should be included so you do not excede the space limit on the drive
+---COMMENT (by paulzierep @ 2026-09-23T18:56:47Z)---
+## Small dataset ready + both new directives addressed
+
+**Small dataset (built):** `/vol/data/datasets/comebin_small` (94 MB) — top-300 contigs by length from the demo BATS metagenome (marker-gene carrying) + all reads overlapping them via `bedtools intersect -abam … -b contigs.bed -u` (params changeable). Test runner `scripts/run_small_test.sh` writes full run bookkeeping (run_meta + command lines, comebin_run.log, resources sampler). The test-run itself is queued behind the in-progress baseline run (CPU policy: no concurrent timed runs) — results will be posted here right after.
+
+**Directive 1 — functional tests always on small data, benchmarks only after major commits:** recorded in `docs/07-fix-batches.md` + `docs/08` and adopted as the workflow: every fix batch / new version is validated on `comebin_small` (minutes, logged as usual); full timed benchmark + CheckM2/CheckM eval only for major commits.
+
+**Directive 2 — dataset & disk-space plan incl. human host-associated data:** `docs/08-dataset-space-plan.md`. Summary: 492 GB volume, **391 GB free** now; planned additions ≈ demo 6.4 + small 0.1 + CAMI II marine (1–2 samples, 10–20 GB) + **human host-associated CAMI II** (Multisample Human Microbiome Project DOI 10.4126/frl01-006425518, or Toy Human Microbiome — 49 samples across 5 body sites; plan 1–2 samples ≤ 30 GB) + CAMI III (≤ 50 GB, sizes verified before download) ≈ **≤ 100 GB total → fits with >50 GB headroom**. Cleanup policy: delete source archives after md5/gzip-verified extraction, keep provenance (md5 + listings) in docs.
+---COMMENT (by paulzierep @ 2026-09-23T19:19:23Z)---
+## Supervisor follow-up: explicit medium stage + safe test runner
+
+Acknowledged the **18:51 UTC edit**. The workflow is now explicitly:
+
+1. run/log the real-pipeline functional test on the 94 MB small set;
+2. after that passes, build/run a medium derived benchmark (initial target 3,000 contigs, hard cap 5 GB, with measured provenance/size);
+3. reserve the large benchmark for post-major-commit runs.
+
+This is now recorded in `docs/06-benchmark-commands.md`, `docs/07-fix-batches.md`, and `docs/08-dataset-space-plan.md`.
+
+Supervisor commit `899f7e7` also closes runner gaps found during verification: `run_small_test.sh` now refuses overlap/overwrite, supports either the pristine or v1.1.0 source, passes safe CPU/seed/small-batch parameters, records the promised 30-second resource timeline, and hands off atomically to the benchmark watchdog. `run_eval.sh` refuses to overlap the registered benchmark.
+
+No small end-to-end result is being claimed yet, and the medium set has intentionally **not** been built while the active baseline is running. Those remain gated on the small COMEBin + CheckM2/CheckM run.
+> build · big-pickle
+Major update: issue #2 gained a supervisor comment (@19:19Z) codifying the workflow — small test first, then a **medium dataset (3,000 contigs, ≤5 GB)**, then large benchmarks — and references supervisor commit `899f7e7` (runner hardening). Let me re-sync with the repo's current state:
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark
+git fetch -q origin
+git log --oneline origin/main -8 | cat
+echo "=== local vs remote ==="
+git status -sb | head -3
+echo "=== scripts now present ==="
+ls scripts/
+echo "=== medium dataset script? ==="
+ls scripts/ | grep -i medium || echo "no medium script yet"
+cd7229a meta: supervise tick 2026-09-23T19:26:32Z — 0 fix(es)
+6651789 meta: issue-closer — deterministic close of addressed issues (C8b); closed #3 #4 #5 on GitHub; docs+changelog
+14135ca status: yes — baseline_unmodified epoch 120/200 loss 2.918679714202881 acc 98.134765625 model big-pickle — Baseline training epoch ~109/200 (~2.4 m
+6416290 meta: issue-closer closed 3, failed: — 19:25Z
+ad97f31 status: yes — baseline_unmodified epoch 119/200 loss 2.9448459148406982 acc 98.09895324707031 model big-pickle — Baseline training epoch ~109/200 (~2.4 m
+08bca5e meta: supervise tick 2026-09-23T19:22:07Z — 0 fix(es)
+afc51c0 status: yes — baseline_unmodified epoch 118/200 loss 2.9245786666870117 acc 97.40234375 model big-pickle — Baseline training epoch ~109/200 (~2.4 m
+00e300f docs: align status heartbeat cadence with 2-minute cron
+=== local vs remote ===
+## main...origin/main
+=== scripts now present ===
+agent-watchdog.sh
+benchmark-watchdog.sh
+issue-closer.sh
+make_results_csv.py
+make_small_dataset.sh
+meta-watchdog.sh
+parse_eval.py
+prep_cami2_marine.sh
+run_comebin_baseline.sh
+run_comebin_fix.sh
+run_eval.sh
+run_small_test.sh
+status-heartbeat.sh
+test_batch1.py
+=== medium dataset script? ===
+no medium script yet
+> build · big-pickle
+Synced (supervisor's `issue-closer` closed #3/#4/#5; my commits are all on remote). The medium-dataset script doesn't exist yet — that's my next prep item. Let me study `make_small_dataset.sh` to mirror it, and confirm `run_eval.sh`'s new overlap guard:
+[0m→ [0mRead /vol/data/repos/metagenomic-binning-benchmark/scripts/make_small_dataset.sh 
+> build · big-pickle
