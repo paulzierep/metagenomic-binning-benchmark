@@ -18,6 +18,11 @@ documentation.
   without treating them as source edits, and disables new bytecode writes in
   the pristine checkout. C6 verifies the replacement command, not just
   `kill -0`.
+- Status heartbeat now treats a fresh agent transcript as liveness evidence
+  when the primary driver owns its lock but its heartbeat file is briefly
+  stale, avoiding false "agent dead" status during a healthy fresh-session
+  turn; benchmark fallback metrics are labeled as a last run rather than
+  falsely presented as live after a terminal failure.
 
 ## 2026-09-23 — Reproducible dataset preservation staging
 

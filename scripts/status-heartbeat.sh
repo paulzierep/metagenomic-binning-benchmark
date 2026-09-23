@@ -59,6 +59,8 @@ if ! flock -n /tmp/agent-watchdog.lock -c true 2>/dev/null; then
 elif ps -eo args= | awk -v p="opencode run --auto --session ses_f31799c77ffeTq9gcYgqc4hBhg" 'index($0,p)==1{found=1} END{exit !found}'; then
   primary_alive=1
 fi
+transcript_age=999999
+[ -f "$BENCH/logs/agent-run.log" ] && transcript_age=$(( $(date +%s) - $(stat -c %Y "$BENCH/logs/agent-run.log") ))
 
 if [ -f "$COMPLETE" ]; then
     alive=no; dot="✅"; state="done"; text="TASK COMPLETE — benchmark done, sentinel present"
@@ -67,6 +69,9 @@ elif [ -f "$HB" ]; then
     if [ "$age" -lt "$STALE_S" ] && [ "$primary_alive" -eq 1 ]; then
         alive=yes; state="running"; dot="🟢"
         text=$(cat "$ACT" 2>/dev/null || echo "working (no activity note set)")
+    elif [ "$transcript_age" -lt "$STALE_S" ] && [ "$primary_alive" -eq 1 ]; then
+        alive=yes; state="running"; dot="🟢"
+        text="agent driver alive; transcript fresh (${transcript_age}s) while heartbeat is stale (${age}s)"
     elif [ "$age" -lt "$STALE_S" ] && [ "$primary_alive" -eq 0 ]; then
         alive=no; state="stopped (watchdog will restart)"; dot="🔴"
         text="heartbeat is fresh (${age}s) but no primary driver/run owns it — supervisor/maintenance heartbeat ignored"
@@ -108,13 +113,17 @@ note="${text:-}"
 
 # ---- LIVE benchmark truth: epoch/loss/acc from the actual training.log ------- #
 # Run root comes from .active_run (field 4); fall back to the newest config.yml
-# under runs/<run>/comebin_out/<stage>/.
+# under runs/<run>/comebin_out/<stage>/ for a last-run summary.  A fallback is
+# explicitly non-live: terminal failures must not keep appearing as a running
+# benchmark after .active_run has been cleared.
 run_epoch="" run_total="" run_loss="" run_acc="" run_name="" train_log_age=""
-run_dir=""
+run_dir="" run_registered=0
 if [ -f "$BENCH/.active_run" ]; then
     run_dir=$(awk '{print $4}' "$BENCH/.active_run" 2>/dev/null)
+    [ -n "$run_dir" ] && run_registered=1
 fi
 if [ -z "$run_dir" ] || [ ! -d "$run_dir" ]; then
+    run_registered=0
     newest=""
     for cfg in "$BENCH"/runs/*/comebin_out/*/config.yml; do
         [ -f "$cfg" ] || continue
@@ -143,17 +152,19 @@ if [ -n "$run_dir" ] && [ -d "$run_dir" ]; then
 fi
 
 # ---- did the *meaningful* status change since the last tick? ----------------- #
-sig="alive=$alive|state=$state|note=$note|tsize=$tsize|wsize=$wsize|model=$last_model|epoch=$run_epoch|loss=$run_loss|acc=$run_acc|run=$run_name"
+sig="alive=$alive|state=$state|note=$note|tsize=$tsize|wsize=$wsize|model=$last_model|epoch=$run_epoch|loss=$run_loss|acc=$run_acc|run=$run_name|run_registered=$run_registered"
 old_sig=$(cat "$SIGFILE" 2>/dev/null || echo "")
 changed=0
 [ "$sig" != "$old_sig" ] && changed=1
 
 if [ "$changed" = "1" ]; then
     # ---- 1. README banner ------------------------------------------------ #
-    if [ -n "$run_epoch" ]; then
+    if [ -n "$run_epoch" ] && [ "$run_registered" -eq 1 ]; then
         perf="train ${run_name}: epoch ${run_epoch}/${run_total:-200} · loss ${run_loss:-—} · top1 ${run_acc:-—}"
+    elif [ -n "$run_epoch" ]; then
+        perf="last run ${run_name}: epoch ${run_epoch}/${run_total:-200} · not active"
     else
-        perf="no run log parsed"
+        perf="no active benchmark"
     fi
     if [ "$(head -1 README.md)" = "$MARKER" ]; then
         sed '1,4d' README.md > README.tmp
@@ -172,9 +183,13 @@ if [ "$changed" = "1" ]; then
     rm -f README.new README.staged
 
     # ---- 1b. README "Benchmark runs — performance" table Status cell ------ #
-    # Replace ONLY the final (Status) cell of the row for the active run.
+    # Replace ONLY the final (Status) cell of the row for the observed run.
     if [ -n "$run_epoch" ]; then
-        st="⏳ running · epoch ${run_epoch}/${run_total:-200} · loss ${run_loss:-—} · top1 ${run_acc:-—}"
+        if [ "$run_registered" -eq 1 ]; then
+            st="⏳ running · epoch ${run_epoch}/${run_total:-200} · loss ${run_loss:-—} · top1 ${run_acc:-—}"
+        else
+            st="⏹ not active · last observed epoch ${run_epoch}/${run_total:-200}"
+        fi
         awk -v rn="$run_name" -v st="$st" '
           $0 ~ "^\\| *`" rn "` *\\|" {
             n = split($0, a, "|")
@@ -200,8 +215,12 @@ if [ "$changed" = "1" ]; then
       echo "|---|---|"
       echo "| Status | $dot \`$state\` |"
       echo "| ⏱ Updated (Europe/Berlin) | \`$now\` |"
-      if [ -n "$run_epoch" ]; then
+      if [ -n "$run_epoch" ] && [ "$run_registered" -eq 1 ]; then
           echo "| 🏃 Live benchmark | \`$run_name\` — **epoch ${run_epoch}/${run_total:-200}** · loss \`${run_loss:-—}\` · top1 acc \`${run_acc:-—}\` (log ${train_log_age:-?}s fresh) |"
+      elif [ -n "$run_epoch" ]; then
+          echo "| 🏃 Last benchmark (not active) | \`$run_name\` — last observed **epoch ${run_epoch}/${run_total:-200}** (log ${train_log_age:-?}s old) |"
+      else
+          echo "| 🏃 Benchmark | no active run |"
       fi
       echo "| 🧠 Model (last turn) | \`$last_model\` (watchdog rotates to free models on quota) |"
       if [ -n "$act_age_min" ]; then
