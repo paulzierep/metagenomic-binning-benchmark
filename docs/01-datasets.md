@@ -62,6 +62,17 @@ Sample 0 (short-read) contigs+BAM pre-downloaded → `/vol/data/datasets/cami_II
 (2026-09-23; md5 TBD on completion). **BAMs are supplied pre-mapped** — no read
 alignment step needed for COMEBin input.
 
+**Marine structure — observed (sample 0, short-read):**
+- `contigs/`: `anonymous_gsa.fasta.gz` (= pooled ground-truth contigs, names `S0C0…`),
+  `binning_gs.tsv` (ground truth bin→contig), `gsa_mapping.tsv.gz` (name map)
+- `bam/`: **590 per-genome BAMs** (4.7 G total; `Otu*.bam`, `RNODE_*`; each mapped to its
+  own genome assembly contigs `NODE_*`) + `.bai`
+- → COMEBin needs ONE coverage BAM over ONE contig set; per-genome BAMs do **not**
+  merge directly (duplicate `NODE_*` names across genomes). TODO at CAMI II phase:
+  pick contig set (pooled assembly from `marine/pooled/short/*.fasta`, or gsa contigs)
+  and map the sample reads (`short_read/.../reads.tar.gz`) to it (`bwa mem`, post-baseline,
+  CPU-bound) to build the coverage input.
+
 ## 3. CAMI III challenge data (planned)
 
 TODO — same fields as above.

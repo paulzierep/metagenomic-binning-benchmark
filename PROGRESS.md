@@ -227,7 +227,7 @@ included; fixes land on branch `comebin-optimizations` in this repo.
       py_compile OK; re-run **pending baseline finish** (`runs/fix_batch1`)
       — see `docs/07-fix-batches.md`
 - [~] **← CURRENT: baseline demo run in progress** (started 14:36 UTC, commit
-      987db95d8d399f30b7c82a5f5f40ed6bfdc906c7, `-t 32`): training epoch ~54/200
+      987db95d8d399f30b7c82a5f5f40ed6bfdc906c7, `-t 32`): training epoch ~62/200
       (~2.4 min/epoch → ETA ~22:30 UTC worst case; `--earlystop` may cut short;
       banner shows LIVE epoch each 10 min) —
       watch `runs/baseline_unmodified/comebin_run.log`
