@@ -1,6 +1,6 @@
 <!--AGENT-STATUS-->
 
-> 🟢 **Agent status:** `running` · ⏱ `2026-09-23T23:24 CEST` · 🏃 train baseline_unmodified: epoch 172/200 · loss 2.850219964981079 · top1 98.89322662353516 · 🧠 `big-pickle` · [status.log](status/status.log)
+> 🟢 **Agent status:** `running` · ⏱ `2026-09-23T23:26 CEST` · 🏃 train baseline_unmodified: epoch 173/200 · loss 2.8468997478485107 · top1 99.03971099853516 · 🧠 `big-pickle` · [status.log](status/status.log)
 
 # metagenomic-binning-benchmark
 
@@ -46,7 +46,7 @@ Raw per-run outputs stay in `/vol/data/benchmark/runs/`, parsed CSVs in `results
 
 | Run | Date | Source commit | Dataset | Threads | Wall time | Peak RAM | Bins | CheckM2 comp/cont % | CheckM comp/cont % | Status |
 |---|---|---|---|---|---|---|---|---|---|---|
-| `baseline_unmodified` | – | [987db95](https://github.com/paulzierep/COMEBin/commit/987db95d8d399f30b7c82a5f5f40ed6bfdc906c7) (upstream) | COMEBin demo (29,434 contigs) | 32 | – | – | – | – | – | ⏳ running · epoch 172/200 · loss 2.850219964981079 · top1 98.89322662353516 |
+| `baseline_unmodified` | – | [987db95](https://github.com/paulzierep/COMEBin/commit/987db95d8d399f30b7c82a5f5f40ed6bfdc906c7) (upstream) | COMEBin demo (29,434 contigs) | 32 | – | – | – | – | – | ⏳ running · epoch 173/200 · loss 2.8468997478485107 · top1 99.03971099853516 |
 
 Column contract: **Wall time** = total seconds (plus per-stage breakdown in
 `docs/02-comebin-baseline.md`), **Bins** = bins exported (≥200 kb filter noted),
