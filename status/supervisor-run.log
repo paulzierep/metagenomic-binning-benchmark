@@ -3690,3 +3690,74 @@ Index: /vol/data/repos/metagenomic-binning-benchmark/scripts/run_comebin_fix.sh
      echo "bins: $(ls "$BINS" | wc -l)  -> $BINS" | tee -a "$RUNDIR/run_meta.txt"
 
 > build · space-bunny-free
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/scripts/benchmark-watchdog.sh
+Index: /vol/data/repos/metagenomic-binning-benchmark/scripts/benchmark-watchdog.sh
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/scripts/benchmark-watchdog.sh
++++ /vol/data/repos/metagenomic-binning-benchmark/scripts/benchmark-watchdog.sh
+@@ -13,13 +13,14 @@
+ #   - flock-protected; exits immediately on TASK_COMPLETE
+ set -u
+ export HOME=/home/ubuntu
+ BENCH=/vol/data/benchmark
+-ACTIVE="$BENCH/.active_run"        # "<pid> <pgid> <logfile> <rundir> <start_ts>"
++ACTIVE="$BENCH/.active_run"        # pid pgid logfile rundir start_ts [mode source]
+ SLOG="$BENCH/logs/benchmark-watchdog.log"
+-LOCK=/tmp/benchmark-watchdog.lock
+-HANG_S=2400                         # 40 min without new log output => hung
+-MAX_PER_RUN=3                       # max automatic restarts per run
++LOCK=${BENCH_WATCHDOG_LOCK:-/tmp/benchmark-watchdog.lock}
++HANG_S=${BENCH_HANG_S:-2400}       # 40 min without new log output => hung
++MAX_PER_RUN=${BENCH_MAX_RESTARTS:-3}
++REPO=/vol/data/repos/metagenomic-binning-benchmark
+ log() { echo "$(date -Is) [bm-watchdog] $*" >>"$SLOG"; }
+ 
+ exec 9>"$LOCK"
+ flock -n 9 || exit 0
+
+> build · space-bunny-free
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/scripts/benchmark-watchdog.sh
+Index: /vol/data/repos/metagenomic-binning-benchmark/scripts/benchmark-watchdog.sh
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/scripts/benchmark-watchdog.sh
++++ /vol/data/repos/metagenomic-binning-benchmark/scripts/benchmark-watchdog.sh
+@@ -26,11 +26,19 @@
+ flock -n 9 || exit 0
+ [ -f "$BENCH/TASK_COMPLETE" ] && exit 0
+ [ -f "$ACTIVE" ] || exit 0
+ 
+-read -r pid pgid logfile rundir start < "$ACTIVE"
++read -r pid pgid logfile rundir start mode source < "$ACTIVE"
+ name=$(basename "$rundir")
++root_name=${name%%_autorestart*}
++mode=${mode:-baseline}
++source=${source:-/vol/data/repos/COMEBin}
+ 
++case "$pid:$pgid" in
++  *[!0-9:]*|:*|*:) log "invalid active-run pid/pgid '${pid:-}/${pgid:-}'; refusing process action"; exit 0 ;;
++esac
++[ "$pgid" -gt 1 ] || { log "unsafe active-run pgid $pgid; refusing process action"; exit 0; }
++
+ # log age = silence of the run
+ [ -f "$logfile" ] || logfile="$rundir/comebin_run.log"
+ if [ -f "$logfile" ]; then
+     age=$(( $(date +%s) - $(stat -c %Y "$logfile") ))
+@@ -38,9 +46,16 @@
+     age=999999
+ fi
+ 
+ alive=0
+-[ -n "${pid:-}" ] && kill -0 "$pid" 2>/dev/null && alive=1
++pid_stat=$(ps -o stat= -p "$pid" 2>/dev/null | tr -d ' ' || true)
++if [ -n "$pid_stat" ] && kill -0 "$pid" 2>/dev/null && [[ "$pid_stat" != Z* ]]; then
++    pid_cmd=$(tr '\0' ' ' < "/proc/$pid/cmdline" 2>/dev/null || true)
++    case "$pid_cmd" in
++      *run_comebin_baseline.sh*|*run_comebin_fix.sh*|*run_small_test.sh*) alive=1 ;;
++      *) log "pid $pid is alive but is not a registered COMEBin runner; refusing kill/restart: $pid_cmd" ; exit 0 ;;
++    esac
++fi
+ 
+ # finished successfully?
+ rc_done=$(grep -m1 '^exit_code:' "$rundir/run_meta.txt" 2>/dev/null | awk '{print $2}')
+ if [ "$rc_done" = "0" ]; then
+
