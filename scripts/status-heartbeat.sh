@@ -73,6 +73,7 @@ rm -f README.tmp
   echo
   cat README.new
 } > README.staged && mv README.staged README.md
+rm -f README.new README.staged
 
 # ---- 2. status/current.md -------------------------------------------------- #
 load=$(cut -d' ' -f1-3 /proc/loadavg)
