@@ -1,6 +1,6 @@
 <!--AGENT-STATUS-->
 
-> 🟢 **Agent status:** `running` · ⏱ `2026-09-23T23:50 CEST` · 🏃 last run baseline_unmodified: epoch 175/200 · not active · 🧠 `nemotron-3.5-lightning-free` · [status.log](status/status.log)
+> 🔴 **Agent status:** `stopped (watchdog will restart)` · ⏱ `2026-09-23T23:52 CEST` · 🏃 last run baseline_unmodified: epoch 175/200 · not active · 🧠 `nemotron-3.5-lightning-free` · [status.log](status/status.log)
 
 # metagenomic-binning-benchmark
 
