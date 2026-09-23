@@ -21916,3 +21916,139 @@ Error: TC bit thresholds unavailable on model BA00001
 2023-07-04 18:53:34,225 - Finish calculating coverage variance for aug_4
 2023-07-04 18:53:56,789 - Processed:/public/home2/ZhuLab/wangzy/binning/BATS_10samples/SRR5720343/run_comebin_test2/data_augmentation/depth/SRR5720343.bam_0_depth.txt
 2023-07-04 18:53:56,955 - Finish calculating coverage variance for aug_5
+> build · space-bunny-free
+[0m$ [0mset -e
+repo=/vol/data/repos/metagenomic-binning-benchmark
+[ -z "$(git -C "$repo" diff --name-only)" ] || { echo 'ABORT: repo has uncommitted paths before no-LLM verification'; git -C "$repo" status --short; exit 2; }
+[ -z "$(git -C "$repo" diff --cached --name-only)" ] || { echo 'ABORT: repo has staged paths before no-LLM verification'; exit 3; }
+META_WATCHDOG_NO_LLM=1 META_WATCHDOG_LOCK=/tmp/meta-watchdog-verify-20260923.lock timeout 180s /vol/data/benchmark/bin/meta-watchdog.sh
+printf '%s\n' '--- checks ---'
+cat /vol/data/benchmark/meta/checks.tsv
+printf '%s\n' '--- last ---'
+cat /vol/data/benchmark/meta/last.txt
+
+--- checks ---
+C1_cron	ok	4 exact jobs; cron active; installed/source scripts identical + executable
+C2_service	ok	pid 5551; service status + /api/info healthy
+C3_agent	ok	run_alive=0 driver=1 hb=1108s transcript=2s
+C4_ratelimit	ok	failed-launch markers=2 in 360min window
+C5_github	ok	HEAD=remote after concurrent publisher; worktree edits=0
+C6_benchmark	ok	no active run; last benchmark failure recorded (2026-09-23T21:42:31+00:00	/vol/data/benchmark/runs/baseline_unmodified	terminal log evidence: Something went wrong with running clustering. Exiting.); no retry loop
+C7_disk	ok	380 GiB free
+C8_issues	ok	4 open, none new
+C8b_issue_close	ok	no issues marked addressed
+C9_repo_publish	ok	meta artifacts committed and HEAD=remote main
+--- last ---
+# Meta-supervisor check — 2026-09-23T21:48:09Z — 0 auto-fix(es) applied
+
+C1_cron          ok  4 exact jobs; cron active; installed/source scripts identical + executable                                                
+C2_service       ok  pid 5551; service status + /api/info healthy                                                                              
+C3_agent         ok  run_alive=0 driver=1 hb=1108s transcript=2s                                                                               
+C4_ratelimit     ok  failed-launch markers=2 in 360min window                                                                                  
+C5_github        ok  HEAD=remote bbc68f70b101; status clean; worktree edits=0; last commit 8s                                                  
+C6_benchmark     ok  no active run; last benchmark failure recorded (2026-09-23T21:42:31+00:00   /vol/data/benchmark/runs/baseline_unmodified  terminal log evidence: Something went wrong with running clustering. Exiting.); no retry loop
+C7_disk          ok  380 GiB free                                                                                                              
+C8_issues        ok  4 open, none new                                                                                                          
+C8b_issue_close  ok  no issues marked addressed
+> build · space-bunny-free
+[0m$ [0mgit -C /vol/data/repos/metagenomic-binning-benchmark status --short --branch; git -C /vol/data/repos/metagenomic-binning-benchmark log -4 --oneline --decorate; git -C /vol/data/repos/metagenomic-binning-benchmark diff --cached --name-only
+## main...origin/main
+2475db8 (HEAD -> main, origin/main) meta: supervise tick 2026-09-23T21:48:09Z — 0 fix(es)
+bbc68f7 status: no — baseline_unmodified epoch 175/200 loss 2.8494248390197754 acc 99.12760162353516 model nemotron-3.5-lightning-free — heartbeat stale 1100s — agent dead/idl
+2d61909 ops: classify terminal benchmark failures safely
+c49dfde status: no — baseline_unmodified epoch 175/200 loss 2.8494248390197754 acc 99.12760162353516 model nemotron-3.5-lightning-free — heartbeat stale 980s — agent dead/idle
+[0m$ [0mcat /vol/data/benchmark/.active_run 2>/dev/null || echo no-active-run; find /vol/data/benchmark -maxdepth 1 -name '.hang_restarts.baseline_unmodified.*' -print; cat /vol/data/benchmark/.last_benchmark_failure 2>/dev/null || true; tail -n 10 /vol/data/benchmark/logs/meta-watchdog.log
+no-active-run
+2026-09-23T21:42:31+00:00	/vol/data/benchmark/runs/baseline_unmodified	terminal log evidence: Something went wrong with running clustering. Exiting.
+2026-09-23T20:43:07+00:00 tick done: fixes=0 broken=0 degraded=0 escalated=0
+2026-09-23T20:53:12+00:00 [meta] escalating to LLM supervisor (esc #2/3): /vol/data/benchmark/meta/escalate-1790196787.txt
+2026-09-23T20:59:17+00:00 tick done: fixes=0 broken=0 degraded=0 escalated=0
+2026-09-23T21:03:00+00:00 tick done: fixes=0 broken=0 degraded=0 escalated=0
+2026-09-23T21:03:24+00:00 [meta] supervisor agent exited rc=0
+2026-09-23T21:03:31+00:00 tick done: fixes=0 broken=0 degraded=0 escalated=1
+2026-09-23T21:13:06+00:00 tick done: fixes=0 broken=0 degraded=0 escalated=0
+2026-09-23T21:23:06+00:00 tick done: fixes=0 broken=0 degraded=0 escalated=0
+2026-09-23T21:33:08+00:00 [meta] escalating to LLM supervisor (esc #3/3): /vol/data/benchmark/meta/escalate-1790199188.txt
+2026-09-23T21:48:14+00:00 tick done: fixes=0 broken=0 degraded=0 escalated=0
+[0m$ [0mfor job in benchmark-watchdog.sh meta-watchdog.sh run_comebin_baseline.sh; do cmp -s /vol/data/repos/metagenomic-binning-benchmark/scripts/$job /vol/data/benchmark/bin/$job || echo mismatch:$job; done; echo parity_done; crontab -l; systemctl is-active cron.service
+parity_done
+*/5 * * * * /vol/data/benchmark/bin/agent-watchdog.sh
+*/2 * * * * /vol/data/benchmark/bin/status-heartbeat.sh
+*/5 * * * * /vol/data/benchmark/bin/benchmark-watchdog.sh
+3,13,23,33,43,53 * * * * /vol/data/benchmark/bin/meta-watchdog.sh
+active
+> build · space-bunny-free
+[0m✗ [0mEdit /vol/data/repos/metagenomic-binning-benchmark/scripts/status-heartbeat.sh failed
+[91m[1mError: [0mCould not find oldString in /vol/data/repos/metagenomic-binning-benchmark/scripts/status-heartbeat.sh. It must match exactly, including whitespace and indentation.
+> build · space-bunny-free
+[0m→ [0mRead /vol/data/repos/metagenomic-binning-benchmark/scripts/status-heartbeat.sh [90m[offset=48, limit=60][0m
+> build · space-bunny-free
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/scripts/status-heartbeat.sh
+Index: /vol/data/repos/metagenomic-binning-benchmark/scripts/status-heartbeat.sh
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/scripts/status-heartbeat.sh
++++ /vol/data/repos/metagenomic-binning-benchmark/scripts/status-heartbeat.sh
+@@ -58,8 +58,10 @@
+   primary_alive=1
+ elif ps -eo args= | awk -v p="opencode run --auto --session ses_f31799c77ffeTq9gcYgqc4hBhg" 'index($0,p)==1{found=1} END{exit !found}'; then
+   primary_alive=1
+ fi
++transcript_age=999999
++[ -f "$BENCH/logs/agent-run.log" ] && transcript_age=$(( $(date +%s) - $(stat -c %Y "$BENCH/logs/agent-run.log") ))
+ 
+ if [ -f "$COMPLETE" ]; then
+     alive=no; dot="✅"; state="done"; text="TASK COMPLETE — benchmark done, sentinel present"
+ elif [ -f "$HB" ]; then
+
+> build · space-bunny-free
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/scripts/status-heartbeat.sh
+Index: /vol/data/repos/metagenomic-binning-benchmark/scripts/status-heartbeat.sh
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/scripts/status-heartbeat.sh
++++ /vol/data/repos/metagenomic-binning-benchmark/scripts/status-heartbeat.sh
+@@ -68,8 +68,11 @@
+     age=$(( $(date +%s) - $(stat -c %Y "$HB") ))
+     if [ "$age" -lt "$STALE_S" ] && [ "$primary_alive" -eq 1 ]; then
+         alive=yes; state="running"; dot="🟢"
+         text=$(cat "$ACT" 2>/dev/null || echo "working (no activity note set)")
++    elif [ "$transcript_age" -lt "$STALE_S" ] && [ "$primary_alive" -eq 1 ]; then
++        alive=yes; state="running"; dot="🟢"
++        text="agent driver alive; transcript fresh (${transcript_age}s) while heartbeat is stale (${age}s)"
+     elif [ "$age" -lt "$STALE_S" ] && [ "$primary_alive" -eq 0 ]; then
+         alive=no; state="stopped (watchdog will restart)"; dot="🔴"
+         text="heartbeat is fresh (${age}s) but no primary driver/run owns it — supervisor/maintenance heartbeat ignored"
+     else
+
+> build · space-bunny-free
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/CHANGELOG.md
+Index: /vol/data/repos/metagenomic-binning-benchmark/CHANGELOG.md
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/CHANGELOG.md
++++ /vol/data/repos/metagenomic-binning-benchmark/CHANGELOG.md
+@@ -17,8 +17,12 @@
+   `exit_code` on ordinary failures, tolerates historical `__pycache__` entries
+   without treating them as source edits, and disables new bytecode writes in
+   the pristine checkout. C6 verifies the replacement command, not just
+   `kill -0`.
++- Status heartbeat now treats a fresh agent transcript as liveness evidence
++  when the primary driver owns its lock but its heartbeat file is briefly
++  stale, avoiding false "agent dead" status during a healthy fresh-session
++  turn.
+ 
+ ## 2026-09-23 — Reproducible dataset preservation staging
+ 
+ - Added `docs/10-data-preservation.md` with the Zenodo release scope, owner/token
+
+> build · space-bunny-free
+[0m$ [0mset -e
+repo=/vol/data/repos/metagenomic-binning-benchmark
+bindir=/vol/data/benchmark/bin
+cp "$repo/scripts/status-heartbeat.sh" "$bindir/.status-heartbeat.sh.deploy-new"
+chmod 755 "$bindir/.status-heartbeat.sh.deploy-new"
+mv -f "$bindir/.status-heartbeat.sh.deploy-new" "$bindir/status-heartbeat.sh"
+cmp -s "$repo/scripts/status-heartbeat.sh" "$bindir/status-heartbeat.sh"
+bash -n "$repo/scripts/status-heartbeat.sh"
+echo status-heartbeat-deployed
+
+status-heartbeat-deployed
+> build · space-bunny-free
