@@ -9,7 +9,7 @@ RUN=${1:?usage: run_eval.sh <rundir> [threads]}
 THREADS=${2:-32}
 BINS="$RUN/comebin_out/comebin_res/comebin_res_bins"
 [ -d "$BINS" ] || { echo "ERROR: no bins dir: $BINS"; exit 1; }
-CK2DB=${CHECKM2DB:-/vol/data/benchmark/checkm2db/checkm2_database.uniref100.KO.1.dmnd}
+CK2DB=${CHECKM2DB:-/vol/data/benchmark/checkm2db/CheckM2_database/uniref100.KO.1.dmnd}
 [ -f "$CK2DB" ] || { echo "WARNING: checkm2 db not found at $CK2DB (set CHECKM2DB)"; }
 mkdir -p "$RUN/eval/checkm2" "$RUN/eval/checkm/tmp"
 
