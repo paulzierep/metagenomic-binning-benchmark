@@ -5230,3 +5230,95 @@ reads_mapping.tsv.gz
 now UTC: 19:09
 > build · big-pickle
 Baseline healthy at **epoch 114/200** (~3.4h left); the live status tick now even shows `epoch=113/200 loss=... acc=...` (the live probe got upgraded — good). Reads extraction finished. Let me verify the reads/mapping formats to finalize the prep script:
+[0m$ [0mcd /vol/data/datasets/cami_II/marine_reads/reads_0/simulation_short_read/2018.08.15_09.49.32_sample_0/reads
+echo "=== anonymous_reads.fq.gz: first 8 lines (name pattern / pairing) ==="
+zcat anonymous_reads.fq.gz | head -8
+echo "=== count reads ==="
+zcat anonymous_reads.fq.gz | grep -c '^@' 
+echo "=== reads_mapping.tsv.gz: header + 3 rows ==="
+zcat reads_mapping.tsv.gz | head -4
+echo "=== total mapping lines ==="
+zcat reads_mapping.tsv.gz | wc -l
+=== anonymous_reads.fq.gz: first 8 lines (name pattern / pairing) ===
+@S0R0/1
+TCACCCGGCCGACGGGCAGATCGCACCTGATGCCCTATCGCTCCCTTGGCAAATTGAACCGGTTATAGGCGATAGCAAAGAGATAATTTTTGGCCAATGGGCAAGAGATCTAGGTGCAAAAGTAGAAGGGCGACAAGTATCCAGCTCGAA
++
+DDAEEEGGIII@IKJKKHKKKKJKKHKKHJJKHKCIK>EKHJKEICKHFIEKEJIK6EJE.DCEKDFKEIEFEE,IEIEGEEFFEEEE$EF4E?DED)EEEEECEECDEED=EC)?EFEEEEFDEBCCCA;AEEEEAE@EEE$A$$DF'?
+@S0R0/2
+TGGCAATCACAGCGGATACTTTCGCTACATCGTGAGCACCAGCCCACGGCAAGATGGCTTGCTTGCGATCAACCCCTTGGTGGGAGAGCCAACTTTTCGCGCTGGATACTTGTCGCCCTTCTCCTTTTGCACCTAGTTCTCTTGCCCATT
++
+DDAGEEEGIICI$KJKKKKAKJKKKK4IKDKKK?KFF<7KKCJKB:GKK:$JFKHDJHIIJEFHFD$JE9FCCD$EEEDDEE=6CED?D;FCEE/DK:CD@9EDDE$EACAEED$=?CCEDB$AF)EF?)CD?9$E$$E?C$:AC;DEE$
+=== count reads ===
+35250527
+=== reads_mapping.tsv.gz: header + 3 rows ===
+#anonymous_read_id	genome_id	tax_id	read_id
+S0R0/1	Otu54	55601	NODE_53_length_21423_cov_84.979292-1386/1
+S0R0/2	Otu54	55601	NODE_53_length_21423_cov_84.979292-1386/2
+S0R1/1	Otu1737	44251	CP009288.1-10831/1
+=== total mapping lines ===
+33294791
+> build · big-pickle
+Formats now clear — critical correction: `reads_mapping.tsv` maps reads to **genomes (Otu*)**, not to S0C* contigs, so it can't be used to subset reads by contig. The correct method: map **all** reads with `bwa mem -p` (interleaved PE) against the kept-contig reference — unmapped reads drop naturally. Rewriting the prep script and checking the fix-run wrapper for conventions:
+[0m← [0mWrite /vol/data/repos/metagenomic-binning-benchmark/scripts/prep_cami2_marine.sh
+Wrote file successfully: /vol/data/repos/metagenomic-binning-benchmark/scripts/prep_cami2_marine.sh
+> build · big-pickle
+Now checking the fix-run wrapper to mirror conventions for the marine run:
+[0m→ [0mRead /vol/data/repos/metagenomic-binning-benchmark/scripts/run_comebin_fix.sh 
+> build · big-pickle
+The fix-run wrapper is nearly generic — only `CONTIGS`/`BAMDIR` are hardcoded. I'll make them env-overridable (plus a `MODE` label) so the marine run reuses the same battle-tested harness, then verify bwa/samtools exist in the env:
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/scripts/run_comebin_fix.sh
+Index: /vol/data/repos/metagenomic-binning-benchmark/scripts/run_comebin_fix.sh
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/scripts/run_comebin_fix.sh
++++ /vol/data/repos/metagenomic-binning-benchmark/scripts/run_comebin_fix.sh
+@@ -6,11 +6,14 @@
+ 
+ MM=/vol/data/tools/bin/micromamba
+ ENV=/vol/data/envs/comebin
+ SRC=${SRC_COMEBIN:-/vol/data/repos/COMEBin-v11}
+-DATA=/vol/data/datasets/comebin_test_data
+-CONTIGS="$DATA/BATS_SAMN07137077_METAG.scaffolds.min500.fasta.f1k.fasta"
+-BAMDIR="$DATA/bamfiles"
++DATA=${DATA:-/vol/data/datasets/comebin_test_data}
++CONTIGS=${CONTIGS:-"$DATA/BATS_SAMN07137077_METAG.scaffolds.min500.fasta.f1k.fasta"}
++BAMDIR=${BAMDIR:-"$DATA/bamfiles"}
++MODE=${MODE:-fix}
++[ -f "$CONTIGS" ] || { echo "ERROR: contigs file not found: $CONTIGS"; exit 1; }
++[ -d "$BAMDIR" ] || { echo "ERROR: bamdir not found: $BAMDIR"; exit 1; }
+ RUNDIR=$(realpath -m "${1:-/vol/data/benchmark/runs/fix_v11}")
+ THREADS=${THREADS:-32}
+ SEED=${SEED:-}
+ START_LOCK=/tmp/benchmark-start.lock
+
+> build · big-pickle
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/scripts/run_comebin_fix.sh
+Index: /vol/data/repos/metagenomic-binning-benchmark/scripts/run_comebin_fix.sh
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/scripts/run_comebin_fix.sh
++++ /vol/data/repos/metagenomic-binning-benchmark/scripts/run_comebin_fix.sh
+@@ -69,9 +69,9 @@
+ cd "$SRC/COMEBin"   # upstream resolves ../auxiliary relative to CWD
+ 
+ # Fields: pid pgid logfile rundir start_epoch mode source_repo.
+ printf '%s %s %s %s %s %s %s\n' "$$" "$(ps -o pgid= -p $$ | tr -d ' ')" \
+-  "$RUNDIR/comebin_run.log" "$RUNDIR" "$(date +%s)" fix "$SRC" > "$ACTIVE"
++  "$RUNDIR/comebin_run.log" "$RUNDIR" "$(date +%s)" "$MODE" "$SRC" > "$ACTIVE"
+ 
+ SAMPLER_PID=""
+ cleanup() {
+   rc=$?
+
+> build · big-pickle
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark
+bash -n scripts/prep_cami2_marine.sh && bash -n scripts/run_comebin_fix.sh && echo "syntax OK both"
+echo "=== tools in comebin env ==="
+export MAMBA_ROOT_PREFIX=/vol/data/envs/.mamba
+/vol/data/tools/bin/micromamba run -p /vol/data/envs/comebin bash -c "which bwa samtools; bwa 2>&1 | head -1; samtools --version | head -1"
+touch /vol/data/benchmark/.heartbeat
+syntax OK both
+=== tools in comebin env ===
+/vol/data/envs/comebin/bin/bwa
+/vol/data/envs/comebin/bin/samtools
+
+samtools 1.24
+> build · big-pickle
