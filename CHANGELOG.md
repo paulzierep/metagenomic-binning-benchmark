@@ -3,6 +3,44 @@
 All notable changes to the metagenomic-binning-benchmark automation &
 documentation.
 
+## 2026-09-23 — Status truthfulness, 2-min heartbeat, model column
+
+### Fixed — status no longer lies on a stale agent note
+
+The GitHub status mirrored the agent's `.activity` note verbatim, so a note
+written early (e.g. "epoch ~37/200" from 16:10 UTC) could keep displaying for
+hours while the real training log advanced (epoch 110+). The headline numbers
+are now **derived from the actual files**:
+
+- The **live epoch / loss / top1 accuracy** are parsed from the newest
+  `runs/<run>/comebin_out/<stage>/training.log` (run root from
+  `.active_run`, fallback glob) and shown in the README banner,
+  `status/current.md` and `status/status.log` (`epoch=`/`loss=`/`acc=`
+  columns).
+- The agent's `.activity` note is still shown, but **age-tagged**
+  ("Agent note · N min old") so it can never masquerade as ground truth.
+- The **"Benchmark runs — performance" table** in the README now gets its
+  Status cell refreshed from the live training log on every significant
+  change, instead of staying frozen at "⏳ env finishing, next step".
+
+### Changed — heartbeat is every 2 min and commits only real changes
+
+- `status-heartbeat.sh` cron cadence `*/10` → **`*/2`** (GitHub rate limits
+  are nowhere near, and the heartbeat is pure shell — zero LLM tokens).
+- **Skip-if-unchanged**: generated files (README, `current.md`, `status.log`)
+  are only rewritten and committed when the *meaningful* status changed
+  (state / note text / transcript growth / live epoch / model), so idle
+  periods produce no commit spam.
+- **Model column**: `status/status.log` rows and `current.md` now record the
+  model actually used on the last turn (parsed from the transcript's
+  `> <agent> · <model>` line, fallback `model.json`), so quota-driven
+  rotation to free models is visible.
+
+### Ops
+
+- `meta-watchdog.sh` C1 cron template updated to the `*/2` heartbeat cadence
+  (its parity check C5 is already compatible with skip-if-unchanged).
+
 ## 2026-09-23 — Ops overhaul: persistent agent, GitHub logging, supervisor
 
 ### Fixed — "agent is always stopped" (watchdog redesign)
@@ -84,3 +122,21 @@ agent gets a full diagnostics bundle, fixes what it can, appends to
 - Baseline unmodified COMEBin run: training resumed/verified healthy
   (epoch 99+/200 reached, `main.py` at ~3100% CPU, logs advancing every few
   seconds).
+
+### Supervisor hardening (2026-09-23 19:03 UTC)
+
+- Scoped agent liveness to the primary session/driver lock so a supervisor's
+  `opencode run` can no longer masquerade as the coding agent.
+- Issue `updatedAt` markers now advance only after successful triage; a
+  successful supervisor refreshes them after posting, preventing self-triggering
+  comment loops while retaining failed/over-budget updates for retry.
+- Replaced process-name and recent-local-commit heuristics with OpenCode's
+  documented service/API checks, exact `HEAD=origin/main` parity, verified runner
+  command matching, and shared repository locking (`git commit --only`).
+- Benchmark restarts now preserve baseline/fix/small mode + source, keep the
+  restart budget keyed to a stable run name, and kill only the registered process
+  group (no broad `pkill -f`).
+- Small-test runner now refuses overlap/overwrite, supports baseline or v1.1.0
+  source, uses small-data CPU/seed parameters, and records the promised resource
+  timeline. Issue #2's medium stage is documented (3,000 contigs, 5 GB cap) but
+  correctly remains gated on the end-to-end small run.

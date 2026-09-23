@@ -1,21 +1,32 @@
 #!/usr/bin/env bash
-# status-heartbeat.sh — push "agent is alive + what it is doing right now"
-# to GitHub every 10 minutes (cron */10). Outputs, all pushed:
-#   1. README.md line 1      — status banner (marker-replaced, never duplicates)
-#   2. status/current.md     — overwritten each tick
-#   3. status/status.log     — 1-line-per-tick liveness + mem/load timeline
+# status-heartbeat.sh — push "agent is alive + what is ACTUALLY happening" to
+# GitHub every 2 minutes (cron */2). Outputs, all pushed:
+#   1. README.md            — status banner (marker-replaced, never duplicates)
+#                            + the "Benchmark runs — performance" table Status
+#                            cell refreshed from the LIVE training log so the
+#                            README never shows a frozen epoch
+#   2. status/current.md    — overwritten when the status actually changes
+#   3. status/status.log    — append-only timeline of CHANGES (not beeps): the
+#                            model= used, live epoch=/loss=/acc= of the benchmark
 #   4. status/agent-activity.log — VERBOSE agent action log (agent appends lines)
-#   +  runs/<run>/           — per-run detailed logs synced from /vol/data/benchmark/runs/
-#   +  status/agent-run.log  — FULL transcript of every `opencode run` (all agent
+#   +  runs/<run>/          — per-run detailed logs synced from /vol/data/benchmark/runs/
+#   +  status/agent-run.log — FULL transcript of every `opencode run` (all agent
 #                              commands, tool results, "Turn complete" summaries)
-#   +  status/watchdog.log   — agent/watchdog restart history
+#   +  status/watchdog.log  — agent/watchdog restart history
+#   +  status/supervisor-run.log, status/meta/ — supervisor artifacts
 #
-# Honesty rule: liveness is read from the REAL agent heartbeat, not assumed.
-#   - heartbeat fresh            -> "alive: yes" + /vol/data/benchmark/.activity
-#   - heartbeat stale            -> "alive: no — watchdog will restart within ~5 min"
-#   - TASK_COMPLETE exists       -> "alive: no — task done"
-# Concurrency: flock + retry; if the repo is mid-commit elsewhere, skip this
-# tick and try next (10 min later).
+# Truthfulness: the headline numbers (epoch/loss/accuracy, model, mem/load) are
+# derived from REAL files (the live training.log, the run transcript, /proc) —
+# never assumed. The agent's .activity note is shown age-tagged ("agent note ·
+# N min old") so a stale note can never disguise itself as ground truth.
+#
+# Skip-if-unchanged: generated files are only rewritten + committed when the
+# *meaningful* status changed (state/note/transcript growth/live epoch/model),
+# so at 2-min cadence the history stays clean while the agent is idle and only
+# records real progress.
+#
+# Concurrency: per-script flock; repo lock taken around commit/push (the running
+# agent also pushes). If the repo is mid-commit elsewhere, retry, else skip tick.
 set -u
 export HOME=/home/ubuntu
 cd /vol/data/repos/metagenomic-binning-benchmark || exit 1
@@ -24,40 +35,45 @@ BENCH=/vol/data/benchmark
 HB="$BENCH/.heartbeat"
 ACT="$BENCH/.activity"
 COMPLETE="$BENCH/TASK_COMPLETE"
-LOCK=/tmp/status-heartbeat.lock
+SIGFILE="$BENCH/.status_sig"
+LOCK=${STATUS_HEARTBEAT_LOCK:-/tmp/status-heartbeat.lock}
+REPO_LOCK=${BENCH_REPO_LOCK:-/tmp/bench-repo.lock}
 SLOG="$BENCH/logs/status-heartbeat.log"
 STALE_S=900
 MARKER='<!--AGENT-STATUS-->'
 
 exec 9>"$LOCK"
-flock -n 9 || { echo "$(date -Is) skipped: lock held" >>"$SLOG"; exit 0; }
-mkdir -p status
+flock -n 9 || { echo "$(date -Is) skipped: status lock held" >>"$SLOG"; exit 0; }
+mkdir -p status status/meta
 
 now_utc=$(date -u +%Y-%m-%dT%H:%M:%SZ)   # full precision, UTC (internal/log)
 now=$(TZ=Europe/Berlin date +'%Y-%m-%dT%H:%M %Z')   # German local time, minute precision (display)
 lastcommit=$(git log --oneline -1 2>/dev/null | cut -c1-80)
+primary_alive=0
+if ! flock -n /tmp/agent-watchdog.lock -c true 2>/dev/null; then
+  primary_alive=1
+elif ps -eo args= | awk -v p="opencode run --auto --session ses_f31799c77ffeTq9gcYgqc4hBhg" 'index($0,p)==1{found=1} END{exit !found}'; then
+  primary_alive=1
+fi
 
 if [ -f "$COMPLETE" ]; then
-    alive=no; text="TASK COMPLETE — benchmark done, sentinel present"
+    alive=no; dot="✅"; state="done"; text="TASK COMPLETE — benchmark done, sentinel present"
 elif [ -f "$HB" ]; then
     age=$(( $(date +%s) - $(stat -c %Y "$HB") ))
     if [ "$age" -lt "$STALE_S" ]; then
-        alive=yes
+        alive=yes; state="running"; dot="🟢"
         text=$(cat "$ACT" 2>/dev/null || echo "working (no activity note set)")
     else
-        alive=no; text="heartbeat stale ${age}s — agent dead/idle, watchdog should restart within ~5 min"
+        alive=no; state="stopped (watchdog will restart)"; dot="🔴"
+        text="heartbeat stale ${age}s — agent dead/idle, watchdog should restart within ~5 min"
     fi
 else
-    alive=no; text="no heartbeat file — agent not started"
+    alive=no; state="not started"; dot="🔴"
+    text="no heartbeat file — agent not started"
 fi
 
 # ---- mirror full agent transcript + watchdog + supervisor logs into repo ---- #
-# agent-run.log = stdout/stderr of every `opencode run` (whole turns: prompts,
-# every $ command, tool output, "Turn complete" summaries); watchdog.log =
-# restart decisions; supervisor-run.log = meta-watchdog escalations. Must run
-# BEFORE current.md/status.log because those report the sizes.
 sync_agent_logs() {
-    mkdir -p status status/meta
     cp "$BENCH/logs/agent-run.log"      status/agent-run.log      2>/dev/null || true
     cp "$BENCH/logs/watchdog.log"       status/watchdog.log       2>/dev/null || true
     cp "$BENCH/logs/supervisor-run.log" status/supervisor-run.log 2>/dev/null || true
@@ -67,10 +83,9 @@ sync_agent_logs
 tsize=$(wc -c < status/agent-run.log 2>/dev/null || echo 0)
 wsize=$(wc -c < status/watchdog.log 2>/dev/null || echo 0)
 
-# ---- model of the (last) agent turn + live run progress --------------------- #
-# Model: parsed from the transcript's "> <agent> · <model>" lines (latest turn);
-# fallback to opencode's recorded default. Live run: epoch/batch probe so the
-# banner never looks frozen (issue #3 regression fix).
+# ---- which model is the (last) agent actually running on? -------------------- #
+# OpenCode's transcript prints one "> <agent> · <model>" line per turn — the
+# most recent one is the live model (reflects watchdog rotation to free models).
 last_model=$(grep -aoE '^> [^·]+ · [^ ]+' status/agent-run.log 2>/dev/null \
              | tail -1 | sed -E 's/^> [^·]+ · //')
 if [ -z "$last_model" ]; then
@@ -78,67 +93,130 @@ if [ -z "$last_model" ]; then
                  /home/ubuntu/.local/state/opencode/model.json 2>/dev/null | head -1)
 fi
 last_model="${last_model:-unknown}"
+
+# ---- age of the agent's note (so it can't masquerade as ground truth) ------- #
+act_age_min=""
+[ -f "$ACT" ] && act_age_min=$(( ( $(date +%s) - $(stat -c %Y "$ACT") ) / 60 ))
+note="${text:-}"
+
+# ---- LIVE benchmark truth: epoch/loss/acc from the actual training.log ------- #
+# Run root comes from .active_run (field 4); fall back to the newest config.yml
+# under runs/<run>/comebin_out/<stage>/.
+run_epoch="" run_total="" run_loss="" run_acc="" run_name="" train_log_age=""
+run_dir=""
 if [ -f "$BENCH/.active_run" ]; then
-    ardir=$(awk '{print $4}' "$BENCH/.active_run" 2>/dev/null)
-    if [ -n "$ardir" ] && [ -f "$ardir/comebin_out/comebin_res/training.log" ]; then
-        epoch=$(grep -c '^DEBUG:root:Epoch' "$ardir/comebin_out/comebin_res/training.log" 2>/dev/null || echo 0)
-        epoch=${epoch:-0}
-        [ "$epoch" -gt 0 ] 2>/dev/null \
-            && text="$text · run: epoch $epoch/200 · $(tail -c 300 "$ardir/comebin_run.log" 2>/dev/null | tr '\r' '\n' | grep -oE '[0-9]+/[0-9]+' | tail -1) batches"
+    run_dir=$(awk '{print $4}' "$BENCH/.active_run" 2>/dev/null)
+fi
+if [ -z "$run_dir" ] || [ ! -d "$run_dir" ]; then
+    newest=""
+    for cfg in "$BENCH"/runs/*/comebin_out/*/config.yml; do
+        [ -f "$cfg" ] || continue
+        if [ -z "$newest" ] || [ "$(stat -c %Y "$cfg")" -gt "$(stat -c %Y "$newest")" ]; then
+            newest="$cfg"
+        fi
+    done
+    [ -n "$newest" ] && run_dir=$(dirname "$(dirname "$(dirname "$newest")")")
+fi
+if [ -n "$run_dir" ] && [ -d "$run_dir" ]; then
+    run_name=$(basename "$run_dir")
+    tlog=""
+    for f in "$run_dir"/comebin_out/*/training.log; do
+        [ -f "$f" ] || continue
+        if [ -z "$tlog" ] || [ "$(stat -c %Y "$f")" -gt "$(stat -c %Y "$tlog")" ]; then
+            tlog="$f"
+        fi
+    done
+    if [ -n "$tlog" ]; then
+        train_log_age=$(( $(date +%s) - $(stat -c %Y "$tlog") ))
+        run_epoch=$(grep -aoE 'Epoch: [0-9]+' "$tlog" | tail -1 | grep -oE '[0-9]+$')
+        run_loss=$(grep -aoE 'Loss: [0-9.]+' "$tlog" | tail -1 | grep -oE '[0-9.]+$')
+        run_acc=$(grep -aoE 'Top1 accuracy: [0-9.]+' "$tlog" | tail -1 | grep -oE '[0-9.]+$')
+        run_total=$(grep -aoE '^epochs: *[0-9]+' "$(dirname "$tlog")/config.yml" 2>/dev/null | grep -oE '[0-9]+$')
     fi
 fi
 
-# ---- 1. README first line: status banner (marker-replaced) ----------------- #
-case "$alive" in
-  yes) dot="🟢"; state="running" ;;
-  no)  if [ -f "$COMPLETE" ]; then dot="✅"; state="done"; else dot="🔴"; state="stopped (watchdog will restart)"; fi ;;
-esac
-# Banner block (L1 invisible marker, L3 visible status line, per user spec):
-#   <!--AGENT-STATUS-->
-#   (blank)
-#   > 🟢 Agent status: running · ⏱ 2026-... CEST (Europe/Berlin) · [status.log](status/status.log)
-# Strip any existing banner: canonical 4-line block at top AND any legacy
-# inline line (marker + text on one line) anywhere else.
-if [ "$(head -1 README.md)" = "$MARKER" ]; then
-    sed '1,4d' README.md > README.tmp
-else
-    cp README.md README.tmp
+# ---- did the *meaningful* status change since the last tick? ----------------- #
+sig="alive=$alive|state=$state|note=$note|tsize=$tsize|wsize=$wsize|model=$last_model|epoch=$run_epoch|loss=$run_loss|acc=$run_acc|run=$run_name"
+old_sig=$(cat "$SIGFILE" 2>/dev/null || echo "")
+changed=0
+[ "$sig" != "$old_sig" ] && changed=1
+
+if [ "$changed" = "1" ]; then
+    # ---- 1. README banner ------------------------------------------------ #
+    if [ -n "$run_epoch" ]; then
+        perf="train ${run_name}: epoch ${run_epoch}/${run_total:-200} · loss ${run_loss:-—} · top1 ${run_acc:-—}"
+    else
+        perf="no run log parsed"
+    fi
+    if [ "$(head -1 README.md)" = "$MARKER" ]; then
+        sed '1,4d' README.md > README.tmp
+    else
+        cp README.md README.tmp
+    fi
+    grep -v "^$MARKER" README.tmp > README.new || true
+    rm -f README.tmp
+    {
+      echo "$MARKER"
+      echo
+      echo "> $dot **Agent status:** \`$state\` · ⏱ \`$now\` · 🏃 $perf · 🧠 \`$last_model\` · [status.log](status/status.log)"
+      echo
+      cat README.new
+    } > README.staged && mv README.staged README.md
+    rm -f README.new README.staged
+
+    # ---- 1b. README "Benchmark runs — performance" table Status cell ------ #
+    # Replace ONLY the final (Status) cell of the row for the active run.
+    if [ -n "$run_epoch" ]; then
+        st="⏳ running · epoch ${run_epoch}/${run_total:-200} · loss ${run_loss:-—} · top1 ${run_acc:-—}"
+        awk -v rn="$run_name" -v st="$st" '
+          $0 ~ "^\\| *`" rn "` *\\|" {
+            n = split($0, a, "|")
+            out = a[1]
+            for (i = 2; i <= n - 2; i++) out = out "|" a[i]
+            out = out "| " st " |"
+            print out
+            next
+          }
+          { print }
+        ' README.md > README.tbl && mv README.tbl README.md
+    fi
+
+    # ---- 2. status/current.md -------------------------------------------- #
+    load=$(cut -d' ' -f1-3 /proc/loadavg)
+    mem=$(free -m | awk '/Mem:/{printf "%d/%d MB", $3, $2}')
+    upt=$(uptime -p 2>/dev/null | sed 's/^up //')
+    session="ses_f31799c77ffeTq9gcYgqc4hBhg"
+    {
+      echo "# 🤖 Agent status"
+      echo
+      echo "| | |"
+      echo "|---|---|"
+      echo "| Status | $dot \`$state\` |"
+      echo "| ⏱ Updated (Europe/Berlin) | \`$now\` |"
+      if [ -n "$run_epoch" ]; then
+          echo "| 🏃 Live benchmark | \`$run_name\` — **epoch ${run_epoch}/${run_total:-200}** · loss \`${run_loss:-—}\` · top1 acc \`${run_acc:-—}\` (log ${train_log_age:-?}s fresh) |"
+      fi
+      echo "| 🧠 Model (last turn) | \`$last_model\` (watchdog rotates to free models on quota) |"
+      if [ -n "$act_age_min" ]; then
+          echo "| 📌 Agent note · **${act_age_min} min old** | $note |"
+      else
+          echo "| 📌 Agent note | $note |"
+      fi
+      echo "| ⚙️ Load · uptime | \`$load\` · $upt — 32 cores, 62 GiB, no GPU |"
+      echo "| 💾 RAM used/total | \`$mem\` |"
+      echo "| 🔗 Session | \`$session\` |"
+      echo "| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push \`$lastcommit\` |"
+      echo "| 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · \`${tsize} B\` — every run, command & tool result |"
+      echo "| 📈 Timeline | [status/status.log](status/status.log) |"
+    } > status/current.md
+
+    # ---- 3. timeline (one line PER CHANGE, not per tick) ------------------- #
+    printf '%s\talive=%s\tmem=%s\tload=%s\ttranscript=%sB\twatchdog=%sB\tmodel=%s\tepoch=%s/%s\tloss=%s\tacc=%s\t%s\n' \
+        "$now" "$alive" "${mem:-?}" "${load:-?}" "$tsize" "$wsize" "$last_model" \
+        "${run_epoch:--}" "${run_total:--}" "${run_loss:--}" "${run_acc:--}" "$note" >> status/status.log
+
+    echo "$sig" > "$SIGFILE"
 fi
-grep -v "^$MARKER" README.tmp > README.new || true
-rm -f README.tmp
-{
-  echo "$MARKER"
-  echo
-  echo "> $dot **Agent status:** \`$state\` · ⏱ \`$now\` · [status.log](status/status.log)"
-  echo
-  cat README.new
-} > README.staged && mv README.staged README.md
-rm -f README.new README.staged
-
-# ---- 2. status/current.md -------------------------------------------------- #
-load=$(cut -d' ' -f1-3 /proc/loadavg)
-mem=$(free -m | awk '/Mem:/{printf "%d/%d MB", $3, $2}')
-upt=$(uptime -p 2>/dev/null | sed 's/^up //')
-session="ses_f31799c77ffeTq9gcYgqc4hBhg"
-{
-  echo "# 🤖 Agent status"
-  echo
-  echo "| | |"
-  echo "|---|---|"
-  echo "| Status | $dot \`$state\` |"
-  echo "| ⏱ Updated (Europe/Berlin) | \`$now\` |"
-  echo "| 📌 Current work | $text |"
-  echo "| ⚙️ Load · uptime | \`$load\` · $upt — 32 cores, 62 GiB, no GPU |"
-  echo "| 💾 RAM used/total | \`$mem\` |"
-  echo "| 🤖 Model | \`$last_model\` (last turn; watchdog rotates to free models on quota) |"
-  echo "| 🔗 Session | \`$session\` |"
-  echo "| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push \`$lastcommit\` |"
-  echo "| 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · \`${tsize} B\` — every run, command & tool result |"
-  echo "| 📈 Timeline | [status/status.log](status/status.log) |"
-} > status/current.md
-
-# ---- 3. timeline ----------------------------------------------------------- #
-printf '%s\talive=%s\tmem=%s\tload=%s\ttranscript=%sB\twatchdog=%sB\tmodel=%s\t%s\n' "$now" "$alive" "$mem" "$load" "$tsize" "$wsize" "$last_model" "$text" >> status/status.log
 
 # ---- 4. sync per-run detailed logs into the repo (small files only) ------- #
 sync_run_logs() {
@@ -157,17 +235,41 @@ sync_run_logs() {
 }
 sync_run_logs
 
-ok=0
-for i in 1 2 3; do
-    git add README.md status/current.md status/status.log status/agent-activity.log runs
-    [ -e status/agent-run.log ] && git add status/agent-run.log
-    [ -e status/watchdog.log ] && git add status/watchdog.log
-    [ -e status/supervisor-run.log ] && git add status/supervisor-run.log
-    [ -n "$(find status/meta -maxdepth 1 -type f 2>/dev/null | head -1)" ] && git add status/meta
-    git commit -q -m "status: $alive — $(echo "$text" | cut -c1-60)"
-    if git push -q; then ok=1; break; fi
-    sleep 3
-done
-[ "$ok" = "1" ] || echo "$(date -Is) push failed after 3 tries" >>"$SLOG"
-echo "$(date -Is) alive=$alive text='$text' pushed=$ok" >>"$SLOG"
+# ---- commit + push ONLY if something actually changed ------------------------ #
+git add README.md status/current.md status/status.log status/agent-activity.log runs
+[ -e status/agent-run.log ] && git add status/agent-run.log
+[ -e status/watchdog.log ] && git add status/watchdog.log
+[ -e status/supervisor-run.log ] && git add status/supervisor-run.log
+[ -n "$(find status/meta -maxdepth 1 -type f 2>/dev/null | head -1)" ] && git add status/meta
+
+if git diff --cached --quiet; then
+    echo "$(date -Is) no change to commit (alive=$alive epoch=${run_epoch:-—} model=$last_model)" >>"$SLOG"
+    exit 0
+fi
+
+( exec 8>"$REPO_LOCK"
+  flock -w 20 8 || exit 2
+  ok=0
+  git add README.md status/current.md status/status.log status/agent-activity.log runs
+  [ -e status/agent-run.log ] && git add status/agent-run.log
+  [ -e status/watchdog.log ] && git add status/watchdog.log
+  [ -e status/supervisor-run.log ] && git add status/supervisor-run.log
+  [ -n "$(find status/meta -maxdepth 1 -type f 2>/dev/null | head -1)" ] && git add status/meta
+  git diff --cached --quiet && exit 0
+  for i in 1 2 3; do
+      git commit -q -m "status: $alive — ${run_name:-agent} epoch ${run_epoch:-—}/${run_total:-200} loss ${run_loss:-—} acc ${run_acc:-—} model $last_model — $(echo "$note" | cut -c1-40)"
+      if git push -q; then
+          head=$(git rev-parse HEAD)
+          remote=$(git rev-parse refs/remotes/origin/main 2>/dev/null || echo none)
+          [ "$head" = "$remote" ] && { ok=1; break; }
+      fi
+      sleep 3
+  done
+  [ "$ok" = "1" ] && exit 0 || exit 1 )
+rc=$?
+case $rc in
+  0) echo "$(date -Is) pushed (or nothing to push): alive=$alive epoch=${run_epoch:-—} model=$last_model" >>"$SLOG" ;;
+  2) echo "$(date -Is) repo lock timeout — skipped this tick" >>"$SLOG" ;;
+  *) echo "$(date -Is) push failed after 3 tries" >>"$SLOG" ;;
+esac
 exit 0
