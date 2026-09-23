@@ -46,3 +46,8 @@ checkm_HQ,checkm_MQ,
 ```
 
 Raw tool outputs stay in `/vol/data/benchmark/runs/<run>/eval/` (not committed).
+
+Per-run CSV: `scripts/make_results_csv.py <rundir> [dataset] [threads]` writes the
+committed `results/<run>.csv` row (means + HQ/MQ counts, MIMAG thresholds above)
+from `run_meta.txt` + the two eval tables. `scripts/run_eval.sh` calls
+`parse_eval.py` (appends means to run_meta); then run `make_results_csv.py`.
