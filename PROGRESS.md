@@ -270,7 +270,8 @@ included; fixes land on branch `comebin-optimizations` in this repo.
 - [ ] After baseline: small end-to-end COMEBin + CheckM2/CheckM run via
       `scripts/run_small_test.sh` (runner now overlap-guarded and resource-logged)
 - [ ] After the small run passes: build/run the medium 3,000-contig derivative
-      (≤5 GB), record provenance + measured size, then evaluate
+      (≤5 GB) via `scripts/make_medium_dataset.sh` (provenance+size in
+      PROVENANCE.txt, md5s) → COMEBin run+eval, then evaluate
 - [ ] Fix batch run on v1.1.0 base (`runs/fix_v11`, worktree COMEBin-v11) →
       full large benchmark + eval (major commit) → README row
 - [ ] CAMI II marine sample 0 benchmark run → human host-associated sample →
