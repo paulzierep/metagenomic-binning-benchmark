@@ -1,0 +1,137 @@
+# PROGRESS — metagenomic-binning-benchmark
+
+> **Resume document.** If you (the agent) are reading this after a restart, start here,
+> verify "Current state" against what is actually on disk under `/vol/data`, and
+> continue from the first unfinished step. Update this file after every meaningful step.
+> Live copy: `/vol/data/benchmark/PROGRESS.md` (keep both in sync).
+
+## Task definition
+
+Benchmark multiple metagenomic genome binners, starting with COMEBin
+(https://github.com/paulzierep/COMEBin). Document the whole process in this repo
+(https://github.com/paulzierep/metagenomic-binning-benchmark) so the work can be
+picked up later by anyone/any session.
+
+Requirements from the user:
+1. Modify COMEBin's source code to improve performance and fix bugs — **in a branch**,
+   **one commit per batch of fixes**.
+2. **Baseline first**: benchmark *unmodified* COMEBin, then apply fix batches,
+   re-running the benchmark after each batch.
+3. Record: parameters used, datasets used, performance/timing, bin quality with
+   **CheckM2 and CheckM (v1)**.
+4. Document everything in this repo.
+
+## Decisions (confirmed by user)
+
+| Topic | Decision |
+|---|---|
+| Datasets | COMEBin demo data (first), then CAMI II challenge, then CAMI III challenge |
+| Workflow | Unmodified baseline → batched fixes, benchmark after each batch |
+| Environment | micromamba + conda envs (no Docker for tool execution) |
+| Storage | all git repos, datasets, benchmark data under `/vol/data` |
+| Agent restart | cron watchdog `scripts/agent-watchdog.sh`: restarts on abort, rotates to free models on quota exhaustion |
+
+## Directory layout (authoritative)
+
+| Path | Content |
+|---|---|
+| `/vol/data/repos/COMEBin` | pristine upstream clone (record `git rev-parse HEAD` per run) |
+| `/vol/data/repos/metagenomic-binning-benchmark` | this repo |
+| `/vol/data/datasets/comebin_test_data/` | COMEBin demo dataset extracted |
+| `/vol/data/datasets/comebin_test_data.zip` | original 5.58 GB download |
+| `/vol/data/datasets/cami_II/`, `cami_III/` | CAMI datasets (TODO) |
+| `/vol/data/envs/comebin` | micromamba env for COMEBin |
+| `/vol/data/envs/checkm2`, `/vol/data/envs/checkm` | evaluation envs (TODO) |
+| `/vol/data/tools/bin/micromamba` | micromamba 2.9.0 |
+| `/vol/data/benchmark/runs/` | raw outputs per run |
+| `/vol/data/benchmark/results/` | parsed tables per run |
+| `/vol/data/benchmark/logs/` | logs |
+| `/vol/data/benchmark/TASK_COMPLETE` | watchdog sentinel |
+
+## Environment facts
+
+- `MAMBA_ROOT_PREFIX=/vol/data/envs/.mamba`
+- Run in env: `/vol/data/tools/bin/micromamba run -p /vol/data/envs/comebin <cmd>`
+- Host: 32 cores, 62 GB RAM, **no GPU** (CPU-only PyTorch), ~460 GB free on `/vol/data`.
+- OpenCode binary `/home/ubuntu/.opencode/bin/opencode`; free models for fallback:
+  `opencode/mimo-v2.6-flash-free`, `opencode/muse-spark-1.3-contributor-free`,
+  `opencode/ling-3.0-flash-fin-free`, `opencode/nemotron-3.5-lightning-free`.
+- Session ID of the primary agent session: `ses_f31799c77ffeTq9gcYgqc4hBhg` (cwd `/home/ubuntu`).
+- GitHub PAT stored in `~/.git-credentials` (600) via `credential.helper store`.
+
+## COMEBin demo dataset
+
+- Google Drive file id `1xWpN2z8JTaAzWW4TcOl0Lr4Y_x--Fs5s` (gdown).
+- Contigs: `comebin_test_data/BATS_SAMN07137077_METAG.scaffolds.min500.fasta.f1k.fasta`
+  — **29,434 sequences**, ≈53 MB.
+- BAM: `comebin_test_data/bamfiles/SRR5720343.bam` — 5.07 GB (already indexed? verify `.bai`).
+- `excepted_output/` = upstream reference run incl. CheckM output → validate against it.
+- Quality scored by marker genes via CheckM2/CheckM; no read-level truth needed.
+
+## Known COMEBin bugs / perf issues (candidates for fix batches)
+
+Full source review (~3.1 kLOC) done. Findings:
+
+**Crashes on modern libs**
+1. `np.int` (removed NumPy ≥1.24): `COMEBin/get_augfeature.py` ~L41,53,66; `COMEBin/utils.py` ~L109,119.
+2. `KMeans(n_jobs=-1, algorithm="full")` (removed sklearn ≥1.0) + private import
+   `sklearn.cluster._kmeans.*`: `COMEBin/cluster.py` ~L103 and ~L13.
+
+**Correctness**
+3. Fractional bedtools depth truncated via `int(float(...))` → coverage mean/var wrong:
+   `data_aug/gen_cov.py`, `data_aug/gen_var.py`.
+4. `filter_small_bins.gen_bins`: `bin_name += 1` inside per-contig loop → bin file
+   numbering garbage.
+5. No RNG seeds: augmentation (`random.*`), Leiden optimizer (no `set_rng_seed`) →
+   runs not reproducible (blocks fair benchmarking).
+6. Small-dataset crash: `run_comebin.sh` caps `batch_size` by *all* contigs; training
+   filters ≥1000 bp; `DataLoader(drop_last=True)` → zero batches → `NameError: logits`.
+7. `accuracy(..., topk=(1,5))` needs ≥5 views; `-n <5` crashes.
+8. `os.makedirs(outdir)` w/o `exist_ok=True` in `generate_augfasta_and_saveindex.py`.
+9. `run_comebin.sh`: `realpath` on non-existent output dir; no `set -euo pipefail`;
+   `$?` checks after `if` blocks fragile.
+
+**Performance**
+10. `gen_kmer.py`: pure-Python `itertools.tee` sliding-window k-mer counting — hot loop,
+    vectorization target.
+11. `gen_cov.py`/`gen_var.py`: materialize per-base depth lists → accumulate
+    `Σv·len`, `Σv²·len` in closed form (RAM + CPU win).
+12. `cluster.py`: `in` scans on arrays/lists (`gen_seed_idx`, `is_membership_fixed`)
+    are O(n·m) → sets.
+13. `get_augfeature.py`: reads each TSV header twice + same file 3× for names.
+14. Leiden grid = 8×5×3 = 120 unseeded runs in a Pool → sweep/prune/seeding.
+
+**Benchmark integrity:** baseline = pristine upstream commit
+(`/vol/data/repos/COMEBin`, record `git rev-parse HEAD`), unseeded nondeterminism
+included; fixes land on branch `comebin-optimizations` in this repo.
+
+## Current state
+
+- [x] `/vol/data` layout created; micromamba 2.9.0 installed
+- [x] COMEBin test dataset downloaded (5.58 GB) **and extracted** (6.4 GB; 29,434 contigs)
+- [x] Full COMEBin source review (findings above)
+- [x] Base env `/vol/data/envs/comebin` installed (python3.10, numpy1.23, sklearn1.1,
+      biopython1.81, pytorch-cpu, bedtools, bwa, samtools, hmmer, fraggenescan,
+      prodigal, tensorboard, ...)
+- [x] GitHub PAT configured; this repo cloned to `/vol/data/repos/metagenomic-binning-benchmark`
+- [x] Watchdog installed (cron `*/5 * * * *`), free-model rotation on quota errors
+- [ ] **← CURRENT: finish env deps** (scanpy/igraph/leidenalg/hnswlib/checkm-genome
+      install running: `/vol/data/logs/env_comebin_deps2.log`) + verify binaries
+      (`run_FragGeneScan.pl`, `hmmsearch`, `bedtools`, `checkm` on PATH in env)
+- [ ] Check BAM index (`.bai`); if missing → `samtools index` (5 GB, ~min)
+- [ ] Run unmodified COMEBin → `benchmark/runs/baseline_unmodified/`
+      (`scripts/run_comebin_baseline.sh`, `-t 32` to use all cores)
+- [ ] CheckM2 + CheckM envs; run on baseline bins → `benchmark/results/` +
+      `results/` tables committed here
+- [ ] Fix batch 1 → commit on `comebin-optimizations` → re-run benchmark → record
+- [ ] ... further batches ...
+- [ ] CAMI II + CAMI III datasets, repeat
+
+## Watchdog / restart
+
+`scripts/agent-watchdog.sh` (installed at `/vol/data/benchmark/bin/`, cron `*/5 * * * *`):
+stale heartbeat (>15 min) → `opencode run` continues session
+`ses_f31799c77ffeTq9gcYgqc4hBhg`; if that failed → fresh session with resume prompt.
+On quota/token/context errors it forces `--model` rotation through the free model list;
+a successful run clears the flag (back to default). Rate limit 6 restarts / 6 h; stops
+when `TASK_COMPLETE` exists. **Agent: touch `/vol/data/benchmark/.heartbeat` regularly.**
