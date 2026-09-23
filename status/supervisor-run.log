@@ -3897,3 +3897,360 @@ Index: /vol/data/repos/metagenomic-binning-benchmark/scripts/status-heartbeat.sh
  now=$(TZ=Europe/Berlin date +'%Y-%m-%dT%H:%M %Z')   # German local time, minute precision (display)
 
 > build · space-bunny-free
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/scripts/status-heartbeat.sh
+Index: /vol/data/repos/metagenomic-binning-benchmark/scripts/status-heartbeat.sh
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/scripts/status-heartbeat.sh
++++ /vol/data/repos/metagenomic-binning-benchmark/scripts/status-heartbeat.sh
+@@ -168,10 +168,21 @@
+     [ -e status/agent-run.log ] && git add status/agent-run.log
+     [ -e status/watchdog.log ] && git add status/watchdog.log
+     [ -e status/supervisor-run.log ] && git add status/supervisor-run.log
+     [ -n "$(find status/meta -maxdepth 1 -type f 2>/dev/null | head -1)" ] && git add status/meta
+-    git commit -q -m "status: $alive — $(echo "$text" | cut -c1-60)"
+-    if git push -q; then ok=1; break; fi
++    ready=0
++    if git diff --cached --quiet -- README.md status runs; then
++        ready=1
++    elif git commit -q --only -m "status: $alive — $(echo "$text" | cut -c1-60)" -- README.md status runs; then
++        ready=1
++    fi
++    [ "$ready" = "1" ] || { sleep 3; continue; }
++    if git push -q; then
++        head=$(git rev-parse HEAD)
++        remote=$(git rev-parse refs/remotes/origin/main 2>/dev/null || echo none)
++        [ "$head" = "$remote" ] && ok=1
++        [ "$ok" = "1" ] && break
++    fi
+     sleep 3
+ done
+ [ "$ok" = "1" ] || echo "$(date -Is) push failed after 3 tries" >>"$SLOG"
+ echo "$(date -Is) alive=$alive text='$text' pushed=$ok" >>"$SLOG"
+
+> build · space-bunny-free
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/scripts/agent-watchdog.sh
+Index: /vol/data/repos/metagenomic-binning-benchmark/scripts/agent-watchdog.sh
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/scripts/agent-watchdog.sh
++++ /vol/data/repos/metagenomic-binning-benchmark/scripts/agent-watchdog.sh
+@@ -34,9 +34,8 @@
+ COMPLETE="$BENCH/TASK_COMPLETE"
+ LOCK=/tmp/agent-watchdog.lock
+ SESSION_ID="ses_f31799c77ffeTq9gcYgqc4hBhg"
+ STALE_S=900            # heartbeat/transcript older than 15 min => agent presumed idle
+-RUN_STALE_S=1500       # ...and no `opencode run` process alive
+ WINDOW_MIN=360         # crash-loop rate-limit window
+ MAX_ATTEMPTS=6         # max driver LAUNCHES per window
+ MAX_TURNS=200          # hard cap per driver (avoids a runaway forever-loop)
+ MAX_RUNTIME_S=28800    # hard cap per driver: 8 h; next cron tick relaunches
+
+> build · space-bunny-free
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/scripts/agent-watchdog.sh
+Index: /vol/data/repos/metagenomic-binning-benchmark/scripts/agent-watchdog.sh
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/scripts/agent-watchdog.sh
++++ /vol/data/repos/metagenomic-binning-benchmark/scripts/agent-watchdog.sh
+@@ -31,9 +31,9 @@
+ STATUS="$BENCH/.watchdog_last_status"
+ MODELIX="$BENCH/.watchdog_model_ix"
+ FORCE_MODEL="$BENCH/.watchdog_force_model"
+ COMPLETE="$BENCH/TASK_COMPLETE"
+-LOCK=/tmp/agent-watchdog.lock
++LOCK=${AGENT_WATCHDOG_LOCK:-/tmp/agent-watchdog.lock}
+ SESSION_ID="ses_f31799c77ffeTq9gcYgqc4hBhg"
+ STALE_S=900            # heartbeat/transcript older than 15 min => agent presumed idle
+ WINDOW_MIN=360         # crash-loop rate-limit window
+ MAX_ATTEMPTS=6         # max driver LAUNCHES per window
+
+> build · space-bunny-free
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/scripts/agent-watchdog.sh
+Index: /vol/data/repos/metagenomic-binning-benchmark/scripts/agent-watchdog.sh
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/scripts/agent-watchdog.sh
++++ /vol/data/repos/metagenomic-binning-benchmark/scripts/agent-watchdog.sh
+@@ -65,9 +65,13 @@
+ [ -f "$HEARTBEAT" ] && hb_age=$(( $(date +%s) - $(stat -c %Y "$HEARTBEAT") ))
+ tl_age=999999
+ [ -f "$AGENT_LOG" ] && tl_age=$(( $(date +%s) - $(stat -c %Y "$AGENT_LOG") ))
+ run_alive=0
+-pgrep -f "opencode run --auto" >/dev/null 2>&1 && run_alive=1
++# Match only the primary session's argv prefix. A broad "opencode run --auto"
++# search also matches supervisor runs and can falsely suppress the agent driver.
++if ps -eo args= | awk -v p="opencode run --auto --session $SESSION_ID" 'index($0,p)==1{found=1} END{exit !found}'; then
++    run_alive=1
++fi
+ 
+ alive=0
+ [ "$run_alive" = "1" ] && alive=1
+ [ "$hb_age" -lt "$STALE_S" ] && alive=1
+
+> build · space-bunny-free
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/scripts/agent-watchdog.sh
+Index: /vol/data/repos/metagenomic-binning-benchmark/scripts/agent-watchdog.sh
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/scripts/agent-watchdog.sh
++++ /vol/data/repos/metagenomic-binning-benchmark/scripts/agent-watchdog.sh
+@@ -124,10 +124,10 @@
+ [ "$last" = "0" ] || touch "$ATTDIR/$(date +%s)"
+ age=$(( hb_age < tl_age ? hb_age : tl_age ))
+ log "agent idle (hb ${hb_age}s, transcript ${tl_age}s, run_alive=$run_alive) -> launching driver (model_args='${MODEL_ARGS[*]:-default}')"
+ 
+-CONT_PPT="Continue the metagenomic-binning-benchmark task you were working on; you may have been interrupted. First read /vol/data/benchmark/PROGRESS.md, verify the 'Current state' section against what is actually on disk, then resume from the first unfinished step. Update PROGRESS.md as you go, touch /vol/data/benchmark/.heartbeat in your shell commands while active, and append one timestamped line per meaningful action to /vol/data/repos/metagenomic-binning-benchmark/status/agent-activity.log. If /vol/data/benchmark/TASK_COMPLETE exists, do nothing and exit."
+-FRESH_PPT="You are resuming the metagenomic-binning-benchmark project after an agent restart (the previous session may have crashed, run out of context, or exhausted model tokens). Read /vol/data/benchmark/PROGRESS.md FIRST — it contains the full task definition and current state — then verify state on disk and continue from the first unfinished step. Update PROGRESS.md as you go, touch /vol/data/benchmark/.heartbeat in your shell commands while active, and append one timestamped line per meaningful action to /vol/data/repos/metagenomic-binning-benchmark/status/agent-activity.log. If /vol/data/benchmark/TASK_COMPLETE exists, do nothing and exit."
++CONT_PPT="Continue the metagenomic-binning-benchmark task you were working on; you may have been interrupted. First read /vol/data/benchmark/PROGRESS.md, verify the 'Current state' section against what is actually on disk, then check NEW/updated issues with: gh issue list -R paulzierep/metagenomic-binning-benchmark --state open --json number,title,updatedAt and gh issue list -R paulzierep/COMEBin --state open --json number,title,updatedAt. Triage and comment on actionable updates without duplicating an existing response. Resume from the first unfinished step. Update PROGRESS.md and /vol/data/benchmark/.activity, touch /vol/data/benchmark/.heartbeat in shell commands while active, and append one timestamped line per meaningful action to /vol/data/repos/metagenomic-binning-benchmark/status/agent-activity.log. Never overlap the registered benchmark run. If /vol/data/benchmark/TASK_COMPLETE exists, do nothing and exit."
++FRESH_PPT="You are resuming the metagenomic-binning-benchmark project after an agent restart (the previous session may have crashed, run out of context, or exhausted model tokens). Read /vol/data/benchmark/PROGRESS.md FIRST, then check NEW/updated issues in paulzierep/metagenomic-binning-benchmark and paulzierep/COMEBin with gh issue list --state open --json number,title,updatedAt; triage and comment without duplicating an existing response. Verify state on disk and continue from the first unfinished step. Update PROGRESS.md and /vol/data/benchmark/.activity, touch /vol/data/benchmark/.heartbeat in shell commands while active, and append one timestamped line per meaningful action to /vol/data/repos/metagenomic-binning-benchmark/status/agent-activity.log. Never overlap the registered benchmark run. If /vol/data/benchmark/TASK_COMPLETE exists, do nothing and exit."
+ 
+ run_driver() {
+     local turns=0 start secs rc=0 quota_hits=0 before after
+     start=$(date +%s)
+
+> build · space-bunny-free
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/scripts/agent-watchdog.sh
+Index: /vol/data/repos/metagenomic-binning-benchmark/scripts/agent-watchdog.sh
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/scripts/agent-watchdog.sh
++++ /vol/data/repos/metagenomic-binning-benchmark/scripts/agent-watchdog.sh
+@@ -128,9 +128,9 @@
+ CONT_PPT="Continue the metagenomic-binning-benchmark task you were working on; you may have been interrupted. First read /vol/data/benchmark/PROGRESS.md, verify the 'Current state' section against what is actually on disk, then check NEW/updated issues with: gh issue list -R paulzierep/metagenomic-binning-benchmark --state open --json number,title,updatedAt and gh issue list -R paulzierep/COMEBin --state open --json number,title,updatedAt. Triage and comment on actionable updates without duplicating an existing response. Resume from the first unfinished step. Update PROGRESS.md and /vol/data/benchmark/.activity, touch /vol/data/benchmark/.heartbeat in shell commands while active, and append one timestamped line per meaningful action to /vol/data/repos/metagenomic-binning-benchmark/status/agent-activity.log. Never overlap the registered benchmark run. If /vol/data/benchmark/TASK_COMPLETE exists, do nothing and exit."
+ FRESH_PPT="You are resuming the metagenomic-binning-benchmark project after an agent restart (the previous session may have crashed, run out of context, or exhausted model tokens). Read /vol/data/benchmark/PROGRESS.md FIRST, then check NEW/updated issues in paulzierep/metagenomic-binning-benchmark and paulzierep/COMEBin with gh issue list --state open --json number,title,updatedAt; triage and comment without duplicating an existing response. Verify state on disk and continue from the first unfinished step. Update PROGRESS.md and /vol/data/benchmark/.activity, touch /vol/data/benchmark/.heartbeat in shell commands while active, and append one timestamped line per meaningful action to /vol/data/repos/metagenomic-binning-benchmark/status/agent-activity.log. Never overlap the registered benchmark run. If /vol/data/benchmark/TASK_COMPLETE exists, do nothing and exit."
+ 
+ run_driver() {
+-    local turns=0 start secs rc=0 quota_hits=0 before after
++    local turns=0 start rc=0 quota_hits=0 before after
+     start=$(date +%s)
+     while :; do
+         [ $(date +%s) -ge $(( start + MAX_RUNTIME_S )) ] && { log "driver hit ${MAX_RUNTIME_S}s runtime cap"; break; }
+         [ "$turns" -ge "$MAX_TURNS" ] && { log "driver hit turns cap ($MAX_TURNS)"; break; }
+
+> build · space-bunny-free
+[0m← [0mWrite /vol/data/repos/metagenomic-binning-benchmark/scripts/meta-watchdog.sh
+Wrote file successfully: /vol/data/repos/metagenomic-binning-benchmark/scripts/meta-watchdog.sh
+> build · space-bunny-free
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/scripts/meta-watchdog.sh
+Index: /vol/data/repos/metagenomic-binning-benchmark/scripts/meta-watchdog.sh
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/scripts/meta-watchdog.sh
++++ /vol/data/repos/metagenomic-binning-benchmark/scripts/meta-watchdog.sh
+@@ -57,8 +57,9 @@
+ cron_bad=""
+ cron_text=$(crontab -l 2>/dev/null || true)
+ while IFS='|' read -r expected job; do
+   count=$(printf '%s\n' "$cron_text" | grep -Fxc -- "$expected" || true)
++  count=${count:-0}
+   [ "$count" -eq 1 ] || cron_bad="$cron_bad $job(cron=$count)"
+   [ -x "/vol/data/benchmark/bin/$job" ] || cron_bad="$cron_bad $job(not-executable)"
+ done <<'EOF'
+ */5 * * * * /vol/data/benchmark/bin/agent-watchdog.sh|agent-watchdog.sh
+
+> build · space-bunny-free
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/scripts/meta-watchdog.sh
+Index: /vol/data/repos/metagenomic-binning-benchmark/scripts/meta-watchdog.sh
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/scripts/meta-watchdog.sh
++++ /vol/data/repos/metagenomic-binning-benchmark/scripts/meta-watchdog.sh
+@@ -212,8 +212,9 @@
+ fi
+ 
+ # ---- C8: GitHub issues (new/updated; markers advance only after triage) ----- #
+ : > "$META/issues.tsv"
++new_issue=""
+ issue_list_ok=0
+ if gh issue list -R "$REPO_URL" --state open --json number,title,updatedAt \
+     -q '.[] | [.number, .title, .updatedAt] | @tsv' > "$META/issues.tsv" 2>/dev/null; then
+   issue_list_ok=1
+
+> build · space-bunny-free
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/scripts/meta-watchdog.sh
+Index: /vol/data/repos/metagenomic-binning-benchmark/scripts/meta-watchdog.sh
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/scripts/meta-watchdog.sh
++++ /vol/data/repos/metagenomic-binning-benchmark/scripts/meta-watchdog.sh
+@@ -239,8 +239,11 @@
+ else
+   check C8_issues ok "$(wc -l < "$META/issues.tsv") open, none new"
+ fi
+ 
++{ echo "# Meta-supervisor check — $now_utc — $fixes auto-fix(es) applied"; echo
++  column -t -s $'\t' "$META/checks.tsv" 2>/dev/null || cat "$META/checks.tsv"; } > "$META/last.txt"
++
+ # ---- publish meta artifacts to GitHub ---------------------------------------- #
+ publish_ok=0
+ (
+   exec 8>"$REPO_LOCK"
+
+> build · space-bunny-free
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/scripts/meta-watchdog.sh
+Index: /vol/data/repos/metagenomic-binning-benchmark/scripts/meta-watchdog.sh
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/scripts/meta-watchdog.sh
++++ /vol/data/repos/metagenomic-binning-benchmark/scripts/meta-watchdog.sh
+@@ -302,9 +302,10 @@
+     # comment itself, preventing the watchdog from escalating its own comment.
+     for num in "${candidate_nums[@]}"; do
+       updated=$(gh issue view "$num" -R "$REPO_URL" --json updatedAt --jq .updatedAt 2>/dev/null || true)
+       if [ -n "$updated" ]; then
+-        date -d "$updated" +%s > "$SEEN/$num" 2>/dev/null || true
++        updated_epoch=$(date -d "$updated" +%s 2>/dev/null || true)
++        [ -n "$updated_epoch" ] && printf '%s\n' "$updated_epoch" > "$SEEN/$num"
+       fi
+     done
+     bash "$BENCH/bin/status-heartbeat.sh" >/dev/null 2>&1 || true
+   fi
+
+> build · space-bunny-free
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/scripts/meta-watchdog.sh
+Index: /vol/data/repos/metagenomic-binning-benchmark/scripts/meta-watchdog.sh
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/scripts/meta-watchdog.sh
++++ /vol/data/repos/metagenomic-binning-benchmark/scripts/meta-watchdog.sh
+@@ -259,9 +259,10 @@
+   [ "$(git rev-parse HEAD)" = "$(git rev-parse refs/remotes/origin/main)" ] && publish_ok=1
+ )
+ # The assignment above is intentionally evaluated through a marker file because
+ # a subshell cannot export a shell variable. Publish success is reflected below.
+-if [ "$(git -C "$REPO" rev-parse HEAD 2>/dev/null || echo none)" = "$(git -C "$REPO" rev-parse refs/remotes/origin/main 2>/dev/null || echo none)" ]; then
++if [ "$(git -C "$REPO" rev-parse HEAD 2>/dev/null || echo none)" = "$(git -C "$REPO" rev-parse refs/remotes/origin/main 2>/dev/null || echo none)" ] \
++   && [ -z "$(git -C "$REPO" status --porcelain -- status/meta 2>/dev/null || true)" ]; then
+   publish_ok=1
+ fi
+ [ "$publish_ok" -eq 1 ] || log "WARN: meta artifact commit/push not verified"
+ 
+
+> build · space-bunny-free
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/scripts/meta-watchdog.sh
+Index: /vol/data/repos/metagenomic-binning-benchmark/scripts/meta-watchdog.sh
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/scripts/meta-watchdog.sh
++++ /vol/data/repos/metagenomic-binning-benchmark/scripts/meta-watchdog.sh
+@@ -264,8 +264,13 @@
+    && [ -z "$(git -C "$REPO" status --porcelain -- status/meta 2>/dev/null || true)" ]; then
+   publish_ok=1
+ fi
+ [ "$publish_ok" -eq 1 ] || log "WARN: meta artifact commit/push not verified"
++if [ "$publish_ok" -eq 1 ]; then
++  check C9_repo_publish ok "meta artifacts committed and HEAD=origin/main"
++else
++  check C9_repo_publish broken "meta artifacts failed to commit/push cleanly"
++fi
+ 
+ # ---- escalate unresolved broken OR degraded checks --------------------------- #
+ need_llm=0
+ if grep -Eq $'\t(degraded|broken)\t' "$META/checks.tsv"; then need_llm=1; fi
+
+> build · space-bunny-free
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/docs/08-dataset-space-plan.md
+Index: /vol/data/repos/metagenomic-binning-benchmark/docs/08-dataset-space-plan.md
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/docs/08-dataset-space-plan.md
++++ /vol/data/repos/metagenomic-binning-benchmark/docs/08-dataset-space-plan.md
+@@ -1,14 +1,19 @@
+ # 08 — Dataset & disk-space plan (issue #2)
+ 
+-Workflow rule (user directive, 2026-09-23, issue #2):
+-**ALL functional tests run on the small benchmark dataset
+-(`/vol/data/datasets/comebin_small`, 94 MB) and are logged as usual; a full
+-benchmark (timed COMEBin + CheckM2/CheckM eval) is run only after MAJOR
+-commits** (new fix batches, new versions, new datasets). Small-data runs take
+-minutes; full benchmark runs take hours and are never run concurrently
+-(timing comparability).
++Workflow rule (user directive, 2026-09-23, issue #2), in order:
+ 
++1. **Small functional tests first:** every fix batch/version is exercised on
++   `/vol/data/datasets/comebin_small` (94 MB) and logged like every other run.
++2. **Medium benchmark after the small run passes:** derive and record a larger
++   real-data set (initial target: 3,000 top-length demo contigs plus overlapping
++   reads; cap at 5 GB and publish measured size/provenance). Run COMEBin and
++   CheckM2/CheckM on it only after the end-to-end small test succeeds.
++3. **Large benchmarks last:** run the multi-hour full dataset only after a
++   **major commit** (new fix batch, upstream release, or dataset change).
++
++Small/medium/full runs are never concurrent, so timing remains comparable.
++
+ ## Disk budget (492 GB volume)
+ 
+ Current usage (2026-09-23): 76 GB used / **391 GB free**.
+ 
+
+> build · space-bunny-free
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/docs/08-dataset-space-plan.md
+Index: /vol/data/repos/metagenomic-binning-benchmark/docs/08-dataset-space-plan.md
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/docs/08-dataset-space-plan.md
++++ /vol/data/repos/metagenomic-binning-benchmark/docs/08-dataset-space-plan.md
+@@ -20,15 +20,17 @@
+ | # | Data | Size now | Size planned | Status |
+ |---|------|----------|--------------|--------|
+ | 1 | COMEBin demo (BATS) | 6.4 GB + 5.2 GB zip | 6.4 GB (zip deletable → +5.2 GB) | baseline run in progress |
+ | 2 | Small dataset (issue #2) | 94 MB | kept permanently | ready |
+-| 3 | CAMI II marine — sample 0 short-read | 10 GB extracted (tars 4.6+0.36 GB) | keep **1–2 samples** (~11 GB/sample extracted) | sample 0 extracted |
+-| 4 | Human host-associated (CAMI II) | – | **1–2 samples, ≤ 30 GB** | to download |
+-| 5 | CAMI III (marine + human gut) | – | **≤ 50 GB** (verify sizes on frl.publisso.de before download) | to download |
+-| 6 | Eval refs + envs | checkm_ref 1.4 GB + checkm2db 2.9 GB + envs ~8 GB | unchanged | ready |
++| 3 | Medium derived dataset | – | target 3,000 contigs, hard cap **5 GB** | build only after small test passes |
++| 4 | CAMI II marine — sample 0 short-read | 10 GB extracted (tars 4.6+0.36 GB) | keep **1–2 samples** (~11 GB/sample extracted) | sample 0 extracted |
++| 5 | Human host-associated (CAMI II) | – | **1–2 samples, ≤ 30 GB** | to download |
++| 6 | CAMI III (marine + human gut) | – | **≤ 50 GB** (verify sizes on frl.publisso.de before download) | to download |
++| 7 | Eval refs + envs | checkm_ref 1.4 GB + checkm2db 2.9 GB + envs ~8 GB | unchanged | ready |
+ 
+-**Budget math:** demo 6.4 + small 0.1 + CAMI II marine 11 + human 30 + CAMI III
+-50 ≈ **~100 GB future** → stays far below 492 GB with >50 GB headroom.
++**Budget math:** demo 6.4 + small 0.1 + medium ≤5 + CAMI II marine 11 + human
++30 + CAMI III 50 ≈ **~105 GB future** → stays far below 492 GB with >50 GB
++headroom.
+ Delete `comebin_test_data.zip` (5.2 GB) after the baseline run if needed.
+ 
+ ## Human host-associated datasets (CAMI II, all real metagenome simulations)
+ 
+
+> build · space-bunny-free
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/docs/08-dataset-space-plan.md
+Index: /vol/data/repos/metagenomic-binning-benchmark/docs/08-dataset-space-plan.md
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/docs/08-dataset-space-plan.md
++++ /vol/data/repos/metagenomic-binning-benchmark/docs/08-dataset-space-plan.md
+@@ -31,8 +31,17 @@
+ 30 + CAMI III 50 ≈ **~105 GB future** → stays far below 492 GB with >50 GB
+ headroom.
+ Delete `comebin_test_data.zip` (5.2 GB) after the baseline run if needed.
+ 
++## Medium derived benchmark (gated)
++
++After the 300-contig small run completes successfully through COMEBin (not just
++`py_compile`), rebuild with the same real-data method and `N=3000`, record the
++measured FASTA/BAM size and read count, then run COMEBin plus CheckM2/CheckM v1.
++If the result would exceed 5 GB, reduce N before downloading/extracting more
++data. This stage is intentionally **not** built while the active baseline is
++running and is not a substitute for the post-major-commit large benchmark.
++
+ ## Human host-associated datasets (CAMI II, all real metagenome simulations)
+ 
+ - **CAMI II Multisample Human Microbiome Project** — DOI 10.4126/frl01-006425518
+   (frl.publisso.de). Simulated Illumina short-read + PacBio long-read
+
+> build · space-bunny-free
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/docs/07-fix-batches.md
+Index: /vol/data/repos/metagenomic-binning-benchmark/docs/07-fix-batches.md
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/docs/07-fix-batches.md
++++ /vol/data/repos/metagenomic-binning-benchmark/docs/07-fix-batches.md
+@@ -1,11 +1,13 @@
+ # 07 — Fix batches (COMEBin `comebin-optimizations` branch)
+ 
+-One commit per batch; **functional validation always on the small benchmark
+-dataset** (`/vol/data/datasets/comebin_small`, minutes); full benchmark runs
+-(timed + CheckM2/CheckM eval) are run **only after major commits** (user
+-directive, 2026-09-23, issue #2). Every run recorded in `runs/<run>/` + the
+-README performance table. Baseline reference: commit
++One commit per batch. The user directive (issue #2) is a three-stage gate:
++**functional validation always starts on the small benchmark dataset**
++(`/vol/data/datasets/comebin_small`, minutes); after that end-to-end run passes,
++build/run a **medium derived benchmark** (initial target 3,000 contigs, hard cap
++5 GB); run the **large/full benchmark** (timed COMEBin + CheckM2/CheckM) only
++after major commits. Runs are never concurrent. Every run is recorded in
++`runs/<run>/` plus the README performance table. Baseline reference: commit
+ `987db95d8d399f30b7c82a5f5f40ed6bfdc906c7` (pristine, `runs/baseline_unmodified/`).
+ 
+ ## Fork update (2026-09-23): work now continues on COMEBin v1.1.0
+ 
+
+> build · space-bunny-free

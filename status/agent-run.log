@@ -5040,3 +5040,48 @@ ec41276 ops: persistent agent driver + model reporting + crash-guard fix (issues
 37365a0 meta: supervise tick 2026-09-23T18:53:01Z — 0 fix(es)
 === what is on origin/main but not local main? ===
 > build · big-pickle
+All clear: `origin/main` = `656d322` includes my `d0610f2` (the rejection was just the cron heartbeat racing my push — nothing lost, local == remote now).
+
+Since the baseline has ~3.5h to go, let me do the remaining CPU-free prep: **pre-download the marine sample-0 reads** (network-only, saves hours later) and pre-write the CAMI II prep/run scripts. Checking the ground-truth format first + starting the download:
+[0m$ [0mecho "=== binning_gs.tsv data rows (names used for ground truth) ==="
+grep -v '^@' /vol/data/datasets/cami_II/marine_reads/contigs_0/simulation_short_read/2018.08.15_09.49.32_sample_0/contigs/binning_gs.tsv 2>/dev/null | head -4 || zcat /vol/data/datasets/cami_II/marine_reads/contigs_0/simulation_short_read/2018.08.15_09.49.32_sample_0/contigs/binning_gs.tsv | grep -v '^@' | head -4
+echo "=== gsa_mapping sample (S0C* <-> real names) ==="
+zcat /vol/data/datasets/cami_II/marine_reads/contigs_0/simulation_short_read/2018.08.15_09.49.32_sample_0/contigs/gsa_mapping.tsv.gz 2>/dev/null | head -3
+echo "=== marine/pooled short assembly header (first contig name) ==="
+head -1 /vol/data/datasets/cami_II/marine/pooled/short/Megahit_v1.1.2_Contigs.fasta 2>/dev/null
+zcat /vol/data/datasets/cami_II/marine/pooled/short/metaSPAdes_v3.13.0_contigs.fasta.gz 2>/dev/null | head -1
+touch /vol/data/benchmark/.heartbeat
+=== binning_gs.tsv data rows (names used for ground truth) ===
+
+
+S0C878739	Otu255	62322	653
+S0C700632	Otu229.0	300231	879
+=== gsa_mapping sample (S0C* <-> real names) ===
+#anonymous_contig_id	genome_id	tax_id	contig_id	number_reads	start_position	end_position
+S0C878739	Otu255	62322	CP001252.1	6	3310773	3311425
+S0C700632	Otu229.0	300231	CP003060.1	16	646432	647310
+=== marine/pooled short assembly header (first contig name) ===
+>k131_15 flag=0 multi=1.9752 len=534
+> build · big-pickle
+Ground truth uses `S0C*` contig names (binning_gs.tsv) — so the cleanest COMEBin input is the **gsa contigs + mapped reads** (direct ground-truth comparison). Starting the sample-0 reads download (background, network-only) and checking the gsa contig set:
+[0m$ [0mcd /vol/data/datasets/cami_II/marine_reads
+nohup wget -c -q "https://frl.publisso.de/data/frl:6425521/marine/short_read/marmgCAMI2_sample_0_reads.tar.gz" -O marmgCAMI2_sample_0_reads.tar.gz > /tmp/opencode/wget_reads.log 2>&1 &
+echo "download started pid $!"
+echo "=== gsa contigs in sample-0 fasta ==="
+GSA=contigs_0/simulation_short_read/2018.08.15_09.49.32_sample_0/contigs/anonymous_gsa.fasta.gz
+zcat "$GSA" | grep -c '^>'
+zcat "$GSA" | awk '/^>/{next}{s+=length($0)}END{printf "bases: %.1f M\n", s/1e6}'
+ls -la --block-size=M "$GSA"
+echo "=== gsa contig names sample ==="
+zcat "$GSA" | grep '^>' | head -3
+touch /vol/data/benchmark/.heartbeat
+download started pid 102142
+=== gsa contigs in sample-0 fasta ===
+1475972
+bases: 909.5 M
+-rw-r--r-- 1 ubuntu ubuntu 314M Aug 17  2018 contigs_0/simulation_short_read/2018.08.15_09.49.32_sample_0/contigs/anonymous_gsa.fasta.gz
+=== gsa contig names sample ===
+>S0C0
+>S0C1
+>S0C2
+> build · big-pickle
