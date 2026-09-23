@@ -15349,3 +15349,253 @@ remote=$(git ls-remote origin refs/heads/main | awk 'NR==1{print $1}')
 printf 'pushed %s\n' "$head"
 pushed ffaf98386ed186064a3efaed598cf36fc75e159c
 > build · space-bunny-free
+[0m$ [0mset -e
+source=/vol/data/repos/metagenomic-binning-benchmark
+for f in docs/09-optimization-strategy.md docs/10-data-preservation.md scripts/make_release_manifest.py; do test -f "$source/$f"; done
+python3 - <<'PY'
+import json
+p='/vol/data/benchmark/meta/release_manifests/comebin_small.json'
+d=json.load(open(p))
+assert d['file_count'] == 6 and d['total_bytes'] == 98014880
+print('manifest_verified=true')
+PY
+printf 'manifest_sha256='; sha256sum /vol/data/benchmark/meta/release_manifests/comebin_small.json | cut -d' ' -f1
+manifest_verified=true
+manifest_sha256=cb734384f7c069a8667d1a044ada3cb84d496321c9052e2212423e9a30fbf135
+[0m$ [0mset -euo pipefail
+pid=$(awk '{print $1}' /vol/data/benchmark/.active_run)
+start=$(awk '{print $5}' /vol/data/benchmark/.active_run)
+logfile=$(awk '{print $3}' /vol/data/benchmark/.active_run)
+kill -0 "$pid"
+state=$(ps -o stat= -p "$pid" | tr -d ' ')
+case "$state" in Z*) exit 1;; esac
+age=$(( $(date +%s) - $(stat -c %Y "$logfile") ))
+[ "$age" -lt 1200 ]
+[ "$pid" = 19182 ]
+[ "$start" = 1790175308 ]
+printf 'BENCHMARK_UNCHANGED pid=%s start=%s log_age=%ss state=%s\n' "$pid" "$start" "$age" "$state"
+BENCHMARK_UNCHANGED pid=19182 start=1790175308 log_age=3s state=S
+[0m$ [0mset -euo pipefail
+repo=/vol/data/repos/metagenomic-binning-benchmark
+head=$(git -C "$repo" rev-parse HEAD)
+remote=$(git -C "$repo" ls-remote origin refs/heads/main | awk 'NR==1{print $1}')
+[ "$head" = "$remote" ]
+[ -z "$(git -C "$repo" status --porcelain)" ]
+for f in agent-watchdog.sh benchmark-watchdog.sh meta-watchdog.sh status-heartbeat.sh issue-closer.sh; do cmp -s "$repo/scripts/$f" "/vol/data/benchmark/bin/$f"; done
+cmp -s "$repo/scripts/make_release_manifest.py" /vol/data/benchmark/bin/make_release_manifest.py
+python3 -m py_compile "$repo/scripts/make_release_manifest.py"
+for n in 6 7 8; do test -s "/vol/data/benchmark/meta/.issues_seen/$n"; done
+test ! -e /vol/data/benchmark/meta/.issues_done/7
+test -f /vol/data/benchmark/meta/.issues_closed/7
+awk -F '\t' '$2 != "ok" {print; bad=1} END {exit bad}' /vol/data/benchmark/meta/checks.tsv
+printf 'FINAL_OK head=%s c1-c9=all-ok repo-clean=true\n' "$head"
+FINAL_OK head=eb4cedd988369942e25f9fd85e654783ec87e2d6 c1-c9=all-ok repo-clean=true
+[0m$ [0mset -e
+for n in 6 7 8; do gh issue view "$n" -R paulzierep/metagenomic-binning-benchmark --json number,state,comments --jq '"#\(.number) \(.state) comments=\(.comments|length)"'; done
+printf 'supervisor_action_lines='; wc -l < /vol/data/benchmark/logs/supervisor-actions.log
+printf 'last_action='; tail -n 1 /vol/data/benchmark/logs/supervisor-actions.log
+#6 OPEN comments=1
+#7 CLOSED comments=2
+#8 OPEN comments=2
+supervisor_action_lines=2
+last_action=2026-09-23T20:59:24+00:00 [supervisor] Triaged #6/#7/#8: verified and closed #7 via deterministic marker, staged Zenodo preservation docs/manifest and concise issue updates, ran safe no-LLM watchdog verification with C1-C9 ok, left active baseline PID 19182 unchanged, and performed no cron/service/driver restart.
+> build · space-bunny-free
+[0m$ [0mgit log -6 --format='%h %ad %s' --date=iso; git status --short --branch; tail -8 /vol/data/benchmark/logs/meta-watchdog.log; cat /vol/data/benchmark/meta/checks.tsv
+eb4cedd 2026-09-23 21:00:01 +0000 status: yes — baseline_unmodified epoch 161/200 loss 2.866558790206909 acc 98.93228912353516 model big-pickle — Baseline training epoch ~109/200 (~2.4 m 2026-09-23 20:33:11 UTC - heartbeat 2026-09-23 20:43:58 UTC - heartbeat 2026-09-23 20:56:28 UTC - heartbeat 2026-09-23 20:57:36 UTC - heartbeat 2026-09-23 20:58:25 UTC - issue #7 close 2026-09-23 20:59:20 UTC - heartbeat 2026-09-23 20:59:58 UTC - heartbeat
+ffaf983 2026-09-23 20:59:52 +0000 status: record preservation manifest verification
+625f58b 2026-09-23 20:59:15 +0000 meta: supervise tick 2026-09-23T20:59:13Z — 0 fix(es)
+c65969a 2026-09-23 20:58:25 +0000 docs: stage reproducible dataset preservation workflow
+a5d4615 2026-09-23 20:58:01 +0000 status: yes — baseline_unmodified epoch 160/200 loss 2.8754546642303467 acc 98.88020324707031 model big-pickle — Baseline training epoch ~109/200 (~2.4 m 2026-09-23 20:33:11 UTC - heartbeat 2026-09-23 20:43:58 UTC - heartbeat 2026-09-23 20:56:28 UTC - heartbeat 2026-09-23 20:57:36 UTC - heartbeat
+3c07c41 2026-09-23 20:57:43 +0000 meta: issue-closer closed 1, failed: — 20:57Z
+## main...origin/main
+2026-09-23T20:03:06+00:00 tick done: fixes=0 broken=0 degraded=0 escalated=0
+2026-09-23T20:13:07+00:00 tick done: fixes=0 broken=0 degraded=0 escalated=0
+2026-09-23T20:23:06+00:00 tick done: fixes=0 broken=0 degraded=0 escalated=0
+2026-09-23T20:33:04+00:00 [meta] AUTO-FIX: agent idle with no driver -> relaunched agent-watchdog.sh (pid 147588)
+2026-09-23T20:33:09+00:00 tick done: fixes=1 broken=0 degraded=0 escalated=0
+2026-09-23T20:43:07+00:00 tick done: fixes=0 broken=0 degraded=0 escalated=0
+2026-09-23T20:53:12+00:00 [meta] escalating to LLM supervisor (esc #2/3): /vol/data/benchmark/meta/escalate-1790196787.txt
+2026-09-23T20:59:17+00:00 tick done: fixes=0 broken=0 degraded=0 escalated=0
+C1_cron	ok	4 exact jobs; cron active; installed/source scripts identical + executable
+C2_service	ok	pid 5551; service status + /api/info healthy
+C3_agent	ok	run_alive=1 driver=1 hb=11s transcript=5s
+C4_ratelimit	ok	failed-launch markers=0 in 360min window
+C5_github	ok	HEAD=remote after concurrent publisher; worktree edits=0
+C6_benchmark	ok	pid 19182 mode=baseline alive, log 3s fresh
+C7_disk	ok	380 GiB free
+C8_issues	ok	4 open, none new
+C8b_issue_close	ok	no issues marked addressed
+C9_repo_publish	ok	meta artifacts committed and HEAD=remote main
+> build · space-bunny-free
+[0m$ [0mcmp -s /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md /vol/data/benchmark/PROGRESS.md; echo progress_mirror_rc=$?; sha256sum /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md /vol/data/benchmark/PROGRESS.md
+progress_mirror_rc=0
+a232116232d3d60f7b27f6804b602328fd05bf7900011b1bfa327c50448ee66b  /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md
+a232116232d3d60f7b27f6804b602328fd05bf7900011b1bfa327c50448ee66b  /vol/data/benchmark/PROGRESS.md
+[0m$ [0mgrep -RInE 'TODO|FIXME|giaa c107|09-optimization-plan' docs/09-optimization-strategy.md docs/10-data-preservation.md README.md scripts/make_release_manifest.py || true
+{"exit":0,"truncated":false,"output":"","status":"completed"}
+[0m$ [0mfor f in docs/10-data-preservation.md scripts/make_release_manifest.py; do git -C /vol/data/repos/metagenomic-binning-benchmark ls-files --error-unmatch "$f" >/dev/null && echo "$f tracked"; done; stat -c '%a %n' /vol/data/repos/metagenomic-binning-benchmark/scripts/make_release_manifest.py /vol/data/benchmark/bin/make_release_manifest.py
+docs/10-data-preservation.md tracked
+scripts/make_release_manifest.py tracked
+755 /vol/data/repos/metagenomic-binning-benchmark/scripts/make_release_manifest.py
+755 /vol/data/benchmark/bin/make_release_manifest.py
+> build · space-bunny-free
+[0m◈ [0mWeb Search via Exa "Zenodo API personal access token scope deposit:actions deposit:write 2026" 
+> build · space-bunny-free
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/docs/09-optimization-strategy.md
+Index: /vol/data/repos/metagenomic-binning-benchmark/docs/09-optimization-strategy.md
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/docs/09-optimization-strategy.md
++++ /vol/data/repos/metagenomic-binning-benchmark/docs/09-optimization-strategy.md
+@@ -13,9 +13,9 @@
+ | CPU time / core-hours | run log + resources.tsv | efficiency |
+ | # bins (≥200 kb filter noted) | CheckM run output | productivity measure |
+ | CheckM2 mean completeness / contamination | `run_eval.sh` | quality (main) |
+ | CheckM v1 mean completeness / contamination | `run_eval.sh` | quality (cross-check) |
+-| CAMI-style F1 (completeness · purity) | CAMI II/III GT once available | CAMI benchmark metric, see CAMI papers |
++| CAMI-style F1 (harmonic mean of completeness and purity) | CAMI II/III GT once available | CAMI benchmark metric, see CAMI papers |
+ 
+ "Good performance" is therefore: **more headroom on # bins / completeness /
+ contamination / F1 per unit of time×RAM**. See `docs/04-evaluation.md` for
+ metric definitions and the CAMI papers in the README references.
+
+> build · space-bunny-free
+[0m$ [0mnl -ba docs/09-optimization-strategy.md | sed -n '1,55p'
+1	# Optimization strategy (issue #7)
+     2	
+     3	Goal: **reduce COMEBin runtime and resource use while keeping quality the same or
+     4	better**, judged with the exact same benchmark harness as the baseline so every
+     5	decision is data-driven.
+     6	
+     7	## What we measure (fixed, per run)
+     8	
+     9	| Metric | Source | Why |
+    10	|---|---|---|
+    11	| Wall-clock time (total + per stage) | `runs/<run>/run_meta.txt` + run log | primary speed target |
+    12	| Peak RAM | `logs/resources.tsv` (30-s samples) | primary resource target |
+    13	| CPU time / core-hours | run log + resources.tsv | efficiency |
+    14	| # bins (≥200 kb filter noted) | CheckM run output | productivity measure |
+    15	| CheckM2 mean completeness / contamination | `run_eval.sh` | quality (main) |
+    16	| CheckM v1 mean completeness / contamination | `run_eval.sh` | quality (cross-check) |
+    17	| CAMI-style F1 (harmonic mean of completeness and purity) | CAMI II/III GT once available | CAMI benchmark metric, see CAMI papers |
+    18	
+    19	"Good performance" is therefore: **more headroom on # bins / completeness /
+    20	contamination / F1 per unit of time×RAM**. See `docs/04-evaluation.md` for
+    21	metric definitions and the CAMI papers in the README references.
+    22	
+    23	## Process: batched commits with a decision gate
+    24	
+    25	Optimization work happens on a branch (`comebin-optimizations-v11`), **one commit
+    26	per batch** (see `docs/07-fix-batches.md`). Each batch goes through the gate below.
+    27	
+    28	```mermaid
+    29	flowchart TD
+    30	    A[Pick candidate change / param from idea list] --> B[Small functional test<br/>small dataset, fast]
+    31	    B -->|FAIL| G[Investigate, fix, or drop the idea]
+    32	    G --> A
+    33	    B -->|PASS| C[Benchmark on small/medium set]
+    34	    C --> D{Better or equal<br/>time AND quality?}
+    35	    D -->|YES| E[KEEP commit, record results in results/ and commit msg]
+    36	    E --> F[Continue: next batch from this commit]
+    37	    D -->|NO| H[Revert or rework this commit]
+    38	    H --> I[Combine with other surviving ideas<br/>and re-test as a new batch]
+    39	    I --> A
+    40	    F --> J[After major commits: full large benchmark<br/>e.g. COMEBin demo / CAMI II marine / CAMI III]
+    41	```
+    42	
+    43	Invariants:
+    44	
+    45	- **Never skip the small functional test.** Any change that breaks the small run
+    46	  is not benchmarked further.
+    47	- **Baseline first:** every optimization is compared against the unmodified
+    48	  baseline run (`runs/baseline_unmodified`) and, where applicable, the previous
+    49	  kept commit.
+    50	- **One timed thing at a time:** no concurrent COMEBin/CheckM runs, so timings
+    51	  stay comparable.
+    52	- **Record or reject:** a commit is kept *only* if the evidence says keep;
+    53	  otherwise it is reverted or reworked and combined with other ideas.
+    54	- Cost guardrail: if we accrue several sequential failures, go back and pick a
+    55	  different idea (per the flowchart) instead of spending more time on a dead end.
+> build · space-bunny-free
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/docs/09-optimization-strategy.md
+Index: /vol/data/repos/metagenomic-binning-benchmark/docs/09-optimization-strategy.md
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/docs/09-optimization-strategy.md
++++ /vol/data/repos/metagenomic-binning-benchmark/docs/09-optimization-strategy.md
+@@ -15,8 +15,14 @@
+ | CheckM2 mean completeness / contamination | `run_eval.sh` | quality (main) |
+ | CheckM v1 mean completeness / contamination | `run_eval.sh` | quality (cross-check) |
+ | CAMI-style F1 (harmonic mean of completeness and purity) | CAMI II/III GT once available | CAMI benchmark metric, see CAMI papers |
+ 
++For a scored bin, F1 is `2 * completeness * purity /
++(completeness + purity)` after applying the official CAMI size and threshold
++rules; it is **not** the product of the two percentages. If no ground-truth
++binning exists, CheckM2/CheckM values remain separate quality proxies and must
++not be relabeled as CAMI F1.
++
+ "Good performance" is therefore: **more headroom on # bins / completeness /
+ contamination / F1 per unit of time×RAM**. See `docs/04-evaluation.md` for
+ metric definitions and the CAMI papers in the README references.
+ 
+
+> build · space-bunny-free
+[0m$ [0mgit status --short --untracked-files=all; git diff --check; git diff -- docs/09-optimization-strategy.md
+M docs/09-optimization-strategy.md
+diff --git a/docs/09-optimization-strategy.md b/docs/09-optimization-strategy.md
+index 11af705..6a25b68 100644
+--- a/docs/09-optimization-strategy.md
++++ b/docs/09-optimization-strategy.md
+@@ -14,7 +14,13 @@ decision is data-driven.
+ | # bins (≥200 kb filter noted) | CheckM run output | productivity measure |
+ | CheckM2 mean completeness / contamination | `run_eval.sh` | quality (main) |
+ | CheckM v1 mean completeness / contamination | `run_eval.sh` | quality (cross-check) |
+-| CAMI-style F1 (completeness · purity) | CAMI II/III GT once available | CAMI benchmark metric, see CAMI papers |
++| CAMI-style F1 (harmonic mean of completeness and purity) | CAMI II/III GT once available | CAMI benchmark metric, see CAMI papers |
++
++For a scored bin, F1 is `2 * completeness * purity /
++(completeness + purity)` after applying the official CAMI size and threshold
++rules; it is **not** the product of the two percentages. If no ground-truth
++binning exists, CheckM2/CheckM values remain separate quality proxies and must
++not be relabeled as CAMI F1.
+ 
+ "Good performance" is therefore: **more headroom on # bins / completeness /
+ contamination / F1 per unit of time×RAM**. See `docs/04-evaluation.md` for
+> build · space-bunny-free
+[0m$ [0mset -euo pipefail
+exec 9>/tmp/bench-repo.lock
+flock -x 9
+git fetch -q origin main
+head=$(git rev-parse HEAD)
+remote=$(git ls-remote origin refs/heads/main | awk 'NR==1{print $1}')
+[ "$head" = "$remote" ]
+[ -z "$(git diff --cached --name-only)" ]
+git add docs/09-optimization-strategy.md
+[ "$(git diff --cached --name-only)" = "docs/09-optimization-strategy.md" ]
+git diff --cached --check
+git commit -q -m "docs: define CAMI F1 metric precisely"
+git push -q origin main
+head=$(git rev-parse HEAD)
+remote=$(git ls-remote origin refs/heads/main | awk 'NR==1{print $1}')
+[ "$head" = "$remote" ]
+[ -z "$(git status --porcelain)" ]
+printf 'pushed %s\n' "$head"
+pushed 32c3fa7cb9d2862b587790893ceefa49059bd31c
+> build · space-bunny-free
+[0m$ [0mset -e
+pid=$(awk '{print $1}' /vol/data/benchmark/.active_run); start=$(awk '{print $5}' /vol/data/benchmark/.active_run); logfile=$(awk '{print $3}' /vol/data/benchmark/.active_run); age=$(( $(date +%s) - $(stat -c %Y "$logfile") )); kill -0 "$pid"; [ "$pid" = 19182 ]; [ "$start" = 1790175308 ]; [ "$age" -lt 1200 ]; printf 'benchmark pid=%s start=%s age=%ss healthy\n' "$pid" "$start" "$age"
+benchmark pid=19182 start=1790175308 age=3s healthy
+[0m$ [0mset -e
+awk -F '\t' '$2 != "ok" {print; bad=1} END {exit bad}' /vol/data/benchmark/meta/checks.tsv
+for f in agent-watchdog.sh benchmark-watchdog.sh meta-watchdog.sh status-heartbeat.sh issue-closer.sh; do cmp -s "scripts/$f" "/vol/data/benchmark/bin/$f"; done
+cmp -s scripts/make_release_manifest.py /vol/data/benchmark/bin/make_release_manifest.py
+python3 -m py_compile scripts/make_release_manifest.py
+echo 'health/source checks OK'
+health/source checks OK
+[0m$ [0mgit fetch -q origin main; head=$(git rev-parse HEAD); remote=$(git ls-remote origin refs/heads/main | awk 'NR==1{print $1}'); printf 'head=%s remote=%s\n' "$head" "$remote"; git status --short --branch; git diff --cached --name-only
+head=32c3fa7cb9d2862b587790893ceefa49059bd31c remote=32c3fa7cb9d2862b587790893ceefa49059bd31c
+## main...origin/main
+[0m$ [0mfor n in 6 7 8; do gh issue view "$n" -R paulzierep/metagenomic-binning-benchmark --json number,state,comments --jq '"#\(.number) \(.state) comments=\(.comments|length)"'; done; test ! -e /vol/data/benchmark/meta/.issues_done/7; test -f /vol/data/benchmark/meta/.issues_closed/7; echo 'issue state/marker checks OK'
+#6 OPEN comments=1
+#7 CLOSED comments=2
+#8 OPEN comments=2
+issue state/marker checks OK
+> build · space-bunny-free
