@@ -17206,3 +17206,157 @@ accepts 1 arg(s), received 0
 [0m$ [0mgh issue view 6 -R paulzierep/metagenomic-binning-benchmark --json number,title,body,comments,state 2>/dev/null
 {"body":"Try to optimize tool and parameters to use less time and resources but aim for similar or better performane, think about good performane measured numbet of bins, contigs size, compl. Cont. F1 score check cami papers for infos \nMaybe perams can be automatically set based on input file size or contig stats","comments":[{"id":"IC_kwDOUndL2c8AAAABWd-qUg","author":{"login":"paulzierep"},"authorAssociation":"OWNER","body":"Triage + plan (agent). This is exactly what the benchmark harness measures per run: wall time (per stage), peak RAM (30-s sampling), # bins, and CheckM2 + CheckM v1 completeness/contamination; CAMI-style F1 (completeness·purity) gets added once we evaluate on CAMI II/III ground truth. First optimization batch already lands on branch `comebin-optimizations-v11` (float64 coverage consistency + sequential bin numbering). 'Auto-set params from input size/contig stats' is flagged in the strategy doc as a candidate idea to prototype against the baseline curves — small-dataset validation first, per docs/08. Full criterion set + decision gate: docs/09-optimization-strategy.md (linked in README).","createdAt":"2026-09-23T20:56:21Z","includesCreatedEdit":false,"isMinimized":false,"minimizedReason":"","reactionGroups":[],"url":"https://github.com/paulzierep/metagenomic-binning-benchmark/issues/6#issuecomment-5802797650","viewerDidAuthor":true}],"number":6,"state":"OPEN","title":"Optimization"}
 > build · nemotron-3.5-lightning-free
+[0m$ [0msed -n '40,70p' /vol/data/repos/COMEBin/COMEBin/get_augfeature.py 2>/dev/null
+covIdxArr = np.empty(len(mapObj), dtype=np.int)
+        for contigIdx in range(len(shuffled_namelist)):
+            if shuffled_namelist[contigIdx].split('_aug')[0] in mapObj:
+                covIdxArr[mapObj[shuffled_namelist[contigIdx].split('_aug')[0]]] = contigIdx
+        covMat = shuffled_covMat[covIdxArr]
+
+
+        if not nokmer:
+            compositHeader = pd.read_csv(com_file, sep=',', nrows=1)
+            shuffled_compositMat = pd.read_csv(com_file, sep=',', usecols=range(1, compositHeader.shape[1])).values
+            shuffled_namelist = pd.read_csv(com_file, sep=',', usecols=range(1)).values[:, 0]
+
+            covIdxArr = np.empty(len(mapObj), dtype=np.int)
+            for contigIdx in range(len(shuffled_namelist)):
+                if shuffled_namelist[contigIdx].split('_aug')[0] in mapObj:
+                    covIdxArr[mapObj[shuffled_namelist[contigIdx].split('_aug')[0]]] = contigIdx
+            compositMat = shuffled_compositMat[covIdxArr]
+
+        if addvars:
+            vars_file = data_path+'aug'+str(view)+'_datacoverage_var.tsv'
+
+            varsHeader = pd.read_csv(vars_file, sep='\t', nrows=1)
+            shuffled_varsMat = pd.read_csv(vars_file, sep='\t', usecols=range(1, varsHeader.shape[1])).values
+            shuffled_namelist = pd.read_csv(vars_file, sep='\t', usecols=range(1)).values[:, 0]
+
+            covIdxArr = np.empty(len(mapObj), dtype=np.int)
+            for contigIdx in range(len(shuffled_namelist)):
+                if shuffled_namelist[contigIdx].split('_aug')[0] in mapObj:
+                    covIdxArr[mapObj[shuffled_namelist[contigIdx].split('_aug')[0]]] = contigIdx
+            varsMat = shuffled_varsMat[covIdxArr]
+[0m$ [0mwc -l /vol/data/repos/COMEBin/COMEBin/get_augfeature.py 2>/dev/null
+156 /vol/data/repos/COMEBin/COMEBin/get_augfeature.py
+[0m$ [0msed -n '50,65p' /vol/data/repos/COMEBin/COMEBin/get_augfeature.py 2>/dev/null
+shuffled_compositMat = pd.read_csv(com_file, sep=',', usecols=range(1, compositHeader.shape[1])).values
+            shuffled_namelist = pd.read_csv(com_file, sep=',', usecols=range(1)).values[:, 0]
+
+            covIdxArr = np.empty(len(mapObj), dtype=np.int)
+            for contigIdx in range(len(shuffled_namelist)):
+                if shuffled_namelist[contigIdx].split('_aug')[0] in mapObj:
+                    covIdxArr[mapObj[shuffled_namelist[contigIdx].split('_aug')[0]]] = contigIdx
+            compositMat = shuffled_compositMat[covIdxArr]
+
+        if addvars:
+            vars_file = data_path+'aug'+str(view)+'_datacoverage_var.tsv'
+
+            varsHeader = pd.read_csv(vars_file, sep='\t', nrows=1)
+            shuffled_varsMat = pd.read_csv(vars_file, sep='\t', usecols=range(1, varsHeader.shape[1])).values
+            shuffled_namelist = pd.read_csv(vars_file, sep='\t', usecols=range(1)).values[:, 0]
+> build · nemotron-3.5-lightning-free
+[0m$ [0mls -la /vol/data/repos/ 2>/dev/null
+total 24
+drwxrwxr-x 6 ubuntu ubuntu 4096 Sep 23 18:46 .
+drwxr-xr-x 9 ubuntu ubuntu 4096 Sep 23 14:00 ..
+drwxrwxr-x 6 ubuntu ubuntu 4096 Sep 23 13:56 COMEBin
+drwxrwxr-x 5 ubuntu ubuntu 4096 Sep 23 15:41 COMEBin-opt
+drwxrwxr-x 4 ubuntu ubuntu 4096 Sep 23 18:46 COMEBin-v11
+drwxrwxr-x 8 ubuntu ubuntu 4096 Sep 23 23:34 metagenomic-binning-benchmark
+[0m$ [0mgit -C /vol/data/repos/COMEBin branch -a 2>/dev/null
++ comebin-optimizations
++ comebin-optimizations-v11
+* master
+  remotes/origin/HEAD -> origin/master
+  remotes/origin/comebin-optimizations
+  remotes/origin/comebin-optimizations-v11
+  remotes/origin/docs/bam-bowtie-input
+  remotes/origin/docs/dependencies-and-resources
+  remotes/origin/fix-small-test-data
+  remotes/origin/master
+[0m$ [0mls /vol/data/repos/COMEBin-* 2>/dev/null
+/vol/data/repos/COMEBin-opt:
+COMEBin
+LICENSE.txt
+README.md
+__init__.py
+auxiliary
+bin
+comebin_env.yaml
+overview.png
+
+/vol/data/repos/COMEBin-v11:
+COMEBin
+LICENSE.txt
+README.md
+auxiliary
+comebin_env.yaml
+overview.png
+> build · nemotron-3.5-lightning-free
+[0m$ [0mgit -C /vol/data/repos/COMEBin/comebin-optimizations log --oneline -5 2>/dev/null
+Exited with code 128
+[0m$ [0mgit -C /vol/data/repos/COMEBin/comebin-optimizations-v11 log --oneline -5 2>/dev/null
+Exited with code 128
+[0m$ [0mgit -C /vol/data/repos/COMEBin-opt log --oneline -5 2>/dev/null
+03670d6 fix(batch1): sequential bin numbering + keep float coverage depth
+987db95 Improve thread usage in cluster.py
+236b986 control thread usage better; support the datasets with fewer than 1024 contigs;
+b6708e5 control thread usage better; support the datasets with fewer than 1024 contigs;
+d0267b7 support the datasets with fewer than 1024 contigs;DataLoader: drop_last=True
+[0m$ [0mgit -C /vol/data/repos/COMEBin-v11 log --oneline -5 2>/dev/null
+95f5ea8 batch1 (v1.1.0 base): sequential bin numbering, drop empty/missing bins
+1b476a4 Clarify PyTorch installation options
+fd7ff06 Update Bioconda CUDA installation example
+ad6ceb3 Release v1.1.0
+987db95 Improve thread usage in cluster.py
+> build · nemotron-3.5-lightning-free
+[0m$ [0mgit -C /vol/data/repos/COMEBin branch | grep -E "comebin-optimizations|comebin-optimizations-v11"
++ comebin-optimizations
++ comebin-optimizations-v11
+[0m$ [0mgit -C /vol/data/repos/COMEBin-opt branch 2>/dev/null
+* comebin-optimizations
++ comebin-optimizations-v11
++ master
+[0m$ [0mgit -C /vol/data/repos/COMEBin-v11 branch 2>/dev/null
++ comebin-optimizations
+* comebin-optimizations-v11
++ master
+> build · nemotron-3.5-lightning-free
+Now I have a clear picture. Let me update the heartbeat, log my actions, and start addressing the issues.
+[0m$ [0mtouch /vol/data/benchmark/.heartbeat
+{"exit":0,"truncated":false,"output":"","status":"completed"}
+[0m$ [0mecho "$(date -u --iso-8601=seconds) - Resumed agent: checked PROGRESS.md, GitHub issues, disk state. Baseline run failed at epoch 175/200 (seed file); small_test failed with IndexError in get_augfeature.py." >> /vol/data/repos/metagenomic-binning-benchmark/status/agent-activity.log
+{"exit":0,"truncated":false,"output":"","status":"completed"}
+> build · nemotron-3.5-lightning-free
+Now let me triage the GitHub issues. Let me check issue #2 for a follow-up comment since the small_test just failed:
+[0m$ [0mgh issue comment -R paulzierep/metagenomic-binning-benchmark 2 --body "## Small test run update
+
+The small benchmark dataset (`/vol/data/datasets/comebin_small`) is ready and the test runner executed, but it failed with an IndexError in `get_augfeature.py` (k-mer coverage computation). The error is: `index 135282741276336 is out of bounds for axis 0 with size 300`. This appears to be a bug in the contig-to-kmer index mapping where `np.empty` is used instead of `np.zeros` in `get_kmer_coverage`, leaving uninitialized garbage values when contig names are not found in the mapping dictionary.
+
+This is a separate issue from the baseline run failure (seed file from hmmsearch). The small test failure needs a fix to `get_augfeature.py` before the small end-to-end run can complete per the workflow in `docs/08`. Once fixed, the small test can rerun and serve as the validation gate before medium/large benchmarks.
+
+Please let me know if I should prepare a fix batch for this." 2>/dev/null
+/bin/bash: line 1: /vol/data/datasets/comebin_small: Is a directory
+/bin/bash: line 1: get_augfeature.py: command not found
+/bin/bash: line 1: index: command not found
+/bin/bash: line 1: np.empty: command not found
+/bin/bash: line 1: np.zeros: command not found
+/bin/bash: line 1: get_kmer_coverage: command not found
+/bin/bash: line 1: get_augfeature.py: command not found
+/bin/bash: line 1: docs/08: No such file or directory
+https://github.com/paulzierep/metagenomic-binning-benchmark/issues/2#issuecomment-5804726129
+> build · nemotron-3.5-lightning-free
+[0m$ [0mgh issue comment -R paulzierep/metagenomic-binning-benchmark 2 --body "## Small test run update
+
+The small benchmark dataset (`/vol/data/datasets/comebin_small`) is ready and the test runner executed, but it failed with an IndexError in get_augfeature.py (k-mer coverage computation). The error is: index out of bounds for axis 0 with size 300. This appears to be a bug in the contig-to-kmer index mapping where np.empty is used instead of np.zeros in get_kmer_coverage, leaving uninitialized garbage values when contig names are not found in the mapping dictionary.
+
+This is a separate issue from the baseline run failure (seed file from hmmsearch). The small test failure needs a fix to get_augfeature.py before the small end-to-end run can complete per the workflow in docs/08. Once fixed, the small test can rerun and serve as the validation gate before medium/large benchmarks.
+
+Please let me know if I should prepare a fix batch for this." 2>/dev/null
+/bin/bash: line 1: /vol/data/datasets/comebin_small: Is a directory
+https://github.com/paulzierep/metagenomic-binning-benchmark/issues/2#issuecomment-5804726689
+> build · nemotron-3.5-lightning-free
+[0m$ [0mgh issue comment -R paulzierep/metagenomic-binning-benchmark 2 --body "Small test run update: the small benchmark dataset is ready but the test runner failed with IndexError in get_augfeature.py (k-mer coverage computation). Bug in contig-to-kmer index mapping. Need fix before small end-to-end run can complete per workflow docs/08." 2>/dev/null
+https://github.com/paulzierep/metagenomic-binning-benchmark/issues/2#issuecomment-5804727277
+> build · nemotron-3.5-lightning-free
