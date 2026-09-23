@@ -56,12 +56,13 @@ Raw per-run outputs stay in `/vol/data/benchmark/runs/`, parsed CSVs in `results
 
 | Run | Date | Source commit | Dataset | Threads | Wall time | Peak RAM | Bins | CheckM2 comp/cont % | CheckM comp/cont % | Status |
 |---|---|---|---|---|---|---|---|---|---|---|
-| `baseline_unmodified` | – | `987db95` (upstream) | COMEBin demo (29,434 contigs) | 32 | – | – | – | – | – | ⏳ env finishing, next step |
+| `baseline_unmodified` | – | [987db95](https://github.com/paulzierep/COMEBin/commit/987db95d8d399f30b7c82a5f5f40ed6bfdc906c7) (upstream) | COMEBin demo (29,434 contigs) | 32 | – | – | – | – | – | ⏳ env finishing, next step |
 
 Column contract: **Wall time** = total seconds (plus per-stage breakdown in
 `docs/02-comebin-baseline.md`), **Bins** = bins exported (≥200 kb filter noted),
 **comp/cont** = mean completeness / mean contamination, **HQ/MQ counts** live in
-`results/<run>.csv`. Fix batches on `comebin-optimizations` get one row each, so
+`results/<run>.csv`. **Source commit** is always a clickable link to that exact
+commit on GitHub. Fix batches on `comebin-optimizations` get one row each, so
 performance deltas vs. baseline are visible directly in this table.
 
 ## Branch strategy
