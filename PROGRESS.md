@@ -201,7 +201,13 @@ included; fixes land on branch `comebin-optimizations` in this repo.
       records `cmd_wrapper:` / `cmd_train_py:` / `cmd_from_log:`
 - [x] Status heartbeat live: German-time (Europe/Berlin) banner on README line 1 +
       `status/current.md` (mem+load) + `status/status.log` + verbose
-      `status/agent-activity.log` — pushed every 10 min
+      `status/agent-activity.log` — pushed every 10 min. Now embeds a **live epoch
+      probe** from the active run (banner shows `epoch N/200 · x/28 batches`), so
+      status never looks frozen.
+- [x] Issue #3 "I think comebin is stuck" — answered 2026-09-23 16:33 UTC with
+      live evidence (main.py ~3120% CPU on 32 cores, loss 3.33→3.16, Top1→94%,
+      46/200 epochs, ETA ~6 h worst case): run is healthy; the frozen look was a
+      stale 10-min banner snapshot → fixed with the live probe above.
 - [x] Binaries verified: run_FragGeneScan.pl, hmmsearch, bedtools, bwa, samtools, checkm
 - [x] BAM indexed (`SRR5720343.bam.bai`)
 - [x] Small benchmark dataset (issue #2): 300 top-length contigs + real overlapping reads
@@ -221,7 +227,7 @@ included; fixes land on branch `comebin-optimizations` in this repo.
       py_compile OK; re-run **pending baseline finish** (`runs/fix_batch1`)
       — see `docs/07-fix-batches.md`
 - [~] **← CURRENT: baseline demo run in progress** (started 14:36 UTC, commit
-      987db95d8d399f30b7c82a5f5f40ed6bfdc906c7, `-t 32`): training epoch ~35-40/200
+      987db95d8d399f30b7c82a5f5f40ed6bfdc906c7, `-t 32`): training epoch ~46/200
       (~1.8 min/epoch → possibly hours; early-stop may cut short) —
       watch `runs/baseline_unmodified/comebin_run.log`
 - [ ] When baseline done: CheckM2 + CheckM v1 eval (`scripts/run_eval.sh`) → README
