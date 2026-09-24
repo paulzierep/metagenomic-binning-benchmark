@@ -21355,3 +21355,177 @@ fi
 grep -aE 'run_FragGeneScan|hmmsearch' "$RUNDIR/comebin_run.log" 2>/dev/null | head -2 \
   | sed 's/^/cmd_from_log: /' | tee -a "$RUNDIR/run_meta.txt" >/dev/null || true
 > build · mimo-v2.6-flash-free
+Implementing issue #10: adding an `-E epochs` option to `run_comebin.sh` (small-fix branch) + `EPOCHS` passthrough in `run_small_test.sh`:
+[0m← [0mEdit /vol/data/repos/COMEBin-small-fix/COMEBin/run_comebin.sh
+Index: /vol/data/repos/COMEBin-small-fix/COMEBin/run_comebin.sh
+===================================================================
+--- /vol/data/repos/COMEBin-small-fix/COMEBin/run_comebin.sh
++++ /vol/data/repos/COMEBin-small-fix/COMEBin/run_comebin.sh
+@@ -21,8 +21,9 @@
+ 	echo "  -l FLOAT        temperature in loss function (default=0.07 for assemblies with an N50 > 10000, default=0.15 for others)"
+ 	echo "  -e INT          embedding size for comebin network (default=2048)"
+ 	echo "  -c INT          embedding size for coverage network (default=2048)"
+ 	echo "  -b INT          batch size for training process (default=1024)"
++	echo "  -E INT          number of training epochs (default=200; lower this for fast functional tests)"
+ 	echo "";}
+ 
+ 
+ ########################################################################################################
+
+[0m← [0mEdit /vol/data/repos/COMEBin-small-fix/COMEBin/run_comebin.sh
+Index: /vol/data/repos/COMEBin-small-fix/COMEBin/run_comebin.sh
+===================================================================
+--- /vol/data/repos/COMEBin-small-fix/COMEBin/run_comebin.sh
++++ /vol/data/repos/COMEBin-small-fix/COMEBin/run_comebin.sh
+@@ -35,10 +35,11 @@
+ #temperature=0.15
+ emb_szs_forcov=2048
+ emb_szs=2048
+ batch_size=1024
++epochs=200
+ 
+-while getopts a:o:p:n:t:l:e:c:b: OPT; do
++while getopts a:o:p:n:t:l:e:c:b:E: OPT; do
+  case ${OPT} in
+   a) contig_file=$(realpath ${OPTARG})
+     ;;
+   o) output_dir=$(realpath ${OPTARG})
+
+[0m← [0mEdit /vol/data/repos/COMEBin-small-fix/COMEBin/run_comebin.sh
+Index: /vol/data/repos/COMEBin-small-fix/COMEBin/run_comebin.sh
+===================================================================
+--- /vol/data/repos/COMEBin-small-fix/COMEBin/run_comebin.sh
++++ /vol/data/repos/COMEBin-small-fix/COMEBin/run_comebin.sh
+@@ -57,8 +57,10 @@
+   c) emb_szs_forcov=${OPTARG}
+     ;;
+   b) batch_size=${OPTARG}
+     ;;
++  E) epochs=${OPTARG}
++    ;;
+   \?)
+ #    printf "[Usage] `date '+%F %T'` -i <INPUT_FILE> -o <OUTPUT_DIR> -o <P
+ #RODUCT_CODE> -s <SOFTWARE_VERSION> -t <TYPE>\n" >&2
+     exit 1
+
+[0m← [0mEdit /vol/data/repos/COMEBin-small-fix/COMEBin/run_comebin.sh
+Index: /vol/data/repos/COMEBin-small-fix/COMEBin/run_comebin.sh
+===================================================================
+--- /vol/data/repos/COMEBin-small-fix/COMEBin/run_comebin.sh
++++ /vol/data/repos/COMEBin-small-fix/COMEBin/run_comebin.sh
+@@ -151,8 +151,9 @@
+         echo "Running getting representation."
+         python main.py train --data ${output_dir}/data_augmentation \
+         --temperature ${temperature} --emb_szs_forcov ${emb_szs_forcov} \
+         --batch_size ${batch_size} --emb_szs ${emb_szs} --n_views ${n_views} \
++        --epochs ${epochs} \
+         --add_model_for_coverage \
+         --output_path ${output_dir}/comebin_res --earlystop --addvars --vars_sqrt --num_threads ${num_threads}
+     else
+         echo "No need to run getting representation."
+
+[0m← [0mEdit /vol/data/repos/COMEBin-small-fix/COMEBin/run_comebin.sh
+Index: /vol/data/repos/COMEBin-small-fix/COMEBin/run_comebin.sh
+===================================================================
+--- /vol/data/repos/COMEBin-small-fix/COMEBin/run_comebin.sh
++++ /vol/data/repos/COMEBin-small-fix/COMEBin/run_comebin.sh
+@@ -163,8 +163,9 @@
+     echo "Running getting representation."
+     python main.py train --data ${output_dir}/data_augmentation \
+     --temperature ${temperature} --emb_szs_forcov ${emb_szs_forcov} \
+     --batch_size ${batch_size} --emb_szs ${emb_szs} --n_views ${n_views} \
++    --epochs ${epochs} \
+     --add_model_for_coverage \
+     --output_path ${output_dir}/comebin_res --earlystop --addvars --vars_sqrt --num_threads ${num_threads}
+ fi
+ 
+
+> build · mimo-v2.6-flash-free
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/scripts/run_small_test.sh
+Index: /vol/data/repos/metagenomic-binning-benchmark/scripts/run_small_test.sh
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/scripts/run_small_test.sh
++++ /vol/data/repos/metagenomic-binning-benchmark/scripts/run_small_test.sh
+@@ -8,8 +8,11 @@
+ #   SRC_COMEBIN=/path/to/repo-root   COMEBin checkout/worktree to test
+ #                                   (default: the verified small-data fix worktree)
+ #   SEED=42                          optional reproducible seed (supported CLIs)
+ #   BATCH_SIZE=256 EMB_SIZE=512      small-data training defaults
++#   EPOCHS=30                         training epochs (issue #10; default 30 for
++#                                     fast functional tests; passed as -E only
++#                                     when the CLI supports it)
+ set -euo pipefail
+ 
+ MM=/vol/data/tools/bin/micromamba
+ ENV=/vol/data/envs/comebin
+
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/scripts/run_small_test.sh
+Index: /vol/data/repos/metagenomic-binning-benchmark/scripts/run_small_test.sh
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/scripts/run_small_test.sh
++++ /vol/data/repos/metagenomic-binning-benchmark/scripts/run_small_test.sh
+@@ -23,8 +23,9 @@
+ RUNDIR=$(realpath -m "${1:-/vol/data/benchmark/runs/small_test}")
+ THREADS=${2:-8}
+ BATCH_SIZE=${BATCH_SIZE:-256}
+ EMB_SIZE=${EMB_SIZE:-512}
++EPOCHS=${EPOCHS:-30}
+ SEED=${SEED:-}
+ START_LOCK=/tmp/benchmark-start.lock
+ ACTIVE=/vol/data/benchmark/.active_run
+ 
+
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/scripts/run_small_test.sh
+Index: /vol/data/repos/metagenomic-binning-benchmark/scripts/run_small_test.sh
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/scripts/run_small_test.sh
++++ /vol/data/repos/metagenomic-binning-benchmark/scripts/run_small_test.sh
+@@ -78,8 +78,12 @@
+ fi
+ if [ -n "$SEED" ] && grep -q -- '-s INT.*seed' "$SRC/COMEBin/run_comebin.sh"; then
+   COMEBIN_ARGS+=(-s "$SEED")
+ fi
++# Issue #10: cap epochs for fast functional tests (upstream CLI has no -E).
++if grep -q -- '-E INT.*epochs' "$SRC/COMEBin/run_comebin.sh"; then
++  COMEBIN_ARGS+=(-E "$EPOCHS")
++fi
+ CMD_TEXT=$(printf '%q ' "$MM" run -p "$ENV" bash run_comebin.sh "${COMEBIN_ARGS[@]}")
+ 
+ {
+   echo "run:        $RUNDIR"
+
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/scripts/run_small_test.sh
+Index: /vol/data/repos/metagenomic-binning-benchmark/scripts/run_small_test.sh
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/scripts/run_small_test.sh
++++ /vol/data/repos/metagenomic-binning-benchmark/scripts/run_small_test.sh
+@@ -95,8 +95,9 @@
+   echo "bamdir:     $BAMDIR"
+   echo "threads:    $THREADS"
+   echo "batch_size: $BATCH_SIZE"
+   echo "emb_size:   $EMB_SIZE"
++  echo "epochs:     $EPOCHS (passed as -E when the CLI supports it)"
+   echo "seed:       ${SEED:-unset}"
+   echo "host:       $(nproc) cores, $(free -g | awk '/Mem:/{print $2}')G RAM"
+   echo "cmd_wrapper: $CMD_TEXT"
+ } | tee "$RUNDIR/run_meta.txt"
+
+> build · mimo-v2.6-flash-free
+[0m$ [0mbash -n /vol/data/repos/metagenomic-binning-benchmark/scripts/run_small_test.sh && echo "run_small_test.sh syntax OK"
+bash -n /vol/data/repos/COMEBin-small-fix/COMEBin/run_comebin.sh && echo "run_comebin.sh syntax OK"
+grep -n '\-E INT\|epochs=${OPTARG}\|--epochs ${epochs}\|^epochs=200' /vol/data/repos/COMEBin-small-fix/COMEBin/run_comebin.sh
+grep -n 'EPOCHS\|-E "' /vol/data/repos/metagenomic-binning-benchmark/scripts/run_small_test.sh
+date -u +"%Y-%m-%d %H:%M:%S UTC - impl #10: -E epochs option in run_comebin.sh (small-fix) + EPOCHS=30 passthrough in run_small_test.sh; syntax OK" >> /vol/data/repos/metagenomic-binning-benchmark/status/agent-activity.log
+touch /vol/data/benchmark/.heartbeat
+run_small_test.sh syntax OK
+run_comebin.sh syntax OK
+25:	echo "  -E INT          number of training epochs (default=200; lower this for fast functional tests)"
+39:epochs=200
+61:  E) epochs=${OPTARG}
+155:        --epochs ${epochs} \
+167:    --epochs ${epochs} \
+12:#   EPOCHS=30                         training epochs (issue #10; default 30 for
+27:EPOCHS=${EPOCHS:-30}
+84:  COMEBIN_ARGS+=(-E "$EPOCHS")
+99:  echo "epochs:     $EPOCHS (passed as -E when the CLI supports it)"
+> build · mimo-v2.6-flash-free
