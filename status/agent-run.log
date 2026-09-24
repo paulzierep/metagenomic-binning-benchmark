@@ -36464,3 +36464,140 @@ M  status/agent-activity.log
    4e4e12d..869754a  main -> main
 869754a results: per-bin quality for all evaluated runs + README flowchart (issues #15, #7)
 > build · big-pickle
+Commit `869754a` pushed. Posting the #16 implementation follow-up (commit `c42fa84` makes big-pickle the default):
+[0m$ [0mcd /vol/data/repos/COMEBin-v11 2>/dev/null && git status --porcelain --untracked-files=no | wc -l && git branch --show-current && git log --oneline -3; echo "=== run dir check ==="; ls /vol/data/benchmark/runs/fix_v11* 2>/dev/null || echo "no fix_v11 dir yet"; echo "=== disk ==="; df -h /vol/data | tail -1
+0
+comebin-optimizations-v11
+95f5ea8 batch1 (v1.1.0 base): sequential bin numbering, drop empty/missing bins
+1b476a4 Clarify PyTorch installation options
+fd7ff06 Update Bioconda CUDA installation example
+=== run dir check ===
+no fix_v11 dir yet
+=== disk ===
+/dev/vdb        492G   89G  378G  20% /vol/data
+[0m$ [0mR=/vol/data/repos/metagenomic-binning-benchmark; gh -R paulzierep/metagenomic-binning-benchmark issue comment 16 --body 'Update: the watchdog now runs **big-pickle as the default model** whenever its tokens are available (commit `c42fa84`). `DEFAULT_MODEL="opencode/big-pickle"`; the free-model rotation only starts when big-pickle itself is quota-limited, and the rotation index resets to big-pickle after every healthy run. The status banner also now shows the active model (e.g. `model big-pickle`).' 2>&1 | tail -1; echo "$(date -u +%FT%TZ) issue-16 followup: big-pickle default per c42fa84" >> $R/status/agent-activity.log; echo "$(date -u +%FT%TZ) issue-16" >> /vol/data/benchmark/.activity; touch /vol/data/benchmark/.heartbeat
+https://github.com/paulzierep/metagenomic-binning-benchmark/issues/16#issuecomment-5812489525
+> build · big-pickle
+COMEBin-v11 clean at `95f5ea8`. Launching the **fix_v11** full-large benchmark detached (fresh run dir, seed 42, 32 threads):
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && env SEED=42 THREADS=32 nohup bash scripts/run_comebin_fix.sh /vol/data/benchmark/runs/fix_v11_20260924 > /vol/data/benchmark/runs/../fix_v11_launch.out 2>&1 &
+echo "launched, pid $!"
+launched, pid 873785
+> build · big-pickle
+Verifying the run registered correctly:
+[0m$ [0msleep 20; echo "=== active_run ==="; cat /vol/data/benchmark/.active_run 2>/dev/null || echo "MISSING"; echo "=== launch log ==="; cat /vol/data/benchmark/fix_v11_launch.out 2>/dev/null | head -20; echo "=== run_meta ==="; head -10 /vol/data/benchmark/runs/fix_v11_20260924/run_meta.txt 2>/dev/null
+=== active_run ===
+873786 873784 /vol/data/benchmark/runs/fix_v11_20260924/comebin_run.log /vol/data/benchmark/runs/fix_v11_20260924 1790246235 fix /vol/data/repos/COMEBin-v11 /vol/data/datasets/comebin_test_data/BATS_SAMN07137077_METAG.scaffolds.min500.fasta.f1k.fasta /vol/data/datasets/comebin_test_data/bamfiles
+=== launch log ===
+source: /vol/data/repos/COMEBin-v11 (branch comebin-optimizations-v11) commit: 95f5ea820f9a4e76f5c2911c0b5ed507ab67b015 (dirty files: 0)
+run:        /vol/data/benchmark/runs/fix_v11_20260924
+source:     /vol/data/repos/COMEBin-v11 (branch comebin-optimizations-v11)
+date:       2026-09-24T10:37:15+00:00
+commit:     95f5ea820f9a4e76f5c2911c0b5ed507ab67b015
+contigs:    /vol/data/datasets/comebin_test_data/BATS_SAMN07137077_METAG.scaffolds.min500.fasta.f1k.fasta
+bamdir:     /vol/data/datasets/comebin_test_data/bamfiles
+threads:    32
+seed:       42
+host:       32 cores, 62G RAM, gpu=none
+cmd_wrapper: /vol/data/tools/bin/micromamba run -p /vol/data/envs/comebin bash run_comebin.sh -a /vol/data/datasets/comebin_test_data/BATS_SAMN07137077_METAG.scaffolds.min500.fasta.f1k.fasta -p /vol/data/datasets/comebin_test_data/bamfiles -o /vol/data/benchmark/runs/fix_v11_20260924/comebin_out -n 6 -t 32 -d cpu -s 42 
+Random seed: 42
+Leiden workers: same as -t (32)
+HNSW neighbors per contig: 100
+HMMER sequence E-value: 1e-5
+Tau(temperature): automatic from complete-assembly N50 in feature_manifest.json
+Running data augmentation.
+2026-09-24 10:37:17,220 - Configure reproducibility: start with seed=42, pid=873841.
+2026-09-24 10:37:18,334 - Configure reproducibility: finished; seed=42, PYTHONHASHSEED=42, CUBLAS_WORKSPACE_CONFIG=:4096:8.
+2026-09-24 10:37:18,334 - generate_aug_data: fastafile
+=== run_meta ===
+run:        /vol/data/benchmark/runs/fix_v11_20260924
+source:     /vol/data/repos/COMEBin-v11 (branch comebin-optimizations-v11)
+date:       2026-09-24T10:37:15+00:00
+commit:     95f5ea820f9a4e76f5c2911c0b5ed507ab67b015
+contigs:    /vol/data/datasets/comebin_test_data/BATS_SAMN07137077_METAG.scaffolds.min500.fasta.f1k.fasta
+bamdir:     /vol/data/datasets/comebin_test_data/bamfiles
+threads:    32
+seed:       42
+host:       32 cores, 62G RAM, gpu=none
+cmd_wrapper: /vol/data/tools/bin/micromamba run -p /vol/data/envs/comebin bash run_comebin.sh -a /vol/data/datasets/comebin_test_data/BATS_SAMN07137077_METAG.scaffolds.min500.fasta.f1k.fasta -p /vol/data/datasets/comebin_test_data/bamfiles -o /vol/data/benchmark/runs/fix_v11_20260924/comebin_out -n 6 -t 32 -d cpu -s 42
+> build · big-pickle
+Run registered and training started (seed 42). Now updating PROGRESS.md (both copies), activity log, and syncing:
+[0m$ [0mgrep -n "issue tracker\|Issue tracker\|## Issues\|Open issues\|## Open" /vol/data/benchmark/PROGRESS.md | head; echo "=== tail ==="; tail -40 /vol/data/benchmark/PROGRESS.md
+88:## Issues workflow (user-facing)
+=== tail ===
+      links; performance-table baseline row now links to it); summary comment posted
+      (`#issuecomment-5807827932`).
+- [x] **Issue #10 triaged (2026-09-24 04:54 → 05:05 UTC)**: fewer epochs for
+      functional tests → `run_comebin.sh` (branch `comebin-small-fix`) gained an
+      optional **`-E INT`** flag passing `--epochs` (default 200 = unchanged
+      upstream behavior; pushed as `a0be243`); `run_small_test.sh` gained
+      **`EPOCHS`** env, default 30, recorded in `run_meta.txt`, passed only when
+      the CLI supports `-E`; benchmark runs keep the full 200 epochs. Comment:
+      `#issuecomment-5807975873`.
+- [x] **← COMPLETE: baseline rerun + eval** (2026-09-24) — registered watchdog run `baseline_rerun_autorestart1`, exit_code: 0, wall_s: 24327 (~6.75h), 200/200 epochs, 99.19% Top1 accuracy. Evaluation: CheckM2 60 bins, 25.01% mean completeness, 2.98% mean contamination (65s); CheckM v1: 60 bins, 21.23% mean completeness, 3.40% mean contamination (rerun in
+      the COMEBin env py3.10 + `LD_LIBRARY_PATH` workaround after the standalone
+      checkm env errored: `Models must be parsed before identifying HMM hits`).
+      Fixes applied: hmmer 3.1b2 (replaced 3.4, resolves `--cut_tc` on TC-less bacar_marker.hmm), sklearn KMeans `n_jobs=-1` removed (358ddd8), `run_comebin_baseline.sh` BENCHMARK_RESUME (8bb73dd). Commit `904f649`. Evidence: `runs/baseline_rerun_autorestart1/eval/checkm2/quality_report.tsv`
+      and `runs/baseline_rerun_autorestart1/eval/checkm/out/storage/bin_stats_ext.tsv`;
+      parsed row in `results/baseline_rerun_autorestart1.csv` (60 bins). Pushed.
+- [x] **Small end-to-end gate** — `small_test_v4` completed via
+      `scripts/run_small_test.sh` with 3 non-empty bins; CheckM2 and CheckM v1
+      outputs are verified and mirrored in the repository.
+- [x] **Medium 3,000-contig derivative (≤5 GB)**: built and verified at
+      `/vol/data/datasets/comebin_medium` (3,000 contigs, 421,631,278 bytes;
+      `PROVENANCE.txt` and MD5s recorded). CheckM2: 16 bins, 35.93% mean completeness,
+      4.67% mean contamination (HQ=0, MQ=2); CheckM v1: 16 bins, 33.83% mean completeness,
+      6.03% mean contamination (HQ=0, MQ=3). The detached v1.1.0 run
+      `runs/medium_v11_20260924` completed evaluation; terminal status confirmed.
+      Aggregate evidence: `results/medium_v11_20260924.csv`; per-bin CheckM2
+      supplement: `medium_v11_20260924_checkm2_stats.csv`.
+- [ ] Fix batch run on v1.1.0 base (`runs/fix_v11`, worktree COMEBin-v11) →
+      full large benchmark + eval (major commit) → README row
+- [ ] CAMI II marine sample 0 benchmark run → human host-associated sample →
+      CAMI III
+
+## Watchdog / restart
+
+`scripts/agent-watchdog.sh` (installed at `/vol/data/benchmark/bin/`, cron `*/5 * * * *`):
+stale heartbeat (>15 min) → `opencode run` continues session
+`ses_f31799c77ffeTq9gcYgqc4hBhg`; if that failed → fresh session with resume prompt.
+Both prompts first check GitHub issues for user instructions. On quota/token/context
+errors it forces `--model` rotation through the free model list; a successful run
+clears the flag (back to default). Rate limit 6 restarts / 6 h; stops when
+`TASK_COMPLETE` exists. **Agent: touch `/vol/data/benchmark/.heartbeat` regularly.**
+> build · big-pickle
+[0m$ [0mpython3 - <<'PY'
+p = "/vol/data/benchmark/PROGRESS.md"
+with open(p) as f:
+    c = f.read()
+
+# 1. correct medium per-bin evidence path
+c = c.replace(
+    "Aggregate evidence: `results/medium_v11_20260924.csv`; per-bin CheckM2\n      supplement: `medium_v11_20260924_checkm2_stats.csv`.",
+    "Aggregate evidence: `results/medium_v11_20260924.csv`; per-bin joined table\n      `runs/medium_v11_20260924/per_bin_results.csv` (CheckM2 x CheckM v1, from\n      `scripts/make_per_bin_csv.py`); CheckM2-only `runs/medium_v11_20260924/checkm2_per_bin.csv`.")
+
+# 2. update fix_v11 item to registered state
+c = c.replace(
+    "- [ ] Fix batch run on v1.1.0 base (`runs/fix_v11`, worktree COMEBin-v11) →\n      full large benchmark + eval (major commit) → README row",
+    "- [ ] **ACTIVE: fix_v11 full-large benchmark** — `runs/fix_v11_20260924`\n      registered in `.active_run` (mode fix) at 2026-09-24T10:37Z; source\n      COMEBin-v11 @ `95f5ea8` (branch comebin-optimizations-v11, clean), full\n      demo dataset (29,434 contigs), 32 threads, seed 42, 200 epochs. Next after\n      terminal status: `scripts/run_eval.sh runs/fix_v11_20260924` (CheckM2 +\n      CheckM v1) → `make_results_csv.py` → per-bin CSV → README/docs-11 row.")
+
+# 3. triage bullets for #7/#15/#16 (append before the '## Watchdog / restart' section)
+addition = """- [x] **Issues #7/#15/#16 triaged (2026-09-24 10:26–10:44 UTC)**: #7 — the
+      optimization flowchart is now rendered live in the README (colored mermaid,
+      fuller Current/Next text; `docs/09` synced). #15 — per-bin results for ALL
+      evaluated runs stored under `runs/<run>/per_bin_results.csv` (generator
+      `scripts/make_per_bin_csv.py`); root-level `medium_v11_20260924_checkm2_stats.csv`
+      moved to `runs/medium_v11_20260924/checkm2_per_bin.csv`. #16 — watchdog now
+      defaults to `opencode/big-pickle` (`c42fa84`), rotation only on quota.
+      Commits: `869754a` (per-bin + README), `c42fa84` (watchdog big-pickle).
+
+"""
+c = c.replace("\n## Watchdog / restart\n", "\n" + addition + "## Watchdog / restart\n")
+
+with open(p, "w") as f:
+    f.write(c)
+print("PROGRESS.md updated")
+PY
+cp /vol/data/benchmark/PROGRESS.md /vol/data/benchmark/PROGRESS.md.bak 2>/dev/null; cp /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md /vol/data/benchmark/PROGRESS.md && echo "synced to /vol/data/benchmark/PROGRESS.md"; grep -n "ACTIVE: fix_v11" /vol/data/benchmark/PROGRESS.md
+PROGRESS.md updated
+synced to /vol/data/benchmark/PROGRESS.md
+> build · big-pickle
