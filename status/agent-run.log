@@ -19274,3 +19274,47 @@ def gen_cov_from_bedout(logger, out_path: str, depth_file_path: str,
 /vol/data/repos/COMEBin/COMEBin/get_augfeature.py:29:    namelist = pd.read_csv(data_path + 'aug0_datacoverage_mean.tsv', sep='\t', usecols=range(1)).values[:, 0]
 /vol/data/repos/COMEBin/COMEBin/get_augfeature.py:33:        cov_file = data_path + 'aug' + str(view) + '_datacoverage_mean.tsv'
 > build · mimo-v2.6-flash-free
+The producer-side root cause is now fully confirmed. Checking both repos' sync state before replying/committing:
+[0m$ [0mgrep -n -A12 "def calculate_coverage(" /vol/data/repos/COMEBin/COMEBin/data_aug/gen_cov.py
+150:def calculate_coverage(depth_file: str, logger, edge: int = 0,
+151-                       contig_threshold: int = 1000, sep: str = None,
+152-                       contig_threshold_dict: dict = None):
+153-    """
+154-    Calculate coverage based on a position depth file generated from mosdepth or bedtools genomecov.
+155-
+156-    :param depth_file: Path to the position depth file (str).
+157-    :param edge: Unused parameter, kept for compatibility (int, default: 0).
+158-    :param contig_threshold: Threshold of contigs for must-link constraints (int, default: 1000).
+159-    :param sep: Separator for multi-sample binning (str, default: None).
+160-    :param contig_threshold_dict: Dictionary of contig thresholds by sample (dict, default: None).
+161-
+162-    :return: None
+[0m$ [0mtail -c 2000 /vol/data/repos/metagenomic-binning-benchmark/status/agent-activity.log
+dataset.sh (mirrors make_small_dataset.sh, N=3000, <=5GB cap, PROVENANCE.txt+md5s).
+2026-09-23 20:56:01 UTC - docs: wrote docs/09-optimization-strategy.md (issue #7), README link, PROGRESS sync; triaging issues #6/#7/#8
+2026-09-23 20:56:28 UTC - issues #6/#7/#8 replied (#6-5802797650, #7-5802797931, #8-5802798274); docs/09 + README pushed f8dd2e4
+2026-09-23 20:59:20 UTC - verified sibling commit c65969a (docs/10 + make_release_manifest.py) covers #8 prep; no duplicate comment; baseline epoch 162
+2026-09-23T22:30Z | fixed gen_seed_idx FileNotFoundError in cluster.py: hmmsearch with --cut_tc produces no seed file when no marker hits found; gen_seed_idx now handles FileNotFoundError gracefully, returning empty seed_idx list so Leiden clustering proceeds without seed initialization
+2026-09-23T23:35:39+00:00 - Resumed agent: checked PROGRESS.md, GitHub issues, disk state. Baseline run failed at epoch 175/200 (seed file); small_test failed with IndexError in get_augfeature.py.
+2026-09-24T00:15:02Z - baseline: starting baseline rerun on current master commit 904f649ef5cbb4582a6f0e5ec8b0b1f45778d85b
+2026-09-24T00:20:00Z - baseline: baseline_rerun started in background (PID 266440), running 200 epochs on 32 threads
+2026-09-24T00:25:00Z - baseline: baseline_rerun started in background (PID 267246), running 200 epochs on 32 threads
+2026-09-24T00:40:00Z - baseline: watchdog-managed baseline_rerun_autorestart1 is in training stage, progressing through epochs
+2026-09-24T00:45:00Z - baseline: watchdog-managed baseline_rerun_autorestart1 in training, epoch 2/200 started, loss decreasing from 6.78→5.83, Top1 improving 1.45%→6.79% (no IndexError/KeyError so far)
+2026-09-24T01:00:00Z - baseline: watchdog-managed baseline_rerun_autorestart1 at epoch 5/200, Loss 4.55→Top1 54.5%. No IndexError/KeyError errors. Training on track for successful completion.
+2026-09-24T01:10:00Z - baseline: heartbeat touched, watchdog-managed run at epoch 6/200+, loss continuing to decrease, no errors
+[0m$ [0mcd /vol/data/repos/COMEBin && git status -sb | head -3 && git fetch origin -q 2>/dev/null; git status -sb | head -3
+echo "=== v11 worktree ==="
+cd /vol/data/repos/COMEBin-v11 && git status -sb | head -5 && git log --oneline -3
+## master...origin/master [ahead 4, behind 3]
+?? COMEBin/__pycache__/
+?? COMEBin/data_aug/__pycache__/
+## master...origin/master [ahead 4, behind 3]
+?? COMEBin/__pycache__/
+?? COMEBin/data_aug/__pycache__/
+=== v11 worktree ===
+## comebin-optimizations-v11...origin/master [ahead 1]
+95f5ea8 batch1 (v1.1.0 base): sequential bin numbering, drop empty/missing bins
+1b476a4 Clarify PyTorch installation options
+fd7ff06 Update Bioconda CUDA installation example
+> build · mimo-v2.6-flash-free
