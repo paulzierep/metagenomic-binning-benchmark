@@ -3,10 +3,10 @@
 | | |
 |---|---|
 | Status | 🟢 `running` |
-| ⏱ Updated (Europe/Berlin) | `2026-09-24T12:06 CEST` |
-| 🏃 Last benchmark (not active) | `medium_v11_20260924` — last observed **epoch 199/200** (log 169s old) |
+| ⏱ Updated (Europe/Berlin) | `2026-09-24T12:08 CEST` |
+| 🏃 Last benchmark (not active) | `medium_v11_20260924` — last observed **epoch 199/200** (log 289s old) |
 | 🧠 Model (last turn) | `nemotron-3.5-lightning-free` (watchdog rotates to free models on quota) |
-| 📌 Agent note · **6 min old** | Baseline training epoch ~109/200 (~2.4 min/epoch, ETA ~22:35 UTC unless early-stop); next: baseline eval (run_eval.sh) → issue #2 small-dataset test → v1.1.0 fix run
+| 📌 Agent note · **8 min old** | Baseline training epoch ~109/200 (~2.4 min/epoch, ETA ~22:35 UTC unless early-stop); next: baseline eval (run_eval.sh) → issue #2 small-dataset test → v1.1.0 fix run
 2026-09-23 20:33:11 UTC - heartbeat
 2026-09-23 20:43:58 UTC - heartbeat
 2026-09-23 20:56:28 UTC - heartbeat
@@ -256,9 +256,9 @@
 2026-09-24T09:35:29Z readme-progress-checkm1-fix
 2026-09-24T09:36:37Z issue-13-reply-push-7a80d7e
 2026-09-24T09:59:22Z wrapup |
-| ⚙️ Load · uptime | `11.94 20.40 24.45` · 20 hours, 30 minutes — 32 cores, 62 GiB, no GPU |
-| 💾 RAM used/total | `2934/64295 MB` |
+| ⚙️ Load · uptime | `2.55 14.03 21.62` · 20 hours, 32 minutes — 32 cores, 62 GiB, no GPU |
+| 💾 RAM used/total | `37508/64295 MB` |
 | 🔗 Session | `ses_f31799c77ffeTq9gcYgqc4hBhg` |
-| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `af8c8d7 status: yes — medium_v11_20260924 epoch 199/200 loss 4.206282138824463` |
-| 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `2953516 B` — every run, command & tool result |
+| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `7eb62c4 status: yes — medium_v11_20260924 epoch 199/200 loss 4.206282138824463` |
+| 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `2955992 B` — every run, command & tool result |
 | 📈 Timeline | [status/status.log](status/status.log) |
