@@ -26874,3 +26874,298 @@ touch /vol/data/benchmark/.heartbeat
 the 'paulzierep/COMEBin' repository has disabled issues
 now UTC: 2026-09-24 07:20
 > build · mimo-v2.6-flash-free
+Two critical findings: **issue #8 was updated at 07:18:51Z (new!)**, and the baseline run **completed with `exit_code: 0` but zero bins** — training succeeded, yet `hmmsearch --cut_tc` fails on `bacar_marker.hmm` (no TC lines in any of the 40 models) → no seed file → clustering crashed → wrapper masked it as success. Investigating both in parallel:
+[0m$ [0mcat /vol/data/repos/COMEBin/COMEBin/run_comebin.sh
+#!/usr/bin/env bash
+
+##############################################################################################################################################################
+# This script is meant to be run COMEBin after obtaining the bam files.
+# Author of pipeline: Ziye Wang.
+# For questions, bugs, and suggestions, contact me at zwang17@fudan.edu.cn
+##############################################################################################################################################################
+VERSION="1.0.4"
+
+help_message () {
+  echo ""
+  echo "COMEBin version: $VERSION"
+  echo "Usage: bash run_comebin.sh [options] -a contig_file -o output_dir -p bam_file_path"
+	echo "Options:"
+	echo ""
+	echo "  -a STR          metagenomic assembly file"
+	echo "  -o STR          output directory"
+	echo "  -p STR          path to access to the bam files"
+	echo "  -n INT          number of views for contrastive multiple-view learning (default=6)"
+	echo "  -t INT          number of threads (default=5)"
+	echo "  -l FLOAT        temperature in loss function (default=0.07 for assemblies with an N50 > 10000, default=0.15 for others)"
+	echo "  -e INT          embedding size for comebin network (default=2048)"
+	echo "  -c INT          embedding size for coverage network (default=2048)"
+	echo "  -b INT          batch size for training process (default=1024)"
+	echo "";}
+
+
+########################################################################################################
+########################     LOADING IN THE PARAMETERS AND RUNNING              ########################
+########################################################################################################
+
+num_threads=5
+n_views=6
+#temperature=0.15
+emb_szs_forcov=2048
+emb_szs=2048
+batch_size=1024
+
+while getopts a:o:p:n:t:l:e:c:b: OPT; do
+ case ${OPT} in
+  a) contig_file=$(realpath ${OPTARG})
+    ;;
+  o) output_dir=$(realpath ${OPTARG})
+    ;;
+  p) bam_file_path=$(realpath ${OPTARG})
+    ;;
+  n) n_views=${OPTARG}
+    ;;
+  t) num_threads=${OPTARG}
+    ;;
+  l) temperature=${OPTARG}
+    ;;
+  e) emb_szs=${OPTARG}
+    ;;
+  c) emb_szs_forcov=${OPTARG}
+    ;;
+  b) batch_size=${OPTARG}
+    ;;
+  \?)
+#    printf "[Usage] `date '+%F %T'` -i <INPUT_FILE> -o <OUTPUT_DIR> -o <P
+#RODUCT_CODE> -s <SOFTWARE_VERSION> -t <TYPE>\n" >&2
+    exit 1
+ esac
+done
+
+# check parameter
+if [ -z "${contig_file}" -o -z "${output_dir}" -o -z "${bam_file_path}" ]; then
+  help_message
+  exit 1
+fi
+
+
+sequence_count=$(grep -c "^>" "${contig_file}")
+
+
+if (( sequence_count < ${batch_size} )); then
+    batch_size=${sequence_count}
+fi
+
+echo "Batch size: ${batch_size}"
+
+
+if [ -z "$temperature" ]; then
+    # Compute the length of each sequence and sort using the awk command
+    awk '/^>/ {if (seqlen) print seqlen; seqlen=0; next} {seqlen+=length($0)} END {print seqlen}' "$contig_file" | sort -rn > ${contig_file}_lengths.txt
+
+    # CAL N50
+    total_length=$(awk '{sum+=$1} END {print sum}' ${contig_file}_lengths.txt)
+    target_length=$(awk -v total="$total_length" 'BEGIN {cutoff=total/2; current=0} {current+=$1; if (current >= cutoff) {print $1; exit}}' ${contig_file}_lengths.txt)
+
+    # N50
+    echo "N50: $target_length"
+    # Check if N50 is greater than 10000 and set tau accordingly
+    if [ "$target_length" -gt 10000 ]; then
+        temperature=0.07
+    else
+        temperature=0.15
+    fi
+    echo "Tau(temperature): ${temperature}"
+else
+    echo "Tau(temperature): ${temperature}"
+fi
+
+
+current_path=$(pwd)
+chmod +x ${current_path}/../auxiliary/test_getmarker_2quarter.pl
+
+########################################################################################################
+###### Get augmentation data
+########################################################################################################
+folder=${output_dir}/data_augmentation
+keyword="_datacoverage_mean"
+
+if [ -d "$folder" ]; then
+    echo "${output_dir}/data_augmentation exists."
+    count=$(find "$folder" -maxdepth 1 -type f -name "*$keyword*" | wc -l)
+    echo "Number of files containing '$keyword' in the folder: $count"
+    if [ "$count" -ne ${n_views} ]; then
+        echo "Running data augmentation."
+        python main.py generate_aug_data --contig_file ${contig_file} \
+        --out_augdata_path ${output_dir}/data_augmentation \
+        --n_views ${n_views} --bam_file_path ${bam_file_path} --num_threads ${num_threads}
+    else
+        echo "No need to run data augmentation."
+    fi
+else
+    echo "${output_dir}/data_augmentation does not exist."
+    echo "Running data augmentation."
+    python main.py generate_aug_data --contig_file ${contig_file} \
+    --out_augdata_path ${output_dir}/data_augmentation \
+    --n_views ${n_views} --bam_file_path ${bam_file_path} --num_threads ${num_threads}
+fi
+
+if [[ $? -ne 0 ]] ; then echo "Something went wrong with running generating augmentation data. Exiting.";exit 1; fi
+
+########################################################################################################
+###### Get representation (training process)
+########################################################################################################
+folder=${output_dir}/comebin_res
+keyword="embeddings.tsv"
+
+if [ -d "$folder" ]; then
+    echo "${output_dir}/comebin_res exists."
+    count=$(find "$folder" -maxdepth 1 -type f -name "*$keyword*" | wc -l)
+    echo "Number of files containing '$keyword' in the folder: $count"
+    if [ "$count" -ne 2 ]; then
+        echo "Running getting representation."
+        python main.py train --data ${output_dir}/data_augmentation \
+        --temperature ${temperature} --emb_szs_forcov ${emb_szs_forcov} \
+        --batch_size ${batch_size} --emb_szs ${emb_szs} --n_views ${n_views} \
+        --add_model_for_coverage \
+        --output_path ${output_dir}/comebin_res --earlystop --addvars --vars_sqrt --num_threads ${num_threads}
+    else
+        echo "No need to run getting representation."
+    fi
+else
+    echo "${output_dir}/comebin_res does not exist."
+    echo "Running getting representation."
+    python main.py train --data ${output_dir}/data_augmentation \
+    --temperature ${temperature} --emb_szs_forcov ${emb_szs_forcov} \
+    --batch_size ${batch_size} --emb_szs ${emb_szs} --n_views ${n_views} \
+    --add_model_for_coverage \
+    --output_path ${output_dir}/comebin_res --earlystop --addvars --vars_sqrt --num_threads ${num_threads}
+fi
+
+
+if [[ $? -ne 0 ]] ; then echo "Something went wrong with running training network. Exiting.";exit 1; fi
+
+########################################################################################################
+#### Clustering (run Leiden-based clustering methods and get the final result)
+########################################################################################################
+emb_file=${output_dir}/comebin_res/embeddings.tsv
+seed_file=${contig_file}.bacar_marker.2quarter_lencutoff_1001.seed
+
+python main.py bin --contig_file ${contig_file} \
+--emb_file ${emb_file} \
+--output_path ${output_dir}/comebin_res \
+--seed_file ${seed_file} --num_threads ${num_threads}
+
+python main.py get_result --contig_file ${contig_file} \
+--output_path ${output_dir}/comebin_res \
+--seed_file ${seed_file} --num_threads ${num_threads}
+
+if [[ $? -ne 0 ]] ; then echo "Something went wrong with running clustering. Exiting.";exit 1; fi
+[0m$ [0msed -n '285,375p' /vol/data/repos/COMEBin/COMEBin/main.py
+## training
+    if args.subcmd == 'train':
+        logger.info('train')
+        train_CLmodel(logger,args)
+
+    ## clustering
+    if args.subcmd == 'bin':
+        logger.info('bin')
+        from utils import gen_seed
+
+        num_threads = args.num_threads
+        _ = gen_seed(logger, args.contig_file, num_threads, args.contig_len, marker_name="bacar_marker", quarter="2quarter")
+
+        cluster(logger, args)
+
+
+    ## clustering NoContrast
+    if args.subcmd == 'nocontrast':
+        logger.info('NoContrast mode')
+        from utils import get_kmer_coverage_aug0
+
+        X_t, covMat, compositMat, namelist = get_kmer_coverage_aug0(args.data)
+
+        X_t_df = pd.DataFrame(X_t, index=namelist)
+        os.makedirs(args.output_path+'/combine_novars', exist_ok=True)
+        outfile = args.output_path+'/combine_novars/combine_feature.tsv'
+        X_t_df.to_csv(outfile, sep='\t', header=True)
+
+        covMat_df = pd.DataFrame(covMat, index=namelist)
+        os.makedirs(args.output_path+'/covMat', exist_ok=True)
+        outfile = args.output_path+'/covMat/covMat_feature.tsv'
+        covMat_df.to_csv(outfile, sep='\t', header=True)
+
+        compositMat_df = pd.DataFrame(compositMat, index=namelist)
+        os.makedirs(args.output_path+'/compositMat', exist_ok=True)
+        outfile = args.output_path+'/compositMat/compositMat_feature.tsv'
+        compositMat_df.to_csv(outfile, sep='\t', header=True)
+
+        logger.info('NoContrast mode: generate features (aug0)')
+        ori_outpath = args.output_path
+
+        logger.info('NoContrast mode (combine) bin')
+        args.output_path = ori_outpath +'/combine_novars'
+        args.emb_file = args.output_path+'/combine_feature.tsv'
+        cluster(logger,args)
+
+        logger.info('NoContrast mode (coverage) bin')
+        args.output_path = ori_outpath +'/covMat'
+        args.emb_file = args.output_path+'/covMat_feature.tsv'
+        cluster(logger,args)
+
+        logger.info('NoContrast mode (kmer) bin')
+        args.output_path = ori_outpath +'/compositMat'
+        args.emb_file = args.output_path+'/compositMat_feature.tsv'
+        cluster(logger,args)
+
+
+
+    ##### generate_aug_data fastafile
+    if args.subcmd == 'generate_aug_data':
+        logger.info('generate_aug_data: fastafile')
+
+        from data_aug.generate_augfasta_and_saveindex import run_gen_augfasta
+        from data_aug.gen_cov import run_gen_cov
+        from data_aug.gen_var import run_gen_cov_var
+
+        run_gen_augfasta(logger, args)
+        run_gen_cov(logger, args)
+        run_gen_cov_var(logger, args)
+
+    ###Generate the final results from the Leiden clustering results
+    if args.subcmd == 'get_result':
+        logger.info('get_result')
+        from utils import gen_seed
+        from get_final_result import run_get_final_result
+
+        num_threads = args.num_threads
+        seed_num = gen_seed(logger, args.contig_file, num_threads, args.contig_len, marker_name="bacar_marker", quarter="2quarter")
+
+        run_get_final_result(logger, args, seed_num, num_threads, ignore_kmeans_res=True)
+
+
+if __name__ == '__main__':
+    main()
+[0m$ [0mgh issue view 8 -R paulzierep/metagenomic-binning-benchmark --comments 2>&1 | tail -60
+GraphQL: Projects (classic) is being deprecated in favor of the new Projects experience, see: https://github.blog/changelog/2024-05-23-sunset-notice-projects-classic/. (repository.issue.projectCards)
+[0m$ [0mcd /vol/data/repos/COMEBin
+echo "=== remotes ==="; git remote -v
+echo "=== fetch ==="; git fetch origin 2>&1 | tail -3
+echo "=== origin file TC ==="
+for ref in origin/main origin/master; do echo "$ref: $(git show $ref:auxiliary/bacar_marker.hmm 2>/dev/null | grep -c '^TC' || echo n/a)"; done
+echo "=== behind commits ==="
+git log --oneline HEAD..origin/main 2>/dev/null | head -5 || git log --oneline HEAD..origin/master 2>/dev/null | head -5
+echo "=== upstream via gh ==="
+gh api repos/Wang-CS/COMEBin --jq '.full_name + " default:" + .default_branch' 2>&1 | head -2
+=== remotes ===
+origin	https://github.com/paulzierep/COMEBin.git (fetch)
+origin	https://github.com/paulzierep/COMEBin.git (push)
+=== fetch ===
+=== origin file TC ===
+origin/main: 0
+n/a
+origin/master: 0
+n/a
+=== behind commits ===
+=== upstream via gh ===
+{"message":"Not Found","documentation_url":"https://docs.github.com/rest/repos/repos#get-a-repository","status":"404"}gh: Not Found (HTTP 404)
+> build · mimo-v2.6-flash-free
