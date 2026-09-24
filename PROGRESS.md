@@ -355,6 +355,17 @@ included; fixes land on branch `comebin-optimizations` in this repo.
       32-core CPU ~2900%, RAM 9.4 GB). Next after
       terminal status: `scripts/run_eval.sh runs/fix_v11_20260924` (CheckM2 +
       CheckM v1) → `make_results_csv.py` → per-bin CSV → README/docs-11 row.
+- [x] **Issues #17/#14/#7/#8 triaged by supervisor (2026-09-24 ~11:07 UTC)**: #17 — gate
+      rule made explicit in README + docs/09: big benchmark runs only after small AND
+      medium validation, parameter tuning on small sets first; fix_v11 passed that gate
+      (small_test_v4 + medium_v11 before launch). #7 — optimization flowchart rewritten
+      with renderer-safe mermaid (no `<br/>`, no emoji in edge labels). #14 — README
+      Current/Next + Results refreshed. #8 — Zenodo record 22935025 metadata edited to
+      MIT + expanded description (no new version), DOI HTTP 200. Commit `2524e12`:
+      auto-reporting wired into `run_eval.sh` (aggregate CSV + per-bin CSV + bar chart +
+      comparison scatter on every successful eval), `make_results_csv.py` auto-derives
+      dataset/threads from run_meta, `make_per_bin_plots.py` gained `--all`.
+
 - [ ] CAMI II marine sample 0 benchmark run → human host-associated sample →
       CAMI III
 
