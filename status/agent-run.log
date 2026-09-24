@@ -28780,3 +28780,119 @@ drwxrwxr-x  2 ubuntu ubuntu 4096 Sep 24 00:30 .
 drwxrwxr-x 11 ubuntu ubuntu 4096 Sep 24 07:15 ..
 -rwxr-xr-x  1 ubuntu ubuntu 6476 Sep 24 00:30 baseline_rerun_1790209801802838194.sh
 > build · mimo-v2.6-flash-free
+[0m→ [0mRead /vol/data/repos/metagenomic-binning-benchmark/scripts/run_comebin_baseline.sh 
+[0m$ [0msed -n '1,85p' /vol/data/repos/metagenomic-binning-benchmark/scripts/benchmark-watchdog.sh
+echo "=== snapshot creation ==="
+grep -n "SNAPSHOT_ROOT\|cp .*snapshot\|\.runner-snapshots" /vol/data/repos/metagenomic-binning-benchmark/scripts/benchmark-watchdog.sh | head
+#!/usr/bin/env bash
+# benchmark-watchdog.sh — keep the ACTIVE benchmark run alive INDEPENDENTLY of the
+# coding agent (cron */5). If the agent is broken or the run hangs forever, this
+# still restarts it.
+#
+# Rules (conservative, safety-first):
+#   - only acts on the run recorded in /vol/data/benchmark/.active_run
+#   - HEALTHY  = process alive AND run log written within the last $HANG_S
+#   - HUNG     = process alive but log silent for > $HANG_S -> kill + restart
+#   - CRASHED  = process gone with no terminal evidence       -> restart
+#   - FAILED   = terminal failure evidence                    -> record + clear
+#   - DONE     = run_meta.txt exit_code:0                    -> clear .active_run
+#   - deterministic failures are never retried in a tight loop
+#   - replacement runners are immutable snapshots from the committed repo
+#   - rate limit: max $MAX_PER_RUN restarts per run per rolling 24 h
+#   - flock-protected; exits immediately on TASK_COMPLETE
+set -u
+export HOME=/home/ubuntu
+BENCH=${BENCH_ROOT:-/vol/data/benchmark}
+ACTIVE="$BENCH/.active_run"        # pid pgid logfile rundir start_ts mode source [contigs bamdir]
+SLOG="$BENCH/logs/benchmark-watchdog.log"
+LOCK=${BENCH_WATCHDOG_LOCK:-/tmp/benchmark-watchdog.lock}
+HANG_S=${BENCH_HANG_S:-2400}       # 40 min without new log output => hung
+MAX_PER_RUN=${BENCH_MAX_RESTARTS:-3}
+REPO=${BENCHMARK_REPO:-/vol/data/repos/metagenomic-binning-benchmark}
+RUNNER_REF=${BENCH_RUNNER_REF:-HEAD}
+SNAPSHOT_ROOT="$BENCH/.runner-snapshots"
+log() { echo "$(date -Is) [bm-watchdog] $*" >>"$SLOG"; }
+
+exec 9>"$LOCK"
+flock -n 9 || exit 0
+[ -f "$BENCH/TASK_COMPLETE" ] && exit 0
+[ -f "$ACTIVE" ] || exit 0
+mkdir -p "$BENCH/logs" "$SNAPSHOT_ROOT"
+
+read -r pid pgid logfile rundir start mode source contigs bamdir < "$ACTIVE"
+name=$(basename "${rundir:-}")
+root_name=${name%%_autorestart*}
+mode=${mode:-baseline}
+source=${source:-/vol/data/repos/COMEBin}
+[[ "$name" =~ ^[A-Za-z0-9._-]+$ ]] || { log "unsafe active-run directory '${rundir:-}'; refusing state change"; exit 0; }
+case "$rundir" in
+  "$BENCH"/runs/*) ;;
+  *) log "active-run directory is outside $BENCH/runs: $rundir; refusing state change"; exit 0 ;;
+esac
+[[ "$mode" =~ ^[A-Za-z0-9._-]+$ ]] || { log "unsafe active-run mode '$mode'; refusing state change"; exit 0; }
+if [ "$mode" != "baseline" ] && [ ! -f "$source/COMEBin/run_comebin.sh" ]; then
+  log "registered $mode source is missing run_comebin.sh: $source; refusing state change"
+  exit 0
+fi
+
+case "$pid:$pgid" in
+  *[!0-9:]*|:*|*:) log "invalid active-run pid/pgid '${pid:-}/${pgid:-}'; refusing process action"; exit 0 ;;
+esac
+[ "$pid" -gt 0 ] && [ "$pgid" -gt 1 ] || { log "unsafe active-run pid/pgid $pid/$pgid; refusing process action"; exit 0; }
+own_pgid=$(ps -o pgid= -p $$ 2>/dev/null | tr -d ' ' || true)
+[ "$pgid" != "${own_pgid:-0}" ] || { log "registered pgid $pgid equals watchdog group; refusing process action"; exit 0; }
+registered_pgid=$(ps -o pgid= -p "$pid" 2>/dev/null | tr -d ' ' || true)
+if [ -n "$registered_pgid" ] && [ "$registered_pgid" != "$pgid" ]; then
+  log "registered pgid $pgid does not match pid $pid current pgid $registered_pgid; refusing process action"
+  exit 0
+fi
+if [ -n "$registered_pgid" ] && [[ "$start" =~ ^[0-9]+$ ]]; then
+  pid_started=$(date -d "$(ps -o lstart= -p "$pid" 2>/dev/null)" +%s 2>/dev/null || echo 0)
+  if [ "$pid_started" -gt 0 ] && [ $((pid_started - start)) -gt 5 ] && [ $((start - pid_started)) -gt 5 ]; then
+    log "pid start mismatch: registered=$start actual=$pid_started; refusing process action"
+    exit 0
+  fi
+fi
+
+# Never clear a registration that changed while this watchdog was inspecting it.
+active_matches() {
+  local cur_pid cur_pgid cur_log cur_dir cur_start rest
+  [ -f "$ACTIVE" ] || return 1
+  read -r cur_pid cur_pgid cur_log cur_dir cur_start rest < "$ACTIVE" || return 1
+  [ "$cur_pid" = "$pid" ] && [ "$cur_dir" = "$rundir" ] && [ "$cur_start" = "$start" ]
+}
+
+# Accept both the live source launcher and the immutable snapshot launcher.  A
+# watchdog restart intentionally executes a committed snapshot, whose argv does
+# not contain the original script basename; requiring only the basename caused
+# healthy replacement runs to be reported as unregistered and repeatedly
+# escalated.  Snapshot acceptance is deliberately narrow: the command must
+# contain an existing snapshot whose name is derived from this registered run
+# and the exact registered run directory as a separate argv token.
+=== snapshot creation ===
+27:SNAPSHOT_ROOT="$BENCH/.runner-snapshots"
+34:mkdir -p "$BENCH/logs" "$SNAPSHOT_ROOT"
+93:      "$SNAPSHOT_ROOT/${name}_"*.sh|"$SNAPSHOT_ROOT/${root_name}_"*.sh)
+139:  dst="$SNAPSHOT_ROOT/${name}_$(date +%s%N).sh"
+[0m$ [0mDS=/vol/data/datasets/comebin_test_data
+echo "=== stale seed/hmmout artifacts in dataset dir ==="
+ls -la "$DS"/*.seed "$DS"/*hmmout* "$DS"/*hmmerr* 2>/dev/null || echo "(none matching)"
+echo "=== copies of run_comebin_baseline.sh on /vol/data ==="
+find /vol/data -name "run_comebin_baseline.sh" -not -path "*/.git/*" 2>/dev/null
+echo "=== active run / processes ==="
+cat /vol/data/benchmark/.active_run 2>/dev/null || echo "no .active_run"
+ps -eo pid,etime,args | grep -E '[m]ain.py|[r]un_comebin|[c]heckm' | head -5 || echo "no bench procs"
+date -u +"now: %Y-%m-%d %H:%M UTC"
+=== stale seed/hmmout artifacts in dataset dir ===
+-rw-rw-r-- 1 ubuntu ubuntu   0 Sep 23 21:30 /vol/data/datasets/comebin_test_data/BATS_SAMN07137077_METAG.scaffolds.min500.fasta.f1k.fasta.bacar_marker.hmmout
+-rw-rw-r-- 1 ubuntu ubuntu  56 Sep 23 21:30 /vol/data/datasets/comebin_test_data/BATS_SAMN07137077_METAG.scaffolds.min500.fasta.f1k.fasta.bacar_marker.hmmout.err
+-rw-rw-r-- 1 ubuntu ubuntu 860 Sep 23 21:30 /vol/data/datasets/comebin_test_data/BATS_SAMN07137077_METAG.scaffolds.min500.fasta.f1k.fasta.bacar_marker.hmmout.out
+(none matching)
+=== copies of run_comebin_baseline.sh on /vol/data ===
+/vol/data/repos/metagenomic-binning-benchmark/scripts/run_comebin_baseline.sh
+/vol/data/benchmark/bin/run_comebin_baseline.sh
+=== active run / processes ===
+no .active_run
+ 480981       00:00 /bin/bash -c DS=/vol/data/datasets/comebin_test_data echo "=== stale seed/hmmout artifacts in dataset dir ===" ls -la "$DS"/*.seed "$DS"/*hmmout* "$DS"/*hmmerr* 2>/dev/null || echo "(none matching)" echo "=== copies of run_comebin_baseline.sh on /vol/data ===" find /vol/data -name "run_comebin_baseline.sh" -not -path "*/.git/*" 2>/dev/null echo "=== active run / processes ===" cat /vol/data/benchmark/.active_run 2>/dev/null || echo "no .active_run" ps -eo pid,etime,args | grep -E '[m]ain.py|[r]un_comebin|[c]heckm' | head -5 || echo "no bench procs" date -u +"now: %Y-%m-%d %H:%M UTC"
+now: 2026-09-24 08:06 UTC
+> build · mimo-v2.6-flash-free
