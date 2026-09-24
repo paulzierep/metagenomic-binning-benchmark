@@ -18735,3 +18735,233 @@ Index: /vol/data/benchmark/PROGRESS.md
        CheckM2/CheckM means) with linked commit → push
  - [ ] After baseline: small end-to-end COMEBin + CheckM2/CheckM run via
 
+[0m
+> build · mimo-v2.6-flash-free
+[0m→ [0mRead /vol/data/benchmark/PROGRESS.md [90m[offset=262, limit=40][0m
+[0m$ [0mtest -f /vol/data/benchmark/TASK_COMPLETE && echo "TASK_COMPLETE exists - EXIT" || echo "no TASK_COMPLETE"
+RUN=/vol/data/benchmark/runs/baseline_unmodified
+ps -eo pid,etime,args | grep -E '[m]ain.py train' | head -1 || echo "no train proc"
+echo "epochs: $(grep -c '^DEBUG:root:Epoch' "$RUN/comebin_out/comebin_res/training.log" 2>/dev/null)"
+grep -E 'exit_code|wall|bins:' "$RUN/run_meta.txt" 2>/dev/null || true
+date -u +"now UTC: %Y-%m-%d %H:%M"
+touch /vol/data/benchmark/.heartbeat
+no TASK_COMPLETE
+ 270796       02:38 python main.py train --data /vol/data/benchmark/runs/baseline_rerun_autorestart1/comebin_out/data_augmentation --temperature 0.15 --emb_szs_forcov 2048 --batch_size 1024 --emb_szs 2048 --n_views 6 --add_model_for_coverage --output_path /vol/data/benchmark/runs/baseline_rerun_autorestart1/comebin_out/comebin_res --earlystop --addvars --vars_sqrt --num_threads 32
+epochs: 176
+now UTC: 2026-09-24 00:40
+[0m$ [0mgh issue list -R paulzierep/metagenomic-binning-benchmark --state open --json number,title,updatedAt 2>&1 | head -60
+gh issue list -R paulzierep/COMEBin --state open --json number,title,updatedAt 2>&1 | head -40
+[{"number":8,"title":"Add benchmark data to zenodo","updatedAt":"2026-09-23T20:58:44Z"},{"number":6,"title":"Optimization","updatedAt":"2026-09-23T20:56:21Z"},{"number":2,"title":"Can you try to create a small benchmark dataset for comebin ?","updatedAt":"2026-09-23T23:35:54Z"},{"number":1,"title":"Idea inbox: benchmark ideas, COMEBin fixes, dataset requests","updatedAt":"2026-09-23T14:53:13Z"}]
+the 'paulzierep/COMEBin' repository has disabled issues
+> build · mimo-v2.6-flash-free
+State changed significantly: original baseline had a **terminal failure** (21:30 UTC, missing HMM seed/biolib), and a **watchdog-managed baseline rerun** started 00:30 UTC (now active, pid 270796). Also **issue #2 updated at 23:35Z** — needs triage. Let me verify the rerun's true progress and read the new issue comment.
+[0m$ [0mRUN=/vol/data/benchmark/runs/baseline_rerun_autorestart1
+echo "== new run =="
+echo "epochs: $(grep -c '^DEBUG:root:Epoch' "$RUN/comebin_out/comebin_res/training.log" 2>/dev/null)"
+grep -E 'exit_code|started|commit' "$RUN/run_meta.txt" 2>/dev/null | head -8 || true
+ls "$RUN" 2>/dev/null | head -20
+echo "== old run final =="
+grep -E 'exit_code' /vol/data/benchmark/runs/baseline_unmodified/run_meta.txt 2>/dev/null || echo "old run: no exit_code"
+tail -5 /vol/data/benchmark/runs/baseline_unmodified/comebin_run.log 2>/dev/null | tr '\r' '\n' | tail -8
+date -u +"now UTC: %Y-%m-%d %H:%M"
+touch /vol/data/benchmark/.heartbeat
+== new run ==
+epochs: 1
+commit:     904f649ef5cbb4582a6f0e5ec8b0b1f45778d85b
+comebin_out
+comebin_run.log
+run_meta.txt
+== old run final ==
+old run: no exit_code
+    from scripts.unitem_profile import Profile, make_sure_path_exists
+  File "/vol/data/repos/COMEBin/COMEBin/scripts/unitem_profile.py", line 29, in <module>
+    from biolib.external.execute import check_on_path
+ModuleNotFoundError: No module named 'biolib'
+Something went wrong with running clustering. Exiting.
+now UTC: 2026-09-24 00:40
+[0m$ [0mgh issue view 2 -R paulzierep/metagenomic-binning-benchmark --json title,body,comments --jq '{title:.title, last_comment:(.comments[-1] | {author:.author.login, created:.createdAt, body:.body})}' 2>&1 | head -80
+{"last_comment":{"author":"paulzierep","body":"Small test run update: the small benchmark dataset is ready but the test runner failed with IndexError in get_augfeature.py (k-mer coverage computation). Bug in contig-to-kmer index mapping. Need fix before small end-to-end run can complete per workflow docs/08.","created":"2026-09-23T23:35:54Z"},"title":"Can you try to create a small benchmark dataset for comebin ?"}
+> build · mimo-v2.6-flash-free
+PROGRESS verified against disk: old baseline failed (`ModuleNotFoundError: biolib` at clustering), rerun active (epoch 1/200). **Issue #2 has a new actionable comment** (23:35Z): small test run failed with `IndexError` in `get_augfeature.py` — k-mer coverage index mapping bug. Investigating the traceback:
+[0m$ [0mls -t /vol/data/benchmark/runs/ | head
+echo "---"
+grep -rl "IndexError" /vol/data/benchmark/runs/*/*.log /vol/data/benchmark/runs/*/logs/*.log 2>/dev/null | head
+echo "--- small run dirs ---"
+find /vol/data/benchmark/runs -maxdepth 2 -name "run_meta.txt" -newermt "2026-09-23 22:00" 2>/dev/null
+baseline_rerun_autorestart1
+baseline_rerun
+small_test_v2
+small_test
+baseline_unmodified
+---
+/vol/data/benchmark/runs/small_test/comebin_run.log
+--- small run dirs ---
+/vol/data/benchmark/runs/baseline_rerun_autorestart1/run_meta.txt
+/vol/data/benchmark/runs/small_test_v2/run_meta.txt
+/vol/data/benchmark/runs/small_test/run_meta.txt
+[0m$ [0mgrep -rn "IndexError" /vol/data/benchmark/logs/*.log 2>/dev/null | tail -5
+ls -t /vol/data/benchmark/logs/ 2>/dev/null | head -15
+tail -30 /vol/data/benchmark/.activity 2>/dev/null
+/vol/data/benchmark/logs/agent-run.log:17967:2026-09-23T23:35:39+00:00 - Resumed agent: checked PROGRESS.md, GitHub issues, disk state. Baseline run failed at epoch 175/200 (seed file); small_test failed with IndexError in get_augfeature.py.
+/vol/data/benchmark/logs/agent-run.log:18468:Good - the run got through data augmentation and one epoch of training without the IndexError/KeyError errors from the small_test runs. It needs to run more epochs to reach the clustering stage. Let me rerun with a proper long timeout:
+/vol/data/benchmark/logs/agent-run.log:18783:{"last_comment":{"author":"paulzierep","body":"Small test run update: the small benchmark dataset is ready but the test runner failed with IndexError in get_augfeature.py (k-mer coverage computation). Bug in contig-to-kmer index mapping. Need fix before small end-to-end run can complete per workflow docs/08.","created":"2026-09-23T23:35:54Z"},"title":"Can you try to create a small benchmark dataset for comebin ?"}
+/vol/data/benchmark/logs/agent-run.log:18785:PROGRESS verified against disk: old baseline failed (`ModuleNotFoundError: biolib` at clustering), rerun active (epoch 1/200). **Issue #2 has a new actionable comment** (23:35Z): small test run failed with `IndexError` in `get_augfeature.py` — k-mer coverage index mapping bug. Investigating the traceback:
+/vol/data/benchmark/logs/supervisor-run.log:13743:            except (ValueError, IndexError):
+agent-run.log
+baseline_rerun_autorestart1.launch.log
+status-heartbeat.log
+benchmark-watchdog.log
+watchdog.log
+meta-watchdog.log
+supervisor-run.log
+supervisor-actions.log
+watchdog-relaunch.out
+baseline_unmodified_autorestart3.launch.log
+baseline_unmodified_autorestart2.launch.log
+baseline_unmodified_autorestart1.launch.log
+issue-closer.log
+watchdog-launch.out
+2026-09-23 21:11:06 UTC - heartbeat
+2026-09-23 21:11:52 UTC - heartbeat
+2026-09-23 21:12:29 UTC - heartbeat
+2026-09-23 21:13:08 UTC - heartbeat
+2026-09-23 21:13:48 UTC - heartbeat
+2026-09-23 21:14:29 UTC - heartbeat
+2026-09-23 21:15:07 UTC - heartbeat
+2026-09-23 21:15:49 UTC - heartbeat
+2026-09-23 21:16:28 UTC - heartbeat
+2026-09-23 21:17:09 UTC - heartbeat
+2026-09-23 21:17:50 UTC - heartbeat
+2026-09-23 21:18:29 UTC - heartbeat
+2026-09-23 21:19:08 UTC - heartbeat
+2026-09-23 21:19:49 UTC - heartbeat
+2026-09-23 21:20:27 UTC - heartbeat
+2026-09-23 21:21:08 UTC - heartbeat
+2026-09-23 21:21:48 UTC - heartbeat
+2026-09-23 21:22:26 UTC - heartbeat
+2026-09-23 21:23:09 UTC - heartbeat
+2026-09-23 21:23:47 UTC - heartbeat
+2026-09-23 21:24:25 UTC - heartbeat
+2026-09-23 21:25:05 UTC - heartbeat
+2026-09-23 21:25:44 UTC - heartbeat
+2026-09-23 21:27:45 UTC - heartbeat
+2026-09-23 21:28:29 UTC - heartbeat
+2026-09-23 21:29:07 UTC - heartbeat
+2026-09-23T22:42Z | small functional test run initiated via scripts/run_small_test.sh with fixed COMEBin source (commit 586c7f7: gen_seed_idx FileNotFoundError fix); test progressed past seed generation stage but hit gen_cov.py KeyError on scaffold_22978 - separate from seed-file bug; run completed exit_code=1 in 17s
+2026-09-24 00:15:09 UTC
+2026-09-24 00:26:39 UTC
+2026-09-24 00:29:27 UTC
+> build · mimo-v2.6-flash-free
+[0m$ [0mgrep -n -B5 -A15 "IndexError" /vol/data/benchmark/runs/small_test/comebin_run.log | tail -50
+48-    dataset, namelist = get_ContrastiveLearningDataset(args.data, args.n_views,
+49-  File "/vol/data/repos/COMEBin/COMEBin/get_augfeature.py", line 155, in get_ContrastiveLearningDataset
+50-    dataset, namelist = get_kmer_coverage(data_path, n_views, kmer_model_path, device, nokmer, cov_meannormalize, cov_minmaxnormalize, cov_standardization,addvars,vars_sqrt,kmer_l2_normalize,kmerMetric_notl2normalize)
+51-  File "/vol/data/repos/COMEBin/COMEBin/get_augfeature.py", line 57, in get_kmer_coverage
+52-    compositMat = shuffled_compositMat[covIdxArr]
+53:IndexError: index 135282741276336 is out of bounds for axis 0 with size 300
+54-Something went wrong with running training network. Exiting.
+[0m$ [0mgh issue view 2 -R paulzierep/metagenomic-binning-benchmark --json comments --jq '.comments[] | {author:.author.login, created:.createdAt, first_line:(.body|split("\n")[0])}' 2>&1 | tail -30
+echo "=== small_test_v2 meta ==="
+grep -E 'exit_code|commit|wall' /vol/data/benchmark/runs/small_test_v2/run_meta.txt 2>/dev/null
+{"author":"paulzierep","created":"2026-09-23T17:41:54Z","first_line":"U should for all functional tests use the small test data, log it as always, then make a medium size benchmakr dataset once the tests work and and only after major commits run on big benchmark data"}
+{"author":"paulzierep","created":"2026-09-23T17:43:46Z","first_line":"Also make a plan which benchmark data to use human as host should be included so you do not excede the space limit on the drive"}
+{"author":"paulzierep","created":"2026-09-23T18:56:47Z","first_line":"## Small dataset ready + both new directives addressed"}
+{"author":"paulzierep","created":"2026-09-23T19:19:23Z","first_line":"## Supervisor follow-up: explicit medium stage + safe test runner"}
+{"author":"paulzierep","created":"2026-09-23T23:35:46Z","first_line":"## Small test run update"}
+{"author":"paulzierep","created":"2026-09-23T23:35:50Z","first_line":"## Small test run update"}
+{"author":"paulzierep","created":"2026-09-23T23:35:54Z","first_line":"Small test run update: the small benchmark dataset is ready but the test runner failed with IndexError in get_augfeature.py (k-mer coverage computation). Bug in contig-to-kmer index mapping. Need fix before small end-to-end run can complete per workflow docs/08."}
+=== small_test_v2 meta ===
+commit:     904f649ef5cbb4582a6f0e5ec8b0b1f45778d85b
+exit_code:  1
+wall_s:     43
+watchdog_terminal: 2026-09-23T23:40:01+00:00 run_meta exit_code=1
+> build · mimo-v2.6-flash-free
+The `IndexError` shows `shuffled_compositMat[covIdxArr]` with a garbage index (1.35e14, size 300) — likely a corrupted index file read. Let me inspect the source and the v2 failure:
+[0m$ [0mgrep -n -B3 -A12 -E "Error|error" /vol/data/benchmark/runs/small_test_v2/comebin_run.log | tail -40
+46-    train_CLmodel(logger,args)
+47-  File "/vol/data/repos/COMEBin/COMEBin/train_CLmodel.py", line 46, in train_CLmodel
+48-    length_weight.append(lengths[seq_id])
+49:KeyError: 'BATS_SAMN07137077_METAG-scaffold_22978'
+50-Something went wrong with running training network. Exiting.
+[0m$ [0msed -n '1,80p' /vol/data/repos/COMEBin/COMEBin/get_augfeature.py
+import numpy as np
+import pandas as pd
+import torch
+from utils import get_kmerMetric_emb
+from sklearn.preprocessing import normalize
+
+def get_kmer_coverage(data_path: str, n_views: int = 2, kmer_model_path: str = 'empty',
+                      device = torch.device('cpu'), nokmer: bool = False, cov_meannormalize: bool = False,
+                      cov_minmaxnormalize: bool = False, cov_standardization: bool = False, addvars: bool = False,
+                      vars_sqrt: bool = False, kmer_l2_normalize: bool = False, kmerMetric_notl2normalize: bool = False):
+    """
+    Get features
+
+    :param data_path: The path to the data directory.
+    :param n_views: The number of views (default: 2).
+    :param kmer_model_path: The path to the k-mer model (default: 'empty').
+    :param device: The device for computation (default: 'cpu').
+    :param nokmer: Flag to exclude k-mer data (default: False).
+    :param cov_meannormalize: Flag to mean normalize coverage data (default: False).
+    :param cov_minmaxnormalize: Flag to min-max normalize coverage data (default: False).
+    :param cov_standardization: Flag to standardize coverage data (default: False).
+    :param addvars: Flag to include additional variables (default: False).
+    :param vars_sqrt: Flag to take the square root of variables (default: False).
+    :param kmer_l2_normalize: Flag to L2 normalize k-mer data (default: False).
+    :param kmerMetric_notl2normalize: Flag to not L2 normalize k-mer metric data (default: False).
+
+    :return: A list of preprocessed data and a list of contig names.
+    """
+    namelist = pd.read_csv(data_path + 'aug0_datacoverage_mean.tsv', sep='\t', usecols=range(1)).values[:, 0]
+
+    mapObj = dict(zip(namelist, range(len(namelist))))
+    for view in range(n_views):
+        cov_file = data_path + 'aug' + str(view) + '_datacoverage_mean.tsv'
+        if not nokmer:
+            com_file = data_path + 'aug' + str(view) + '/kmer_4_f0.csv'
+
+        covHeader = pd.read_csv(cov_file, sep='\t', nrows=1)
+        shuffled_covMat = pd.read_csv(cov_file, sep='\t', usecols=range(1, covHeader.shape[1])).values
+        shuffled_namelist = pd.read_csv(cov_file, sep='\t', usecols=range(1)).values[:, 0]
+
+        covIdxArr = np.zeros(len(mapObj), dtype=np.int)
+        for contigIdx in range(len(shuffled_namelist)):
+            if shuffled_namelist[contigIdx].split('_aug')[0] in mapObj:
+                covIdxArr[mapObj[shuffled_namelist[contigIdx].split('_aug')[0]]] = contigIdx
+        covMat = shuffled_covMat[covIdxArr]
+
+
+        if not nokmer:
+            compositHeader = pd.read_csv(com_file, sep=',', nrows=1)
+            shuffled_compositMat = pd.read_csv(com_file, sep=',', usecols=range(1, compositHeader.shape[1])).values
+            shuffled_namelist = pd.read_csv(com_file, sep=',', usecols=range(1)).values[:, 0]
+
+            covIdxArr = np.zeros(len(mapObj), dtype=np.int)
+            for contigIdx in range(len(shuffled_namelist)):
+                if shuffled_namelist[contigIdx].split('_aug')[0] in mapObj:
+                    covIdxArr[mapObj[shuffled_namelist[contigIdx].split('_aug')[0]]] = contigIdx
+            compositMat = shuffled_compositMat[covIdxArr]
+
+        if addvars:
+            vars_file = data_path+'aug'+str(view)+'_datacoverage_var.tsv'
+
+            varsHeader = pd.read_csv(vars_file, sep='\t', nrows=1)
+            shuffled_varsMat = pd.read_csv(vars_file, sep='\t', usecols=range(1, varsHeader.shape[1])).values
+            shuffled_namelist = pd.read_csv(vars_file, sep='\t', usecols=range(1)).values[:, 0]
+
+            covIdxArr = np.zeros(len(mapObj), dtype=np.int)
+            for contigIdx in range(len(shuffled_namelist)):
+                if shuffled_namelist[contigIdx].split('_aug')[0] in mapObj:
+                    covIdxArr[mapObj[shuffled_namelist[contigIdx].split('_aug')[0]]] = contigIdx
+            varsMat = shuffled_varsMat[covIdxArr]
+
+        if view == 0:
+            covMats = covMat
+            if addvars:
+                varsMats = varsMat
+            if not nokmer:
+                compositMats = compositMat
+
+        else:
+            covMats = np.vstack((covMats, covMat))
+> build · mimo-v2.6-flash-free
