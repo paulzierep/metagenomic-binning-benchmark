@@ -3,13 +3,13 @@
 | | |
 |---|---|
 | Status | 🔴 `stopped (watchdog will restart)` |
-| ⏱ Updated (Europe/Berlin) | `2026-09-24T23:42 CEST` |
-| 🏃 Last benchmark (not active) | `fix_v11_20260924` — last observed **epoch 183/200** (log 15431s old) |
+| ⏱ Updated (Europe/Berlin) | `2026-09-24T23:44 CEST` |
+| 🏃 Last benchmark (not active) | `fix_v11_20260924` — last observed **epoch 183/200** (log 15551s old) |
 | 🧠 Model (last turn) | `mimo-v2.6-flash-free` (watchdog rotates to free models on quota) |
-| 📌 Agent note · **608 min old** | heartbeat stale 36498s — agent dead/idle, watchdog should restart within ~5 min |
-| ⚙️ Load · uptime | `0.01 0.03 0.00` · 1 day, 8 hours, 6 minutes — 32 cores, 62 GiB, no GPU |
+| 📌 Agent note · **610 min old** | heartbeat stale 36618s — agent dead/idle, watchdog should restart within ~5 min |
+| ⚙️ Load · uptime | `0.12 0.05 0.01` · 1 day, 8 hours, 8 minutes — 32 cores, 62 GiB, no GPU |
 | 💾 RAM used/total | `1743/64295 MB` |
 | 🔗 Session | `ses_f31799c77ffeTq9gcYgqc4hBhg` |
-| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `eff82d5 status: no — fix_v11_20260924 epoch 183/200 loss 2.835580348968506 acc` |
+| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `d206390 meta: supervise tick 2026-09-24T21:43:01Z — 0 fix(es)` |
 | 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `3326938 B` — every run, command & tool result |
 | 📈 Timeline | [status/status.log](status/status.log) |
