@@ -37045,3 +37045,45 @@ ok
 - `.activity` + `status/agent-activity.log` appended; `.heartbeat` touched.
 
 **Next turn:** when `fix_v11_20260924` reaches terminal status → `scripts/run_eval.sh runs/fix_v11_20260924` (CheckM2 + CheckM v1) → `make_results_csv.py` + `make_per_bin_plots.py -k demo` (baseline vs fix_v11 same-dataset comparison) → README / docs-11 row → CAMI II marine prep + run.
+[0m
+> build · big-pickle
+[0m$ [0mtest -f /vol/data/benchmark/TASK_COMPLETE && echo "TASK_COMPLETE EXISTS" || echo "no TASK_COMPLETE"; echo "===active_run==="; cat /vol/data/benchmark/.active_run 2>/dev/null || echo "none"; echo "===fix_v11==="; L=/vol/data/benchmark/runs/fix_v11_20260924/comebin_run.log; grep -o 'epoch=[0-9]*/200, batches=[0-9]*, loss=[0-9.]*' $L 2>/dev/null | tail -2; grep -E '^exit_code|^wall_s|^bins:' /vol/data/benchmark/runs/fix_v11_20260924/run_meta.txt 2>/dev/null || echo "not finished"; date -u +%FT%TZ; touch /vol/data/benchmark/.heartbeat
+no TASK_COMPLETE
+===active_run===
+873786 873784 /vol/data/benchmark/runs/fix_v11_20260924/comebin_run.log /vol/data/benchmark/runs/fix_v11_20260924 1790246235 fix /vol/data/repos/COMEBin-v11 /vol/data/datasets/comebin_test_data/BATS_SAMN07137077_METAG.scaffolds.min500.fasta.f1k.fasta /vol/data/datasets/comebin_test_data/bamfiles
+===fix_v11===
+epoch=6/200, batches=28, loss=4.1670542
+epoch=7/200, batches=28, loss=4.0231886
+not finished
+2026-09-24T10:57:30Z
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && gh issue list -R paulzierep/metagenomic-binning-benchmark --state open --json number,title,updatedAt --jq '.[] | "\(.number) \(.title) \(.updatedAt)"' | sort -k3 | tail -5
+15 Improve results 2026-09-24T10:34:37Z
+14 Improve the readme 2026-09-24T10:17:32Z
+13 CheckM v1: rc=0. 2026-09-24T09:35:42Z
+2 Can you try to create a small benchmark dataset for comebin ? 2026-09-24T10:02:55Z
+11 Baseline zero-bins failure chain: hmmer 3.4 vs pinned 3.1b2 poisons marker seed, unguarded cluster.py:368 read, wrapper masks the failure 2026-09-24T09:10:20Z
+> build · big-pickle
+Run at **epoch 7/200** (loss 4.02, cadence ~1.5 min/epoch → ETA ≈ 16:00 UTC). No new issues. Updating the ETA in PROGRESS (was based on warmup pace):
+[0m$ [0mpython3 - <<'PY'
+p = "/vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md"
+with open(p) as f: c = f.read()
+c = c.replace(
+    "cadence ~2.1–2.5 min/epoch ⇒ ~7.5 h total, ETA ≈ 18:00 UTC, 32-core CPU\n      ~2900%, RAM 9.4 GB",
+    "cadence ~1.4–1.9 min/epoch steady-state ⇒ ~5 h total, ETA ≈ 16:00 UTC,\n      32-core CPU ~2900%, RAM 9.4 GB")
+with open(p,"w") as f: f.write(c)
+print("ok")
+PY
+cp /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md /vol/data/benchmark/PROGRESS.md; R=/vol/data/repos/metagenomic-binning-benchmark; TS=$(date -u +%FT%TZ); echo "$TS fix_v11: epoch 7/200, loss 4.02, ETA ~16:00Z; no new issues" >> $R/status/agent-activity.log; echo "$TS fix_v11-epoch7" >> /vol/data/benchmark/.activity; flock /tmp/bench-repo.lock bash -c "cd $R && git add PROGRESS.md status/agent-activity.log && git commit -m 'meta: fix_v11 ETA refresh' -q && git push origin main -q"; cd $R && git status -sb | head -1; touch /vol/data/benchmark/.heartbeat; echo done
+ok
+## main...origin/main
+done
+> build · big-pickle
+## Turn summary
+
+**Run:** `fix_v11_20260924` at **epoch 7/200** (loss 4.02, dropping steadily 6.10 → 4.02). Steady-state cadence ~1.4–1.9 min/epoch ⇒ ~5 h total, **ETA ≈ 16:00 UTC**. Healthy (full CPU, 9.4 GB RSS). `.active_run` intact; watchdog owns handoff; run untouched.
+
+**Issues:** no new activity — changelog still only contains my own comments from this session. Nothing to triage or duplicate.
+
+**Bookkeeping:** PROGRESS ETA refreshed (mirrored + committed under lock, `…` pushed, tree clean); `.activity` + `status/agent-activity.log` appended; `.heartbeat` touched.
+
+**Next turn:** on `fix_v11_20260924` terminal status → `scripts/run_eval.sh runs/fix_v11_20260924` (CheckM2 + CheckM v1) → `make_results_csv.py` + `make_per_bin_plots.py -k demo` (baseline vs fix_v11, same dataset) → README / docs-11 row → CAMI II marine prep (`prep_cami2_marine.sh`).
