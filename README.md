@@ -1,6 +1,6 @@
 <!--AGENT-STATUS-->
 
-> 🟢 **Agent status:** `running` · ⏱ `2026-09-24T06:42 CEST` · 🏃 train baseline_rerun_autorestart1: epoch 108/200 · loss 2.972137451171875 · top1 97.77668762207031 · 🧠 `mimo-v2.6-flash-free` · [status.log](status/status.log)
+> 🟢 **Agent status:** `running` · ⏱ `2026-09-24T06:43 CEST` · 🏃 train baseline_rerun_autorestart1: epoch 108/200 · loss 2.972137451171875 · top1 97.77668762207031 · 🧠 `mimo-v2.6-flash-free` · [status.log](status/status.log)
 
 # metagenomic-binning-benchmark
 
@@ -46,7 +46,7 @@ Raw per-run outputs stay in `/vol/data/benchmark/runs/`, parsed CSVs in `results
 
 | Run | Date | Source commit | Dataset | Threads | Wall time | Peak RAM | Bins | CheckM2 comp/cont % | CheckM comp/cont % | Status |
 |---|---|---|---|---|---|---|---|---|---|---|
-| `baseline_unmodified` | – | [987db95](https://github.com/paulzierep/COMEBin/commit/987db95d8d399f30b7c82a5f5f40ed6bfdc906c7) (upstream) | COMEBin demo (29,434 contigs) | 32 | – | – | – | – | – | ⏹ not active · last observed epoch 175/200 |
+| `baseline_unmodified` | 2026-09-23 | [987db95](https://github.com/paulzierep/COMEBin/commit/987db95d8d399f30b7c82a5f5f40ed6bfdc906c7) (upstream) | COMEBin demo (29,434 contigs) | 32 | – | – | – | – | – | ⏹ failed at epoch 175/200 — see [Run history](#run-history--what-happened-and-whats-next) |
 
 Column contract: **Wall time** = total seconds (plus per-stage breakdown in
 `docs/02-comebin-baseline.md`), **Bins** = bins exported (≥200 kb filter noted),
@@ -54,6 +54,20 @@ Column contract: **Wall time** = total seconds (plus per-stage breakdown in
 `results/<run>.csv`. **Source commit** is always a clickable link to that exact
 commit on GitHub. Fix batches on `comebin-optimizations` get one row each, so
 performance deltas vs. baseline are visible directly in this table.
+
+## Run history — what happened and what's next
+
+One row per run attempt: exactly why it ended (or whether it is still going) and
+the concrete next step. Kept current by the agent; raw evidence lives in each
+run's `runs/<run>/run_meta.txt` + `comebin_run.log`.
+
+| Run | Time (UTC) | Source | Result | What happened / why | Next step |
+|---|---|---|---|---|---|
+| `baseline_unmodified` | 2026-09-23 14:36 → 21:42 | [987db95](https://github.com/paulzierep/COMEBin/commit/987db95d8d399f30b7c82a5f5f40ed6bfdc906c7) upstream | **failed** at epoch 175/200 (no evaluation claimed) | Training ran 7 h; clustering then crashed twice over: hmmsearch `--cut_tc` found no marker hits so the `.seed` file was never written (`FileNotFoundError` in `gen_seed_idx`), and `biolib` was not installed (`ModuleNotFoundError`) → "Something went wrong with running clustering." Watchdog recorded the terminal reason instead of silently retrying. | Installed `biolib`; committed the graceful-missing-seed fix (`gen_seed_idx` → empty seed list) plus `np.zeros`/`gen_cov` crash fixes; launched the baseline rerun below. |
+| `baseline_rerun` (refused launch) | 2026-09-24 00:29 | [904f649](https://github.com/paulzierep/COMEBin/commit/904f649ef5cbb4582a6f0e5ec8b0b1f45778d85b) | **no run** (guard worked) | Overlap guard refused to start a second run while a stale registration (`pid=262046`) existed — logged in `out.txt`, zero CPU spent. | Superseded one minute later by `baseline_rerun_autorestart1`; stale registration cleared by the watchdog. |
+| `baseline_rerun_autorestart1` | 2026-09-24 00:30 → **running** | [904f649](https://github.com/paulzierep/COMEBin/commit/904f649ef5cbb4582a6f0e5ec8b0b1f45778d85b) | **in progress** — epoch 108/200 @ 04:40, loss 3.58 ↓, Top1 84 %, no errors | Watchdog-managed rerun on an immutable snapshot (crash fixes only: seed-file handling, `biolib`, `np.zeros`, `gen_cov`/`gen_var` KeyErrors); 32 threads, `--earlystop` armed. | ⏳ running · epoch 108/200 · loss 2.972137451171875 · top1 97.77668762207031 |
+| `small_test` | 2026-09-23 23:12 → 23:13 (41 s) | [ee2e507](https://github.com/paulzierep/COMEBin/commit/ee2e5079ae8fd04caa381486a4bba8c2d2a34a14) | **failed**, exit 1 | Earlier attempt hit `gen_cov.py` `KeyError: scaffold_22978` (BAM header reference absent from the 300-contig assembly) — fixed in `47c1449`; rerun then died in `get_kmer_coverage` with `IndexError: index … out of bounds for axis 0 with size 300` because `np.empty` left the contig→kmer index array uninitialized when a name was missing. | `np.empty` → `np.zeros` committed as `904f649`; rerun as `small_test_v2`. |
+| `small_test_v2` | 2026-09-23 23:39 → 23:40 (43 s) | [904f649](https://github.com/paulzierep/COMEBin/commit/904f649ef5cbb4582a6f0e5ec8b0b1f45778d85b) | **failed**, exit 1 | Past augmentation + 1 epoch, then `KeyError: 'BATS…scaffold_22978'` at `train_CLmodel.py:46`. Root cause: `aug0_datacoverage_mean.tsv` carried **29,434 rows — every BAM header reference** (`bedtools genomecov -bga` emits zero-depth rows for all refs; the aug0 `calculate_coverage` path had no input-contig filter) — while the small assembly has 300 contigs, so `lengths[seq_id]` missed. | Producer filter + defensive feature alignment committed on branch `comebin-small-fix` ([`5c77bc8`](https://github.com/paulzierep/COMEBin/commit/5c77bc8)); offline 300-contig/6-view feature test passes. **Next:** end-to-end rerun immediately after the baseline completes (no overlapping timed runs), then CheckM2/CheckM — this is the validation gate for the medium dataset. |
 
 ## Branch strategy
 
