@@ -3,10 +3,10 @@
 | | |
 |---|---|
 | Status | 🟢 `running` |
-| ⏱ Updated (Europe/Berlin) | `2026-09-24T12:44 CEST` |
-| 🏃 Benchmark | no active run |
+| ⏱ Updated (Europe/Berlin) | `2026-09-24T12:46 CEST` |
+| 🏃 Live benchmark | `fix_v11_20260924` — **epoch 0/200** · loss `6.104430675506592` · top1 acc `3.994140625` (log 107s fresh) |
 | 🧠 Model (last turn) | `big-pickle` (watchdog rotates to free models on quota) |
-| 📌 Agent note · **0 min old** | Baseline training epoch ~109/200 (~2.4 min/epoch, ETA ~22:35 UTC unless early-stop); next: baseline eval (run_eval.sh) → issue #2 small-dataset test → v1.1.0 fix run
+| 📌 Agent note · **1 min old** | Baseline training epoch ~109/200 (~2.4 min/epoch, ETA ~22:35 UTC unless early-stop); next: baseline eval (run_eval.sh) → issue #2 small-dataset test → v1.1.0 fix run
 2026-09-23 20:33:11 UTC - heartbeat
 2026-09-23 20:43:58 UTC - heartbeat
 2026-09-23 20:56:28 UTC - heartbeat
@@ -261,10 +261,12 @@
 2026-09-24T10:34:38Z issue-15
 2026-09-24T10:37:05Z issue-16
 2026-09-24T10:38:20Z fix_v11-launch-7-15-16
-2026-09-24T10:43:15Z issue-12-plots |
-| ⚙️ Load · uptime | `27.56 10.86 6.24` · 21 hours, 8 minutes — 32 cores, 62 GiB, no GPU |
-| 💾 RAM used/total | `5216/64295 MB` |
+2026-09-24T10:43:15Z issue-12-plots
+2026-09-24T10:44:46Z issue-12-reply
+2026-09-24T10:45:01Z turn-end |
+| ⚙️ Load · uptime | `31.18 17.55 9.24` · 21 hours, 10 minutes — 32 cores, 62 GiB, no GPU |
+| 💾 RAM used/total | `7445/64295 MB` |
 | 🔗 Session | `ses_f31799c77ffeTq9gcYgqc4hBhg` |
-| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `7c0d4bd reporting: automatic per-bin plots per run + comparison scatter (issue #` |
-| 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `3221184 B` — every run, command & tool result |
+| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `5362777 log: issue #12 reply` |
+| 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `3229273 B` — every run, command & tool result |
 | 📈 Timeline | [status/status.log](status/status.log) |

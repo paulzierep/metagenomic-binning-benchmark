@@ -36920,3 +36920,83 @@ d8bc50c meta: supervise tick 2026-09-24T10:43:01Z — 0 fix(es)
 ## main...origin/main [ahead 1]
 To https://github.com/paulzierep/metagenomic-binning-benchmark
    d8bc50c..7c0d4bd  main -> main
+> build · big-pickle
+Pushed. Commenting on **#12**:
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && gh issue comment 12 -R paulzierep/metagenomic-binning-benchmark --body 'Implemented — automatic per-bin plots, regenerated after every evaluated run:
+
+- **Per-run bar chart** `runs/<run>/per_bins.png`: one bar group per bin with CheckM2 + CheckM v1 completeness and contamination (e.g. [baseline](https://github.com/paulzierep/metagenomic-binning-benchmark/blob/main/runs/baseline_rerun_autorestart1/per_bins.png), [medium](https://github.com/paulzierep/metagenomic-binning-benchmark/blob/main/runs/medium_v11_20260924/per_bins.png)).
+- **Comparison scatter** [results/figures/comp_vs_cont_all-runs.png](https://github.com/paulzierep/metagenomic-binning-benchmark/blob/main/results/figures/comp_vs_cont_all-runs.png): one point per bin, x = contamination, y = completeness, color = run — directly comparable across runs on the same dataset (baseline vs fix_v11 once the full fix run completes).
+- Generator: `scripts/make_per_bin_plots.py <rundir>...` (matplotlib, comebin env); run automatically right after `make_per_bin_csv.py` in the post-eval workflow. Same-dataset comparison figures are keyed via `-k <dataset>`.
+
+Committed as `7c0d4bd`; README Results section links all figures.' 2>&1 | tail -1; TS=$(date -u +%FT%TZ); echo "$TS issue-12 reply: plots committed 7c0d4bd" >> status/agent-activity.log; echo "$TS issue-12-reply" >> /vol/data/benchmark/.activity; echo "=== fix_v11 progress ==="; L=/vol/data/benchmark/runs/fix_v11_20260924/comebin_run.log; tail -2 $L | cut -c1-150; grep -o 'epoch=[0-9]*/200' $L | tail -1; ps -eo pid,pcpu,args | grep 'main.py' | grep -v grep | cut -c1-110; touch /vol/data/benchmark/.heartbeat
+https://github.com/paulzierep/metagenomic-binning-benchmark/issues/12#issuecomment-5812588003
+=== fix_v11 progress ===
+2026-09-24 10:44:14,207 - NN training: epoch=1/200, batches=28, loss=6.1044307, top1=3.9941, elapsed=127.562s, process_memory={'VmPeak': '8649032 kB',
+  0%|          | 0/28 [00:00<?, ?it/s]  4%|▎         | 1/28 [00:05<02:39,  5.91s/it]  7%|▋         | 2/28 [00:10<02:14,  5.16s/it] 11%|█    
+epoch=1/200
+ 876247 2921 python /vol/data/repos/COMEBin-v11/COMEBin/main.py train --data /vol/data/benchmark/runs/fix_v11_
+ 878176  0.3 python /vol/data/repos/COMEBin-v11/COMEBin/main.py train --data /vol/data/benchmark/runs/fix_v11_
+ 878208  0.3 python /vol/data/repos/COMEBin-v11/COMEBin/main.py train --data /vol/data/benchmark/runs/fix_v11_
+ 878240  0.3 python /vol/data/repos/COMEBin-v11/COMEBin/main.py train --data /vol/data/benchmark/runs/fix_v11_
+ 878272  0.2 python /vol/data/repos/COMEBin-v11/COMEBin/main.py train --data /vol/data/benchmark/runs/fix_v11_
+> build · big-pickle
+Training is live and healthy: **epoch 1/200** at ~2.3 min/epoch (≈7.5 h total), main train proc at ~2900% CPU. #12 posted. Final consistency check:
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && git status -sb | head -3; diff -q PROGRESS.md /vol/data/benchmark/PROGRESS.md && echo "PROGRESS in sync"; echo "=== open issues tail ==="; gh issue list -R paulzierep/metagenomic-binning-benchmark --state open --json number,title --jq '.[] | "#\(.number) \(.title)"' | head -12; date -u +%FT%TZ; touch /vol/data/benchmark/.heartbeat
+## main...origin/main
+ M status/agent-activity.log
+PROGRESS in sync
+=== open issues tail ===
+#16 Model choice
+#15 Improve results
+#14 Improve the readme
+#13 CheckM v1: rc=0.
+#12 Improve reporting
+#11 Baseline zero-bins failure chain: hmmer 3.4 vs pinned 3.1b2 poisons marker seed, unguarded cluster.py:368 read, wrapper masks the failure
+#8 Add benchmark data to zenodo
+#7 Optimization plan
+#6 Optimization
+#2 Can you try to create a small benchmark dataset for comebin ?
+#1 Idea inbox: benchmark ideas, COMEBin fixes, dataset requests
+2026-09-24T10:44:55Z
+> build · big-pickle
+[0m$ [0mR=/vol/data/repos/metagenomic-binning-benchmark; flock /tmp/bench-repo.lock bash -c "cd $R && git add status/agent-activity.log && git commit -m 'log: issue #12 reply' -q && git push origin main -q 2>&1 | tail -1"; cd $R && git status -sb | head -2; echo "$(date -u +%FT%TZ) turn-end: fix_v11 training epoch 1/200 live; #12 plots+reply committed" >> $R/status/agent-activity.log; echo "$(date -u +%FT%TZ) turn-end" >> /vol/data/benchmark/.activity; touch /vol/data/benchmark/.heartbeat
+## main...origin/main
+> build · big-pickle
+## Turn summary
+
+**Run status:** `fix_v11_20260924` (full 29,434-contig demo, source `95f5ea8`, seed 42) is **training — epoch 1/200**, ~2.3 min/epoch ⇒ ≈7.5 h ETA, main train proc at ~2900% CPU. `.active_run` registered; `benchmark-watchdog.sh` owns the handoff. Not touched further.
+
+**Issues — no new owner activity** (the only comment updates on #7/#15/#16 were my own from last turn, posted via the repo token). All open issues remain answered or in-flight; nothing duplicated.
+
+**Work completed this turn (issue #12, "Improve reporting"):**
+- Wrote `scripts/make_per_bin_plots.py`: per-run grouped bar chart (`runs/<run>/per_bins.png` — CheckM2 + CheckM v1 comp/cont per bin) and a comparison scatter (`results/figures/comp_vs_cont_all-runs.png` — one point per bin, x = contamination, y = completeness, color = run), regenerated after each eval.
+- Rendered for all three evaluated runs; verified PNGs are substantive (not blank) via pixel-distinctness check.
+- README Results section now lists the figures; docs/11 stale per-bin link (moved file) fixed.
+- PROGRESS.md updated + mirrored; `.activity` + `status/agent-activity.log` appended; `.heartbeat` touched.
+- Reply posted (`5812588003`) with links to the committed figures.
+
+**Pushed (all under `/tmp/bench-repo.lock`, intended paths only):**
+- `7c0d4bd` — per-bin plots + comparison scatter + README/docs-11 figure links (#12)
+- last log-line commit — issue #12 reply record
+
+**Next turn:** on fix_v11 terminal status → `scripts/run_eval.sh runs/fix_v11_20260924` → `make_results_csv.py` + `make_per_bin_plots.py` (baseline vs fix_v11 same-dataset comparison, `-k` grouping) → README / docs-11 row, then CAMI II marine prep (`prep_cami2_marine.sh`).
+[0m
+> build · big-pickle
+[0m$ [0mtest -f /vol/data/benchmark/TASK_COMPLETE && echo "TASK_COMPLETE EXISTS" || echo "no TASK_COMPLETE"; echo "===active_run==="; cat /vol/data/benchmark/.active_run 2>/dev/null || echo "none"; echo "===fix_v11==="; L=/vol/data/benchmark/runs/fix_v11_20260924/comebin_run.log; grep -o 'epoch=[0-9]*/200' $L 2>/dev/null | tail -1; tail -1 $L 2>/dev/null | cut -c1-150; grep '^exit_code:' /vol/data/benchmark/runs/fix_v11_20260924/run_meta.txt 2>/dev/null; date -u +%FT%TZ; touch /vol/data/benchmark/.heartbeat
+no TASK_COMPLETE
+===active_run===
+873786 873784 /vol/data/benchmark/runs/fix_v11_20260924/comebin_run.log /vol/data/benchmark/runs/fix_v11_20260924 1790246235 fix /vol/data/repos/COMEBin-v11 /vol/data/datasets/comebin_test_data/BATS_SAMN07137077_METAG.scaffolds.min500.fasta.f1k.fasta /vol/data/datasets/comebin_test_data/bamfiles
+===fix_v11===
+epoch=1/200
+  0%|          | 0/28 [00:00<?, ?it/s]  4%|▎         | 1/28 [00:05<02:39,  5.91s/it]  7%|▋         | 2/28 [00:10<02:14,  5.16s/it] 11%|█    
+2026-09-24T10:45:51Z
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && gh issue list -R paulzierep/metagenomic-binning-benchmark --state open --json number,title,updatedAt --jq '.[] | "\(.number) \(.title) \(.updatedAt)"' | sort -k3 | tail -6; echo "===COMEBin==="; gh issue list -R paulzierep/COMEBin --state open --json number,title,updatedAt 2>&1 | head -3
+12 Improve reporting 2026-09-24T10:44:46Z
+15 Improve results 2026-09-24T10:34:37Z
+14 Improve the readme 2026-09-24T10:17:32Z
+13 CheckM v1: rc=0. 2026-09-24T09:35:42Z
+2 Can you try to create a small benchmark dataset for comebin ? 2026-09-24T10:02:55Z
+11 Baseline zero-bins failure chain: hmmer 3.4 vs pinned 3.1b2 poisons marker seed, unguarded cluster.py:368 read, wrapper masks the failure 2026-09-24T09:10:20Z
+===COMEBin===
+the 'paulzierep/COMEBin' repository has disabled issues
+> build · big-pickle
