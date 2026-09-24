@@ -33,18 +33,22 @@ per batch** (see `docs/07-fix-batches.md`). Each batch goes through the gate bel
 
 ```mermaid
 flowchart TD
-    A[Pick candidate change / param from idea list] --> B[Small functional test<br/>small dataset, fast]
-    B -->|FAIL| G[Investigate, fix, or drop the idea]
-    G --> A
-    B -->|PASS| C[Benchmark on small/medium set]
-    C --> D{Better or equal<br/>time AND quality?}
-    D -->|YES| E[KEEP commit, record results in results/ and commit msg]
-    E --> F[Continue: next batch from this commit]
-    D -->|NO| H[Revert or rework this commit]
-    H --> I[Combine with other surviving ideas<br/>and re-test as a new batch]
-    I --> A
-    F --> J[After major commits: full large benchmark<br/>e.g. COMEBin demo / CAMI II marine / CAMI III]
+    A["💡 Pick candidate change / param"] --> B["Small functional test<br/>(300-contig dataset)"]
+    B -->|"❌ fail"| G["Investigate, fix, or drop"] --> A
+    B -->|"✅ pass"| C["Benchmark small / medium set"]
+    C --> D{"Better or equal<br/>time AND quality?"}
+    D -->|"✅ keep"| E["Keep commit<br/>record in results/ + PROGRESS"]
+    E --> F["Next batch from this commit"]
+    D -->|"❌ no"| H["Revert or rework"]
+    H --> I["Combine with surviving ideas"] --> A
+    F --> J["After major commits:<br/>full large benchmark<br/>(demo → CAMI II marine → CAMI III)"]
+    classDef keep fill:#d9f7be,stroke:#389e0d;
+    classDef drop fill:#ffccc7,stroke:#cf1322;
+    class A,B,C,E,F,J keep;
+    class G,H,I drop;
 ```
+
+> The same flowchart is rendered live in the [README](../README.md) (issue #7).
 
 Invariants:
 

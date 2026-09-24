@@ -1,6 +1,76 @@
 <!--AGENT-STATUS-->
 
-> 🟢 **Agent status:** `running` · ⏱ `2026-09-24T12:34 CEST` · 🏃 last run medium_v11_20260924: epoch 199/200 · not active · 🧠 `big-pickle` · [status.log](status/status.log)
+> 🟢 **Agent status:** `running` · ⏱ `2026-09-24T12:35 CEST` · 🏃 no active benchmark · 🧠 `mimo-v2.6-flash-free` · [status.log](status/status.log)
 
-**Current:** medium_v11_20260924 is complete: 200/200 epochs, 16 bins, CheckM2 35.93% / 4.67%, CheckM v1 33.83% / 6.03%. **Next:** start fix-batch 2 on the 29,434-contig demo dataset.
+# Metagenomic binning benchmark
 
+Benchmark of metagenomic genome binners — starting with
+[COMEBin](https://github.com/paulzierep/COMEBin) — with a repeatable harness:
+per-run parameters, datasets, wall time / RAM, and bin quality scored with both
+**CheckM2** and **CheckM (v1)**. Everything is documented so any session can pick
+the work back up (see [`PROGRESS.md`](PROGRESS.md)).
+
+## Current / Next
+
+**Completed baseline:** unmodified COMEBin on the **BATS demo dataset**
+(29,434 contigs): 200/200 epochs, 60 bins, CheckM2 25.01 % / 2.98 % and
+CheckM v1 21.23 % / 3.40 % mean completeness / contamination.
+**Completed small gate:** `small_test_v4` → 3 bins, CheckM2 26.07 % / 2.02 %,
+CheckM v1 29.08 % / 0.71 %.
+**Completed medium run:** `medium_v11_20260924` (source fix batch 1 `95f5ea8`,
+3,000 contigs, seed 42): 16 bins, CheckM2 35.93 % / 4.67 %, CheckM v1
+33.83 % / 6.03 %.
+
+**Next (in progress this turn):** full-large fix-benchmark on the same demo
+dataset with the fixed v1.1.0 source (`fix_v11`, branch
+`comebin-optimizations-v11`), then eval + README row. After that: CAMI II marine
+→ CAMI II human host-associated → CAMI III (disk budget ≤ ~105 GB).
+Per-run table + full history: [`docs/11-run-results.md`](docs/11-run-results.md).
+
+## Optimization workflow (issue #7)
+
+Optimizations live on branch `comebin-optimizations-v11`, **one commit per
+batch**, each batch passing the gate below (details:
+[`docs/09-optimization-strategy.md`](docs/09-optimization-strategy.md)).
+
+```mermaid
+flowchart TD
+    A["💡 Pick candidate change / param"] --> B["Small functional test<br/>(300-contig dataset)"]
+    B -->|"❌ fail"| G["Investigate, fix, or drop"] --> A
+    B -->|"✅ pass"| C["Benchmark small / medium set"]
+    C --> D{"Better or equal<br/>time AND quality?"}
+    D -->|"✅ keep"| E["Keep commit<br/>record in results/ + PROGRESS"]
+    E --> F["Next batch from this commit"]
+    D -->|"❌ no"| H["Revert or rework"]
+    H --> I["Combine with surviving ideas"] --> A
+    F --> J["After major commits:<br/>full large benchmark<br/>(demo → CAMI II marine → CAMI III)"]
+    classDef keep fill:#d9f7be,stroke:#389e0d;
+    classDef drop fill:#ffccc7,stroke:#cf1322;
+    class A,B,C,E,F,J keep;
+    class G,H,I drop;
+```
+
+**Gate rules:** never skip the small functional test · baseline compared first ·
+one timed run at a time (no concurrent COMEBin/CheckM) · keep only with evidence ·
+a run is kept or reverted/reworked and combined with surviving ideas.
+
+## Results
+
+- Aggregate rows (per run): [`results/`](results/) (`results/<run>.csv`, one
+  machine-readable row per run: wall time, bins, CheckM2 + CheckM v1 means and
+  HQ/MQ counts).
+- Per-bin quality (issue #15): `runs/<run>/per_bin_results.csv` — one row per
+  bin joining CheckM2 and CheckM v1 completeness / contamination.
+- Full comparison table + run history:
+  [`docs/11-run-results.md`](docs/11-run-results.md).
+- Eval harness: [`scripts/run_eval.sh`](scripts/run_eval.sh) (CheckM2 + CheckM v1,
+  py3.10 + `LD_LIBRARY_PATH`), aggregate generator
+  [`scripts/make_results_csv.py`](scripts/make_results_csv.py), per-bin
+  generator [`scripts/make_per_bin_csv.py`](scripts/make_per_bin_csv.py).
+
+## Documentation index
+
+[`PROGRESS.md`](PROGRESS.md) — resume document (start here) ·
+[`docs/`](docs/) — datasets (01), environment (02), fixes (03), evaluation (04),
+commands (06), fix batches (07), dataset space plan (08), optimization strategy
+(09), data preservation (10), run results (11).
