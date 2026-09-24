@@ -1,6 +1,6 @@
 <!--AGENT-STATUS-->
 
-> 🟢 **Agent status:** `running` · ⏱ `2026-09-24T15:10 CEST` · 🏃 train fix_v11_20260924: epoch 66/200 · loss 3.0478765964508057 · top1 96.28580474853516 · 🧠 `mimo-v2.6-flash-free` · [status.log](status/status.log)
+> 🔴 **Agent status:** `stopped (watchdog will restart)` · ⏱ `2026-09-24T15:12 CEST` · 🏃 train fix_v11_20260924: epoch 67/200 · loss 3.0337562561035156 · top1 96.083984375 · 🧠 `mimo-v2.6-flash-free` · [status.log](status/status.log)
 
 # Metagenomic binning benchmark
 
