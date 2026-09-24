@@ -33945,3 +33945,43 @@ regular file 323156 '/vol/data/benchmark/runs/baseline_rerun_autorestart1/comebi
 > build · mimo-v2.6-flash-free
 [91m[1mError: [0mECONNRESET: The socket connection was closed unexpectedly. For more information, pass `verbose: true` in the second argument to fetch()
 > build · mimo-v2.6-flash-free
+[0m$ [0mps -p 544143,544144 -o pid,etime,cmd --no-headers 2>/dev/null | cut -c1-100 || echo "supervisor gone"; cd /vol/data/repos/metagenomic-binning-benchmark && git status --porcelain; grep -n "BIN_COUNT=\|find -L\|shopt" scripts/run_eval.sh | head; sed -n '28,50p' scripts/run_eval.sh; tail -3 /vol/data/benchmark/logs/supervisor-actions.log
+544143       25:14 timeout --foreground --kill-after=30s 1800s opencode run --auto --title supervis
+ 544144       25:14 opencode run --auto --title supervisor-fix You are the SUPERVISOR agent for the 
+31:BIN_COUNT=$(find "$BINS" -maxdepth 1 -type f -size +0c | wc -l)
+37:  shopt -s nullglob
+39:  shopt -u nullglob
+fi
+BINS="$RUN/comebin_out/comebin_res/comebin_res_bins"
+[ -d "$BINS" ] || { echo "ERROR: no bins dir: $BINS"; exit 1; }
+BIN_COUNT=$(find "$BINS" -maxdepth 1 -type f -size +0c | wc -l)
+[ "$BIN_COUNT" -gt 0 ] || { echo "ERROR: bins dir contains no non-empty files: $BINS"; exit 1; }
+# COMEBin writes .fa files. CheckM2 matches the extension literally, so the
+# previous -x fasta value silently selected zero bins. Detect common variants.
+BIN_EXT=fa
+for candidate_ext in fasta fna fa; do
+  shopt -s nullglob
+  candidate_files=("$BINS"/*."$candidate_ext")
+  shopt -u nullglob
+  if [ "${#candidate_files[@]}" -gt 0 ]; then
+    BIN_EXT=$candidate_ext
+    break
+  fi
+done
+CK2DB=${CHECKM2DB:-/vol/data/benchmark/checkm2db/CheckM2_database/uniref100.KO.1.dmnd}
+[ -f "$CK2DB" ] || { echo "WARNING: checkm2 db not found at $CK2DB (set CHECKM2DB)"; }
+CHECKM2_OUT="$RUN/eval/checkm2"
+CHECKM_ROOT="$RUN/eval/checkm"
+CHECKM_OUT="$CHECKM_ROOT/out"
+CHECKM_TMP="$CHECKM_ROOT/tmp"
+2026-09-24T01:10:52Z [supervisor] Fixed/deployed snapshot-aware C6 identity + shell syntax checks and corrected small/medium BED selectors; restored/validated the small BAM after the failed reheader, verified positive/negative watchdog cases and COMEBin branch 5c77bc8 offline producer/consumer tests, pushed benchmark commit 9f276fb, left active baseline PID 267462/epoch 13 untouched, performed no cron/service/driver restart, and kept issue #2 open pending end-to-end validation.
+2026-09-24T05:04:34Z [supervisor] Final closeout: corrected and verified #9 run history (7 COMEBin-executing attempts plus 12 grouped guard-only launches) in 433e480/72b5e35; verified #10 EPOCHS passthrough/default 30 and prompt launch-lock release in a0be243/8e7064c/b1f9875, with deployed scripts byte-identical; C1-C9 no-LLM checks ok and #9/#10 closed via deterministic issue-closer; active baseline PID 267462 remains alive/advancing and was left untouched, with no cron/service/driver restart.
+2026-09-24T07:26:39+00:00 [supervisor] Triaged updated #8 without closing: regenerated and verified current comebin_small local/public manifests after the BED repair (6 files, 98,013,522 bytes; new hashes recorded in issue comment 5809720013), marked the issue seen, and left Zenodo metadata/approval pending; C1-C9 direct checks passed with no active benchmark, no cron/service/driver restart, safe watchdog reruns, and repo HEAD=origin/main.
+[0m$ [0mgh api repos/paulzierep/metagenomic-binning-benchmark/issues/2/comments --jq 'length as $n | .[$n-1] | {id: .id, created: .created_at}' ; ls -la /vol/data/benchmark/runs/baseline_rerun_autorestart1/eval/checkm2/quality_report.tsv; awk -F'\t' 'NR>1{n++}END{print "checkm2 rows:", n}' /vol/data/benchmark/runs/baseline_rerun_autorestart1/eval/checkm2/quality_report.tsv; cat /vol/data/benchmark/.active_run 2>/dev/null || echo "no active run"
+{"created":"2026-09-24T09:04:15Z","id":5811158490}
+-rw-rw-r-- 1 ubuntu ubuntu 6874 Sep 24 08:39 /vol/data/benchmark/runs/baseline_rerun_autorestart1/eval/checkm2/quality_report.tsv
+checkm2 rows: 60
+no active run
+> build · mimo-v2.6-flash-free
+[91m[1mError: [0mECONNRESET: The socket connection was closed unexpectedly. For more information, pass `verbose: true` in the second argument to fetch()
+> build · mimo-v2.6-flash-free
