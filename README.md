@@ -1,6 +1,6 @@
 <!--AGENT-STATUS-->
 
-> 🔴 **Agent status:** `stopped (watchdog will restart)` · ⏱ `2026-09-24T14:12 CEST` · 🏃 train fix_v11_20260924: epoch 40/200 · loss 3.1832709312438965 · top1 93.18033599853516 · 🧠 `ling-3.0-flash-fin-free` · [status.log](status/status.log)
+> 🔴 **Agent status:** `stopped (watchdog will restart)` · ⏱ `2026-09-24T14:14 CEST` · 🏃 train fix_v11_20260924: epoch 41/200 · loss 3.1420187950134277 · top1 94.00390625 · 🧠 `ling-3.0-flash-fin-free` · [status.log](status/status.log)
 
 # Metagenomic binning benchmark
 
