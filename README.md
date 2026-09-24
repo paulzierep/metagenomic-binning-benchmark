@@ -1,6 +1,6 @@
 <!--AGENT-STATUS-->
 
-> 🟢 **Agent status:** `running` · ⏱ `2026-09-24T11:28 CEST` · 🏃 train medium_v11_20260924: epoch 5/200 · loss 6.931028366088867 · top1 0.8723958134651184 · 🧠 `mimo-v2.6-flash-free` · [status.log](status/status.log)
+> 🟢 **Agent status:** `running` · ⏱ `2026-09-24T11:29 CEST` · 🏃 train medium_v11_20260924: epoch 14/200 · loss 6.400458335876465 · top1 2.3795571327209473 · 🧠 `mimo-v2.6-flash-free` · [status.log](status/status.log)
 
 # metagenomic-binning-benchmark
 
@@ -121,7 +121,8 @@ record was independently verified through an unauthenticated Zenodo API
 request. The release checklist, provenance requirements, and future-version
 workflow are in [`docs/10-data-preservation.md`](docs/10-data-preservation.md).
 The watchdogs do not upload data automatically; the token is kept only in the
-mode-0600 local secret file.
+mode-0600 local secret file. Version 1 remains CC BY 4.0; a later request to
+switch to MIT is being handled as an explicit new-version decision.
 
 ## How to resume (for a human or a restarted agent)
 

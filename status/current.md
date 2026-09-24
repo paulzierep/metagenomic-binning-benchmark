@@ -3,10 +3,10 @@
 | | |
 |---|---|
 | Status | 🟢 `running` |
-| ⏱ Updated (Europe/Berlin) | `2026-09-24T11:28 CEST` |
-| 🏃 Live benchmark | `medium_v11_20260924` — **epoch 5/200** · loss `6.931028366088867` · top1 acc `0.8723958134651184` (log 1s fresh) |
+| ⏱ Updated (Europe/Berlin) | `2026-09-24T11:29 CEST` |
+| 🏃 Live benchmark | `medium_v11_20260924` — **epoch 14/200** · loss `6.400458335876465` · top1 acc `2.3795571327209473` (log 9s fresh) |
 | 🧠 Model (last turn) | `mimo-v2.6-flash-free` (watchdog rotates to free models on quota) |
-| 📌 Agent note · **2 min old** | Baseline training epoch ~109/200 (~2.4 min/epoch, ETA ~22:35 UTC unless early-stop); next: baseline eval (run_eval.sh) → issue #2 small-dataset test → v1.1.0 fix run
+| 📌 Agent note · **3 min old** | Baseline training epoch ~109/200 (~2.4 min/epoch, ETA ~22:35 UTC unless early-stop); next: baseline eval (run_eval.sh) → issue #2 small-dataset test → v1.1.0 fix run
 2026-09-23 20:33:11 UTC - heartbeat
 2026-09-23 20:43:58 UTC - heartbeat
 2026-09-23 20:56:28 UTC - heartbeat
@@ -252,9 +252,9 @@
 2026-09-24T09:25:05Z medium-build: started guarded 3000-contig derivative (711696)
 2026-09-24T09:25:50Z medium-run: launched detached v1.1.0 3000-contig benchmark (712004, /vol/data/benchmark/runs/medium_v11_20260924)
 2026-09-24T09:25:52Z checkm-v1-baseline-done |
-| ⚙️ Load · uptime | `21.31 8.91 4.94` · 19 hours, 52 minutes — 32 cores, 62 GiB, no GPU |
-| 💾 RAM used/total | `4511/64295 MB` |
+| ⚙️ Load · uptime | `28.91 15.39 7.71` · 19 hours, 54 minutes — 32 cores, 62 GiB, no GPU |
+| 💾 RAM used/total | `7397/64295 MB` |
 | 🔗 Session | `ses_f31799c77ffeTq9gcYgqc4hBhg` |
-| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `3739534 status: yes — medium_v11_20260924 epoch —/200 loss — acc — model` |
-| 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `2739477 B` — every run, command & tool result |
+| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `1cdc211 status: yes — medium_v11_20260924 epoch 5/200 loss 6.931028366088867 a` |
+| 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `2750741 B` — every run, command & tool result |
 | 📈 Timeline | [status/status.log](status/status.log) |
