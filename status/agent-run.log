@@ -18965,3 +18965,65 @@ def get_kmer_coverage(data_path: str, n_views: int = 2, kmer_model_path: str = '
         else:
             covMats = np.vstack((covMats, covMat))
 > build · mimo-v2.6-flash-free
+Two distinct small-test failures exist (IndexError, then a later KeyError on a different snapshot). Before commenting, I must read the full bodies of the 23:35 comments to avoid duplication, and root-cause the IndexError empirically:
+[0m$ [0mcd /vol/data/repos/COMEBin && git status --short | head -10 && git log --oneline -3 && echo "--- line 45-60 ---" && sed -n '45,60p' COMEBin/get_augfeature.py
+?? COMEBin/__pycache__/
+?? COMEBin/data_aug/__pycache__/
+?? COMEBin/models/__pycache__/
+?? COMEBin/scripts/__pycache__/
+904f649 Fix: initialize covIdxArr with np.zeros instead of np.empty to prevent IndexError from uninitialized garbage values in get_kmer_coverage
+ee2e507 Fix KeyError in gen_var.py: skip contigs not present in aug_seq_info_dict
+47c1449 Fix KeyError in gen_cov.py: skip contigs not present in aug_seq_info_dict
+--- line 45-60 ---
+        covMat = shuffled_covMat[covIdxArr]
+
+
+        if not nokmer:
+            compositHeader = pd.read_csv(com_file, sep=',', nrows=1)
+            shuffled_compositMat = pd.read_csv(com_file, sep=',', usecols=range(1, compositHeader.shape[1])).values
+            shuffled_namelist = pd.read_csv(com_file, sep=',', usecols=range(1)).values[:, 0]
+
+            covIdxArr = np.zeros(len(mapObj), dtype=np.int)
+            for contigIdx in range(len(shuffled_namelist)):
+                if shuffled_namelist[contigIdx].split('_aug')[0] in mapObj:
+                    covIdxArr[mapObj[shuffled_namelist[contigIdx].split('_aug')[0]]] = contigIdx
+            compositMat = shuffled_compositMat[covIdxArr]
+
+        if addvars:
+            vars_file = data_path+'aug'+str(view)+'_datacoverage_var.tsv'
+[0m$ [0mD=/vol/data/benchmark/runs/small_test/comebin_out/data_augmentation
+ls -la "$D/aug0/" 2>/dev/null | head
+K="$D/aug0/kmer_4_f0.csv"
+test -f "$K" && { echo "rows: $(wc -l < "$K")"; head -2 "$K" | cut -c1-300; }
+echo "--- cov tsv rows ---"
+wc -l "$D/aug0_datacoverage_mean.tsv" 2>/dev/null
+total 3796
+drwxrwxr-x 2 ubuntu ubuntu    4096 Sep 23 23:09 .
+drwxrwxr-x 9 ubuntu ubuntu    4096 Sep 23 23:10 ..
+-rw-rw-r-- 1 ubuntu ubuntu  224996 Sep 23 23:09 kmer_4_f0.csv
+-rw-rw-r-- 1 ubuntu ubuntu 3651343 Sep 23 23:09 sequences_aug0.fasta
+rows: 301
+,0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63,64,65,66,67,68,69,70,71,72,73,74,75,76,77,78,79,80,81,82,83,84,85,86,87,88,89,90,91,92,93,94,95,96,97,98,99,100,101,1
+BATS_SAMN07137077_METAG-scaffold_1,1346.0,1727.0,1215.0,1268.0,1821.0,766.0,1589.0,1355.0,1775.0,1460.0,942.0,628.0,1618.0,1901.0,747.0,1099.0,1575.0,945.0,1147.0,1426.0,1841.0,1401.0,1328.0,1359.0,1164.0,955.0,873.0,1981.0,1786.0,743.0,1049.0,1890.0,1057.0,798.0,1463.0,880.0,732.0,1158.0,1448.0,326
+--- cov tsv rows ---
+29435 /vol/data/benchmark/runs/small_test/comebin_out/data_augmentation/aug0_datacoverage_mean.tsv
+[0m$ [0mgh issue view 2 -R paulzierep/metagenomic-binning-benchmark --json comments --jq '.comments[-3:][] | "==== \(.createdAt) ====\n\(.body)"' 2>&1 | head -100
+==== 2026-09-23T23:35:46Z ====
+## Small test run update
+
+The small benchmark dataset () is ready and the test runner executed, but it failed with an IndexError in  (k-mer coverage computation). The error is: . This appears to be a bug in the contig-to-kmer index mapping where  is used instead of  in , leaving uninitialized garbage values when contig names are not found in the mapping dictionary.
+
+This is a separate issue from the baseline run failure (seed file from hmmsearch). The small test failure needs a fix to  before the small end-to-end run can complete per the workflow in . Once fixed, the small test can rerun and serve as the validation gate before medium/large benchmarks.
+
+Please let me know if I should prepare a fix batch for this.
+==== 2026-09-23T23:35:50Z ====
+## Small test run update
+
+The small benchmark dataset () is ready and the test runner executed, but it failed with an IndexError in get_augfeature.py (k-mer coverage computation). The error is: index out of bounds for axis 0 with size 300. This appears to be a bug in the contig-to-kmer index mapping where np.empty is used instead of np.zeros in get_kmer_coverage, leaving uninitialized garbage values when contig names are not found in the mapping dictionary.
+
+This is a separate issue from the baseline run failure (seed file from hmmsearch). The small test failure needs a fix to get_augfeature.py before the small end-to-end run can complete per the workflow in docs/08. Once fixed, the small test can rerun and serve as the validation gate before medium/large benchmarks.
+
+Please let me know if I should prepare a fix batch for this.
+==== 2026-09-23T23:35:54Z ====
+Small test run update: the small benchmark dataset is ready but the test runner failed with IndexError in get_augfeature.py (k-mer coverage computation). Bug in contig-to-kmer index mapping. Need fix before small end-to-end run can complete per workflow docs/08.
+> build · mimo-v2.6-flash-free
