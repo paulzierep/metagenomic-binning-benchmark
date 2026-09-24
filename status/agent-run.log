@@ -27491,3 +27491,267 @@ ad6ceb3 2026-08-12T09:58:59Z Release v1.1.0
 500e478 2023-10-24T08:04:32Z add function-level documentation
 bae0000 2023-10-23T07:52:22Z cluster_clean.py -> cluster.py
 > build · mimo-v2.6-flash-free
+Both HMMER 3.4 installs fail identically on the TC-less file. The env pin says `hmmer=3.1b2` but we have 3.4 — checking whether upstream v1.1.0 changed `gen_seed`, and getting HMMER 3.1b2 to test:
+[0m$ [0mcd /vol/data/repos/COMEBin
+echo "=== gen_seed diff 987db95 -> ad6ceb3 (v1.1.0) ==="
+git diff 987db95 ad6ceb3 -- COMEBin/utils.py | head -80
+echo "=== v1.1.0 seed read in cluster.py ==="
+git show ad6ceb3:COMEBin/cluster.py | sed -n '355,405p'
+=== gen_seed diff 987db95 -> ad6ceb3 (v1.1.0) ===
+diff --git a/COMEBin/utils.py b/COMEBin/utils.py
+index ad9fe31..a8ff229 100644
+--- a/COMEBin/utils.py
++++ b/COMEBin/utils.py
+@@ -1,14 +1,61 @@
+ import gzip
+ from Bio import SeqIO
++from collections import deque
+ import mimetypes
+ import os
++from pathlib import Path
++import random
++import shlex
+ import shutil
+-import pandas as pd
++import subprocess
++import tempfile
++from typing import Optional
+ import numpy as np
+ 
+ import torch
+ import yaml
+-import sys
++
++
++DEFAULT_HMM_EVALUE = 1e-5
++DEFAULT_RANDOM_SEED = None
++COMEBIN_DIR = Path(__file__).resolve().parent
++AUXILIARY_DIR = COMEBIN_DIR.parent / 'auxiliary'
++
++
++def _process_memory_status():
++    status = {}
++    try:
++        with open('/proc/self/status') as status_file:
++            for line in status_file:
++                key, _, value = line.partition(':')
++                if key in ('VmRSS', 'VmPeak'):
++                    status[key] = value.strip()
++    except OSError:
++        pass
++    return status
++
++
++def configure_reproducibility(seed: Optional[int]) -> None:
++    if seed is None:
++        return
++    if seed < 0 or seed >= 2**32:
++        raise ValueError('seed must be between 0 and 2**32 - 1.')
++
++    os.environ.setdefault('CUBLAS_WORKSPACE_CONFIG', ':4096:8')
++    random.seed(seed)
++    np.random.seed(seed)
++    torch.manual_seed(seed)
++    torch.cuda.manual_seed_all(seed)
++    torch.backends.cudnn.deterministic = True
++    torch.backends.cudnn.benchmark = False
++    torch.use_deterministic_algorithms(True)
++
++
++def seed_data_loader_worker(worker_id: int) -> None:
++    worker_seed = torch.initial_seed() % 2**32
++    random.seed(worker_seed)
++    np.random.seed(worker_seed)
++
+ 
+ def save_checkpoint(state, is_best, filename='checkpoint.pth.tar'):
+     torch.save(state, filename)
+@@ -95,110 +142,86 @@ def calculateN50(seqLens):
+     return N50
+ 
+ 
+-def get_kmer_coverage_aug0(data_path):
+-    namelist = pd.read_csv(data_path + 'aug0_datacoverage_mean.tsv', sep='\t', usecols=range(1)).values[:, 0]
+-    mapObj = dict(zip(namelist, range(len(namelist))))
+-
+-    cov_file = data_path + 'aug0_datacoverage_mean.tsv'
+-    com_file = data_path + 'aug0/kmer_4_f0.csv'
+-
+-    covHeader = pd.read_csv(cov_file, sep='\t', nrows=1)
+=== v1.1.0 seed read in cluster.py ===
+    if max_edges < 1 or max_edges >= contig_count:
+        raise ValueError(
+            f'max_edges must be between 1 and the retained contig count minus one; '
+            f'received max_edges={max_edges}, retained_contigs={contig_count}.')
+
+
+def _read_proc_value_mib(path, key):
+    try:
+        with open(path) as input_handle:
+            for line in input_handle:
+                name, _, value = line.partition(':')
+                if name == key:
+                    return int(value.split()[0]) / 1024
+    except (OSError, ValueError, IndexError):
+        pass
+    return float('nan')
+
+
+def _process_memory_mib():
+    return _read_proc_value_mib('/proc/self/status', 'VmRSS'), _read_proc_value_mib('/proc/self/smaps_rollup', 'Pss')
+
+
+def _available_memory_mib():
+    return _read_proc_value_mib('/proc/meminfo', 'MemAvailable')
+
+
+def prepare_leiden_context(namelist, ann_neighbor_indices, ann_distances, length_weight,
+                           max_edges, is_membership_fixed, jobs, lmode='l2'):
+    """Prepare all read-only Leiden graph families before forking one worker pool."""
+    vertex_count = len(namelist)
+    sources = np.repeat(np.arange(vertex_count, dtype=np.int64), max_edges)
+    targets = ann_neighbor_indices[:, 1:].reshape(-1)
+    distances = ann_distances[:, 1:].reshape(-1)
+
+    if len(sources) != len(targets) or len(targets) != len(distances):
+        raise ValueError('HNSW neighbor arrays do not match max_edges.')
+
+    if lmode not in ('l1', 'l2'):
+        raise ValueError('Unsupported Leiden distance mode: ' + str(lmode))
+
+    required_bandwidths = {}
+    for _, partgraph_ratio, bandwidth, _ in jobs:
+        ratio_bandwidths = required_bandwidths.setdefault(partgraph_ratio, [])
+        if bandwidth not in ratio_bandwidths:
+            ratio_bandwidths.append(bandwidth)
+
+    graphs = {}
+    weights = {}
+    for partgraph_ratio, bandwidths in required_bandwidths.items():
+        dist_cutoff = np.percentile(distances, partgraph_ratio)
+        save_index = (distances <= dist_cutoff) & (sources > targets)
+[0m$ [0mcd /vol/data/repos/COMEBin
+echo "=== main.py gen_seed call history ==="
+git log --oneline -S 'bacar_marker' -- COMEBin/main.py
+echo "--- at initial commit ---"
+git show f639a73:COMEBin/main.py | grep -n "gen_seed" 
+echo "=== cluster.py around line 368 current (904f649) ==="
+sed -n '355,405p' COMEBin/cluster.py
+=== main.py gen_seed call history ===
+cb0393a Remove unnecessary codes
+f639a73 Initial commit
+--- at initial commit ---
+307:        from utils import gen_seed
+311:        _ = gen_seed(logger, args.contig_file, num_threads, args.contig_len, marker_name="bacar_marker", quarter="2quarter")
+312:        # seed_num = gen_seed(logger, args.contig_file, num_threads, 10001, marker_name="bacar_marker", quarter="2quarter")
+316:        # seed_num2 = gen_seed(logger, args.contig_file, num_threads, 1001, marker_name="marker", quarter="2quarter")
+399:        from utils import gen_seed
+403:        seed_num = gen_seed(logger, args.contig_file, num_threads, args.contig_len, marker_name="bacar_marker", quarter="2quarter")
+=== cluster.py around line 368 current (904f649) ===
+    namelist = namelist[np.array(length_weight) >= contig_len]
+    length_weight = list(np.array(length_weight)[np.array(length_weight) >= contig_len])
+
+    if args.not_l2normaize:
+        norm_embeddings = embMat
+    else:
+        norm_embeddings = normalize(embMat)
+
+
+    # #### method1
+    os.makedirs(output_path, exist_ok=True)
+
+
+    seed_namelist = pd.read_csv(seed_file, header=None, sep='\t', usecols=range(1)).values[:, 0]
+    seed_num = len(np.unique(seed_namelist))
+
+    mode = 'weight_seed_kmeans'
+    if prefix:
+        mode = mode + '_' + prefix
+    logger.info("Run weighted seed k-means for obtaining the SCG information of the contigs within a manageable time during the final step.")
+    bin_nums = [seed_num]
+
+    if args.cluster_num:
+        bin_nums.append(args.cluster_num)
+
+    logger.info("Bin_numbers:\t"+str(bin_nums))
+    for k in bin_nums:
+        logger.info(k)
+        seed_kmeans_full(logger, contig_file, namelist, output_path, norm_embeddings, k, mode, length_weight, seed_file)
+
+    import multiprocessing
+
+    num_workers = args.num_threads
+
+
+    ##### #########  hnswlib_method
+    parameter_list = [1, 5,10,30,50,70, 90, 110]
+    bandwidth_list = [0.05, 0.1,0.15, 0.2,0.3]
+    partgraph_ratio_list =[50,100,80]
+    max_edges_list = [100]
+    for max_edges in max_edges_list:
+        p = fit_hnsw_index(logger, norm_embeddings, num_workers, ef=max_edges * 10)
+        seed_bacar_marker_idx = gen_seed_idx(seed_file, contig_id_list=namelist)
+        initial_list = list(np.arange(len(namelist)))
+        is_membership_fixed = [i in seed_bacar_marker_idx for i in initial_list]
+
+        time_start = time.time()
+        ann_neighbor_indices, ann_distances = p.knn_query(norm_embeddings, max_edges+1, num_threads=num_workers)
+        #ann_distances is l2 distance's square
+        time_end = time.time()
+        logger.info('knn query time cost:\t' +str(time_end - time_start) + "s")
+[0m$ [0mdate -u +"%Y-%m-%d %H:%M:%S UTC - turn: baseline finished exit 0 but 0 bins; hmmsearch --cut_tc fails 3.4 vs TC-less bacar_marker.hmm; testing hmmer=3.1b2 pin + upstream v1.1.0 gen_seed changes" >> /vol/data/repos/metagenomic-binning-benchmark/status/agent-activity.log
+touch /vol/data/benchmark/.heartbeat
+gh issue list -R paulzierep/metagenomic-binning-benchmark --state open --json number,title,updatedAt | head -10
+[{"number":8,"title":"Add benchmark data to zenodo","updatedAt":"2026-09-24T07:25:32Z"},{"number":6,"title":"Optimization","updatedAt":"2026-09-23T20:56:21Z"},{"number":2,"title":"Can you try to create a small benchmark dataset for comebin ?","updatedAt":"2026-09-24T01:05:04Z"},{"number":1,"title":"Idea inbox: benchmark ideas, COMEBin fixes, dataset requests","updatedAt":"2026-09-23T14:53:13Z"}]
+[0m$ [0mgrep -n "MM=" /vol/data/repos/metagenomic-binning-benchmark/scripts/run_eval.sh /vol/data/repos/metagenomic-binning-benchmark/scripts/*.sh 2>/dev/null | head -5
+find / -maxdepth 5 -name "micromamba" -type f 2>/dev/null | head -3
+gcc --version 2>/dev/null | head -1 || echo "no gcc"
+echo "=== try eddylab source ==="
+curl -sIL --max-time 30 http://eddylab.org/software/hmmer/hmmer-3.1b2.tar.gz | head -5
+/vol/data/repos/metagenomic-binning-benchmark/scripts/run_eval.sh:6:MM=/vol/data/tools/bin/micromamba
+/vol/data/repos/metagenomic-binning-benchmark/scripts/make_medium_dataset.sh:12:MM=/vol/data/tools/bin/micromamba
+/vol/data/repos/metagenomic-binning-benchmark/scripts/make_small_dataset.sh:17:MM=/vol/data/tools/bin/micromamba
+/vol/data/repos/metagenomic-binning-benchmark/scripts/prep_cami2_marine.sh:14:MM=/vol/data/tools/bin/micromamba
+/vol/data/repos/metagenomic-binning-benchmark/scripts/run_comebin_baseline.sh:6:MM=${MM:-/vol/data/tools/bin/micromamba}
+/vol/data/tools/bin/micromamba
+gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0
+=== try eddylab source ===
+HTTP/1.1 200 OK
+Date: Thu, 24 Sep 2026 07:34:14 GMT
+Server: Apache/2.4.58 (Ubuntu)
+Last-Modified: Fri, 28 Aug 2026 20:25:18 GMT
+ETag: "5b05c5-65a214044001e"
+> build · mimo-v2.6-flash-free
+[0m$ [0mtest -f /vol/data/benchmark/TASK_COMPLETE && echo "TASK_COMPLETE exists - EXIT" || echo "no TASK_COMPLETE"
+echo "=== PROGRESS CURRENT ==="
+grep -n "CURRENT" /vol/data/benchmark/PROGRESS.md | head -3
+diff -q /vol/data/benchmark/PROGRESS.md /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md && echo "copies synced" || echo "COPIES DIFFER"
+echo "=== baseline run state ==="
+grep -E 'exit_code|finished' /vol/data/benchmark/runs/baseline_rerun_autorestart1/run_meta.txt
+ls /vol/data/benchmark/runs/baseline_rerun_autorestart1/comebin_out/comebin_res/comebin_res_bins 2>/dev/null | wc -l
+echo "=== any active bench procs ==="
+ps -eo pid,etime,args | grep -E '[m]ain.py|[r]un_comebin|[r]un_eval' | head -5 || echo none
+date -u +"now UTC: %Y-%m-%d %H:%M"
+touch /vol/data/benchmark/.heartbeat
+no TASK_COMPLETE
+=== PROGRESS CURRENT ===
+262:- [ ] **← CURRENT: baseline rerun active (started 2026-09-24 00:30 UTC)** — registered
+copies synced
+=== baseline run state ===
+exit_code:  0
+finished:   2026-09-24T07:15:28+00:00
+0
+=== any active bench procs ===
+now UTC: 2026-09-24 07:34
+[0m$ [0mgh issue list -R paulzierep/metagenomic-binning-benchmark --state open --json number,title,updatedAt
+gh issue list -R paulzierep/COMEBin --state open --json number,title,updatedAt 2>&1 | head -5
+echo "=== new comments on #8 since 07:18 ==="
+gh api repos/paulzierep/metagenomic-binning-benchmark/issues/8/comments --jq '.[] | {user: .user.login, created: .created_at, body: (.body | .[0:400])}' 2>&1 | tail -20
+[{"number":8,"title":"Add benchmark data to zenodo","updatedAt":"2026-09-24T07:25:32Z"},{"number":6,"title":"Optimization","updatedAt":"2026-09-23T20:56:21Z"},{"number":2,"title":"Can you try to create a small benchmark dataset for comebin ?","updatedAt":"2026-09-24T01:05:04Z"},{"number":1,"title":"Idea inbox: benchmark ideas, COMEBin fixes, dataset requests","updatedAt":"2026-09-23T14:53:13Z"}]
+the 'paulzierep/COMEBin' repository has disabled issues
+=== new comments on #8 since 07:18 ===
+{"body":"Happy to archive the benchmark data. What I need from you: (1) a Zenodo API token (zenodo.org → Settings/Log in → Access tokens — scoped to 'deposit:actions') or ok to prepare everything for manual upload; (2) metadata preferences: title, description, license (e.g. CC-BY-4.0), and author list. I will prepare, per dataset, a package with PROVENANCE (origin, filters, preparation commands), md5 check","created":"2026-09-23T20:56:23Z","user":"paulzierep"}
+{"body":"Addendum: the preservation workflow is now committed in c65969a. `docs/10-data-preservation.md` documents the release scope, licensing/provenance prerequisites, and DOI verification; `scripts/make_release_manifest.py` streams SHA-256/size manifests. A local manifest for the 94 MB `comebin_small` set is staged and structurally verified (manifest SHA-256 `cb734384f7c069a8667d1a044ada3cb84d496321c905","created":"2026-09-23T20:58:34Z","user":"paulzierep"}
+{"body":"Received ✅ — the Zenodo API token is verified and working against production Zenodo:\n\n- `GET /api/deposit/depositions` → 200 (account access confirmed)\n- `POST` empty deposition → 201 (write/deposit permissions confirmed), throwaway deposition 22933060 created and immediately deleted → 204, nothing left behind.\n\nThe token is kept only in a local secret file (mode 0600, outside the repository) and ","created":"2026-09-24T07:18:51Z","user":"paulzierep"}
+{"body":"Supervisor verification update (2026-09-24 07:25 UTC): the earlier `cb734384...` manifest predates the 2026-09-24 `contigs.bed` repair and is stale for the current `comebin_small` tree. I regenerated the canonical local and public manifests after that repair; both verify 6 core files / 98,013,522 bytes with every size/SHA-256 check passing, and the public copy contains no local paths. New hashes a","created":"2026-09-24T07:25:32Z","user":"paulzierep"}
+> build · mimo-v2.6-flash-free
