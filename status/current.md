@@ -3,10 +3,10 @@
 | | |
 |---|---|
 | Status | 🟢 `running` |
-| ⏱ Updated (Europe/Berlin) | `2026-09-24T11:58 CEST` |
-| 🏃 Live benchmark | `medium_v11_20260924` — **epoch 170/200** · loss `4.278964519500732` · top1 acc `58.20637893676758` (log 9s fresh) |
+| ⏱ Updated (Europe/Berlin) | `2026-09-24T12:00 CEST` |
+| 🏃 Live benchmark | `medium_v11_20260924` — **epoch 181/200** · loss `4.216885089874268` · top1 acc `61.123046875` (log 5s fresh) |
 | 🧠 Model (last turn) | `nemotron-3.5-lightning-free` (watchdog rotates to free models on quota) |
-| 📌 Agent note · **21 min old** | Baseline training epoch ~109/200 (~2.4 min/epoch, ETA ~22:35 UTC unless early-stop); next: baseline eval (run_eval.sh) → issue #2 small-dataset test → v1.1.0 fix run
+| 📌 Agent note · **0 min old** | Baseline training epoch ~109/200 (~2.4 min/epoch, ETA ~22:35 UTC unless early-stop); next: baseline eval (run_eval.sh) → issue #2 small-dataset test → v1.1.0 fix run
 2026-09-23 20:33:11 UTC - heartbeat
 2026-09-23 20:43:58 UTC - heartbeat
 2026-09-23 20:56:28 UTC - heartbeat
@@ -254,10 +254,11 @@
 2026-09-24T09:25:52Z checkm-v1-baseline-done
 2026-09-24T09:33:26Z triage-new-issues-12-13
 2026-09-24T09:35:29Z readme-progress-checkm1-fix
-2026-09-24T09:36:37Z issue-13-reply-push-7a80d7e |
-| ⚙️ Load · uptime | `32.00 31.12 27.21` · 20 hours, 22 minutes — 32 cores, 62 GiB, no GPU |
-| 💾 RAM used/total | `7355/64295 MB` |
+2026-09-24T09:36:37Z issue-13-reply-push-7a80d7e
+2026-09-24T09:59:22Z wrapup |
+| ⚙️ Load · uptime | `30.06 30.63 27.51` · 20 hours, 24 minutes — 32 cores, 62 GiB, no GPU |
+| 💾 RAM used/total | `4908/64295 MB` |
 | 🔗 Session | `ses_f31799c77ffeTq9gcYgqc4hBhg` |
-| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `00c5707 status: yes — medium_v11_20260924 epoch 159/200 loss 4.318059921264648` |
-| 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `2883554 B` — every run, command & tool result |
+| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `d8feee0 log: append per-turn agent activity entries for issue #14 triage and REA` |
+| 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `2948485 B` — every run, command & tool result |
 | 📈 Timeline | [status/status.log](status/status.log) |
