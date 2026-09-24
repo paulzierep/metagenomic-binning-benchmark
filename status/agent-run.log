@@ -27400,3 +27400,94 @@ md5 local vs upstream: b1066e527800d27a4eab81fba7d3af5e b1066e527800d27a4eab81fb
 27:CMD2="$MM run -p /vol/data/envs/checkm2 checkm2 predict --threads $THREADS --database_path $CK2DB --input $BINS --output-directory $RUN/eval/checkm2 -x fasta"
 34:CMD1="$MM run -p /vol/data/envs/checkm checkm lineage_wf -x fasta -t $THREADS --tmpdir $RUN/eval/checkm/tmp $BINS $RUN/eval/checkm/out"
 > build · mimo-v2.6-flash-free
+[0m$ [0mecho "=== checkm env hmmsearch version ==="
+/vol/data/envs/checkm/bin/hmmsearch -h 2>&1 | grep -i HMMER || echo none
+/vol/data/envs/checkm2/bin/hmmsearch -h 2>&1 | grep -i HMMER || echo "checkm2: none"
+echo "=== authors full comebin.log ==="
+cat /vol/data/datasets/comebin_test_data/excepted_output/run_comebin_test/comebin_res/comebin.log
+echo "=== find micromamba/conda ==="
+command -v micromamba mamba conda 2>/dev/null
+ls -d ~/micromamba ~/miniconda3 ~/mambaforge /usr/local/bin/micromamba 2>/dev/null
+find /home /opt /usr/local -maxdepth 4 -name micromamba -type f 2>/dev/null | head -3
+=== checkm env hmmsearch version ===
+# HMMER 3.4 (Aug 2023); http://hmmer.org/
+checkm2: none
+=== authors full comebin.log ===
+2023-07-04 18:54:04,962 - train
+2023-07-04 18:54:06,421 - Generate features for the data.
+2023-07-04 19:35:10,879 - Finish training.
+2023-07-04 19:35:55,905 - bin
+2023-07-04 19:35:55,921 - Start clustering.
+2023-07-04 19:35:57,237 - N50:	1623
+2023-07-04 19:35:57,327 - Run partial seed k-means.
+2023-07-04 19:35:57,327 - Bin_numbers:	[26]
+2023-07-04 19:35:57,327 - 26
+2023-07-04 19:35:57,347 - 0
+2023-07-04 19:36:14,544 - Running partial seed cost:	17.197211027145386s.
+2023-07-04 19:36:17,796 - Time cost:	3.250666618347168s
+2023-07-04 19:36:21,884 - knn query time cost:	3.9355525970458984s
+2023-07-04 19:40:19,614 - get_result
+2023-07-04 19:40:20,186 - Seed_num:	25
+2023-07-04 19:40:20,187 - Run unitem profile:	25
+2023-07-04 19:48:50,318 - Final result:	/public/home2/ZhuLab/wangzy/binning/BATS_10samples/SRR5720343/run_comebin_test2/comebin_res/cluster_res/Leiden_markerseed_nodesize_bandwidth_0.3_res_maxedges100respara_10_partgraph_ratio_100.tsv
+=== find micromamba/conda ===
+[0m$ [0mDS=/vol/data/datasets/comebin_test_data
+FAA="$DS/BATS_SAMN07137077_METAG.scaffolds.min500.fasta.f1k.fasta.frag.faa"
+HMM=/vol/data/repos/COMEBin/auxiliary/bacar_marker.hmm
+echo "=== test1: env comebin hmmsearch 3.4 --cut_tc (expect fail) ==="
+cd /tmp && timeout 300 /vol/data/envs/comebin/bin/hmmsearch --domtblout /tmp/t34.hmmout --cut_tc --cpu 4 "$HMM" "$FAA" 1>/tmp/t34.out 2>/tmp/t34.err; echo "exit=$?"; head -3 /tmp/t34.err; echo "hmmout lines: $(grep -vc '^#' /tmp/t34.hmmout 2>/dev/null || echo 0)"
+echo "=== test2: checkm env hmmsearch --cut_tc ==="
+timeout 300 /vol/data/envs/checkm/bin/hmmsearch --domtblout /tmp/tck.hmmout --cut_tc --cpu 4 "$HMM" "$FAA" 1>/tmp/tck.out 2>/tmp/tck.err; echo "exit=$?"; head -3 /tmp/tck.err; echo "hmmout lines: $(grep -vc '^#' /tmp/tck.hmmout 2>/dev/null || echo 0)"
+date -u +"%Y-%m-%d %H:%M:%S UTC - turn: testing hmmsearch --cut_tc 3.4 vs checkm-env version on TC-less bacar_marker.hmm" >> /vol/data/repos/metagenomic-binning-benchmark/status/agent-activity.log
+touch /vol/data/benchmark/.heartbeat
+=== test1: env comebin hmmsearch 3.4 --cut_tc (expect fail) ===
+exit=1
+
+Error: TC bit thresholds unavailable on model BA00001
+
+hmmout lines: 0
+0
+=== test2: checkm env hmmsearch --cut_tc ===
+exit=1
+
+Error: TC bit thresholds unavailable on model BA00001
+
+hmmout lines: 0
+0
+[0m$ [0mcd /vol/data/repos/COMEBin
+git fetch origin --prune 2>&1 | tail -2
+git status -sb | head -2
+BR=$(git rev-parse --abbrev-ref HEAD); echo "branch: $BR"
+echo "=== divergence vs origin ==="
+git rev-list --left-right --count HEAD...origin/main 2>/dev/null || git rev-list --left-right --count HEAD...origin/master 2>/dev/null
+echo "=== commits behind ==="
+git log --oneline HEAD..origin/main 2>/dev/null | head -6
+git log --oneline HEAD..origin/master 2>/dev/null | head -6
+echo "=== upstream ziyewang commits touching utils.py ==="
+gh api "repos/ziyewang/COMEBin/commits?path=COMEBin/utils.py&per_page=10" --jq '.[] | .sha[0:7] + " " + .commit.author.date + " " + (.commit.message | split("\n")[0])' 2>&1
+echo "=== upstream commits touching bacar_marker.hmm ==="
+gh api "repos/ziyewang/COMEBin/commits?path=auxiliary/bacar_marker.hmm&per_page=10" --jq '.[] | .sha[0:7] + " " + .commit.author.date + " " + (.commit.message | split("\n")[0])' 2>&1
+echo "=== upstream commits touching cluster.py ==="
+gh api "repos/ziyewang/COMEBin/commits?path=COMEBin/cluster.py&per_page=10" --jq '.[] | .sha[0:7] + " " + .commit.author.date + " " + (.commit.message | split("\n")[0])' 2>&1
+## master...origin/master [ahead 4, behind 3]
+?? COMEBin/__pycache__/
+branch: master
+=== divergence vs origin ===
+4	3
+=== commits behind ===
+1b476a4 Clarify PyTorch installation options
+fd7ff06 Update Bioconda CUDA installation example
+ad6ceb3 Release v1.1.0
+=== upstream ziyewang commits touching utils.py ===
+ad6ceb3 2026-08-12T09:58:59Z Release v1.1.0
+9292ecc 2023-10-23T10:49:23Z add function-level documentation
+f639a73 2023-06-20T07:54:48Z Initial commit
+=== upstream commits touching bacar_marker.hmm ===
+f639a73 2023-06-20T07:54:48Z Initial commit
+=== upstream commits touching cluster.py ===
+ad6ceb3 2026-08-12T09:58:59Z Release v1.1.0
+987db95 2024-03-10T13:28:27Z Improve thread usage in cluster.py
+3e7eb70 2023-10-25T16:37:57Z add function-level documentation
+500e478 2023-10-24T08:04:32Z add function-level documentation
+bae0000 2023-10-23T07:52:22Z cluster_clean.py -> cluster.py
+> build · mimo-v2.6-flash-free
