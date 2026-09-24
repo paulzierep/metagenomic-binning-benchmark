@@ -20917,3 +20917,70 @@ Index: /vol/data/benchmark/PROGRESS.md
  - [x] **C6 snapshot identity remediation (2026-09-24)** — benchmark-watchdog and
        meta-watchdog now accept only an existing immutable snapshot tied to the
 
+> build · mimo-v2.6-flash-free
+[0m$ [0mcp /vol/data/benchmark/PROGRESS.md /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md
+diff -q /vol/data/benchmark/PROGRESS.md /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md && echo "synced"
+flock -w 120 /tmp/bench-repo.lock bash -c '
+set -e
+cd /vol/data/repos/metagenomic-binning-benchmark
+git fetch origin --quiet
+git add README.md PROGRESS.md status/agent-activity.log
+git -c user.name="benchmark-agent" -c user.email="agent@localhost" commit -q -m "docs: README run-history table (issue #9) + PROGRESS sync
+
+- New README section: one row per run attempt with failure cause and
+  next step (baseline_unmodified, refused relaunch, running rerun,
+  small_test, small_test_v2); performance-table baseline row links to it
+- Fix two 39-char commit-hash typos in links (now 40 chars)
+- PROGRESS: issue #9 triaged, CURRENT epoch 108/200
+- status/agent-activity.log: issue #9 triage trail"
+git push origin HEAD 2>&1 | tail -2
+git log --oneline -1
+'
+date -u +"%Y-%m-%d %H:%M:%S UTC - pushed README run-history table + PROGRESS (issue #9)" >> /vol/data/repos/metagenomic-binning-benchmark/status/agent-activity.log
+date -u +"%Y-%m-%d %H:%M:%S UTC - heartbeat" >> /vol/data/benchmark/.activity
+touch /vol/data/benchmark/.heartbeat
+synced
+To https://github.com/paulzierep/metagenomic-binning-benchmark
+   00f13e0..bcccd7c  HEAD -> main
+bcccd7c docs: README run-history table (issue #9) + PROGRESS sync
+> build · mimo-v2.6-flash-free
+**Pushed `bcccd7c`.** Issue #9 fully handled:
+
+- **README** — new `## Run history — what happened and what's next` table (5 rows: `baseline_unmodified` failure cause, refused relaunch, running rerun, `small_test` IndexError, `small_test_v2` KeyError → fix), each with root cause, next step, and commit links; performance-table baseline row now links to it. Commit-hash typo fixed (39→40 chars, verified).
+- **Issue #9** — summary comment posted (`#issuecomment-5807827932`).
+- **PROGRESS** — issue #9 marked triaged; CURRENT epoch updated to 108/200; copies synced.
+
+**Baseline**: epoch 108/200 @ 04:40 UTC, healthy. Logged to `agent-activity.log` + `.activity`, heartbeat touched. Standing by.
+[0m
+> build · mimo-v2.6-flash-free
+[0m$ [0mgrep -n "CURRENT" /vol/data/benchmark/PROGRESS.md | head -3
+diff -q /vol/data/benchmark/PROGRESS.md /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md && echo "copies synced"
+262:- [ ] **← CURRENT: baseline rerun active (started 2026-09-24 00:30 UTC)** — registered
+copies synced
+[0m$ [0mtest -f /vol/data/benchmark/TASK_COMPLETE && echo "TASK_COMPLETE exists - EXIT" || echo "no TASK_COMPLETE"
+RUN=/vol/data/benchmark/runs/baseline_rerun_autorestart1
+ps -eo pid,etime,args | grep -E '[m]ain.py train' | head -1 || echo "no train proc"
+echo "epoch: $(grep -c '^DEBUG:root:Epoch' "$RUN/comebin_out/comebin_res/training.log" 2>/dev/null)/200"
+grep -E 'exit_code' "$RUN/run_meta.txt" 2>/dev/null || echo "no exit_code yet"
+date -u +"now UTC: %Y-%m-%d %H:%M"
+touch /vol/data/benchmark/.heartbeat
+no TASK_COMPLETE
+ 270796    04:07:53 python main.py train --data /vol/data/benchmark/runs/baseline_rerun_autorestart1/comebin_out/data_augmentation --temperature 0.15 --emb_szs_forcov 2048 --batch_size 1024 --emb_szs 2048 --n_views 6 --add_model_for_coverage --output_path /vol/data/benchmark/runs/baseline_rerun_autorestart1/comebin_out/comebin_res --earlystop --addvars --vars_sqrt --num_threads 32
+epoch: 110/200
+no exit_code yet
+now UTC: 2026-09-24 04:45
+[0m$ [0mgh issue list -R paulzierep/metagenomic-binning-benchmark --state open --json number,title,updatedAt 2>&1 | head -60
+gh issue list -R paulzierep/COMEBin --state open --json number,title,updatedAt 2>&1 | head -40
+[{"number":9,"title":"No idea whag happened to the runs","updatedAt":"2026-09-24T04:43:07Z"},{"number":8,"title":"Add benchmark data to zenodo","updatedAt":"2026-09-23T20:58:44Z"},{"number":6,"title":"Optimization","updatedAt":"2026-09-23T20:56:21Z"},{"number":2,"title":"Can you try to create a small benchmark dataset for comebin ?","updatedAt":"2026-09-24T01:05:04Z"},{"number":1,"title":"Idea inbox: benchmark ideas, COMEBin fixes, dataset requests","updatedAt":"2026-09-23T14:53:13Z"}]
+the 'paulzierep/COMEBin' repository has disabled issues
+> build · mimo-v2.6-flash-free
+[0m$ [0mgh issue view 9 -R paulzierep/metagenomic-binning-benchmark --json comments --jq '.comments[-1] | {author:.author.login, created:.createdAt}'
+date -u +"%Y-%m-%d %H:%M:%S UTC - turn: baseline rerun healthy epoch 110/200; #9 update = own reply (5807827932), no new comments" >> /vol/data/repos/metagenomic-binning-benchmark/status/agent-activity.log
+date -u +"%Y-%m-%d %H:%M:%S UTC - heartbeat" >> /vol/data/benchmark/.activity
+touch /vol/data/benchmark/.heartbeat
+{"author":"paulzierep","created":"2026-09-24T04:43:07Z"}
+> build · mimo-v2.6-flash-free
+[0m$ [0mgh issue view 9 -R paulzierep/metagenomic-binning-benchmark --json comments --jq '.comments[] | {created:.createdAt, first:(.body|split("\n")[0])}'
+{"created":"2026-09-24T04:43:07Z","first":"Done — added a **“Run history — what happened and what’s next”** table to the README (right under the performance table), one row per run attempt with the exact failure cause and the concrete next step:"}
+> build · mimo-v2.6-flash-free
+**Verified & logged.** The #9 `updatedAt` bump is my own reply (04:43:07Z, "Done — added a Run history table…"), no new issues or comments. Baseline rerun healthy at **epoch 110/200** @ 04:45 UTC (~2.26 min/epoch); PROGRESS `CURRENT` matches disk, copies synced. Downstream steps remain gated on the registered run. Standing by.
