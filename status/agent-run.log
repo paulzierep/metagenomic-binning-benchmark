@@ -33433,3 +33433,147 @@ none
 49:[ -f "$RUN/eval/checkm/out/storage/bin_stats_ext.tsv" ] && echo "checkm statistics: $RUN/eval/checkm/out/storage/bin_stats_ext.tsv"
 53:echo "done (checkm2 rc=$rc2, checkm rc=$rc1)"
 > build · mimo-v2.6-flash-free
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && sed -n '1,40p' README.md; echo "===results dir==="; ls results/ 2>/dev/null; echo "===make_results_csv usage==="; sed -n '1,40p' scripts/make_results_csv.py
+<!--AGENT-STATUS-->
+
+> 🟢 **Agent status:** `running` · ⏱ `2026-09-24T10:56 CEST` · 🏃 last run small_test_v4: epoch 29/30 · not active · 🧠 `mimo-v2.6-flash-free` · [status.log](status/status.log)
+
+# metagenomic-binning-benchmark
+
+Benchmarking metagenomic genome binners, starting with
+[COMEBin](https://github.com/paulzierep/COMEBin), with bin quality scored by
+**CheckM2** and **CheckM (v1)**.
+
+## Goal
+
+1. Run a **baseline benchmark of unmodified COMEBin** on the official demo dataset.
+2. **Modify COMEBin** (bug fixes + performance improvements) on a branch, in batches —
+   **one commit per batch**, re-running the benchmark after each batch.
+3. Record for every run: dataset, exact parameters, wall-clock/CPU time, and
+   CheckM2/CheckM quality metrics — so results are comparable across commits.
+
+## Repository layout
+
+```
+docs/
+  00-setup.md          environment, tools, watchdog/agent restart design
+  01-datasets.md       dataset provenance, checksums, preparation
+  02-comebin-baseline.md  baseline run: command, parameters, timings, results
+  03-fixes.md          fix batches: one section per commit on the branch
+  04-evaluation.md     CheckM2 + CheckM procedure and metric definitions
+  09-optimization-strategy.md  optimization strategy + decision flowchart (issues #6/#7)
+  10-data-preservation.md       Zenodo release checklist and provenance manifest
+scripts/
+  agent-watchdog.sh    cron watchdog: restarts agent on abort/quota, model rotation
+  run_comebin_baseline.sh  reproducible baseline runner
+  run_eval.sh          CheckM2 + CheckM evaluation runner
+  make_release_manifest.py  streaming SHA-256 manifest for dataset releases
+envs/                  exported environment YAMLs
+results/               committed result tables (CSV/MD), one file per run
+PROGRESS.md            resume state (mirrors /vol/data/benchmark/PROGRESS.md)
+```
+
+## Benchmark runs — performance
+===results dir===
+README.md
+===make_results_csv usage===
+#!/usr/bin/env python3
+# make_results_csv.py <rundir> [dataset] [threads] — build results/<run>.csv
+# (README "Benchmark runs — performance" + docs/04-evaluation.md contract):
+#   run,source_commit,dataset,threads,total_time_s,n_bins,
+#   checkm2_mean_completeness,checkm2_mean_contamination,checkm2_HQ,checkm2_MQ,
+#   checkm_mean_completeness,checkm_mean_contamination,checkm_HQ,checkm_MQ
+# MIMAG thresholds: HQ = compl>90 & cont<5 ; MQ = compl>=50 & cont<10.
+# Reads meta from <rundir>/run_meta.txt, per-bin scores from
+# <rundir>/eval/checkm2/quality_report.tsv + <rundir>/eval/checkm/out/storage/bin_stats_ext.tsv.
+import csv, os, sys
+
+run = os.path.abspath(sys.argv[1])
+name = os.path.basename(run)
+dataset = sys.argv[2] if len(sys.argv) > 2 else ""
+threads = sys.argv[3] if len(sys.argv) > 3 else ""
+meta = os.path.join(run, "run_meta.txt")
+repo = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+out = os.path.join(repo, "results", f"{name}.csv")
+
+def meta_val(key):
+    with open(meta) as f:
+        for line in f:
+            if line.startswith(key + ":"):
+                return line.split(":", 1)[1].strip()
+    return ""
+
+commit = meta_val("commit")
+t_total = meta_val("wall_s")
+n_bins = meta_val("bins").split()[0] if meta_val("bins") else ""
+
+def scores(path, ccol, tcol):
+    """Return (compl list, cont list) with values as floats; tolerate missing files."""
+    if not os.path.exists(path):
+        return [], []
+    cs, ts = [], []
+    with open(path, newline="") as f:
+        hdr = f.readline().rstrip("\n").split("\t")
+        ci = hdr.index(ccol) if ccol in hdr else -1
+        ti = hdr.index(tcol) if tcol in hdr else -1
+        for line in f:
+[0m$ [0mtail -30 /vol/data/benchmark/runs/small_test_v4/eval/checkm_py310_ld/run.log 2>/dev/null; echo "===v4 run_meta now==="; tail -8 /vol/data/benchmark/runs/small_test_v4/run_meta.txt; echo "===driver transcript tail==="; tail -c 3000 /vol/data/benchmark/logs/*.transcript* 2>/dev/null | tail -20; ls -la /vol/data/benchmark/.heartbeat /vol/data/benchmark/.activity; date -u +%FT%TZ; touch /vol/data/benchmark/.heartbeat
+[2026-09-24 08:55:52] INFO: Determining marker sets for each genome bin.
+    Finished processing 1 of 3 (33.33%) bins (current: 0).                                                              Finished processing 2 of 3 (66.67%) bins (current: 68).                                                               Finished processing 3 of 3 (100.00%) bins (current: 92).
+[2026-09-24 08:55:52] INFO: Marker set written to: /vol/data/benchmark/runs/small_test_v4/eval/checkm_py310_ld/out/lineage.ms
+[2026-09-24 08:55:52] INFO: { Current stage: 0:00:00.891 || Total: 0:02:03.462 }
+[2026-09-24 08:55:52] INFO: [CheckM - analyze] Identifying marker genes in bins.
+[2026-09-24 08:55:52] INFO: Identifying marker genes in 3 bins with 1 threads:
+    Finished processing 0 of 3 (0.00%) bins.    Finished processing 1 of 3 (33.33%) bins.    Finished processing 2 of 3 (66.67%) bins.    Finished processing 3 of 3 (100.00%) bins.
+[2026-09-24 08:56:30] INFO: Saving HMM info to file.
+[2026-09-24 08:56:30] INFO: { Current stage: 0:00:37.821 || Total: 0:02:41.283 }
+[2026-09-24 08:56:30] INFO: Parsing HMM hits to marker genes:
+    Finished parsing hits for 1 of 3 (33.33%) bins.    Finished parsing hits for 2 of 3 (66.67%) bins.    Finished parsing hits for 3 of 3 (100.00%) bins.
+[2026-09-24 08:56:30] INFO: Aligning marker genes with multiple hits in a single bin:
+    Finished processing 0 of 3 (0.00%) bins.    Finished processing 1 of 3 (33.33%) bins.    Finished processing 2 of 3 (66.67%) bins.    Finished processing 3 of 3 (100.00%) bins.
+[2026-09-24 08:56:30] INFO: { Current stage: 0:00:00.258 || Total: 0:02:41.542 }
+[2026-09-24 08:56:30] INFO: Calculating genome statistics for 3 bins with 1 threads:
+    Finished processing 0 of 3 (0.00%) bins.    Finished processing 1 of 3 (33.33%) bins.    Finished processing 2 of 3 (66.67%) bins.    Finished processing 3 of 3 (100.00%) bins.
+[2026-09-24 08:56:31] INFO: { Current stage: 0:00:00.086 || Total: 0:02:41.629 }
+[2026-09-24 08:56:31] INFO: [CheckM - qa] Tabulating genome statistics.
+[2026-09-24 08:56:31] INFO: Calculating AAI between multi-copy marker genes.
+[2026-09-24 08:56:31] INFO: Reading HMM info from file.
+[2026-09-24 08:56:31] INFO: Parsing HMM hits to marker genes:
+    Finished parsing hits for 1 of 3 (33.33%) bins.    Finished parsing hits for 2 of 3 (66.67%) bins.    Finished parsing hits for 3 of 3 (100.00%) bins.
+------------------------------------------------------------------------------------------------------------------------------------------------------------
+  Bin Id       Marker lineage      # genomes   # markers   # marker sets    0    1    2   3   4   5+   Completeness   Contamination   Strain heterogeneity  
+------------------------------------------------------------------------------------------------------------------------------------------------------------
+  92       k__Bacteria (UID1453)      901         171           117         86   82   2   1   0   0       41.94            2.14               0.00          
+  0        k__Bacteria (UID1453)      901         171           117        105   66   0   0   0   0       38.55            0.00               0.00          
+  68        k__Bacteria (UID203)      5449        104            58         87   17   0   0   0   0        6.74            0.00               0.00          
+------------------------------------------------------------------------------------------------------------------------------------------------------------
+[2026-09-24 08:56:31] INFO: { Current stage: 0:00:00.181 || Total: 0:02:41.811 }
+===v4 run_meta now===
+finished:   2026-09-24T08:50:35+00:00
+bins:       3  -> /vol/data/benchmark/runs/small_test_v4/comebin_out/comebin_res/comebin_res_bins
+cmd_checkm2: /vol/data/tools/bin/micromamba run -p /vol/data/envs/checkm2 checkm2 predict --threads 8 --database_path /vol/data/benchmark/checkm2db/CheckM2_database/uniref100.KO.1.dmnd --input /vol/data/benchmark/runs/small_test_v4/comebin_out/comebin_res/comebin_res_bins --output-directory /vol/data/benchmark/runs/small_test_v4/eval/checkm2 -x fasta
+cmd_checkm2: /vol/data/tools/bin/micromamba run -p /vol/data/envs/checkm2 checkm2 predict --threads 8 --database_path /vol/data/benchmark/checkm2db/CheckM2_database/uniref100.KO.1.dmnd --input /vol/data/benchmark/runs/small_test_v4/comebin_out/comebin_res/comebin_res_bins --output-directory /vol/data/benchmark/runs/small_test_v4/eval/checkm2 -x fa --force
+checkm2_rc: 0 checkm2_wall_s: 41
+cmd_checkm: /vol/data/tools/bin/micromamba run -p /vol/data/envs/checkm checkm lineage_wf -x fa -t 8 --tmpdir /vol/data/benchmark/runs/small_test_v4/eval/checkm/tmp /vol/data/benchmark/runs/small_test_v4/comebin_out/comebin_res/comebin_res_bins /vol/data/benchmark/runs/small_test_v4/eval/checkm/out
+checkm_rc: 0 checkm_wall_s: 2
+checkm2_bins: 3 checkm2_compl_mean: 26.07 checkm2_cont_mean: 2.02
+===driver transcript tail===
+-rw-rw-r-- 1 ubuntu ubuntu 10198 Sep 24 08:49 /vol/data/benchmark/.activity
+-rw-rw-r-- 1 ubuntu ubuntu     0 Sep 24 08:49 /vol/data/benchmark/.heartbeat
+2026-09-24T08:57:11Z
+[0m$ [0mcd /vol/data/benchmark/runs/baseline_rerun_autorestart1 && find . -path ./comebin_out -prune -o -type f \( -name 'bin_stats*' -o -name 'qa*' -o -name '*summary*' \) -print 2>/dev/null; find . -type d -name 'checkm*'; echo "===logs dir==="; ls logs/; grep -rn "25 bins\|BAC+AR\|checkm" logs/ 2>/dev/null | tail -10; echo "===MQ/HQ==="; awk -F'\t' 'NR>1{n++; if($2>90&&$3<5)hq++; else if($2>50&&$3<10)mq++} END{printf "n=%d HQ=%d MQ=%d\n",n,hq,mq}' eval/checkm2/quality_report.tsv; head -1 eval/checkm2/quality_report.tsv
+./comebin_out/comebin_res/cluster_res/unitem_profile/binning_methods/weight_seed_kmeans_k_0_result.tsv/checkm_ar
+./comebin_out/comebin_res/cluster_res/unitem_profile/binning_methods/weight_seed_kmeans_k_0_result.tsv/checkm_bac
+./comebin_out/cluster_res/unitem_profile/binning_methods/weight_seed_kmeans_k_25_result.tsv/checkm_ar
+./comebin_out/cluster_res/unitem_profile/binning_methods/weight_seed_kmeans_k_25_result.tsv/checkm_bac
+./eval/checkm2
+./eval/checkm
+===logs dir===
+env_list_after_hmmerfix.txt
+env_list_before_hmmerfix.txt
+logs/env_list_before_hmmerfix.txt:20:  checkm-genome              1.2.5         pyhdfd78af_0                bioconda   
+logs/env_list_after_hmmerfix.txt:20:  checkm-genome              1.2.5         pyhdfd78af_0                bioconda   
+===MQ/HQ===
+n=60 HQ=0 MQ=7
+Name	Completeness	Contamination	Completeness_Model_Used	Translation_Table_Used	Coding_Density	Contig_N50	Average_Gene_Length	Genome_Size	GC_Content	Total_Coding_Sequences	Total_Contigs	Max_Contig_Length	Additional_Notes
+> build · mimo-v2.6-flash-free
