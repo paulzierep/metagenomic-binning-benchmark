@@ -28367,3 +28367,170 @@ Prefix: /vol/data/envs/comebin
 
 Dry run. Not executing the transaction.
 > build · mimo-v2.6-flash-free
+Env dry-run is clean: single-package downgrade `hmmer 3.4 → 3.1b2`, exactly the repo's own `comebin_env.yaml` pin (numpy/sklearn/torch untouched). Before launching anything, I need the exact bin/get_result command lines, the built-in checkm situation, and how the watchdog treats a registered run whose run_meta already has `exit_code: 0`:
+[0m$ [0msed -n '165,186p' /vol/data/repos/COMEBin/COMEBin/run_comebin.sh
+echo "=== main.py get_result block ==="
+sed -n '355,375p' /vol/data/repos/COMEBin/COMEBin/main.py
+echo "=== main.py exception handling (silent exit 0?) ==="
+grep -n -B3 -A8 "Unexpected error" /vol/data/repos/COMEBin/COMEBin/main.py
+if [[ $? -ne 0 ]] ; then echo "Something went wrong with running training network. Exiting.";exit 1; fi
+
+########################################################################################################
+#### Clustering (run Leiden-based clustering methods and get the final result)
+########################################################################################################
+emb_file=${output_dir}/comebin_res/embeddings.tsv
+seed_file=${contig_file}.bacar_marker.2quarter_lencutoff_1001.seed
+
+python main.py bin --contig_file ${contig_file} \
+--emb_file ${emb_file} \
+--output_path ${output_dir}/comebin_res \
+--seed_file ${seed_file} --num_threads ${num_threads}
+
+python main.py get_result --contig_file ${contig_file} \
+--output_path ${output_dir}/comebin_res \
+--seed_file ${seed_file} --num_threads ${num_threads}
+
+if [[ $? -ne 0 ]] ; then echo "Something went wrong with running clustering. Exiting.";exit 1; fi
+
+=== main.py get_result block ===
+
+    ###Generate the final results from the Leiden clustering results
+    if args.subcmd == 'get_result':
+        logger.info('get_result')
+        from utils import gen_seed
+        from get_final_result import run_get_final_result
+
+        num_threads = args.num_threads
+        seed_num = gen_seed(logger, args.contig_file, num_threads, args.contig_len, marker_name="bacar_marker", quarter="2quarter")
+
+        run_get_final_result(logger, args, seed_num, num_threads, ignore_kmeans_res=True)
+
+
+if __name__ == '__main__':
+    main()
+
+=== main.py exception handling (silent exit 0?) ===
+[0m$ [0msed -n '150,245p' /vol/data/repos/metagenomic-binning-benchmark/scripts/benchmark-watchdog.sh
+echo "=== hang_restarts marker semantics ==="
+grep -n "hang_restarts" /vol/data/repos/metagenomic-binning-benchmark/scripts/benchmark-watchdog.sh | head -10
+}
+
+# log age = silence of the run
+[ -f "$logfile" ] || logfile="$rundir/comebin_run.log"
+if [ -f "$logfile" ]; then
+    age=$(( $(date +%s) - $(stat -c %Y "$logfile") ))
+else
+    age=999999
+fi
+
+# A recorded successful exit is authoritative and safe to clear even if the
+# old PID has since been reused; no process signal is sent on this path.
+rc_done=$(grep -m1 '^exit_code:' "$rundir/run_meta.txt" 2>/dev/null | awk '{print $2}' || true)
+if [ "$rc_done" = "0" ]; then
+    if clear_active; then
+      rm -f "$BENCH/.last_benchmark_failure" 2>/dev/null || true
+      log "$name finished rc=0 — active-run cleared"
+    fi
+    exit 0
+fi
+
+alive=0
+orphaned=0
+pid_stat=$(ps -o stat= -p "$pid" 2>/dev/null | tr -d ' ' || true)
+if [ -n "$pid_stat" ] && kill -0 "$pid" 2>/dev/null && [[ "$pid_stat" != Z* ]]; then
+    pid_cmd=$(tr '\0' ' ' < "/proc/$pid/cmdline" 2>/dev/null || true)
+    if registered_runner_command "$pid_cmd"; then
+      alive=1
+    else
+      log "pid $pid is alive but is not a registered COMEBin runner; refusing kill/restart: $pid_cmd"
+      exit 0
+    fi
+elif group_pids=$(pgrep -g "$pgid" 2>/dev/null) && [ -n "$group_pids" ]; then
+    # Wrapper gone but descendants remain. Only treat the group as the run when
+    # every member is recognizably part of this rundir/runner; otherwise avoid
+    # creating a duplicate or killing an unrelated process group.
+    group_safe=1
+    for child_pid in $group_pids; do
+      child_cmd=$(tr '\0' ' ' < "/proc/$child_pid/cmdline" 2>/dev/null || true)
+      case "$child_cmd" in
+        *"$rundir"*|*run_comebin_baseline.sh*|*run_comebin_fix.sh*|*run_small_test.sh*|*micromamba*) ;;
+        *) group_safe=0; break ;;
+      esac
+    done
+    if [ "$group_safe" -eq 1 ]; then
+      alive=1
+      orphaned=1
+      log "$name wrapper $pid is gone; verified orphaned run group $pgid"
+    else
+      log "process group $pgid has unrelated members; refusing orphan kill/restart"
+      exit 0
+    fi
+fi
+
+# Look for terminal evidence only after establishing that the registered
+# process/group is gone.  A live process is never killed merely because its log
+# contains an error; that could destroy a still-running cleanup phase.
+terminal_reason=""
+if [ "$alive" -eq 0 ]; then
+  if [[ "$rc_done" =~ ^[0-9]+$ ]] && [ "$rc_done" != "0" ]; then
+    terminal_reason="run_meta exit_code=$rc_done"
+  elif [ -s "$rundir/.watchdog_terminal" ]; then
+    terminal_reason=$(tail -n 1 "$rundir/.watchdog_terminal" 2>/dev/null || true)
+  else
+    candidates=("$logfile" "$BENCH/logs/${name}.launch.log")
+    # The original pre-watchdog baseline used this shared launch log.  Consult
+    # it only for that exact run, never as evidence for a replacement attempt.
+    if [ "$name" = "baseline_unmodified" ] && [ -f "/vol/data/logs/baseline_launch.log" ]; then
+      candidates+=("/vol/data/logs/baseline_launch.log")
+    fi
+    for candidate in "${candidates[@]}"; do
+      [ -f "$candidate" ] || continue
+      failure_line=$(tail -n 300 "$candidate" 2>/dev/null \
+        | grep -aE 'Something went wrong with running|Traceback \(most recent call last\):|ModuleNotFoundError|FileNotFoundError|No such file or directory|syntax error near unexpected token' \
+        | tail -n 1 || true)
+      if [ -n "$failure_line" ]; then
+        terminal_reason="terminal log evidence: $failure_line"
+        break
+      fi
+    done
+  fi
+  if [ -n "$terminal_reason" ]; then
+    record_terminal_failure "$terminal_reason"
+    exit 0
+  fi
+fi
+
+# A live process with a fresh log is healthy.  A live orphan/hung process is
+# handled conservatively below; terminal evidence while it is still alive is
+# left for manual inspection rather than killing an active run.
+[ "$alive" -eq 1 ] && [ "$orphaned" -eq 0 ] && [ "$age" -lt "$HANG_S" ] && exit 0
+if [ "$alive" -eq 1 ] && [ -n "$terminal_reason" ]; then
+  log "$name has terminal-looking evidence but its registered process is still alive; refusing to signal it"
+  exit 0
+fi
+
+=== hang_restarts marker semantics ===
+127:      find "$BENCH" -maxdepth 1 -name ".hang_restarts.$root_name.*" -mmin -1440 -delete 2>/dev/null || true
+247:restarts=$(find "$BENCH" -maxdepth 1 -name ".hang_restarts.$root_name.*" -mmin -1440 2>/dev/null | wc -l)
+265:marker="$BENCH/.hang_restarts.$root_name.$(date +%s)"
+[0m$ [0mecho "=== checkm.log content (built-in, phase1) ==="
+cat /vol/data/benchmark/runs/baseline_rerun_autorestart1/comebin_out/comebin_res/cluster_res/unitem_profile/binning_methods/weight_seed_kmeans_k_0_result.tsv/checkm_bac/checkm.log 2>/dev/null | head -15
+echo "=== built-in checkm dataRoot ==="
+/vol/data/envs/comebin/bin/checkm data setRoot 2>&1 | head -5
+echo "=== run_get_final_result / checkm in cluster.py ==="
+grep -n -E "def run_get_final_result|def get_result|checkm|comebin_res_bins|_bins" /vol/data/repos/COMEBin/COMEBin/cluster.py | head -25
+=== checkm.log content (built-in, phase1) ===
+[2026-09-24 07:15:24] INFO: CheckM v1.2.5
+[2026-09-24 07:15:24] INFO: checkm analyze -t 32 -x fa /vol/data/repos/COMEBin/COMEBin/scripts/checkm_ms/bacteria.ms /vol/data/benchmark/runs/baseline_rerun_autorestart1/comebin_out/comebin_res/cluster_res/weight_seed_kmeans_k_0_result.tsv_bins /vol/data/benchmark/runs/baseline_rerun_autorestart1/comebin_out/comebin_res/cluster_res/unitem_profile/binning_methods/weight_seed_kmeans_k_0_result.tsv/checkm_bac
+[2026-09-24 07:15:24] INFO: CheckM data: /vol/data/envs/comebin/checkm_data
+[2026-09-24 07:15:24] INFO: [CheckM - analyze] Identifying marker genes in bins.
+=== built-in checkm dataRoot ===
+/vol/data/envs/comebin/lib/python3.10/site-packages/checkm/checkmData.py:27: UserWarning: pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html. The pkg_resources package is slated for removal as early as 2025-11-30. Refrain from using this package or pin to Setuptools<81.
+  from pkg_resources import resource_filename
+[2026-09-24 07:50:32] INFO: CheckM v1.2.5
+[2026-09-24 07:50:32] INFO: checkm data setRoot
+[2026-09-24 07:50:32] INFO: CheckM data: /vol/data/envs/comebin/checkm_data
+=== run_get_final_result / checkm in cluster.py ===
+16:from scripts.gen_bins_from_tsv import gen_bins as gen_bins_from_tsv
+109:        gen_bins_from_tsv(contig_file, output_temp, output_temp+'_bins')
+> build · mimo-v2.6-flash-free
