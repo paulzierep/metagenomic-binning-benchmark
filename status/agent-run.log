@@ -28611,3 +28611,74 @@ diff -q scripts/run_comebin_baseline.sh /vol/data/benchmark/bin/run_comebin_base
 === deployed copy identical to repo? ===
 identical
 > build · mimo-v2.6-flash-free
+[0m$ [0mecho "=== run_comebin_fix.sh sampler block ==="
+grep -n -A14 "SAMPLER_PID=" /vol/data/repos/metagenomic-binning-benchmark/scripts/run_comebin_fix.sh | head -40
+echo "=== run_small_test.sh: bins validation? ==="
+grep -n -i "bins\|exit_code" /vol/data/repos/metagenomic-binning-benchmark/scripts/run_small_test.sh | head -20
+echo "=== small dataset poisoned caches? ==="
+ls -la /vol/data/datasets/comebin_small/*.hmmout /vol/data/datasets/comebin_small/*.seed /vol/data/datasets/comebin_small/*.frag.faa 2>/dev/null || echo "no hmmout/seed/frag in comebin_small"
+echo "=== resources.tsv current peak (phase1) ==="
+R=/vol/data/benchmark/runs/baseline_rerun_autorestart1/logs/resources.tsv
+head -2 "$R"; awk 'NR>1 && $3+0>m {m=$3+0} END{print "peak_rss_gb:", m, "rows:", NR-1}' "$R" 2>/dev/null
+=== run_comebin_fix.sh sampler block ===
+76:SAMPLER_PID=""
+77-cleanup() {
+78-  rc=$?
+79-  trap - EXIT
+80-  if [ -n "$SAMPLER_PID" ] && kill -0 "$SAMPLER_PID" 2>/dev/null; then
+81-    kill "$SAMPLER_PID" 2>/dev/null || true
+82-    wait "$SAMPLER_PID" 2>/dev/null || true
+83-  fi
+84-  if [ "$rc" -eq 0 ] && [ -f "$ACTIVE" ]; then
+85-    read -r current_pid _ < "$ACTIVE" || true
+86-    [ "${current_pid:-}" = "$$" ] && rm -f "$ACTIVE"
+87-  fi
+88-  exit "$rc"
+89-}
+90-trap cleanup EXIT
+--
+109:SAMPLER_PID=$!
+110-
+111-# capture the real main.py train command once training starts (non-blocking)
+112-( sleep 12; MCMD=$(pgrep -af 'main.py train' 2>/dev/null | head -1 | cut -d' ' -f2-); \
+113-  [ -n "$MCMD" ] && echo "cmd_train_py: $MCMD" >> "$RUNDIR/run_meta.txt" ) &
+114-
+115-START=$(date +%s)
+116-set +e
+117-CUDA_VISIBLE_DEVICES= "$MM" run -p "$ENV" bash run_comebin.sh \
+118-  "${COMEBIN_ARGS[@]}" 2>&1 | tee "$RUNDIR/comebin_run.log"
+119-RC=${PIPESTATUS[0]}
+120-set -e
+121-END=$(date +%s)
+122-
+123-{
+=== run_small_test.sh: bins validation? ===
+48:  old_rc=$(grep -m1 '^exit_code:' "${active_dir:-/nonexistent}/run_meta.txt" 2>/dev/null | awk '{print $2}' || true)
+172:  echo "exit_code:  $RC"
+178:  BINS="$RUNDIR/comebin_out/comebin_res/comebin_res_bins"
+179:  [ -d "$BINS" ] && echo "bins: $(find "$BINS" -maxdepth 1 -type f | wc -l)  -> $BINS" | tee -a "$RUNDIR/run_meta.txt"
+=== small dataset poisoned caches? ===
+-rw-rw-r-- 1 ubuntu ubuntu 1289865 Sep 23 22:07 /vol/data/datasets/comebin_small/contigs.fa.frag.faa
+no hmmout/seed/frag in comebin_small
+=== resources.tsv current peak (phase1) ===
+head: cannot open '/vol/data/benchmark/runs/baseline_rerun_autorestart1/logs/resources.tsv' for reading: No such file or directory
+[0m$ [0mMAMBA_ROOT_PREFIX=/vol/data/envs/.mamba /vol/data/tools/bin/micromamba install -y -p /vol/data/envs/comebin -c conda-forge -c bioconda hmmer=3.1b2 2>&1 | tail -6
+echo "=== verify ==="
+/vol/data/envs/comebin/bin/hmmsearch -h 2>&1 | grep -m1 HMMER
+MAMBA_ROOT_PREFIX=/vol/data/envs/.mamba /vol/data/tools/bin/micromamba list -p /vol/data/envs/comebin > /vol/data/benchmark/runs/baseline_rerun_autorestart1/logs/env_list_after_hmmerfix.txt 2>&1
+diff <(grep -vE '^\s*$|^#' /vol/data/benchmark/runs/baseline_rerun_autorestart1/logs/env_list_before_hmmerfix.txt) <(grep -vE '^\s*$|^#' /vol/data/benchmark/runs/baseline_rerun_autorestart1/logs/env_list_after_hmmerfix.txt) || true
+date -u +"%Y-%m-%d %H:%M:%S UTC - action: env fixed - hmmer 3.4 -> 3.1b2 in /vol/data/envs/comebin (matches comebin_env.yaml pin; only hmmer differs per env list diff)" >> /vol/data/repos/metagenomic-binning-benchmark/status/agent-activity.log
+touch /vol/data/benchmark/.heartbeat
+Transaction starting
+Unlinking hmmer-3.4-h503566f_3
+Linking hmmer-3.1b2-3
+
+Transaction finished
+
+=== verify ===
+# HMMER 3.1b2 (February 2015); http://hmmer.org/
+49c49
+<   hmmer                      3.4           h503566f_3                  bioconda   
+---
+>   hmmer                      3.1b2         3                           bioconda
+> build · mimo-v2.6-flash-free
