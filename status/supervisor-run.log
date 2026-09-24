@@ -31692,3 +31692,230 @@ PROGRESS.md                 |  5 +++++
  M scripts/agent-watchdog.sh
  M scripts/status-heartbeat.sh
 > build · space-bunny-free
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/scripts/status-heartbeat.sh
+Index: /vol/data/repos/metagenomic-binning-benchmark/scripts/status-heartbeat.sh
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/scripts/status-heartbeat.sh
++++ /vol/data/repos/metagenomic-binning-benchmark/scripts/status-heartbeat.sh
+@@ -192,8 +192,11 @@
+         fi
+         awk -v rn="$run_name" -v st="$st" '
+           $0 ~ "^\\| *`" rn "` *\\|" {
+             n = split($0, a, "|")
++            # The performance table has 11 columns. Do not rewrite same-named
++            # rows in the six-column run-history table.
++            if (n != 12) { print; next }
+             out = a[1]
+             for (i = 2; i <= n - 2; i++) out = out "|" a[i]
+             out = out "| " st " |"
+             print out
+
+> build · space-bunny-free
+[0m$ [0mset -euo pipefail
+bash -n scripts/status-heartbeat.sh
+if command -v shellcheck >/dev/null 2>&1; then shellcheck -S error scripts/status-heartbeat.sh; fi
+fixture=$(mktemp -d /tmp/opencode/status-table-test.XXXXXX)
+trap 'rm -rf "$fixture"' EXIT
+cat > "$fixture/input.md" <<'EOF'
+| Run | Date | Source | Dataset | Threads | Wall time | Peak RAM | Bins | CheckM2 comp/cont % | CheckM comp/cont % | Status |
+|---|---|---|---|---|---|---|---|---|---|---|
+| `baseline_rerun_autorestart1` | 2026-09-24 | src | data | 32 | 1 | 2 | 3 | 4 | 5 | old performance status |
+| `baseline_rerun_autorestart1` | time | src | **running** | preserved cause | preserved next step |
+EOF
+sed -n '/^[[:space:]]*\$0 ~ "\^\\\\| \*" rn/,/^[[:space:]]*}$/p' scripts/status-heartbeat.sh > "$fixture/row-update.awk"
+test -s "$fixture/row-update.awk"
+awk -v rn='baseline_rerun_autorestart1' -v st='new performance status' -f "$fixture/row-update.awk" "$fixture/input.md" > "$fixture/output.md"
+grep -Fq '| new performance status |' "$fixture/output.md"
+grep -Fq '| `baseline_rerun_autorestart1` | time | src | **running** | preserved cause | preserved next step |' "$fixture/output.md"
+[ "$(grep -Fc 'new performance status' "$fixture/output.md")" -eq 1 ]
+printf 'status-heartbeat performance/history row isolation: ok\n'
+Exited with code 1
+[0m$ [0mgit diff --check -- PROGRESS.md scripts/agent-watchdog.sh scripts/status-heartbeat.sh && git diff --stat && git status --short
+PROGRESS.md                 |  5 +++++
+ scripts/agent-watchdog.sh   |  7 +++++--
+ scripts/status-heartbeat.sh | 13 +++++++++++--
+ 3 files changed, 21 insertions(+), 4 deletions(-)
+ M PROGRESS.md
+ M scripts/agent-watchdog.sh
+ M scripts/status-heartbeat.sh
+> build · space-bunny-free
+[0m→ [0mRead /vol/data/repos/metagenomic-binning-benchmark/scripts/status-heartbeat.sh [90m[offset=180, limit=45][0m
+[0m$ [0mset -euo pipefail
+fixture=$(mktemp -d /tmp/opencode/status-table-debug.XXXXXX)
+trap 'rm -rf "$fixture"' EXIT
+cat > "$fixture/input.md" <<'EOF'
+| Run | Date | Source | Dataset | Threads | Wall time | Peak RAM | Bins | CheckM2 comp/cont % | CheckM comp/cont % | Status |
+|---|---|---|---|---|---|---|---|---|---|---|
+| `baseline_rerun_autorestart1` | 2026-09-24 | src | data | 32 | 1 | 2 | 3 | 4 | 5 | old performance status |
+| `baseline_rerun_autorestart1` | time | src | **running** | preserved cause | preserved next step |
+EOF
+sed -n '193,206p' scripts/status-heartbeat.sh > "$fixture/row-update.awk"
+printf '%s\n' '--- extracted awk ---'
+cat "$fixture/row-update.awk"
+printf '%s\n' '--- output ---'
+awk -v rn='baseline_rerun_autorestart1' -v st='new performance status' -f "$fixture/row-update.awk" "$fixture/input.md"
+--- extracted awk ---
+        awk -v rn="$run_name" -v st="$st" '
+          $0 ~ "^\\| *`" rn "` *\\|" {
+            n = split($0, a, "|")
+            # The performance table has 11 columns. Do not rewrite same-named
+            # rows in the six-column run-history table.
+            if (n != 12) { print; next }
+            out = a[1]
+            for (i = 2; i <= n - 2; i++) out = out "|" a[i]
+            out = out "| " st " |"
+            print out
+            next
+          }
+          { print }
+        ' README.md > README.tbl && mv README.tbl README.md
+--- output ---
+awk: /tmp/opencode/status-table-debug.DngwOX/row-update.awk:1:         awk -v rn="$run_name" -v st="$st" '
+awk: /tmp/opencode/status-table-debug.DngwOX/row-update.awk:1:                  ^ syntax error
+> build · space-bunny-free
+[0m$ [0mset -euo pipefail
+bash -n scripts/status-heartbeat.sh
+if command -v shellcheck >/dev/null 2>&1; then shellcheck -S error scripts/status-heartbeat.sh; fi
+fixture=$(mktemp -d /tmp/opencode/status-table-test.XXXXXX)
+trap 'rm -rf "$fixture"' EXIT
+cat > "$fixture/input.md" <<'EOF'
+| Run | Date | Source | Dataset | Threads | Wall time | Peak RAM | Bins | CheckM2 comp/cont % | CheckM comp/cont % | Status |
+|---|---|---|---|---|---|---|---|---|---|---|
+| `baseline_rerun_autorestart1` | 2026-09-24 | src | data | 32 | 1 | 2 | 3 | 4 | 5 | old performance status |
+| `baseline_rerun_autorestart1` | time | src | **running** | preserved cause | preserved next step |
+EOF
+sed -n '194,205p' scripts/status-heartbeat.sh > "$fixture/row-update.awk"
+test -s "$fixture/row-update.awk"
+awk -v rn='baseline_rerun_autorestart1' -v st='new performance status' -f "$fixture/row-update.awk" "$fixture/input.md" > "$fixture/output.md"
+grep -Fq '| new performance status |' "$fixture/output.md"
+grep -Fq '| `baseline_rerun_autorestart1` | time | src | **running** | preserved cause | preserved next step |' "$fixture/output.md"
+[ "$(grep -Fc 'new performance status' "$fixture/output.md")" -eq 1 ]
+printf 'status-heartbeat performance/history row isolation: ok\n'
+Exited with code 1
+> build · space-bunny-free
+[0m$ [0mset -u
+fixture=$(mktemp -d /tmp/opencode/status-table-debug.XXXXXX)
+cat > "$fixture/input.md" <<'EOF'
+| Run | Date | Source | Dataset | Threads | Wall time | Peak RAM | Bins | CheckM2 comp/cont % | CheckM comp/cont % | Status |
+|---|---|---|---|---|---|---|---|---|---|---|
+| `baseline_rerun_autorestart1` | 2026-09-24 | src | data | 32 | 1 | 2 | 3 | 4 | 5 | old performance status |
+| `baseline_rerun_autorestart1` | time | src | **running** | preserved cause | preserved next step |
+EOF
+sed -n '194,205p' scripts/status-heartbeat.sh > "$fixture/row-update.awk"
+printf '%s\n' '--- extracted ---'; cat -n "$fixture/row-update.awk"
+printf '%s\n' '--- output ---'; awk -v rn='baseline_rerun_autorestart1' -v st='new performance status' -f "$fixture/row-update.awk" "$fixture/input.md"; rc=$?; echo rc=$rc
+rm -rf "$fixture"
+--- extracted ---
+     1	          $0 ~ "^\\| *`" rn "` *\\|" {
+     2	            n = split($0, a, "|")
+     3	            # The performance table has 11 columns. Do not rewrite same-named
+     4	            # rows in the six-column run-history table.
+     5	            if (n != 12) { print; next }
+     6	            out = a[1]
+     7	            for (i = 2; i <= n - 2; i++) out = out "|" a[i]
+     8	            out = out "| " st " |"
+     9	            print out
+    10	            next
+    11	          }
+    12	          { print }
+--- output ---
+| Run | Date | Source | Dataset | Threads | Wall time | Peak RAM | Bins | CheckM2 comp/cont % | CheckM comp/cont % | Status |
+|---|---|---|---|---|---|---|---|---|---|---|
+| `baseline_rerun_autorestart1` | 2026-09-24 | src | data | 32 | 1 | 2 | 3 | 4 | 5 | old performance status |
+| `baseline_rerun_autorestart1` | time | src | **running** | preserved cause | preserved next step |
+rc=0
+> build · space-bunny-free
+[0m$ [0mprintf '%s\n' '| `baseline_rerun_autorestart1` | x |' | awk -v rn='baseline_rerun_autorestart1' '{ print ($0 ~ "^\\| *`" rn "` *\\|") ? "match" : "no" }'
+printf '%s\n' '| `baseline_rerun_autorestart1` | x |' | awk -v rn='baseline_rerun_autorestart1' '{ print ($0 ~ "^\\| *" "`" rn "`" " *\\|") ? "match" : "no" }'
+match
+match
+> build · space-bunny-free
+[0m$ [0mfixture=$(mktemp -d /tmp/opencode/awk-debug.XXXXXX)
+cat > "$fixture/in" <<'EOF'
+| `baseline_rerun_autorestart1` | 2026-09-24 | src | data | 32 | 1 | 2 | 3 | 4 | 5 | old performance status |
+EOF
+awk -v rn='baseline_rerun_autorestart1' '{ print "line=[" $0 "]"; print "pattern=" "^\\| *`" rn "` *\\|"; print "match=" ($0 ~ "^\\| *`" rn "` *\\|"); print "n=" split($0,a,"|") }' "$fixture/in"
+rm -rf "$fixture"
+line=[| `baseline_rerun_autorestart1` | 2026-09-24 | src | data | 32 | 1 | 2 | 3 | 4 | 5 | old performance status |]
+pattern=^\| *`baseline_rerun_autorestart1` *\|
+match=1
+n=13
+> build · space-bunny-free
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/scripts/status-heartbeat.sh
+Index: /vol/data/repos/metagenomic-binning-benchmark/scripts/status-heartbeat.sh
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/scripts/status-heartbeat.sh
++++ /vol/data/repos/metagenomic-binning-benchmark/scripts/status-heartbeat.sh
+@@ -194,9 +194,9 @@
+           $0 ~ "^\\| *`" rn "` *\\|" {
+             n = split($0, a, "|")
+             # The performance table has 11 columns. Do not rewrite same-named
+             # rows in the six-column run-history table.
+-            if (n != 12) { print; next }
++            if (n != 13) { print; next }
+             out = a[1]
+             for (i = 2; i <= n - 2; i++) out = out "|" a[i]
+             out = out "| " st " |"
+             print out
+
+> build · space-bunny-free
+[0m$ [0mgit diff --check -- PROGRESS.md scripts/agent-watchdog.sh scripts/status-heartbeat.sh && git diff --stat && git status --short
+PROGRESS.md                 |  5 +++++
+ scripts/agent-watchdog.sh   |  7 +++++--
+ scripts/status-heartbeat.sh | 13 +++++++++++--
+ 3 files changed, 21 insertions(+), 4 deletions(-)
+ M PROGRESS.md
+ M scripts/agent-watchdog.sh
+ M scripts/status-heartbeat.sh
+[0m$ [0mset -euo pipefail
+bash -n scripts/status-heartbeat.sh
+if command -v shellcheck >/dev/null 2>&1; then shellcheck -S error scripts/status-heartbeat.sh; fi
+fixture=$(mktemp -d /tmp/opencode/status-table-test.XXXXXX)
+trap 'rm -rf "$fixture"' EXIT
+cat > "$fixture/input.md" <<'EOF'
+| Run | Date | Source | Dataset | Threads | Wall time | Peak RAM | Bins | CheckM2 comp/cont % | CheckM comp/cont % | Status |
+|---|---|---|---|---|---|---|---|---|---|---|
+| `baseline_rerun_autorestart1` | 2026-09-24 | src | data | 32 | 1 | 2 | 3 | 4 | 5 | old performance status |
+| `baseline_rerun_autorestart1` | time | src | **running** | preserved cause | preserved next step |
+EOF
+sed -n '194,205p' scripts/status-heartbeat.sh > "$fixture/row-update.awk"
+test -s "$fixture/row-update.awk"
+awk -v rn='baseline_rerun_autorestart1' -v st='new performance status' -f "$fixture/row-update.awk" "$fixture/input.md" > "$fixture/output.md"
+grep -Fq '| new performance status |' "$fixture/output.md"
+grep -Fq '| `baseline_rerun_autorestart1` | time | src | **running** | preserved cause | preserved next step |' "$fixture/output.md"
+[ "$(grep -Fc 'new performance status' "$fixture/output.md")" -eq 1 ]
+printf 'status-heartbeat performance/history row isolation: ok\n'
+status-heartbeat performance/history row isolation: ok
+> build · space-bunny-free
+[0m$ [0mset -euo pipefail
+src=scripts/status-heartbeat.sh
+dst=/vol/data/benchmark/bin/status-heartbeat.sh
+tmp="$dst.deploy-new.$$"
+trap 'rm -f "$tmp"' EXIT
+cp "$src" "$tmp"
+chmod 755 "$tmp"
+bash -n "$tmp"
+mv -f "$tmp" "$dst"
+trap - EXIT
+cmp -s "$src" "$dst"
+test -x "$dst"
+printf 'redeployed status-heartbeat.sh sha256=%s\n' "$(sha256sum "$dst" | awk '{print $1}')"
+redeployed status-heartbeat.sh sha256=a4f89caa8844919a1d5b2394b62849812dd68ffe7182211f2760ed81d1fa3127
+> build · space-bunny-free
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/scripts/status-heartbeat.sh
+Index: /vol/data/repos/metagenomic-binning-benchmark/scripts/status-heartbeat.sh
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/scripts/status-heartbeat.sh
++++ /vol/data/repos/metagenomic-binning-benchmark/scripts/status-heartbeat.sh
+@@ -193,9 +193,9 @@
+         awk -v rn="$run_name" -v st="$st" '
+           $0 ~ "^\\| *`" rn "` *\\|" {
+             n = split($0, a, "|")
+             # The performance table has 11 columns. Do not rewrite same-named
+-            # rows in the six-column run-history table.
++            # rows in the narrower run-history table.
+             if (n != 13) { print; next }
+             out = a[1]
+             for (i = 2; i <= n - 2; i++) out = out "|" a[i]
+             out = out "| " st " |"
+
