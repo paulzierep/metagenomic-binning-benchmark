@@ -3,13 +3,13 @@
 | | |
 |---|---|
 | Status | 🔴 `stopped (watchdog will restart)` |
-| ⏱ Updated (Europe/Berlin) | `2026-09-24T14:24 CEST` |
-| 🏃 Live benchmark | `fix_v11_20260924` — **epoch 45/200** · loss `3.1308605670928955` · top1 acc `94.42707824707031` (log 91s fresh) |
+| ⏱ Updated (Europe/Berlin) | `2026-09-24T14:26 CEST` |
+| 🏃 Live benchmark | `fix_v11_20260924` — **epoch 46/200** · loss `3.0991222858428955` · top1 acc `95.458984375` (log 76s fresh) |
 | 🧠 Model (last turn) | `ling-3.0-flash-fin-free` (watchdog rotates to free models on quota) |
-| 📌 Agent note · **50 min old** | heartbeat stale 3018s — agent dead/idle, watchdog should restart within ~5 min |
-| ⚙️ Load · uptime | `31.17 30.63 30.49` · 22 hours, 48 minutes — 32 cores, 62 GiB, no GPU |
-| 💾 RAM used/total | `6436/64295 MB` |
+| 📌 Agent note · **52 min old** | heartbeat stale 3138s — agent dead/idle, watchdog should restart within ~5 min |
+| ⚙️ Load · uptime | `31.68 30.78 30.55` · 22 hours, 50 minutes — 32 cores, 62 GiB, no GPU |
+| 💾 RAM used/total | `4891/64295 MB` |
 | 🔗 Session | `ses_f31799c77ffeTq9gcYgqc4hBhg` |
-| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `3ec552f meta: supervise tick 2026-09-24T12:23:01Z — 1 fix(es)` |
-| 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `3322732 B` — every run, command & tool result |
+| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `fe280b3 status: no — fix_v11_20260924 epoch 45/200 loss 3.1308605670928955 acc` |
+| 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `3322927 B` — every run, command & tool result |
 | 📈 Timeline | [status/status.log](status/status.log) |
