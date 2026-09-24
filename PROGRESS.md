@@ -307,6 +307,13 @@ included; fixes land on branch `comebin-optimizations` in this repo.
       what’s next”** (one row per run attempt: result, root cause, next step, commit
       links; performance-table baseline row now links to it); summary comment posted
       (`#issuecomment-5807827932`).
+- [x] **Issue #10 triaged (2026-09-24 04:54 → 05:05 UTC)**: fewer epochs for
+      functional tests → `run_comebin.sh` (branch `comebin-small-fix`) gained an
+      optional **`-E INT`** flag passing `--epochs` (default 200 = unchanged
+      upstream behavior; pushed as `a0be243`); `run_small_test.sh` gained
+      **`EPOCHS`** env, default 30, recorded in `run_meta.txt`, passed only when
+      the CLI supports `-E`; benchmark runs keep the full 200 epochs. Comment:
+      `#issuecomment-5807975873`.
 - [ ] After a successful baseline rerun: CheckM2 + CheckM v1 eval (`scripts/run_eval.sh`) → README
       performance row (wall time per stage, peak RAM from resources.tsv, bins,
       CheckM2/CheckM means) with linked commit → push

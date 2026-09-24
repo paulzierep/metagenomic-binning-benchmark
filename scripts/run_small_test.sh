@@ -9,6 +9,9 @@
 #                                   (default: the verified small-data fix worktree)
 #   SEED=42                          optional reproducible seed (supported CLIs)
 #   BATCH_SIZE=256 EMB_SIZE=512      small-data training defaults
+#   EPOCHS=30                         training epochs (issue #10; default 30 for
+#                                     fast functional tests; passed as -E only
+#                                     when the CLI supports it)
 set -euo pipefail
 
 MM=/vol/data/tools/bin/micromamba
@@ -21,6 +24,7 @@ RUNDIR=$(realpath -m "${1:-/vol/data/benchmark/runs/small_test}")
 THREADS=${2:-8}
 BATCH_SIZE=${BATCH_SIZE:-256}
 EMB_SIZE=${EMB_SIZE:-512}
+EPOCHS=${EPOCHS:-30}
 SEED=${SEED:-}
 START_LOCK=/tmp/benchmark-start.lock
 ACTIVE=/vol/data/benchmark/.active_run
@@ -75,6 +79,10 @@ fi
 if [ -n "$SEED" ] && grep -q -- '-s INT.*seed' "$SRC/COMEBin/run_comebin.sh"; then
   COMEBIN_ARGS+=(-s "$SEED")
 fi
+# Issue #10: cap epochs for fast functional tests (upstream CLI has no -E).
+if grep -q -- '-E INT.*epochs' "$SRC/COMEBin/run_comebin.sh"; then
+  COMEBIN_ARGS+=(-E "$EPOCHS")
+fi
 CMD_TEXT=$(printf '%q ' "$MM" run -p "$ENV" bash run_comebin.sh "${COMEBIN_ARGS[@]}")
 
 {
@@ -88,6 +96,7 @@ CMD_TEXT=$(printf '%q ' "$MM" run -p "$ENV" bash run_comebin.sh "${COMEBIN_ARGS[
   echo "threads:    $THREADS"
   echo "batch_size: $BATCH_SIZE"
   echo "emb_size:   $EMB_SIZE"
+  echo "epochs:     $EPOCHS (passed as -E when the CLI supports it)"
   echo "seed:       ${SEED:-unset}"
   echo "host:       $(nproc) cores, $(free -g | awk '/Mem:/{print $2}')G RAM"
   echo "cmd_wrapper: $CMD_TEXT"
