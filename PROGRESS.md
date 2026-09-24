@@ -262,8 +262,8 @@ included; fixes land on branch `comebin-optimizations` in this repo.
 - [ ] **← CURRENT: baseline rerun active (started 2026-09-24 00:30 UTC)** — registered
       watchdog run `baseline_rerun_autorestart1`, immutable snapshot
       `baseline_rerun_1790209801802838194.sh`, PID 267462, source commit
-      `904f649` (`-t 32`). Training is advancing normally (epoch 12/200 at the
-      last verification); do not signal, edit, or overlap this run. The prior
+      `904f649` (`-t 32`). Training is advancing normally (epoch 108/200 @ 04:40 UTC,
+      loss 3.58 ↓, Top1 84 %); do not signal, edit, or overlap this run. The prior
       baseline terminal failure (missing marker seed at epoch 175) remains
       historical; no evaluation result is claimed yet.
 - [x] **C6 snapshot identity remediation (2026-09-24)** — benchmark-watchdog and
@@ -296,6 +296,11 @@ included; fixes land on branch `comebin-optimizations` in this repo.
       and `scripts/make_release_manifest.py` document owner prerequisites,
       provenance/checksum packaging, and DOI verification; no upload claimed
       without an approved Zenodo token/manual deposit.
+- [x] **Issue #9 triaged (2026-09-24 04:39 → 04:45 UTC)**: per-run failure/next-step
+      explanation requested → new README section **“Run history — what happened and
+      what’s next”** (one row per run attempt: result, root cause, next step, commit
+      links; performance-table baseline row now links to it); summary comment posted
+      (`#issuecomment-5807827932`).
 - [ ] After a successful baseline rerun: CheckM2 + CheckM v1 eval (`scripts/run_eval.sh`) → README
       performance row (wall time per stage, peak RAM from resources.tsv, bins,
       CheckM2/CheckM means) with linked commit → push
