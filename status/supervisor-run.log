@@ -31600,3 +31600,95 @@ I’ve verified the live automation is healthy and left the training process unt
 [0m✗ [0mEdit /vol/data/repos/metagenomic-binning-benchmark/README.md failed
 [91m[1mError: [0mCould not find oldString in /vol/data/repos/metagenomic-binning-benchmark/README.md. It must match exactly, including whitespace and indentation.
 > build · space-bunny-free
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/scripts/agent-watchdog.sh
+Index: /vol/data/repos/metagenomic-binning-benchmark/scripts/agent-watchdog.sh
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/scripts/agent-watchdog.sh
++++ /vol/data/repos/metagenomic-binning-benchmark/scripts/agent-watchdog.sh
+@@ -126,10 +126,13 @@
+ [ "$last" = "0" ] || touch "$ATTDIR/$(date +%s)"
+ age=$(( hb_age < tl_age ? hb_age : tl_age ))
+ log "agent idle (hb ${hb_age}s, transcript ${tl_age}s, run_alive=$run_alive) -> launching driver (model_args='${MODEL_ARGS[*]:-default}')"
+ 
+-CONT_PPT="Continue the metagenomic-binning-benchmark task you were working on; you may have been interrupted. First read /vol/data/benchmark/PROGRESS.md, verify the 'Current state' section against what is actually on disk, then check NEW/updated issues with: gh issue list -R paulzierep/metagenomic-binning-benchmark --state open --json number,title,updatedAt and gh issue list -R paulzierep/COMEBin --state open --json number,title,updatedAt. Triage and comment on actionable updates without duplicating an existing response. Resume from the first unfinished step. Update PROGRESS.md and /vol/data/benchmark/.activity, touch /vol/data/benchmark/.heartbeat in shell commands while active, and append one timestamped line per meaningful action to /vol/data/repos/metagenomic-binning-benchmark/status/agent-activity.log. Before final git stage/commit/push, acquire /tmp/bench-repo.lock and commit only intended paths. Never overlap the registered benchmark run. If /vol/data/benchmark/TASK_COMPLETE exists, do nothing and exit."
+-FRESH_PPT="You are resuming the metagenomic-binning-benchmark project after an agent restart (the previous session may have crashed, run out of context, or exhausted model tokens). Read /vol/data/benchmark/PROGRESS.md FIRST, then check NEW/updated issues in paulzierep/metagenomic-binning-benchmark and paulzierep/COMEBin with gh issue list --state open --json number,title,updatedAt; triage and comment without duplicating an existing response. Verify state on disk and continue from the first unfinished step. Update PROGRESS.md and /vol/data/benchmark/.activity, touch /vol/data/benchmark/.heartbeat in shell commands while active, and append one timestamped line per meaningful action to /vol/data/repos/metagenomic-binning-benchmark/status/agent-activity.log. Before final git stage/commit/push, acquire /tmp/bench-repo.lock and commit only intended paths. Never overlap the registered benchmark run. If /vol/data/benchmark/TASK_COMPLETE exists, do nothing and exit."
++# A multi-hour benchmark must outlive any foreground tool timeout. Require a
++# detached, fresh-directory launch and forbid destructive retries that erase
++# evidence or leave .active_run pointing at a removed run.
++CONT_PPT="Continue the metagenomic-binning-benchmark task you were working on; you may have been interrupted. First read /vol/data/benchmark/PROGRESS.md, verify the 'Current state' section against what is actually on disk, then check NEW/updated issues with: gh issue list -R paulzierep/metagenomic-binning-benchmark --state open --json number,title,updatedAt and gh issue list -R paulzierep/COMEBin --state open --json number,title,updatedAt. Triage and comment on actionable updates without duplicating an existing response. Resume from the first unfinished step. Update PROGRESS.md and /vol/data/benchmark/.activity, touch /vol/data/benchmark/.heartbeat in shell commands while active, and append one timestamped line per meaningful action to /vol/data/repos/metagenomic-binning-benchmark/status/agent-activity.log. Before final git stage/commit/push, acquire /tmp/bench-repo.lock and commit only intended paths. Never overlap the registered benchmark run. Never launch a multi-hour baseline/fix run in a foreground tool call: start it detached with a fresh run directory, verify /vol/data/benchmark/.active_run, and let benchmark-watchdog.sh own the handoff. Never delete or overwrite an existing run directory. If /vol/data/benchmark/TASK_COMPLETE exists, do nothing and exit."
++FRESH_PPT="You are resuming the metagenomic-binning-benchmark project after an agent restart (the previous session may have crashed, run out of context, or exhausted model tokens). Read /vol/data/benchmark/PROGRESS.md FIRST, then check NEW/updated issues in paulzierep/metagenomic-binning-benchmark and paulzierep/COMEBin with gh issue list --state open --json number,title,updatedAt; triage and comment without duplicating an existing response. Verify state on disk and continue from the first unfinished step. Update PROGRESS.md and /vol/data/benchmark/.activity, touch /vol/data/benchmark/.heartbeat in shell commands while active, and append one timestamped line per meaningful action to /vol/data/repos/metagenomic-binning-benchmark/status/agent-activity.log. Before final git stage/commit/push, acquire /tmp/bench-repo.lock and commit only intended paths. Never overlap the registered benchmark run. Never launch a multi-hour baseline/fix run in a foreground tool call: start it detached with a fresh run directory, verify /vol/data/benchmark/.active_run, and let benchmark-watchdog.sh own the handoff. Never delete or overwrite an existing run directory. If /vol/data/benchmark/TASK_COMPLETE exists, do nothing and exit."
+ 
+ run_driver() {
+     local turns=0 start rc=0 quota_hits=0 healthy_turns=0 before after
+     start=$(date +%s)
+
+> build · space-bunny-free
+[0m$ [0mset -euo pipefail
+bash -n scripts/agent-watchdog.sh
+if command -v shellcheck >/dev/null 2>&1; then shellcheck -S error scripts/agent-watchdog.sh; fi
+count=$(grep -Fc 'Never launch a multi-hour baseline/fix run in a foreground tool call' scripts/agent-watchdog.sh)
+[ "$count" -eq 2 ]
+grep -Fq 'Never delete or overwrite an existing run directory.' scripts/agent-watchdog.sh
+printf 'agent-watchdog syntax and durable launch guidance: ok\n'
+agent-watchdog syntax and durable launch guidance: ok
+[0m$ [0mgit diff --check -- scripts/agent-watchdog.sh scripts/status-heartbeat.sh && git diff --stat && git status --short
+scripts/agent-watchdog.sh   |  7 +++++--
+ scripts/status-heartbeat.sh | 10 ++++++++--
+ 2 files changed, 13 insertions(+), 4 deletions(-)
+ M scripts/agent-watchdog.sh
+ M scripts/status-heartbeat.sh
+> build · space-bunny-free
+[0m$ [0mset -euo pipefail
+for job in agent-watchdog.sh status-heartbeat.sh; do
+  src="scripts/$job"
+  dst="/vol/data/benchmark/bin/$job"
+  tmp="$dst.deploy-new.$$"
+  trap 'rm -f "$tmp"' EXIT
+  cp "$src" "$tmp"
+  chmod 755 "$tmp"
+  bash -n "$tmp"
+  mv -f "$tmp" "$dst"
+  trap - EXIT
+  cmp -s "$src" "$dst"
+  test -x "$dst"
+  printf 'deployed %s sha256=%s\n' "$job" "$(sha256sum "$dst" | awk '{print $1}')"
+done
+deployed agent-watchdog.sh sha256=75aa444eecfe8788b9bc26758b8c8604dccf7b593e73d94fe8dec37cc46d15ed
+deployed status-heartbeat.sh sha256=0fcaf6827e5d5a6a833636f5abeaf95f673599a2f5f3618ccd0edb09c33b2d55
+> build · space-bunny-free
+[0m$ [0mgh api repos/paulzierep/metagenomic-binning-benchmark/issues/comments/5807827932 --jq '{id,html_url,created_at,updated_at,body}'
+{"body":"Done — added a **“Run history — what happened and what’s next”** table to the README (right under the performance table), one row per run attempt with the exact failure cause and the concrete next step:\n\n| Run | Result | Cause | Next step |\n|---|---|---|---|\n| `baseline_unmodified` | failed @ epoch 175/200 | clustering crash: no hmmsearch `.seed` file (`FileNotFoundError` in `gen_seed_idx`) + missing `biolib` | biolib installed + graceful-missing-seed fix → baseline rerun |\n| `baseline_rerun` | refused launch (0 CPU) | overlap guard blocked a duplicate run over a stale registration | superseded by `baseline_rerun_autorestart1`; stale registration cleared |\n| `baseline_rerun_autorestart1` | **running** (epoch 108/200 @ 04:40 UTC) | — | on clean exit → `run_eval.sh` (CheckM2 + CheckM v1) → performance row |\n| `small_test` | failed (41 s) | `gen_cov` KeyError on a BAM-header-only contig (`47c1449`), then `IndexError` from `np.empty` in `get_kmer_coverage` (`904f649`) | rerun as `small_test_v2` |\n| `small_test_v2` | failed (43 s) | `lengths[seq_id]` KeyError — `aug0_datacoverage_mean.tsv` had all **29,434 BAM header refs** vs the 300-contig assembly (`-bga` zero-depth rows + unfiltered aug0 `calculate_coverage`) | producer filter + defensive alignment on branch `comebin-small-fix` (`5c77bc8`, offline test ✅) → end-to-end small run right after the baseline finishes (no overlapping timed runs) |\n\nEvery row links its source commit and points at the per-run evidence (`run_meta.txt`, `comebin_run.log`). The performance table’s baseline row now links to this history instead of the bare “not active” status.\n","created_at":"2026-09-24T04:43:07Z","html_url":"https://github.com/paulzierep/metagenomic-binning-benchmark/issues/9#issuecomment-5807827932","id":5807827932,"updated_at":"2026-09-24T04:43:07Z"}
+> build · space-bunny-free
+[0m→ [0mRead /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md [90m[offset=245, limit=90][0m
+> build · space-bunny-free
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md
+Index: /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md
++++ /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md
+@@ -265,8 +265,13 @@
+       `904f649` (`-t 32`). Training is advancing normally (epoch 108/200 @ 04:40 UTC,
+       loss 3.58 ↓, Top1 84 %); do not signal, edit, or overlap this run. The prior
+       baseline terminal failure (missing marker seed at epoch 175) remains
+       historical; no evaluation result is claimed yet.
++- [x] **Long-run launch safety guard (2026-09-24)** — multi-hour baseline/fix
++      runs must be launched detached in a fresh run directory, then verified via
++      `.active_run` and handed off to `benchmark-watchdog.sh`; never run them in
++      a foreground tool call, delete an existing run directory, or overwrite its
++      evidence. The primary-agent prompts now enforce this on future turns.
+ - [x] **C6 snapshot identity remediation (2026-09-24)** — benchmark-watchdog and
+       meta-watchdog now accept only an existing immutable snapshot tied to the
+       registered run family plus the exact registered run directory; unrelated
+       live PIDs still fail closed. Source and installed copies were syntax-checked
+
+> build · space-bunny-free
+[0m✱ [0mGrep "foreground tool call|empty repo-side run directories|Long-run launch safety guard" [90min /vol/data/repos/metagenomic-binning-benchmark · 5 matches[0m
+[0m$ [0mgit diff --check -- PROGRESS.md scripts/agent-watchdog.sh scripts/status-heartbeat.sh && git diff --stat && git status --short
+PROGRESS.md                 |  5 +++++
+ scripts/agent-watchdog.sh   |  7 +++++--
+ scripts/status-heartbeat.sh | 10 ++++++++--
+ 3 files changed, 18 insertions(+), 4 deletions(-)
+ M PROGRESS.md
+ M scripts/agent-watchdog.sh
+ M scripts/status-heartbeat.sh
+> build · space-bunny-free
