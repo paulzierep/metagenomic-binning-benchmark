@@ -1,6 +1,6 @@
 <!--AGENT-STATUS-->
 
-> 🟢 **Agent status:** `running` · ⏱ `2026-09-24T11:02 CEST` · 🏃 last run small_test_v4: epoch 29/30 · not active · 🧠 `mimo-v2.6-flash-free` · [status.log](status/status.log)
+> 🟢 **Agent status:** `running` · ⏱ `2026-09-24T11:04 CEST` · 🏃 last run small_test_v4: epoch 29/30 · not active · 🧠 `mimo-v2.6-flash-free` · [status.log](status/status.log)
 
 # metagenomic-binning-benchmark
 
@@ -47,6 +47,8 @@ Raw per-run outputs stay in `/vol/data/benchmark/runs/`, parsed CSVs in `results
 | Run | Date | Source commit | Dataset | Threads | Wall time | Peak RAM | Bins | CheckM2 comp/cont % | CheckM comp/cont % | Status |
 |---|---|---|---|---|---|---|---|---|---|---|
 | `baseline_unmodified` | 2026-09-23 | [987db95](https://github.com/paulzierep/COMEBin/commit/987db95d8d399f30b7c82a5f5f40ed6bfdc906c7) (upstream) | COMEBin demo (29,434 contigs) | 32 | – | – | – | – | – | ⏹ failed at epoch 175/200 — see [Run history](#run-history--what-happened-and-whats-next) |
+| `baseline_rerun_autorestart1` | 2026-09-24 | [904f649](https://github.com/paulzierep/COMEBin/commit/904f649ef5cbb4582a6f0e5ec8b0b1f45778d85b) | COMEBin demo (29,434 contigs) | 32 | 24,327 s | 5.42 GB | 60 | 25.01% / 2.98% | rc=0 | ✅ complete; 200/200 epochs, 99.19% Top1; [evidence](runs/baseline_rerun_autorestart1/comebin_run.log) |
+| `small_test_v4` | 2026-09-24 | [c8f22e4](https://github.com/paulzierep/COMEBin/commit/c8f22e4935a66a0fd58b794489a9021671b15437) | `comebin_small` (300 contigs) | 8 | 122 s | 0.75 GB | 3 | 26.07% / 2.02% | 29.08% / 0.71% | ⏹ not active · last observed epoch 29/30 |
 
 Column contract: **Wall time** = total seconds (plus per-stage breakdown in
 `docs/02-comebin-baseline.md`), **Bins** = bins exported (≥200 kb filter noted),
@@ -57,13 +59,11 @@ performance deltas vs. baseline are visible directly in this table.
 
 ## Run history — what happened and what's next
 
-Seven COMEBin-executing attempts have been recorded: six terminal failures and
-one active run. No successful end-to-end benchmark or CheckM evaluation has been
-recorded yet. Run links point to tracked evidence mirrors. The first two
-`small_test` directories were later reused, and the raw `baseline_rerun`
-directory now contains only the final refusal's `out.txt`; their earlier evidence
-survives in [`status/agent-run.log`](status/agent-run.log) and the Git mirror.
-The status banner at the top of this file is authoritative for the active run.
+Nine COMEBin-executing attempts have been recorded: seven terminal failures and
+two completed runs. The baseline rerun and the small functional gate now have
+verified bin artifacts and CheckM2/CheckM outputs. Run links point to tracked
+evidence mirrors; the status banner at the top is authoritative for any active
+run.
 
 ### COMEBin-executing attempts
 
@@ -75,7 +75,9 @@ The status banner at the top of this file is authoritative for the active run.
 | [`small_test` — attempt 3](runs/small_test/comebin_run.log) — 2026-09-23 23:09:40 → 23:10:21 (41 s) | [ee2e507](https://github.com/paulzierep/COMEBin/commit/ee2e5079ae8fd04caa381486a4bba8c2d2a34a14) | **Failed, exit 1.** `get_kmer_coverage` indexed the 300-contig matrix with uninitialized values because `np.empty` left missing contig-to-k-mer positions unset, causing an out-of-bounds `IndexError`. | Replace `np.empty` with zero-initialized state in [`904f649`](https://github.com/paulzierep/COMEBin/commit/904f649ef5cbb4582a6f0e5ec8b0b1f45778d85b); rerun as `small_test_v2`. |
 | [`small_test_v2`](runs/small_test_v2/comebin_run.log) — 2026-09-23 23:37:13 → 23:37:56 (43 s) | [904f649](https://github.com/paulzierep/COMEBin/commit/904f649ef5cbb4582a6f0e5ec8b0b1f45778d85b) | **Failed before completing epoch 0, exit 1.** `lengths[seq_id]` raised `KeyError`: `aug0_datacoverage_mean.tsv` contained all 29,434 BAM-header references instead of only the 300 input contigs. | Producer filtering and defensive alignment are committed on `comebin-small-fix` as [`5c77bc8`](https://github.com/paulzierep/COMEBin/commit/5c77bc87ce2c8a83be20016c8f62eb2d6b3feb88); the offline six-view test passes. After the baseline, run the end-to-end small gate and CheckM2/CheckM before building the medium set. |
 | [`baseline_rerun` — attempt 1](runs/baseline_rerun/comebin_run.log) — 2026-09-24 00:15:46 → 00:25:46 (600 s) | [904f649](https://github.com/paulzierep/COMEBin/commit/904f649ef5cbb4582a6f0e5ec8b0b1f45778d85b) | **Failed, exit 143.** This was not a COMEBin exception: a foreground agent tool call imposed a 600 s timeout and sent `SIGTERM` after epoch 0 was logged and the next epoch started. | Never launch a multi-hour baseline in a foreground tool call. Start it detached in a fresh directory, verify `.active_run`, and let `benchmark-watchdog.sh` own the handoff. |
+| [`small_test_v3`](runs/small_test_v3/comebin_run.log) — 2026-09-24 08:45:18 → 08:46:40 | [a0be243](https://github.com/paulzierep/COMEBin/commit/a0be243187c674b4e62b980ef100f8f2e8b83f54) | **Failed functional gate.** Training completed, but the small branch still had the pre-`358ddd8` KMeans call; `KMeans(n_jobs=-1)` raised `TypeError`, and the wrapper masked it as exit 0 with zero bins. | Apply the sklearn compatibility fix to `comebin-small-fix`; the runner now rejects zero-bin success. |
 | [`baseline_rerun_autorestart1`](runs/baseline_rerun_autorestart1/comebin_run.log) — 2026-09-24 00:30:01 → 07:15:28 | [904f649](https://github.com/paulzierep/COMEBin/commit/904f649ef5cbb4582a6f0e5ec8b0b1f45778d85b) | **✅ Complete.** 200/200 epochs, 99.19% Top1. Clustering fixed (hmmer 3.1b2 + sklearn KMeans). CheckM2: 60 bins, 25.01% comp, 2.98% cont. CheckM v1: rc=0. | Evaluation done via `scripts/run_eval.sh`. See `eval/checkm2/quality_report.tsv`. |
+| [`small_test_v4`](runs/small_test_v4/comebin_run.log) — 2026-09-24 08:48:33 → 08:50:35 | [c8f22e4](https://github.com/paulzierep/COMEBin/commit/c8f22e4935a66a0fd58b794489a9021671b15437) | **✅ Functional gate passed.** 30/30 epochs, 3 non-empty bins in 122 s. CheckM2: 26.07% mean completeness / 2.02% contamination. CheckM v1 (Python 3.10 + `pplacer` library path): 29.08% / 0.71%. | Small gate is complete; medium 3,000-contig derivative is next. See [`results/small_test_v4.csv`](results/small_test_v4.csv). |
 
 ### Guard-only launches
 

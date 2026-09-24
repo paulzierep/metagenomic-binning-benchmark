@@ -33675,3 +33675,91 @@ refusals are not mistaken for benchmark runs; raw watchdog refusals remain in
 ===docs02 baseline timing===
 47:| epochs | (implicit) | 200 max, earlystop ≥10 epochs with top1>99 for 3 | |
 > build · mimo-v2.6-flash-free
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && sed -n '40,75p' scripts/make_results_csv.py; echo "===medium script==="; ls -la scripts/make_medium_dataset.sh scripts/prep_cami2_marine.sh 2>/dev/null && grep -n "TARGET\|NCONTIG\|3000\|MAX" scripts/make_medium_dataset.sh | head
+header_parts = first.split("\t")
+        is_dict_row = len(first_parts) == 2 and first_parts[1].lstrip().startswith("{")
+        if not is_dict_row and ccol in header_parts and tcol in header_parts:
+            ci, ti = header_parts.index(ccol), header_parts.index(tcol)
+            for line in [first, *f]:
+                p = line.rstrip("\n").split("\t")
+                try:
+                    cs.append(float(p[ci]))
+                    ts.append(float(p[ti]))
+                except (ValueError, IndexError):
+                    continue
+            return cs, ts
+        # CheckM v1 bin_stats_ext.tsv is '<bin-id>\\t<dict literal>' per line.
+        lines = [first, *f] if is_dict_row else f
+        for line in lines:
+            p = line.rstrip("\n").split("\t", 1)
+            if len(p) != 2:
+                continue
+            try:
+                record = ast.literal_eval(p[1])
+                cs.append(float(record[ccol]))
+                ts.append(float(record[tcol]))
+            except (KeyError, TypeError, ValueError, SyntaxError):
+                continue
+    return cs, ts
+
+def summarize(cs, ts):
+    if not cs:
+        return "", "", "", ""
+    mean_c = sum(cs) / len(cs)
+    mean_t = sum(ts) / len(ts) if ts else 0.0
+    hq = sum(1 for c, t in zip(cs, ts) if c > 90 and t < 5)
+    mq = sum(1 for c, t in zip(cs, ts) if c >= 50 and t < 10)
+    return f"{mean_c:.2f}", f"{mean_t:.2f}", str(hq), str(mq)
+
+mk2c, mk2t = scores(os.path.join(run, "eval", "checkm2", "quality_report.tsv"), "Completeness", "Contamination")
+===medium script===
+-rwxrwxr-x 1 ubuntu ubuntu 2979 Sep 24 01:00 scripts/make_medium_dataset.sh
+-rw-rw-r-- 1 ubuntu ubuntu 3070 Sep 23 19:19 scripts/prep_cami2_marine.sh
+9:# -L), now N=3000. Hard cap 5 GB per the documented plan.
+18:N=${2:-3000}
+[0m$ [0mM=/vol/data/benchmark/runs/small_test_v4/eval/checkm/out; ls $M/storage/ 2>/dev/null; grep -c . $M/checkm.log 2>/dev/null; tail -4 $M/checkm.log; pgrep -f "checkm lineage" >/dev/null && echo "checkm STILL RUNNING" || echo "checkm finished"; awk -F'\t' 'NR>1{n++;c+=$2;t+=$3}END{printf "bin_stats_ext n=%d\n",n}' $M/storage/bin_stats_ext.tsv 2>/dev/null; tail -3 /vol/data/benchmark/runs/small_test_v4/run_meta.txt
+aai_qa
+bin_stats.analyze.tsv
+bin_stats.tree.tsv
+bin_stats_ext.tsv
+checkm_hmm_info.pkl.gz
+marker_gene_stats.tsv
+phylo_hmm_info.pkl.gz
+tree
+35
+[2026-09-24 09:00:42] INFO: Calculating AAI between multi-copy marker genes.
+[2026-09-24 09:00:42] INFO: Reading HMM info from file.
+[2026-09-24 09:00:42] INFO: Parsing HMM hits to marker genes:
+[2026-09-24 09:00:43] INFO: { Current stage: 0:00:00.178 || Total: 0:02:18.435 }
+checkm STILL RUNNING
+bin_stats_ext n=2
+checkm_rc: 0 checkm_wall_s: 139
+checkm2_bins: 3 checkm2_compl_mean: 26.07 checkm2_cont_mean: 2.02
+checkm_bins: 3 checkm_compl_mean: 29.08 checkm_cont_mean: 0.71
+[0m$ [0mcd /vol/data/repos/COMEBin-small-fix && git log --oneline origin/comebin-small-fix..comebin-small-fix; git status -sb | head -2; echo "===COMEBin master==="; cd /vol/data/repos/COMEBin && git log --oneline -3 && git status -sb | head -3 && git log --oneline origin/master..master 2>/dev/null; echo "===v11==="; cd /vol/data/repos/COMEBin-v11 && git log --oneline -2 && git status -sb | head -2; echo "===benchmark==="; cd /vol/data/repos/metagenomic-binning-benchmark && git fetch -q origin && git status -sb | head -6 && git log --oneline origin/main..HEAD
+## comebin-small-fix...origin/comebin-small-fix
+?? COMEBin/__pycache__/
+===COMEBin master===
+358ddd8 fix: remove n_jobs from KMeans for sklearn >=1.0 compatibility
+904f649 Fix: initialize covIdxArr with np.zeros instead of np.empty to prevent IndexError from uninitialized garbage values in get_kmer_coverage
+ee2e507 Fix KeyError in gen_var.py: skip contigs not present in aug_seq_info_dict
+## master...origin/master [ahead 5, behind 3]
+?? COMEBin/__pycache__/
+?? COMEBin/data_aug/__pycache__/
+358ddd8 fix: remove n_jobs from KMeans for sklearn >=1.0 compatibility
+904f649 Fix: initialize covIdxArr with np.zeros instead of np.empty to prevent IndexError from uninitialized garbage values in get_kmer_coverage
+ee2e507 Fix KeyError in gen_var.py: skip contigs not present in aug_seq_info_dict
+47c1449 Fix KeyError in gen_cov.py: skip contigs not present in aug_seq_info_dict
+586c7f7 fix: gen_seed_idx handles FileNotFoundError when seed file missing (hmmsearch --cut_tc produces no marker hits)
+===v11===
+95f5ea8 batch1 (v1.1.0 base): sequential bin numbering, drop empty/missing bins
+1b476a4 Clarify PyTorch installation options
+## comebin-optimizations-v11...origin/master [ahead 1]
+===benchmark===
+## main...origin/main
+ M README.md
+ M docs/04-evaluation.md
+ M docs/06-benchmark-commands.md
+ M scripts/make_results_csv.py
+ M scripts/parse_eval.py
+> build · mimo-v2.6-flash-free
