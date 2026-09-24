@@ -27936,3 +27936,174 @@ touch /vol/data/benchmark/.heartbeat
 exit=0
 hmmout data lines: 2227  size: 475187
 > build · mimo-v2.6-flash-free
+**Root cause confirmed:** HMMER **3.1b2** (the exact pin in `comebin_env.yaml`) runs `--cut_tc` on the TC-less `bacar_marker.hmm` successfully — exit 0, **2,227 hits** — while our env's HMMER **3.4** hard-errors. That's why the authors' 2023 run got `Seed_num: 25` and ours got none. Upstream v1.1.0 already fixed this (TC detection → `-E 1e-5` fallback), but our baseline/small-fix sources use the old `--cut_tc`, so the env must match the pin. Logging and reading the runner scripts before acting:
+[0m$ [0mecho "=== run_comebin.sh skip logic (train/bin/get_result) ==="
+grep -n -E "main.py|count|need|embeddings|data_augmentation|if |fi" /vol/data/repos/COMEBin/COMEBin/run_comebin.sh | sed -n '1,60p'
+echo "=== watchdog registration model ==="
+grep -n -E "register|exit_code|RUNDIR|stale" /vol/data/repos/metagenomic-binning-benchmark/scripts/benchmark-watchdog.sh | head -25
+=== run_comebin.sh skip logic (train/bin/get_result) ===
+4:# This script is meant to be run COMEBin after obtaining the bam files.
+13:  echo "Usage: bash run_comebin.sh [options] -a contig_file -o output_dir -p bam_file_path"
+16:	echo "  -a STR          metagenomic assembly file"
+18:	echo "  -p STR          path to access to the bam files"
+41:  a) contig_file=$(realpath ${OPTARG})
+45:  p) bam_file_path=$(realpath ${OPTARG})
+67:if [ -z "${contig_file}" -o -z "${output_dir}" -o -z "${bam_file_path}" ]; then
+70:fi
+73:sequence_count=$(grep -c "^>" "${contig_file}")
+76:if (( sequence_count < ${batch_size} )); then
+77:    batch_size=${sequence_count}
+78:fi
+83:if [ -z "$temperature" ]; then
+85:    awk '/^>/ {if (seqlen) print seqlen; seqlen=0; next} {seqlen+=length($0)} END {print seqlen}' "$contig_file" | sort -rn > ${contig_file}_lengths.txt
+88:    total_length=$(awk '{sum+=$1} END {print sum}' ${contig_file}_lengths.txt)
+89:    target_length=$(awk -v total="$total_length" 'BEGIN {cutoff=total/2; current=0} {current+=$1; if (current >= cutoff) {print $1; exit}}' ${contig_file}_lengths.txt)
+93:    # Check if N50 is greater than 10000 and set tau accordingly
+94:    if [ "$target_length" -gt 10000 ]; then
+98:    fi
+102:fi
+111:folder=${output_dir}/data_augmentation
+114:if [ -d "$folder" ]; then
+115:    echo "${output_dir}/data_augmentation exists."
+116:    count=$(find "$folder" -maxdepth 1 -type f -name "*$keyword*" | wc -l)
+117:    echo "Number of files containing '$keyword' in the folder: $count"
+118:    if [ "$count" -ne ${n_views} ]; then
+120:        python main.py generate_aug_data --contig_file ${contig_file} \
+121:        --out_augdata_path ${output_dir}/data_augmentation \
+122:        --n_views ${n_views} --bam_file_path ${bam_file_path} --num_threads ${num_threads}
+124:        echo "No need to run data augmentation."
+125:    fi
+127:    echo "${output_dir}/data_augmentation does not exist."
+129:    python main.py generate_aug_data --contig_file ${contig_file} \
+130:    --out_augdata_path ${output_dir}/data_augmentation \
+131:    --n_views ${n_views} --bam_file_path ${bam_file_path} --num_threads ${num_threads}
+132:fi
+134:if [[ $? -ne 0 ]] ; then echo "Something went wrong with running generating augmentation data. Exiting.";exit 1; fi
+140:keyword="embeddings.tsv"
+142:if [ -d "$folder" ]; then
+144:    count=$(find "$folder" -maxdepth 1 -type f -name "*$keyword*" | wc -l)
+145:    echo "Number of files containing '$keyword' in the folder: $count"
+146:    if [ "$count" -ne 2 ]; then
+148:        python main.py train --data ${output_dir}/data_augmentation \
+154:        echo "No need to run getting representation."
+155:    fi
+159:    python main.py train --data ${output_dir}/data_augmentation \
+164:fi
+167:if [[ $? -ne 0 ]] ; then echo "Something went wrong with running training network. Exiting.";exit 1; fi
+170:#### Clustering (run Leiden-based clustering methods and get the final result)
+172:emb_file=${output_dir}/comebin_res/embeddings.tsv
+173:seed_file=${contig_file}.bacar_marker.2quarter_lencutoff_1001.seed
+175:python main.py bin --contig_file ${contig_file} \
+176:--emb_file ${emb_file} \
+178:--seed_file ${seed_file} --num_threads ${num_threads}
+180:python main.py get_result --contig_file ${contig_file} \
+182:--seed_file ${seed_file} --num_threads ${num_threads}
+184:if [[ $? -ne 0 ]] ; then echo "Something went wrong with running clustering. Exiting.";exit 1; fi
+=== watchdog registration model ===
+12:#   - DONE     = run_meta.txt exit_code:0                    -> clear .active_run
+48:  log "registered $mode source is missing run_comebin.sh: $source; refusing state change"
+57:[ "$pgid" != "${own_pgid:-0}" ] || { log "registered pgid $pgid equals watchdog group; refusing process action"; exit 0; }
+58:registered_pgid=$(ps -o pgid= -p "$pid" 2>/dev/null | tr -d ' ' || true)
+59:if [ -n "$registered_pgid" ] && [ "$registered_pgid" != "$pgid" ]; then
+60:  log "registered pgid $pgid does not match pid $pid current pgid $registered_pgid; refusing process action"
+63:if [ -n "$registered_pgid" ] && [[ "$start" =~ ^[0-9]+$ ]]; then
+66:    log "pid start mismatch: registered=$start actual=$pid_started; refusing process action"
+82:# healthy replacement runs to be reported as unregistered and repeatedly
+84:# contain an existing snapshot whose name is derived from this registered run
+85:# and the exact registered run directory as a separate argv token.
+86:registered_runner_command() {
+125:    # this stable run family, and only after the registered process is gone.
+162:rc_done=$(grep -m1 '^exit_code:' "$rundir/run_meta.txt" 2>/dev/null | awk '{print $2}' || true)
+176:    if registered_runner_command "$pid_cmd"; then
+179:      log "pid $pid is alive but is not a registered COMEBin runner; refusing kill/restart: $pid_cmd"
+204:# Look for terminal evidence only after establishing that the registered
+210:    terminal_reason="run_meta exit_code=$rc_done"
+242:  log "$name has terminal-looking evidence but its registered process is still alive; refusing to signal it"
+253:# Kill only the registered process group and wrapper. Never use pkill -f on a
+[0m$ [0mdate -u +"%Y-%m-%d %H:%M:%S UTC - action: ROOT CAUSE CONFIRMED - hmmer 3.1b2 (env pin in comebin_env.yaml) --cut_tc succeeds on TC-less bacar_marker.hmm (2227 hits, exit 0); hmmer 3.4 hard-errors - env drift is the cause of baseline 0-bins" >> /vol/data/repos/metagenomic-binning-benchmark/status/agent-activity.log
+echo "$(date -u +%FT%TZ) [agent] root cause: hmmsearch 3.4 vs pinned 3.1b2; 3.1b2 yields 2227 marker hits on TC-less bacar_marker.hmm" >> /vol/data/benchmark/.activity
+touch /vol/data/benchmark/.heartbeat
+echo "=== run_comebin_baseline.sh (re-entry / guards) ==="
+sed -n '1,80p' /vol/data/repos/metagenomic-binning-benchmark/scripts/run_comebin_baseline.sh
+=== run_comebin_baseline.sh (re-entry / guards) ===
+#!/usr/bin/env bash
+# run_comebin_baseline.sh — run UNMODIFIED COMEBin on the demo dataset.
+# All inputs/outputs on /vol/data. Prints per-stage timing to stdout + log file.
+set -euo pipefail
+
+MM=${MM:-/vol/data/tools/bin/micromamba}
+ENV=${ENV:-/vol/data/envs/comebin}
+SRC=${SRC_COMEBIN:-/vol/data/repos/COMEBin}
+DATA=${DATA:-/vol/data/datasets/comebin_test_data}
+CONTIGS=${CONTIGS:-"$DATA/BATS_SAMN07137077_METAG.scaffolds.min500.fasta.f1k.fasta"}
+BAMDIR=${BAMDIR:-"$DATA/bamfiles"}
+RUNDIR=$(realpath -m "${1:-/vol/data/benchmark/runs/baseline_unmodified}")
+THREADS=${THREADS:-32}
+BENCH_ROOT=${BENCH_ROOT:-/vol/data/benchmark}
+ACTIVE="$BENCH_ROOT/.active_run"
+START_LOCK=${BENCHMARK_START_LOCK:-/tmp/benchmark-start.lock}
+
+[ -x "$MM" ] || { echo "ERROR: micromamba is not executable: $MM"; exit 1; }
+[ -f "$SRC/COMEBin/run_comebin.sh" ] || { echo "ERROR: invalid SRC_COMEBIN repo root: $SRC"; exit 1; }
+[ -f "$CONTIGS" ] || { echo "ERROR: contigs file not found: $CONTIGS"; exit 1; }
+[ -d "$BAMDIR" ] || { echo "ERROR: bam directory not found: $BAMDIR"; exit 1; }
+[ "$RUNDIR" != "/" ] || { echo "ERROR: refusing rundir=/"; exit 1; }
+
+mkdir -p "$RUNDIR"
+if [ -f "$RUNDIR/run_meta.txt" ] || [ -d "$RUNDIR/comebin_out" ]; then
+  echo "ERROR: refusing to overwrite existing run directory: $RUNDIR"
+  echo "Choose a fresh rundir (autorestart directories are created by benchmark-watchdog)."
+  exit 1
+fi
+
+COMMIT=$(git -C "$SRC" rev-parse HEAD)
+STATUS=$(git -C "$SRC" status --porcelain --untracked-files=all 2>/dev/null || true)
+# Python bytecode generated by a prior invocation is not a source edit.  Ignore
+# only that well-known cache shape; every tracked or other untracked change is
+# still rejected so the baseline remains reproducible.
+DIRTY=$(printf '%s\n' "$STATUS" | awk '
+  /^\?\? (.*\/)?__pycache__(\/|$)/ {next}
+  NF {n++}
+  END {print n+0}')
+CACHE_ENTRIES=$(printf '%s\n' "$STATUS" | awk '/^\?\? (.*\/)?__pycache__(\/|$)/ {n++} END {print n+0}')
+echo "source commit: $COMMIT (dirty files: $DIRTY; ignored __pycache__ entries: $CACHE_ENTRIES)"
+[ "$DIRTY" -eq 0 ] || { echo "REFUSING: baseline source is modified; use pristine upstream"; exit 1; }
+
+# Serialize new launches and refuse overlap with the independently tracked run.
+# BENCHMARK_WATCHDOG_REPLACE=1 is set only by the watchdog after it has verified
+# that the old registered process is gone.
+exec 9>"$START_LOCK"
+flock -n 9 || { echo "ERROR: another benchmark launch holds $START_LOCK"; exit 1; }
+if [ -f "$ACTIVE" ] && [ "${BENCHMARK_WATCHDOG_REPLACE:-0}" != "1" ]; then
+  read -r active_pid active_pgid active_log active_dir active_start active_mode active_src < "$ACTIVE" || true
+  active_state=$(ps -o stat= -p "${active_pid:-0}" 2>/dev/null | tr -d ' ' || true)
+  if [ -n "${active_pid:-}" ] && kill -0 "$active_pid" 2>/dev/null && [[ "$active_state" != Z* ]]; then
+    echo "ERROR: benchmark already active: pid=$active_pid dir=$active_dir mode=${active_mode:-baseline}"
+    echo "Small functional tests and full benchmarks must never overlap; try again after that run finishes."
+    exit 1
+  fi
+  old_rc=$(grep -m1 '^exit_code:' "${active_dir:-/nonexistent}/run_meta.txt" 2>/dev/null | awk '{print $2}' || true)
+  if [ "${old_rc:-}" = "0" ]; then
+    echo "clearing completed stale active-run registration for $active_dir"
+    rm -f "$ACTIVE"
+  else
+    echo "ERROR: stale failed active run is registered: pid=$active_pid dir=$active_dir"
+    echo "Run /vol/data/benchmark/bin/benchmark-watchdog.sh to triage it; not starting a second run."
+    exit 1
+  fi
+fi
+
+{
+  echo "run:        $RUNDIR"
+  echo "date:       $(date -Is)"
+  echo "source:     $SRC"
+  echo "commit:     $COMMIT"
+  echo "contigs:    $CONTIGS"
+  echo "bamdir:     $BAMDIR"
+  echo "threads:    $THREADS"
+  echo "host:       $(nproc) cores, $(free -g | awk '/Mem:/{print $2}')G RAM, gpu=$(nvidia-smi -L 2>/dev/null || echo none)"
+  echo "cmd_wrapper: bash run_comebin.sh -a $CONTIGS -p $BAMDIR -o $RUNDIR/comebin_out -n 6 -t $THREADS  # via: micromamba run -p $ENV"
+} | tee "$RUNDIR/run_meta.txt"
+
+export MAMBA_ROOT_PREFIX=/vol/data/envs/.mamba
+> build · mimo-v2.6-flash-free
