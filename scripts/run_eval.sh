@@ -28,7 +28,7 @@ if [ -f /vol/data/benchmark/.active_run ]; then
 fi
 BINS="$RUN/comebin_out/comebin_res/comebin_res_bins"
 [ -d "$BINS" ] || { echo "ERROR: no bins dir: $BINS"; exit 1; }
-BIN_COUNT=$(find "$BINS" -maxdepth 1 -type f -size +0c | wc -l)
+BIN_COUNT=$(find -L "$BINS" -maxdepth 1 -type f -size +0c | wc -l)
 [ "$BIN_COUNT" -gt 0 ] || { echo "ERROR: bins dir contains no non-empty files: $BINS"; exit 1; }
 # COMEBin writes .fa files. CheckM2 matches the extension literally, so the
 # previous -x fasta value silently selected zero bins. Detect common variants.

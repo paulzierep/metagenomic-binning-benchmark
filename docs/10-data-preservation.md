@@ -2,9 +2,9 @@
 
 This is the release checklist for newly generated benchmark data (issue #8). It
 keeps the repository small while making a deposition reviewable and
-reproducible. **No Zenodo upload is performed by this document or by the
-watchdogs.** An upload requires an owner-approved Zenodo account/token and a
-final choice of data license and release contents.
+reproducible. The watchdogs do not upload data automatically; an owner-approved
+Zenodo account/token and a final choice of data license and release contents
+are required for each manual or supervisor-operated deposit.
 
 ## What would be released
 
@@ -92,9 +92,20 @@ report the failure; do not claim that preservation is complete.
 ## Current status
 
 - The small derived dataset exists locally at `/vol/data/datasets/comebin_small`
-  (real demo contigs and overlapping reads; the end-to-end benchmark is still
-  gated behind the active baseline).
-- The medium dataset is intentionally not built while the baseline is active.
-- A manifest can be generated now, but issue #8 remains open until a Zenodo
-  record is created, its DOI is verified, and the README/dataset documentation
-  points to that record.
+  and its real COMEBin/CheckM2/CheckM gate is complete (`small_test_v4`).
+- **Production Zenodo record:** [10.5281/zenodo.22935025](https://doi.org/10.5281/zenodo.22935025),
+  version 1, CC BY 4.0. The record was checked through a fresh unauthenticated
+  `GET /api/records/22935025` (HTTP 200), and both uploaded file sizes and MD5
+  checksums match the local release. A later owner comment requested MIT and
+  expanded metadata; because that would change a published version's terms,
+  it is being handled as an explicit versioning decision rather than silently
+  changing version 1.
+- Uploaded files: `comebin_small_release_v1.tar.gz` (95,216,539 bytes,
+  SHA-256 `0c698d208639f4fadd4ac4477a67074320c975528b23dd61743c83ad1658b6d2`)
+  and `comebin_small.release.public.json` (3,650 bytes, SHA-256
+  `84131ae359d07a78db7ae7ca2005758f4f0ec9df67a33ec62f8af50ac1702f1b`).
+  The archive extraction and all 18 public-manifest entries were independently
+  verified; the token remains only in the mode-0600 local secret file.
+- The medium derivative is built and verified locally; its timed COMEBin run is
+  registered separately and must not overlap another benchmark. Future releases
+  repeat this manifest, license, provenance, and DOI-verification checklist.

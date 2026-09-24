@@ -120,18 +120,29 @@ RC=${PIPESTATUS[0]}
 set -e
 END=$(date +%s)
 
+# The upstream wrapper can mask a clustering/get_result failure and return 0
+# even when it produced no bins. Validate non-empty artifacts before recording
+# terminal success; this is especially important for the medium benchmark.
+BINS="$RUNDIR/comebin_out/comebin_res/comebin_res_bins"
+BIN_COUNT=0
+if [ -d "$BINS" ]; then
+  BIN_COUNT=$(find -L "$BINS" -maxdepth 1 -type f -size +0c | wc -l)
+fi
+if [ "$RC" -eq 0 ] && [ "$BIN_COUNT" -eq 0 ]; then
+  echo "ERROR: COMEBin returned 0 but no non-empty bins were produced at $BINS; recording failure" \
+    | tee -a "$RUNDIR/run_meta.txt"
+  RC=1
+fi
 {
   echo "exit_code:  $RC"
   echo "wall_s:     $((END-START))"
   echo "finished:   $(date -Is)"
-} | tee -a "$RUNDIR/run_meta.txt"
-
-if [ "$RC" -eq 0 ]; then
-  BINS="$RUNDIR/comebin_out/comebin_res/comebin_res_bins"
-  if [ -d "$BINS" ]; then
-    echo "bins: $(ls "$BINS" | wc -l)  -> $BINS" | tee -a "$RUNDIR/run_meta.txt"
+  if [ "$BIN_COUNT" -gt 0 ]; then
+    echo "bins:       $BIN_COUNT  -> $BINS"
+  else
+    echo "bins:       0  -> $BINS (missing or empty)"
   fi
-fi
+} | tee -a "$RUNDIR/run_meta.txt"
 # record helper-tool commands visible in the log (FragGeneScan/hmmsearch seed genes)
 grep -aE 'run_FragGeneScan|hmmsearch' "$RUNDIR/comebin_run.log" 2>/dev/null | head -2 \
   | sed 's/^/cmd_from_log: /' | tee -a "$RUNDIR/run_meta.txt" >/dev/null || true

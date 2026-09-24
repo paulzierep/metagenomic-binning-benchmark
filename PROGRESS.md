@@ -266,7 +266,8 @@ included; fixes land on branch `comebin-optimizations` in this repo.
       epochs, 99.19% Top1. CheckM2: 60 bins, 25.01% mean completeness, 2.98%
       mean contamination; CheckM v1 lineage workflow completed with the Python
       3.10-compatible environment. Evidence: `runs/baseline_rerun_autorestart1/`
-      and `eval/checkm2/quality_report.tsv`. No benchmark is active now.
+      and `eval/checkm2/quality_report.tsv`. No benchmark was active when this
+      evaluation completed; the medium run is tracked separately below.
 - [x] **Long-run launch safety guard (2026-09-24)** — multi-hour baseline/fix
       runs must be launched detached in a fresh run directory, then verified via
       `.active_run` and handed off to `benchmark-watchdog.sh`; never run them in
@@ -297,10 +298,21 @@ included; fixes land on branch `comebin-optimizations` in this repo.
       reply posted with proposed package/prep + what I need (token or manual upload)
 - [x] **docs/09-optimization-strategy.md written and linked from README** (with
       benchmark-repo commit)
-- [x] **Release preservation staged (issue #8)**: `docs/10-data-preservation.md`
-      and `scripts/make_release_manifest.py` document owner prerequisites,
-      provenance/checksum packaging, and DOI verification; no upload claimed
-      without an approved Zenodo token/manual deposit.
+- [x] **Release preservation record published (issue #8 remains open for the
+      latest license/metadata clarification)**: production Zenodo record
+      [10.5281/zenodo.22935025](https://doi.org/10.5281/zenodo.22935025), version 1,
+      CC BY 4.0. The 95,216,539-byte archive and 3,650-byte public manifest were
+      uploaded; clean extraction and all 18 manifest entries verified. A fresh
+      unauthenticated record API request returned HTTP 200; safe deposition
+      metadata is stored at `/vol/data/benchmark/meta/zenodo_comebin_small.json`.
+      A later owner comment requested MIT plus expanded metadata; no silent
+      license change was made, and issue #8 is intentionally not marked closed.
+- [x] **Symlink-safe artifact checks and guarded medium builder**: `run_eval.sh`,
+      `run_small_test.sh`, `run_comebin_baseline.sh`, and `run_comebin_fix.sh`
+      follow COMEBin's bin-directory symlink and reject zero/empty-bin success;
+      `make_medium_dataset.sh` refuses overwrites and overlaps with the launch
+      lock. Deployed copies are byte-identical to source. A baseline evaluation
+      rerun with the deployed evaluator returned CheckM2/CheckM rc=0.
 - [x] **Issue #9 triaged (2026-09-24 04:39 → 04:45 UTC)**: per-run failure/next-step
       explanation requested → new README section **“Run history — what happened and
       what’s next”** (one row per run attempt: result, root cause, next step, commit
@@ -317,10 +329,12 @@ included; fixes land on branch `comebin-optimizations` in this repo.
 - [x] **Small end-to-end gate** — `small_test_v4` completed via
       `scripts/run_small_test.sh` with 3 non-empty bins; CheckM2 and CheckM v1
       outputs are verified and mirrored in the repository.
-- [ ] Build/run the medium 3,000-contig derivative (≤5 GB) via
-      `scripts/make_medium_dataset.sh` (provenance+size in PROVENANCE.txt, md5s)
-      → COMEBin run + CheckM2/CheckM evaluation. Do not overlap it with another
-      registered run.
+- [ ] **Medium 3,000-contig derivative (≤5 GB)**: built and verified at
+      `/vol/data/datasets/comebin_medium` (3,000 contigs, 421,631,278 bytes;
+      `PROVENANCE.txt` and MD5s recorded). The detached v1.1.0 run
+      `runs/medium_v11_20260924` is registered in `.active_run`; wait for its
+      terminal status before CheckM2/CheckM evaluation. Do not overlap it with
+      another registered run.
 - [ ] Fix batch run on v1.1.0 base (`runs/fix_v11`, worktree COMEBin-v11) →
       full large benchmark + eval (major commit) → README row
 - [ ] CAMI II marine sample 0 benchmark run → human host-associated sample →

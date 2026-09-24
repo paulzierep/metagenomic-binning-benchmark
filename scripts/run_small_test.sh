@@ -176,7 +176,7 @@ END=$(date +%s)
 BINS="$RUNDIR/comebin_out/comebin_res/comebin_res_bins"
 BIN_COUNT=0
 if [ -d "$BINS" ]; then
-  BIN_COUNT=$(find "$BINS" -maxdepth 1 -type f -size +0c | wc -l)
+  BIN_COUNT=$(find -L "$BINS" -maxdepth 1 -type f -size +0c | wc -l)
 fi
 if [ "$RC" -eq 0 ] && [ "$BIN_COUNT" -eq 0 ]; then
   echo "ERROR: COMEBin returned 0 but no non-empty bins were produced at $BINS; recording failure" \

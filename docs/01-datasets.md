@@ -41,6 +41,20 @@ space plan are in `docs/06-benchmark-commands.md` and
 licensing, and Zenodo verification checklist in
 [`docs/10-data-preservation.md`](10-data-preservation.md).
 
+### Published small release (Zenodo)
+
+The owner-approved small release is published as **[10.5281/zenodo.22935025](https://doi.org/10.5281/zenodo.22935025)**
+(version 1, CC BY 4.0). The record contains the verified
+`comebin_small_release_v1.tar.gz` (95,216,539 bytes,
+SHA-256 `0c698d208639f4fadd4ac4477a67074320c975528b23dd61743c83ad1658b6d2`)
+and `comebin_small.release.public.json` (3,650 bytes,
+SHA-256 `84131ae359d07a78db7ae7ca2005758f4f0ec9df67a33ec62f8af50ac1702f1b`).
+The archive contains 18 payload files totaling 98,078,536 bytes; extraction
+and every public-manifest size/SHA-256 check passed. The public record was
+verified with a fresh unauthenticated API request (HTTP 200), and the safe
+publication record is stored outside the repository at
+`/vol/data/benchmark/meta/zenodo_comebin_small.json`.
+
 ## 2. CAMI II challenge data
 
 | | |

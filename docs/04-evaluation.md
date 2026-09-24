@@ -24,7 +24,9 @@ CHECKM_LD_LIBRARY_PATH=/vol/data/envs/checkm/lib:/vol/data/envs/comebin/lib
 `run_eval.sh` uses the CheckM v1 installation in `/vol/data/envs/comebin` by
  default because it runs on Python 3.10; it adds the standalone environment's
 `libopenblas` directory for `pplacer`. Set `CHECKM_ENV` and
-`CHECKM_LD_LIBRARY_PATH` to override this.
+`CHECKM_LD_LIBRARY_PATH` to override this. COMEBin can expose the bin directory
+as a symlink, so the runner follows that link when counting non-empty bins and
+refuses a zero-bin success before invoking either evaluator.
 
 First run downloads reference data (`checkm2 download`, CheckM data dir) — record
 versions + data hashes here when fetched.

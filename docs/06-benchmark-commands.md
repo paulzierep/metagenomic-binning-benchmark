@@ -140,8 +140,24 @@ micromamba run -p /vol/data/envs/comebin bash run_comebin.sh \
 
 Once this end-to-end run passes, build the medium 3,000-contig derivative
 (`bash scripts/make_medium_dataset.sh /vol/data/datasets/comebin_medium 3000`),
-record its measured size/provenance and run the medium benchmark. Large data is
-reserved for post-major-commit runs. See `docs/08-dataset-space-plan.md`.
+record its measured size/provenance and run the medium benchmark. The builder
+refuses to overwrite an existing dataset or overlap the benchmark launch lock.
+For the v1.1.0 benchmark, launch a fresh detached run with the same safeguards:
+
+```bash
+nohup env SRC_COMEBIN=/vol/data/repos/COMEBin-v11 \
+  DATA=/vol/data/datasets/comebin_medium \
+  CONTIGS=/vol/data/datasets/comebin_medium/contigs.fa \
+  BAMDIR=/vol/data/datasets/comebin_medium/bamfiles \
+  MODE=medium_v11 THREADS=32 SEED=42 \
+  bash scripts/run_comebin_fix.sh \
+    /vol/data/benchmark/runs/medium_v11_20260924 32 \
+  > /vol/data/benchmark/logs/medium_v11_20260924_launch.log 2>&1 &
+# Then verify /vol/data/benchmark/.active_run before leaving it to the watchdog.
+```
+
+Large data is reserved for post-major-commit runs. See
+`docs/08-dataset-space-plan.md`.
 
 CAMI II assemblies (downloads): see `docs/01-datasets.md` for the Zenodo/GigaDB
 records and md5 checksums.

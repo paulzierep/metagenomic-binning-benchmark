@@ -18,6 +18,25 @@ OUT=${1:-/vol/data/datasets/comebin_medium}
 N=${2:-3000}
 CAP_GB=5
 
+[ -f "$SRC_FA" ] || { echo "ERROR: source FASTA not found: $SRC_FA"; exit 1; }
+[ -f "$SRC_BAM" ] || { echo "ERROR: source BAM not found: $SRC_BAM"; exit 1; }
+[[ "$N" =~ ^[1-9][0-9]*$ ]] || { echo "ERROR: N_contigs must be a positive integer"; exit 1; }
+# Never build over an existing derivative or alongside a registered timed run.
+if [ -e "$OUT" ] || [ -L "$OUT" ]; then
+  echo "ERROR: refusing to overwrite existing dataset directory: $OUT"
+  exit 1
+fi
+exec 8>/tmp/benchmark-start.lock
+flock -n 8 || { echo "ERROR: benchmark launch/evaluation holds /tmp/benchmark-start.lock"; exit 1; }
+if [ -f /vol/data/benchmark/.active_run ]; then
+  read -r active_pid _ < /vol/data/benchmark/.active_run || true
+  active_state=$(ps -o stat= -p "${active_pid:-0}" 2>/dev/null | tr -d ' ' || true)
+  if [ -n "${active_pid:-}" ] && kill -0 "$active_pid" 2>/dev/null && [[ "$active_state" != Z* ]]; then
+    echo "ERROR: refusing to build medium data while benchmark pid $active_pid is active"
+    exit 1
+  fi
+fi
+
 mkdir -p "$OUT/bamfiles"
 echo "=== 1) select top-$N contigs by length ==="
 MAMBA_ROOT_PREFIX=/vol/data/envs/.mamba "$MM" run -p "$ENV" python - "$OUT" "$SRC_FA" "$N" <<'PY'
