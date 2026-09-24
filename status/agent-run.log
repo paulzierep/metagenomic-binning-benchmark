@@ -37593,3 +37593,207 @@ medium — no full-large runs on unvalidated fixes or un-optimized parameters
 
 ## Results
 > build · big-pickle
+Both files have the same mermaid block. The `K` label (long, with parentheses/commas) is what GitHub's renderer truncates. Fixing by shortening all labels and keeping the full rule in the gate-rules bullets below:
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/README.md
+Index: /vol/data/repos/metagenomic-binning-benchmark/README.md
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/README.md
++++ /vol/data/repos/metagenomic-binning-benchmark/README.md
+@@ -34,20 +34,20 @@
+ [`docs/09-optimization-strategy.md`](docs/09-optimization-strategy.md)).
+ 
+ ```mermaid
+ flowchart TD
+-    A["Pick candidate change or parameter"] --> B["Small functional test on the 300-contig dataset"]
+-    B -->|fail| G["Investigate, fix, or drop the change"]
++    A["Candidate change or parameter"] --> B["Small functional test 300 contigs"]
++    B -->|fail| G["Investigate fix or drop"]
+     G --> A
+-    B -->|pass| C["Benchmark on a small or medium set"]
+-    C --> D{"Better or equal time AND quality?"}
+-    D -->|keep| E["Keep the commit; record in results and PROGRESS"]
++    B -->|pass| C["Benchmark on small or medium set"]
++    C --> D{"Better time AND quality?"}
++    D -->|yes| E["Keep commit and record"]
+     E --> F["Next batch from this commit"]
+     D -->|no| H["Revert or rework"]
+     H --> I["Combine with surviving ideas"]
+     I --> A
+-    F --> J["Optimize parameters on small sets first"]
+-    J --> K["Full large benchmark only after small and medium validation (demo, then CAMI II marine, then CAMI III)"]
++    F --> J["Tune parameters on small sets"]
++    J --> K["Full large run only after gate"]
+     classDef keep fill:#d9f7be,stroke:#389e0d;
+     classDef drop fill:#ffccc7,stroke:#cf1322;
+     class A,B,C,E,F,J,K keep;
+     class G,H,I drop;
+
+> build · big-pickle
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/docs/09-optimization-strategy.md
+Index: /vol/data/repos/metagenomic-binning-benchmark/docs/09-optimization-strategy.md
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/docs/09-optimization-strategy.md
++++ /vol/data/repos/metagenomic-binning-benchmark/docs/09-optimization-strategy.md
+@@ -32,20 +32,20 @@
+ per batch** (see `docs/07-fix-batches.md`). Each batch goes through the gate below.
+ 
+ ```mermaid
+ flowchart TD
+-    A["Pick candidate change or parameter"] --> B["Small functional test on the 300-contig dataset"]
+-    B -->|fail| G["Investigate, fix, or drop the change"]
++    A["Candidate change or parameter"] --> B["Small functional test 300 contigs"]
++    B -->|fail| G["Investigate fix or drop"]
+     G --> A
+-    B -->|pass| C["Benchmark on a small or medium set"]
+-    C --> D{"Better or equal time AND quality?"}
+-    D -->|keep| E["Keep the commit; record in results and PROGRESS"]
++    B -->|pass| C["Benchmark on small or medium set"]
++    C --> D{"Better time AND quality?"}
++    D -->|yes| E["Keep commit and record"]
+     E --> F["Next batch from this commit"]
+     D -->|no| H["Revert or rework"]
+     H --> I["Combine with surviving ideas"]
+     I --> A
+-    F --> J["Optimize parameters on small sets first"]
+-    J --> K["Full large benchmark only after small and medium validation (demo, then CAMI II marine, then CAMI III)"]
++    F --> J["Tune parameters on small sets"]
++    J --> K["Full large run only after gate"]
+     classDef keep fill:#d9f7be,stroke:#389e0d;
+     classDef drop fill:#ffccc7,stroke:#cf1322;
+     class A,B,C,E,F,J,K keep;
+     class G,H,I drop;
+
+> build · big-pickle
+Now for **#12** — updating `make_per_bin_plots.py` to emit a **per-dataset subplot** comparison figure (dataset derived from `run_meta.txt` contigs path), while keeping the all-runs scatter:
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/scripts/make_per_bin_plots.py
+Index: /vol/data/repos/metagenomic-binning-benchmark/scripts/make_per_bin_plots.py
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/scripts/make_per_bin_plots.py
++++ /vol/data/repos/metagenomic-binning-benchmark/scripts/make_per_bin_plots.py
+@@ -32,8 +32,32 @@
+     with open(path, encoding="utf-8") as f:
+         return list(csv.DictReader(f))
+ 
+ 
++def dataset_of(run_dir):
++    """Human-readable dataset label for a run, derived from its run_meta.txt
++    `contigs:` line (mirrors make_results_csv.default_dataset)."""
++    meta = os.path.join(run_dir, "run_meta.txt")
++    contigs = ""
++    if os.path.exists(meta):
++        with open(meta, encoding="utf-8") as f:
++            for line in f:
++                if line.startswith("contigs:"):
++                    contigs = line.split(":", 1)[1].strip()
++                    break
++    known = [
++        ("BATS_SAMN07137077_METAG", "COMEBin demo (29,434 contigs)"),
++        ("comebin_medium", "comebin_medium (3,000 contigs)"),
++        ("comebin_small", "comebin_small (300 contigs)"),
++        ("cami_II", "CAMI II"),
++        ("cami_III", "CAMI III"),
++    ]
++    for key, label in known:
++        if key in contigs:
++            return label
++    return "unknown-dataset"
++
++
+ def run_bar_plot(plt, rows, out_path):
+     """Single-run grouped bar chart: comp/cont per bin (checkm2 + checkm1)."""
+     import numpy as np
+     ids = [r["bin"] for r in rows]
+
+> build · big-pickle
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/scripts/make_per_bin_plots.py
+Index: /vol/data/repos/metagenomic-binning-benchmark/scripts/make_per_bin_plots.py
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/scripts/make_per_bin_plots.py
++++ /vol/data/repos/metagenomic-binning-benchmark/scripts/make_per_bin_plots.py
+@@ -101,8 +101,34 @@
+     fig.savefig(out_path, dpi=130)
+     plt.close(fig)
+ 
+ 
++def dataset_subplot_figure(plt, groups, out_path):
++    """One subplot per dataset; within each, one point per bin (CheckM2 comp
++    vs cont) colored by run. Issue #12: comparison across runs on the SAME
++    benchmark dataset."""
++    by_ds = {}
++    for run_name, rows, ds in groups:
++        by_ds.setdefault(ds, []).append((run_name, rows))
++    n = len(by_ds)
++    if n == 0:
++        return
++    fig, axes = plt.subplots(1, n, figsize=(6.5 * n, 5.2), squeeze=False)
++    for ax, (ds, runs) in zip(axes[0], sorted(by_ds.items())):
++        for run_name, rows in runs:
++            xs = [float(r["checkm2_contamination"]) if r["checkm2_contamination"] else 0 for r in rows]
++            ys = [float(r["checkm2_completeness"]) if r["checkm2_completeness"] else 0 for r in rows]
++            ax.scatter(xs, ys, s=26, alpha=0.75, label=f"{run_name} (n={len(rows)})")
++        ax.set_xlabel("contamination (%)")
++        ax.set_ylabel("completeness (%)")
++        ax.set_title(ds, fontsize=10)
++        ax.legend(fontsize=7)
++        ax.grid(alpha=0.3)
++    fig.tight_layout()
++    fig.savefig(out_path, dpi=130)
++    plt.close(fig)
++
++
+ def main():
+     ap = argparse.ArgumentParser()
+     ap.add_argument("rundirs", nargs="+")
+     ap.add_argument("-k", "--key", help="comparison key (dataset) for the scatter")
+
+> build · big-pickle
+Now update `main()` to group by dataset for the subplot figure:
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/scripts/make_per_bin_plots.py
+Index: /vol/data/repos/metagenomic-binning-benchmark/scripts/make_per_bin_plots.py
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/scripts/make_per_bin_plots.py
++++ /vol/data/repos/metagenomic-binning-benchmark/scripts/make_per_bin_plots.py
+@@ -175,8 +175,18 @@
+     if len(groups) >= 1:
+         out = os.path.join(figures, f"comp_vs_cont_{key}.png")
+         comparison_scatter(plt, groups, out, key)
+         print(f"comparison scatter ({key}, {len(groups)} runs) -> results/figures/comp_vs_cont_{key}.png")
++
++    # Per-dataset subplot figure (issue #12): one panel per benchmark dataset,
++    # runs within a panel colored separately -> direct same-dataset comparison.
++    groups_ds = []
++    for run_name, rows in groups:
++        run_path = os.path.join(REPO, "runs", run_name)
++        groups_ds.append((run_name, rows, dataset_of(run_path)))
++    ds_out = os.path.join(figures, "comp_vs_cont_by_dataset.png")
++    dataset_subplot_figure(plt, groups_ds, ds_out)
++    print(f"per-dataset subplot scatter -> results/figures/comp_vs_cont_by_dataset.png")
+     return 0
+ 
+ 
+ if __name__ == "__main__":
+
+> build · big-pickle
+Now regenerate all figures (run_eval already calls `--all`, so this mirrors production behavior):
+[0m$ [0mB=/vol/data/benchmark/runs; MM=/vol/data/tools/bin/micromamba; cd /vol/data/repos/metagenomic-binning-benchmark && $MM run -p /vol/data/envs/comebin python scripts/make_per_bin_plots.py --all -k all-runs "$B/baseline_rerun_autorestart1" "$B/small_test_v4" "$B/medium_v11_20260924"; echo "=== outputs ==="; ls -la results/figures/ 2>/dev/null; $MM run -p /vol/data/envs/comebin python - <<'PY'
+from PIL import Image
+import os
+f = "results/figures/comp_vs_cont_by_dataset.png"
+im = Image.open(f).convert("RGB")
+px = list(im.resize((min(80, im.width), min(60, im.height))).getdata())
+print(f"{f}: {im.size}, distinct-colors={len(set(px))}")
+PY
+baseline_rerun_autorestart1: per-bin bar chart -> runs/baseline_rerun_autorestart1/per_bins.png
+small_test_v4: per-bin bar chart -> runs/small_test_v4/per_bins.png
+medium_v11_20260924: per-bin bar chart -> runs/medium_v11_20260924/per_bins.png
+comparison scatter (all-runs, 3 runs) -> results/figures/comp_vs_cont_all-runs.png
+per-dataset subplot scatter -> results/figures/comp_vs_cont_by_dataset.png
+=== outputs ===
+total 132
+drwxrwxr-x 2 ubuntu ubuntu  4096 Sep 24 11:32 .
+drwxrwxr-x 3 ubuntu ubuntu  4096 Sep 24 10:42 ..
+-rw-rw-r-- 1 ubuntu ubuntu 50547 Sep 24 11:32 comp_vs_cont_all-runs.png
+-rw-rw-r-- 1 ubuntu ubuntu 73185 Sep 24 11:32 comp_vs_cont_by_dataset.png
+<stdin>:5: DeprecationWarning: Image.Image.getdata is deprecated and will be removed in Pillow 14 (2027-10-15). Use get_flattened_data instead.
+results/figures/comp_vs_cont_by_dataset.png: (2535, 676), distinct-colors=226
+> build · big-pickle

@@ -1,6 +1,6 @@
 <!--AGENT-STATUS-->
 
-> 🟢 **Agent status:** `running` · ⏱ `2026-09-24T13:32 CEST` · 🏃 train fix_v11_20260924: epoch 21/200 · loss 3.3078572750091553 · top1 90.45246887207031 · 🧠 `big-pickle` · [status.log](status/status.log)
+> 🟢 **Agent status:** `running` · ⏱ `2026-09-24T13:33 CEST` · 🏃 train fix_v11_20260924: epoch 22/200 · loss 3.273468494415283 · top1 91.60481262207031 · 🧠 `big-pickle` · [status.log](status/status.log)
 
 # Metagenomic binning benchmark
 
@@ -35,18 +35,18 @@ batch**, each batch passing the gate below (details:
 
 ```mermaid
 flowchart TD
-    A["Pick candidate change or parameter"] --> B["Small functional test on the 300-contig dataset"]
-    B -->|fail| G["Investigate, fix, or drop the change"]
+    A["Candidate change or parameter"] --> B["Small functional test 300 contigs"]
+    B -->|fail| G["Investigate fix or drop"]
     G --> A
-    B -->|pass| C["Benchmark on a small or medium set"]
-    C --> D{"Better or equal time AND quality?"}
-    D -->|keep| E["Keep the commit; record in results and PROGRESS"]
+    B -->|pass| C["Benchmark on small or medium set"]
+    C --> D{"Better time AND quality?"}
+    D -->|yes| E["Keep commit and record"]
     E --> F["Next batch from this commit"]
     D -->|no| H["Revert or rework"]
     H --> I["Combine with surviving ideas"]
     I --> A
-    F --> J["Optimize parameters on small sets first"]
-    J --> K["Full large benchmark only after small and medium validation (demo, then CAMI II marine, then CAMI III)"]
+    F --> J["Tune parameters on small sets"]
+    J --> K["Full large run only after gate"]
     classDef keep fill:#d9f7be,stroke:#389e0d;
     classDef drop fill:#ffccc7,stroke:#cf1322;
     class A,B,C,E,F,J,K keep;
