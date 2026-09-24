@@ -3,10 +3,10 @@
 | | |
 |---|---|
 | Status | 🟢 `running` |
-| ⏱ Updated (Europe/Berlin) | `2026-09-24T11:32 CEST` |
-| 🏃 Live benchmark | `medium_v11_20260924` — **epoch 27/200** · loss `5.985631465911865` · top1 acc `6.158854007720947` (log 2s fresh) |
+| ⏱ Updated (Europe/Berlin) | `2026-09-24T11:34 CEST` |
+| 🏃 Live benchmark | `medium_v11_20260924` — **epoch 37/200** · loss `5.636775493621826` · top1 acc `11.725259780883789` (log 11s fresh) |
 | 🧠 Model (last turn) | `mimo-v2.6-flash-free` (watchdog rotates to free models on quota) |
-| 📌 Agent note · **6 min old** | Baseline training epoch ~109/200 (~2.4 min/epoch, ETA ~22:35 UTC unless early-stop); next: baseline eval (run_eval.sh) → issue #2 small-dataset test → v1.1.0 fix run
+| 📌 Agent note · **0 min old** | Baseline training epoch ~109/200 (~2.4 min/epoch, ETA ~22:35 UTC unless early-stop); next: baseline eval (run_eval.sh) → issue #2 small-dataset test → v1.1.0 fix run
 2026-09-23 20:33:11 UTC - heartbeat
 2026-09-23 20:43:58 UTC - heartbeat
 2026-09-23 20:56:28 UTC - heartbeat
@@ -251,10 +251,11 @@
 2026-09-24T09:17:45Z eval-verify: deployed symlink-safe run_eval.sh on baseline (644828)
 2026-09-24T09:25:05Z medium-build: started guarded 3000-contig derivative (711696)
 2026-09-24T09:25:50Z medium-run: launched detached v1.1.0 3000-contig benchmark (712004, /vol/data/benchmark/runs/medium_v11_20260924)
-2026-09-24T09:25:52Z checkm-v1-baseline-done |
-| ⚙️ Load · uptime | `27.01 19.49 10.27` · 19 hours, 56 minutes — 32 cores, 62 GiB, no GPU |
-| 💾 RAM used/total | `4847/64295 MB` |
+2026-09-24T09:25:52Z checkm-v1-baseline-done
+2026-09-24T09:33:26Z triage-new-issues-12-13 |
+| ⚙️ Load · uptime | `31.08 23.41 12.83` · 19 hours, 58 minutes — 32 cores, 62 GiB, no GPU |
+| 💾 RAM used/total | `3952/64295 MB` |
 | 🔗 Session | `ses_f31799c77ffeTq9gcYgqc4hBhg` |
-| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `015450c fix: preserve benchmark release and harden run artifacts` |
-| 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `2760102 B` — every run, command & tool result |
+| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `009eb04 meta: supervise tick 2026-09-24T09:33:01Z — 0 fix(es)` |
+| 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `2806674 B` — every run, command & tool result |
 | 📈 Timeline | [status/status.log](status/status.log) |
