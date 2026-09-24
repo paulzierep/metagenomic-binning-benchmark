@@ -4,7 +4,7 @@
 |---|---|
 | Status | 🟢 `running` |
 | ⏱ Updated (Europe/Berlin) | `2026-09-24T07:02 CEST` |
-| 🏃 Live benchmark | `baseline_rerun_autorestart1` — **epoch 117/200** · loss `2.9396235942840576` · top1 acc `97.82551574707031` (log 9s fresh) |
+| 🏃 Live benchmark | `baseline_rerun_autorestart1` — **epoch 117/200** · loss `2.9396235942840576` · top1 acc `97.82551574707031` (log 54s fresh) |
 | 🧠 Model (last turn) | `mimo-v2.6-flash-free` (watchdog rotates to free models on quota) |
 | 📌 Agent note · **0 min old** | Baseline training epoch ~109/200 (~2.4 min/epoch, ETA ~22:35 UTC unless early-stop); next: baseline eval (run_eval.sh) → issue #2 small-dataset test → v1.1.0 fix run
 2026-09-23 20:33:11 UTC - heartbeat
@@ -95,10 +95,11 @@
 2026-09-24 04:44:40 UTC - heartbeat
 2026-09-24 04:45:34 UTC - heartbeat
 2026-09-24 05:00:12 UTC - heartbeat
-2026-09-24 05:01:16 UTC - heartbeat |
-| ⚙️ Load · uptime | `32.15 32.11 32.02` · 15 hours, 26 minutes — 32 cores, 62 GiB, no GPU |
-| 💾 RAM used/total | `9342/64295 MB` |
+2026-09-24 05:01:16 UTC - heartbeat
+2026-09-24 05:02:09 UTC - heartbeat |
+| ⚙️ Load · uptime | `32.21 32.14 32.03` · 15 hours, 27 minutes — 32 cores, 62 GiB, no GPU |
+| 💾 RAM used/total | `6044/64295 MB` |
 | 🔗 Session | `ses_f31799c77ffeTq9gcYgqc4hBhg` |
-| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `8e7064c feat: EPOCHS passthrough in run_small_test.sh (issue #10) + PROGRESS syn` |
-| 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `1574512 B` — every run, command & tool result |
+| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `6399675 meta: issue-closer closed 1, failed: — 05:02Z` |
+| 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `1576044 B` — every run, command & tool result |
 | 📈 Timeline | [status/status.log](status/status.log) |
