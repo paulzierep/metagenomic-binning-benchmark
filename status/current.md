@@ -3,13 +3,13 @@
 | | |
 |---|---|
 | Status | 🔴 `stopped (watchdog will restart)` |
-| ⏱ Updated (Europe/Berlin) | `2026-09-24T17:20 CEST` |
-| 🏃 Live benchmark | `fix_v11_20260924` — **epoch 125/200** · loss `2.8973817825317383` · top1 acc `98.41145324707031` (log 113s fresh) |
+| ⏱ Updated (Europe/Berlin) | `2026-09-24T17:22 CEST` |
+| 🏃 Live benchmark | `fix_v11_20260924` — **epoch 126/200** · loss `2.8830227851867676` · top1 acc `98.52213287353516` (log 100s fresh) |
 | 🧠 Model (last turn) | `mimo-v2.6-flash-free` (watchdog rotates to free models on quota) |
-| 📌 Agent note · **226 min old** | heartbeat stale 13578s — agent dead/idle, watchdog should restart within ~5 min |
-| ⚙️ Load · uptime | `31.09 29.75 29.87` · 1 day, 1 hour, 44 minutes — 32 cores, 62 GiB, no GPU |
-| 💾 RAM used/total | `4970/64295 MB` |
+| 📌 Agent note · **228 min old** | heartbeat stale 13698s — agent dead/idle, watchdog should restart within ~5 min |
+| ⚙️ Load · uptime | `31.03 30.06 29.97` · 1 day, 1 hour, 46 minutes — 32 cores, 62 GiB, no GPU |
+| 💾 RAM used/total | `7883/64295 MB` |
 | 🔗 Session | `ses_f31799c77ffeTq9gcYgqc4hBhg` |
-| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `774d1dc status: no — fix_v11_20260924 epoch 124/200 loss 2.91744065284729 acc ` |
+| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `50dae6e status: no — fix_v11_20260924 epoch 125/200 loss 2.8973817825317383 ac` |
 | 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `3325768 B` — every run, command & tool result |
 | 📈 Timeline | [status/status.log](status/status.log) |
