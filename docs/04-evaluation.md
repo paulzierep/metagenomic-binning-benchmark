@@ -62,3 +62,6 @@ Per-run CSV: `scripts/make_results_csv.py <rundir> [dataset] [threads]` writes t
 committed `results/<run>.csv` row (means + HQ/MQ counts, MIMAG thresholds above)
 from `run_meta.txt` + the two eval tables. `scripts/run_eval.sh` calls
 `parse_eval.py` (appends means to run_meta); then run `make_results_csv.py`.
+For the medium gate, `medium_v11_20260924_checkm2_stats.csv` supplements the
+aggregate row with one CheckM2 record per bin; raw per-bin tables remain under
+`/vol/data/benchmark/runs/medium_v11_20260924/eval/`.

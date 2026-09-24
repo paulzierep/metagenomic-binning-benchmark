@@ -337,12 +337,14 @@ included; fixes land on branch `comebin-optimizations` in this repo.
 - [x] **Small end-to-end gate** — `small_test_v4` completed via
       `scripts/run_small_test.sh` with 3 non-empty bins; CheckM2 and CheckM v1
       outputs are verified and mirrored in the repository.
-- [ ] **Medium 3,000-contig derivative (≤5 GB)**: built and verified at
+- [x] **Medium 3,000-contig derivative (≤5 GB)**: built and verified at
       `/vol/data/datasets/comebin_medium` (3,000 contigs, 421,631,278 bytes;
-      `PROVENANCE.txt` and MD5s recorded). The detached v1.1.0 run
-      `runs/medium_v11_20260924` is registered in `.active_run`; wait for its
-      terminal status before CheckM2/CheckM evaluation. Do not overlap it with
-      another registered run.
+      `PROVENANCE.txt` and MD5s recorded). CheckM2: 16 bins, 35.93% mean completeness,
+      4.67% mean contamination (HQ=0, MQ=2); CheckM v1: 16 bins, 33.83% mean completeness,
+      6.03% mean contamination (HQ=0, MQ=3). The detached v1.1.0 run
+      `runs/medium_v11_20260924` completed evaluation; terminal status confirmed.
+      Aggregate evidence: `results/medium_v11_20260924.csv`; per-bin CheckM2
+      supplement: `medium_v11_20260924_checkm2_stats.csv`.
 - [ ] Fix batch run on v1.1.0 base (`runs/fix_v11`, worktree COMEBin-v11) →
       full large benchmark + eval (major commit) → README row
 - [ ] CAMI II marine sample 0 benchmark run → human host-associated sample →

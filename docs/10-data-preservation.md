@@ -106,6 +106,11 @@ report the failure; do not claim that preservation is complete.
   `84131ae359d07a78db7ae7ca2005758f4f0ec9df67a33ec62f8af50ac1702f1b`).
   The archive extraction and all 18 public-manifest entries were independently
   verified; the token remains only in the mode-0600 local secret file.
-- The medium derivative is built and verified locally; its timed COMEBin run is
-  registered separately and must not overlap another benchmark. Future releases
-  repeat this manifest, license, provenance, and DOI-verification checklist.
+- The medium derivative is built and verified locally (3,000 contigs,
+  421,631,278 bytes; `PROVENANCE.txt` and MD5s recorded). Its timed v1.1.0 run
+  `medium_v11_20260924` completed with 16 bins and verified CheckM2/CheckM
+  results; the parsed row is
+  [`results/medium_v11_20260924.csv`](../results/medium_v11_20260924.csv).
+  It is not deposited separately until the owner confirms the release license
+  and metadata. Future releases repeat this manifest, license, provenance, and
+  DOI-verification checklist.

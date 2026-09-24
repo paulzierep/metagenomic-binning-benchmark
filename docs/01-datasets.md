@@ -55,6 +55,22 @@ verified with a fresh unauthenticated API request (HTTP 200), and the safe
 publication record is stored outside the repository at
 `/vol/data/benchmark/meta/zenodo_comebin_small.json`.
 
+### Medium derived test set (local benchmark input)
+
+`/vol/data/datasets/comebin_medium/` contains the top 3,000 contigs by length
+from the same BATS demo assembly plus all reads overlapping those contigs. The
+verified derivative is **421,631,278 bytes**; `PROVENANCE.txt` records the source
+paths, 3,000-contig count, and MD5 checksums:
+
+- `contigs.fa`: `8e6174913ed7db4eb6f05259bae833cc`
+- `bamfiles/reads.bam`: `fe31efbae1d07037a54cbe907f47bc1b`
+
+The v1.1.0 benchmark `medium_v11_20260924` completed 200/200 epochs and produced
+16 non-empty bins. CheckM2/CheckM v1 results are in
+[`results/medium_v11_20260924.csv`](../results/medium_v11_20260924.csv); the
+medium release is not deposited separately until the owner confirms its license
+and metadata.
+
 ## 2. CAMI II challenge data
 
 | | |
