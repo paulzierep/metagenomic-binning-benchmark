@@ -27367,3 +27367,36 @@ gh api repos/paulzierep/metagenomic-binning-benchmark/issues/8 --jq '{user: .use
 === issue 8 body ===
 {"body":"Can you add newly created benchmark data to zenodo, so we not loose it, document it, what do you need for this ?","created":"2026-09-23T20:50:05Z","updated":"2026-09-24T07:18:51Z","user":"paulzierep"}
 > build · mimo-v2.6-flash-free
+Root cause chain identified, and issue #8's update (07:18:51Z) is the supervisor's own Zenodo progress comment — awaiting maintainer metadata, not addressed to me (no reply needed, no duplication). Now confirming the zero-bins root cause empirically:
+[0m$ [0mmicromamba create -y -p /tmp/hmmer31b2 -c conda-forge -c bioconda hmmer=3.1b2 2>&1 | tail -5; /tmp/hmmer31b2/bin/hmmsearch -h 2>&1 | grep -i "HMMER"
+/bin/bash: line 1: micromamba: command not found
+/bin/bash: line 1: /tmp/hmmer31b2/bin/hmmsearch: No such file or directory
+[0m$ [0mecho "=== upstream ziyewang/COMEBin default branch + HMM TC ==="
+gh api repos/ziyewang/COMEBin --jq '.default_branch' 2>&1
+BR=$(gh api repos/ziyewang/COMEBin --jq '.default_branch' 2>/dev/null)
+curl -sL --max-time 60 "https://raw.githubusercontent.com/ziyewang/COMEBin/$BR/auxiliary/bacar_marker.hmm" -o /tmp/up_bacar.hmm
+echo "size: $(stat -c%s /tmp/up_bacar.hmm)  TC: $(grep -c '^TC' /tmp/up_bacar.hmm)  models: $(grep -c '^NAME' /tmp/up_bacar.hmm)"
+echo "md5 local vs upstream: $(md5sum /vol/data/repos/COMEBin/auxiliary/bacar_marker.hmm /tmp/up_bacar.hmm | awk '{print $1}' | tr '\n' ' ')"
+echo "=== supervisor log tail ==="
+tail -8 /vol/data/benchmark/logs/supervisor-actions.log 2>/dev/null
+echo "=== run_eval.sh bins expectation ==="
+grep -n "bins\|BIN\|cluster" /vol/data/repos/metagenomic-binning-benchmark/scripts/run_eval.sh | head -20
+date -u +"%Y-%m-%d %H:%M:%S UTC - turn: baseline finished exit 0 BUT 0 bins; root cause hmmsearch --cut_tc on TC-less bacar_marker.hmm; issue #8 update = supervisor zenodo comment (no action)" >> /vol/data/repos/metagenomic-binning-benchmark/status/agent-activity.log
+touch /vol/data/benchmark/.heartbeat
+=== upstream ziyewang/COMEBin default branch + HMM TC ===
+master
+size: 3671082  TC: 0  models: 40
+md5 local vs upstream: b1066e527800d27a4eab81fba7d3af5e b1066e527800d27a4eab81fba7d3af5e 
+=== supervisor log tail ===
+2026-09-23T19:22:23+00:00 [supervisor] Hardened/pushed watchdogs + run handoff (899f7e7,b37780e), documented small→medium→large workflow, verified cron/service/driver/benchmark/GitHub, triaged #2 at https://github.com/paulzierep/metagenomic-binning-benchmark/issues/2#issuecomment-5801330301, and left active baseline PID 19182 unchanged.
+2026-09-23T20:59:24+00:00 [supervisor] Triaged #6/#7/#8: verified and closed #7 via deterministic marker, staged Zenodo preservation docs/manifest and concise issue updates, ran safe no-LLM watchdog verification with C1-C9 ok, left active baseline PID 19182 unchanged, and performed no cron/service/driver restart.
+2026-09-23T21:52:51+00:00 [supervisor] Diagnosed baseline PID 19182 terminal failure (missing marker seed/initial biolib dependency and in-place runner edit), verified no benchmark process remained, cleared only stale registration/autorestart artifacts, hardened watchdog/C6 terminal classification + immutable committed snapshots + baseline exit traps/pycache hygiene, made heartbeat/status truthful for fresh drivers and cleared runs, deployed byte-identical scripts, recovered the stale primary driver without service/cron restart, verified C1-C9 ok with no active benchmark and no issue comments/closures, and pushed 2d61909/73aa0dd/67c6d05 plus verified meta d0febd4 at origin/main.
+2026-09-24T01:10:52Z [supervisor] Fixed/deployed snapshot-aware C6 identity + shell syntax checks and corrected small/medium BED selectors; restored/validated the small BAM after the failed reheader, verified positive/negative watchdog cases and COMEBin branch 5c77bc8 offline producer/consumer tests, pushed benchmark commit 9f276fb, left active baseline PID 267462/epoch 13 untouched, performed no cron/service/driver restart, and kept issue #2 open pending end-to-end validation.
+2026-09-24T05:04:34Z [supervisor] Final closeout: corrected and verified #9 run history (7 COMEBin-executing attempts plus 12 grouped guard-only launches) in 433e480/72b5e35; verified #10 EPOCHS passthrough/default 30 and prompt launch-lock release in a0be243/8e7064c/b1f9875, with deployed scripts byte-identical; C1-C9 no-LLM checks ok and #9/#10 closed via deterministic issue-closer; active baseline PID 267462 remains alive/advancing and was left untouched, with no cron/service/driver restart.
+2026-09-24T07:26:39+00:00 [supervisor] Triaged updated #8 without closing: regenerated and verified current comebin_small local/public manifests after the BED repair (6 files, 98,013,522 bytes; new hashes recorded in issue comment 5809720013), marked the issue seen, and left Zenodo metadata/approval pending; C1-C9 direct checks passed with no active benchmark, no cron/service/driver restart, safe watchdog reruns, and repo HEAD=origin/main.
+=== run_eval.sh bins expectation ===
+20:BINS="$RUN/comebin_out/comebin_res/comebin_res_bins"
+21:[ -d "$BINS" ] || { echo "ERROR: no bins dir: $BINS"; exit 1; }
+27:CMD2="$MM run -p /vol/data/envs/checkm2 checkm2 predict --threads $THREADS --database_path $CK2DB --input $BINS --output-directory $RUN/eval/checkm2 -x fasta"
+34:CMD1="$MM run -p /vol/data/envs/checkm checkm lineage_wf -x fasta -t $THREADS --tmpdir $RUN/eval/checkm/tmp $BINS $RUN/eval/checkm/out"
+> build · mimo-v2.6-flash-free
