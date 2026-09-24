@@ -31919,3 +31919,332 @@ Index: /vol/data/repos/metagenomic-binning-benchmark/scripts/status-heartbeat.sh
              for (i = 2; i <= n - 2; i++) out = out "|" a[i]
              out = out "| " st " |"
 
+> build · space-bunny-free
+[0m$ [0mset -euo pipefail
+bash -n scripts/status-heartbeat.sh
+src=scripts/status-heartbeat.sh
+dst=/vol/data/benchmark/bin/status-heartbeat.sh
+tmp="$dst.deploy-new.$$"
+trap 'rm -f "$tmp"' EXIT
+cp "$src" "$tmp"
+chmod 755 "$tmp"
+bash -n "$tmp"
+mv -f "$tmp" "$dst"
+trap - EXIT
+cmp -s "$src" "$dst"
+printf 'status-heartbeat deployed and identical\n'
+status-heartbeat deployed and identical
+> build · space-bunny-free
+[0m→ [0mRead /vol/data/repos/metagenomic-binning-benchmark/README.md [90m[offset=55, limit=35][0m
+> build · space-bunny-free
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/README.md
+Index: /vol/data/repos/metagenomic-binning-benchmark/README.md
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/README.md
++++ /vol/data/repos/metagenomic-binning-benchmark/README.md
+@@ -56,19 +56,23 @@
+ performance deltas vs. baseline are visible directly in this table.
+ 
+ ## Run history — what happened and what's next
+ 
+-One row per run attempt: exactly why it ended (or whether it is still going) and
+-the concrete next step. Kept current by the agent; raw evidence lives in each
+-run's `runs/<run>/run_meta.txt` + `comebin_run.log`.
++One row per recorded attempt, including launches refused before any CPU was used. Run links point to the tracked evidence mirrors. Refused watchdog launches are retained in `/vol/data/benchmark/logs/*.launch.log` and [`status/supervisor-run.log`](status/supervisor-run.log); the first `small_test` directory was later reused, so its surviving evidence is the timestamped [`status/agent-run.log`](status/agent-run.log) entry. The status banner at the top of this file is authoritative for the running row.
+ 
+-| Run | Time (UTC) | Source | Result | What happened / why | Next step |
+-|---|---|---|---|---|---|
+-| `baseline_unmodified` | 2026-09-23 14:36 → 21:42 | [987db95](https://github.com/paulzierep/COMEBin/commit/987db95d8d399f30b7c82a5f5f40ed6bfdc906c7) upstream | **failed** at epoch 175/200 (no evaluation claimed) | Training ran 7 h; clustering then crashed twice over: hmmsearch `--cut_tc` found no marker hits so the `.seed` file was never written (`FileNotFoundError` in `gen_seed_idx`), and `biolib` was not installed (`ModuleNotFoundError`) → "Something went wrong with running clustering." Watchdog recorded the terminal reason instead of silently retrying. | Installed `biolib`; committed the graceful-missing-seed fix (`gen_seed_idx` → empty seed list) plus `np.zeros`/`gen_cov` crash fixes; launched the baseline rerun below. |
+-| `baseline_rerun` (refused launch) | 2026-09-24 00:29 | [904f649](https://github.com/paulzierep/COMEBin/commit/904f649ef5cbb4582a6f0e5ec8b0b1f45778d85b) | **no run** (guard worked) | Overlap guard refused to start a second run while a stale registration (`pid=262046`) existed — logged in `out.txt`, zero CPU spent. | Superseded one minute later by `baseline_rerun_autorestart1`; stale registration cleared by the watchdog. |
+-| `baseline_rerun_autorestart1` | 2026-09-24 00:30 → **running** | [904f649](https://github.com/paulzierep/COMEBin/commit/904f649ef5cbb4582a6f0e5ec8b0b1f45778d85b) | **in progress** — epoch 108/200 @ 04:40, loss 3.58 ↓, Top1 84 %, no errors | Watchdog-managed rerun on an immutable snapshot (crash fixes only: seed-file handling, `biolib`, `np.zeros`, `gen_cov`/`gen_var` KeyErrors); 32 threads, `--earlystop` armed. | ⏳ running · epoch 112/200 · loss 2.9383091926574707 · top1 98.056640625 |
+-| `small_test` | 2026-09-23 23:12 → 23:13 (41 s) | [ee2e507](https://github.com/paulzierep/COMEBin/commit/ee2e5079ae8fd04caa381486a4bba8c2d2a34a14) | **failed**, exit 1 | Earlier attempt hit `gen_cov.py` `KeyError: scaffold_22978` (BAM header reference absent from the 300-contig assembly) — fixed in `47c1449`; rerun then died in `get_kmer_coverage` with `IndexError: index … out of bounds for axis 0 with size 300` because `np.empty` left the contig→kmer index array uninitialized when a name was missing. | `np.empty` → `np.zeros` committed as `904f649`; rerun as `small_test_v2`. |
+-| `small_test_v2` | 2026-09-23 23:39 → 23:40 (43 s) | [904f649](https://github.com/paulzierep/COMEBin/commit/904f649ef5cbb4582a6f0e5ec8b0b1f45778d85b) | **failed**, exit 1 | Past augmentation + 1 epoch, then `KeyError: 'BATS…scaffold_22978'` at `train_CLmodel.py:46`. Root cause: `aug0_datacoverage_mean.tsv` carried **29,434 rows — every BAM header reference** (`bedtools genomecov -bga` emits zero-depth rows for all refs; the aug0 `calculate_coverage` path had no input-contig filter) — while the small assembly has 300 contigs, so `lengths[seq_id]` missed. | Producer filter + defensive feature alignment committed on branch `comebin-small-fix` ([`5c77bc8`](https://github.com/paulzierep/COMEBin/commit/5c77bc8)); offline 300-contig/6-view feature test passes. **Next:** end-to-end rerun immediately after the baseline completes (no overlapping timed runs), then CheckM2/CheckM — this is the validation gate for the medium dataset. |
++| Run / time (UTC) | Source | Result and cause | Next step |
++|---|---|---|---|
++| [`baseline_unmodified`](runs/baseline_unmodified/comebin_run.log) — 2026-09-23 14:36 → 21:42 | [987db95](https://github.com/paulzierep/COMEBin/commit/987db95d8d399f30b7c82a5f5f40ed6bfdc906c7) upstream | **Failed after epoch 175/200; no evaluation claimed.** Clustering had no hmmsearch marker `.seed` file (`FileNotFoundError` in `gen_seed_idx`) and `biolib` was not installed. | Installed `biolib`; committed missing-seed handling in [`586c7f7`](https://github.com/paulzierep/COMEBin/commit/586c7f72226171870615138687404767662c1225) and later crash fixes through [`904f649`](https://github.com/paulzierep/COMEBin/commit/904f649ef5cbb4582a6f0e5ec8b0b1f45778d85b); use a fresh clean run. |
++| [`baseline_unmodified_autorestart1`](status/supervisor-run.log) — 2026-09-23 21:33 | [987db95](https://github.com/paulzierep/COMEBin/commit/987db95d8d399f30b7c82a5f5f40ed6bfdc906c7) + 4 dirty files | **No run, 0 CPU.** The pristine-baseline guard rejected the launch because the COMEBin worktree was modified. | Commit or revert the source edits before retrying; preserve the original failure evidence. |
++| [`baseline_unmodified_autorestart2`](status/supervisor-run.log) — 2026-09-23 21:35 | [987db95](https://github.com/paulzierep/COMEBin/commit/987db95d8d399f30b7c82a5f5f40ed6bfdc906c7) + 4 dirty files | **No run, 0 CPU.** The same dirty-source guard blocked a non-reproducible baseline launch. | Stop duplicate no-CPU retries and restore a clean source tree. |
++| [`baseline_unmodified_autorestart3`](status/supervisor-run.log) — 2026-09-23 21:40 | [987db95](https://github.com/paulzierep/COMEBin/commit/987db95d8d399f30b7c82a5f5f40ed6bfdc906c7) + 4 dirty files | **No run, 0 CPU.** The third attempt had the same refusal and exhausted the watchdog restart budget. | Let the watchdog classify the original terminal failure; use committed source only for the next baseline. |
++| [`small_test` — first smoke](status/agent-run.log) — 2026-09-23 ~22:42 (17 s) | [586c7f7](https://github.com/paulzierep/COMEBin/commit/586c7f72226171870615138687404767662c1225) | **Failed, exit 1.** It passed seed generation, then `gen_cov.py` raised `KeyError: scaffold_22978`, a BAM-header reference absent from the 300-contig assembly. This first use of the run name was later overwritten. | Commit the contig filter in [`47c1449`](https://github.com/paulzierep/COMEBin/commit/47c1449e874c366defe4470f1d43abf91fb8117c), then rerun under a fresh name. |
++| [`small_test` — logged rerun](runs/small_test/comebin_run.log) — 2026-09-23 23:09:40 → 23:10:21 (41 s) | [ee2e507](https://github.com/paulzierep/COMEBin/commit/ee2e5079ae8fd04caa381486a4bba8c2d2a34a14) | **Failed, exit 1.** `get_kmer_coverage` indexed the 300-contig matrix with uninitialized values because `np.empty` left missing contig-to-k-mer positions unset, causing an out-of-bounds `IndexError`. | Replace `np.empty` with zero-initialized state in [`904f649`](https://github.com/paulzierep/COMEBin/commit/904f649ef5cbb4582a6f0e5ec8b0b1f45778d85b); rerun as `small_test_v2`. |
++| [`small_test_v2`](runs/small_test_v2/comebin_run.log) — 2026-09-23 23:37:13 → 23:37:56 (43 s) | [904f649](https://github.com/paulzierep/COMEBin/commit/904f649ef5cbb4582a6f0e5ec8b0b1f45778d85b) | **Failed, exit 1.** After augmentation and epoch 0, `lengths[seq_id]` raised `KeyError`: `aug0_datacoverage_mean.tsv` contained all 29,434 BAM-header references instead of only the 300 input contigs. | Producer filtering and defensive alignment are committed on `comebin-small-fix` as [`5c77bc8`](https://github.com/paulzierep/COMEBin/commit/5c77bc87ce2c8a83be20016c8f62eb2d6b3feb88); the offline six-view test passes. After the baseline, run the end-to-end small gate and CheckM2/CheckM before building the medium set. |
++| [`baseline_rerun`](runs/baseline_rerun/comebin_run.log) — 2026-09-24 00:15:46 → 00:25:46 (600 s) | [904f649](https://github.com/paulzierep/COMEBin/commit/904f649ef5cbb4582a6f0e5ec8b0b1f45778d85b) | **Failed, exit 143.** This was not a COMEBin exception: a foreground agent tool call imposed a 600 s timeout and sent `SIGTERM` after augmentation, the first feature pass and epoch 0. | Never launch a multi-hour baseline in a foreground tool call. Start it detached in a fresh directory, verify `.active_run`, and let `benchmark-watchdog.sh` own the handoff. |
++| `baseline_rerun` — [retry 1](status/agent-run.log) — ~2026-09-24 00:26 | [904f649](https://github.com/paulzierep/COMEBin/commit/904f649ef5cbb4582a6f0e5ec8b0b1f45778d85b) | **No run, 0 CPU.** The overwrite guard correctly rejected the same-name retry because the timed run already had `run_meta.txt` and `comebin_out/`; the follow-up then deleted that directory instead of preserving it. | Never delete or overwrite a run directory. Keep its evidence and choose a fresh run name. |
++| `baseline_rerun` — [retry 2](status/agent-run.log) — ~2026-09-24 00:29 | [904f649](https://github.com/paulzierep/COMEBin/commit/904f649ef5cbb4582a6f0e5ec8b0b1f45778d85b) | **No run, 0 CPU.** `.active_run` still referenced the failed wrapper (`pid=262046`) for the reused path, so the overlap guard refused another launch. | Run `benchmark-watchdog.sh`; at 00:30 it classified exit 143, cleared the stale registration and launched `baseline_rerun_autorestart1`. |
++| [`baseline_rerun_autorestart1`](runs/baseline_rerun_autorestart1/comebin_run.log) — 2026-09-24 00:30 → **running** | [904f649](https://github.com/paulzierep/COMEBin/commit/904f649ef5cbb4582a6f0e5ec8b0b1f45778d85b) | **In progress.** The watchdog-managed run is advancing normally from an immutable committed snapshot with the crash-only fixes, 32 threads and `--earlystop`; live epoch/loss/accuracy are in the top banner. | On clean exit, run `scripts/run_eval.sh` for CheckM2 + CheckM v1 and fill the performance table; then run the queued end-to-end small test without overlapping timed runs. |
+ 
+ ## Branch strategy
+ 
+ - `main` — documentation, harness scripts, result tables.
+
+> build · space-bunny-free
+[0m$ [0mset -euo pipefail
+python - <<'PY'
+from pathlib import Path
+p = Path('README.md')
+text = p.read_text()
+section = text.split('## Run history — what happened and what\'s next', 1)[1].split('## Branch strategy', 1)[0]
+rows = [line for line in section.splitlines() if line.startswith('|')]
+assert len(rows) == 13, len(rows)  # header + separator + 11 attempts
+for row in rows:
+    assert row.count('|') == 5, (row.count('|'), row)
+expected = [
+    'baseline_unmodified',
+    'baseline_unmodified_autorestart1',
+    'baseline_unmodified_autorestart2',
+    'baseline_unmodified_autorestart3',
+    'small_test` — first smoke',
+    'small_test` — logged rerun',
+    'small_test_v2',
+    'baseline_rerun',
+    'baseline_rerun` — [retry 1',
+    'baseline_rerun` — [retry 2',
+    'baseline_rerun_autorestart1',
+]
+for name in expected:
+    assert name in section, name
+for evidence in [
+    'runs/baseline_unmodified/comebin_run.log',
+    'runs/small_test/comebin_run.log',
+    'runs/small_test_v2/comebin_run.log',
+    'runs/baseline_rerun/comebin_run.log',
+    'runs/baseline_rerun_autorestart1/comebin_run.log',
+    'status/supervisor-run.log',
+    'status/agent-run.log',
+]:
+    assert Path(evidence).is_file(), evidence
+print('README run-history structure/evidence: ok (11 attempts)')
+PY
+for sha in 987db95d8d399f30b7c82a5f5f40ed6bfdc906c7 586c7f72226171870615138687404767662c1225 47c1449e874c366defe4470f1d43abf91fb8117c ee2e5079ae8fd04caa381486a4bba8c2d2a34a14 904f649ef5cbb4582a6f0e5ec8b0b1f45778d85b 5c77bc87ce2c8a83be20016c8f62eb2d6b3feb88; do git -C /vol/data/repos/COMEBin cat-file -e "$sha^{commit}"; done
+printf 'README source commits resolve: ok\n'
+/bin/bash: line 2: python: command not found
+[0m$ [0mset -euo pipefail
+git diff --check
+git diff --stat
+git status --short --branch
+git diff -- README.md | sed -n '1,260p'
+PROGRESS.md                 |  5 +++++
+ README.md                   | 26 +++++++++++++++-----------
+ scripts/agent-watchdog.sh   |  7 +++++--
+ scripts/status-heartbeat.sh | 13 +++++++++++--
+ 4 files changed, 36 insertions(+), 15 deletions(-)
+## main...origin/main
+ M PROGRESS.md
+ M README.md
+ M scripts/agent-watchdog.sh
+ M scripts/status-heartbeat.sh
+diff --git a/README.md b/README.md
+index 22d60f2..7d01bc3 100644
+--- a/README.md
++++ b/README.md
+@@ -57,17 +57,21 @@ performance deltas vs. baseline are visible directly in this table.
+ 
+ ## Run history — what happened and what's next
+ 
+-One row per run attempt: exactly why it ended (or whether it is still going) and
+-the concrete next step. Kept current by the agent; raw evidence lives in each
+-run's `runs/<run>/run_meta.txt` + `comebin_run.log`.
+-
+-| Run | Time (UTC) | Source | Result | What happened / why | Next step |
+-|---|---|---|---|---|---|
+-| `baseline_unmodified` | 2026-09-23 14:36 → 21:42 | [987db95](https://github.com/paulzierep/COMEBin/commit/987db95d8d399f30b7c82a5f5f40ed6bfdc906c7) upstream | **failed** at epoch 175/200 (no evaluation claimed) | Training ran 7 h; clustering then crashed twice over: hmmsearch `--cut_tc` found no marker hits so the `.seed` file was never written (`FileNotFoundError` in `gen_seed_idx`), and `biolib` was not installed (`ModuleNotFoundError`) → "Something went wrong with running clustering." Watchdog recorded the terminal reason instead of silently retrying. | Installed `biolib`; committed the graceful-missing-seed fix (`gen_seed_idx` → empty seed list) plus `np.zeros`/`gen_cov` crash fixes; launched the baseline rerun below. |
+-| `baseline_rerun` (refused launch) | 2026-09-24 00:29 | [904f649](https://github.com/paulzierep/COMEBin/commit/904f649ef5cbb4582a6f0e5ec8b0b1f45778d85b) | **no run** (guard worked) | Overlap guard refused to start a second run while a stale registration (`pid=262046`) existed — logged in `out.txt`, zero CPU spent. | Superseded one minute later by `baseline_rerun_autorestart1`; stale registration cleared by the watchdog. |
+-| `baseline_rerun_autorestart1` | 2026-09-24 00:30 → **running** | [904f649](https://github.com/paulzierep/COMEBin/commit/904f649ef5cbb4582a6f0e5ec8b0b1f45778d85b) | **in progress** — epoch 108/200 @ 04:40, loss 3.58 ↓, Top1 84 %, no errors | Watchdog-managed rerun on an immutable snapshot (crash fixes only: seed-file handling, `biolib`, `np.zeros`, `gen_cov`/`gen_var` KeyErrors); 32 threads, `--earlystop` armed. | ⏳ running · epoch 112/200 · loss 2.9383091926574707 · top1 98.056640625 |
+-| `small_test` | 2026-09-23 23:12 → 23:13 (41 s) | [ee2e507](https://github.com/paulzierep/COMEBin/commit/ee2e5079ae8fd04caa381486a4bba8c2d2a34a14) | **failed**, exit 1 | Earlier attempt hit `gen_cov.py` `KeyError: scaffold_22978` (BAM header reference absent from the 300-contig assembly) — fixed in `47c1449`; rerun then died in `get_kmer_coverage` with `IndexError: index … out of bounds for axis 0 with size 300` because `np.empty` left the contig→kmer index array uninitialized when a name was missing. | `np.empty` → `np.zeros` committed as `904f649`; rerun as `small_test_v2`. |
+-| `small_test_v2` | 2026-09-23 23:39 → 23:40 (43 s) | [904f649](https://github.com/paulzierep/COMEBin/commit/904f649ef5cbb4582a6f0e5ec8b0b1f45778d85b) | **failed**, exit 1 | Past augmentation + 1 epoch, then `KeyError: 'BATS…scaffold_22978'` at `train_CLmodel.py:46`. Root cause: `aug0_datacoverage_mean.tsv` carried **29,434 rows — every BAM header reference** (`bedtools genomecov -bga` emits zero-depth rows for all refs; the aug0 `calculate_coverage` path had no input-contig filter) — while the small assembly has 300 contigs, so `lengths[seq_id]` missed. | Producer filter + defensive feature alignment committed on branch `comebin-small-fix` ([`5c77bc8`](https://github.com/paulzierep/COMEBin/commit/5c77bc8)); offline 300-contig/6-view feature test passes. **Next:** end-to-end rerun immediately after the baseline completes (no overlapping timed runs), then CheckM2/CheckM — this is the validation gate for the medium dataset. |
++One row per recorded attempt, including launches refused before any CPU was used. Run links point to the tracked evidence mirrors. Refused watchdog launches are retained in `/vol/data/benchmark/logs/*.launch.log` and [`status/supervisor-run.log`](status/supervisor-run.log); the first `small_test` directory was later reused, so its surviving evidence is the timestamped [`status/agent-run.log`](status/agent-run.log) entry. The status banner at the top of this file is authoritative for the running row.
++
++| Run / time (UTC) | Source | Result and cause | Next step |
++|---|---|---|---|
++| [`baseline_unmodified`](runs/baseline_unmodified/comebin_run.log) — 2026-09-23 14:36 → 21:42 | [987db95](https://github.com/paulzierep/COMEBin/commit/987db95d8d399f30b7c82a5f5f40ed6bfdc906c7) upstream | **Failed after epoch 175/200; no evaluation claimed.** Clustering had no hmmsearch marker `.seed` file (`FileNotFoundError` in `gen_seed_idx`) and `biolib` was not installed. | Installed `biolib`; committed missing-seed handling in [`586c7f7`](https://github.com/paulzierep/COMEBin/commit/586c7f72226171870615138687404767662c1225) and later crash fixes through [`904f649`](https://github.com/paulzierep/COMEBin/commit/904f649ef5cbb4582a6f0e5ec8b0b1f45778d85b); use a fresh clean run. |
++| [`baseline_unmodified_autorestart1`](status/supervisor-run.log) — 2026-09-23 21:33 | [987db95](https://github.com/paulzierep/COMEBin/commit/987db95d8d399f30b7c82a5f5f40ed6bfdc906c7) + 4 dirty files | **No run, 0 CPU.** The pristine-baseline guard rejected the launch because the COMEBin worktree was modified. | Commit or revert the source edits before retrying; preserve the original failure evidence. |
++| [`baseline_unmodified_autorestart2`](status/supervisor-run.log) — 2026-09-23 21:35 | [987db95](https://github.com/paulzierep/COMEBin/commit/987db95d8d399f30b7c82a5f5f40ed6bfdc906c7) + 4 dirty files | **No run, 0 CPU.** The same dirty-source guard blocked a non-reproducible baseline launch. | Stop duplicate no-CPU retries and restore a clean source tree. |
++| [`baseline_unmodified_autorestart3`](status/supervisor-run.log) — 2026-09-23 21:40 | [987db95](https://github.com/paulzierep/COMEBin/commit/987db95d8d399f30b7c82a5f5f40ed6bfdc906c7) + 4 dirty files | **No run, 0 CPU.** The third attempt had the same refusal and exhausted the watchdog restart budget. | Let the watchdog classify the original terminal failure; use committed source only for the next baseline. |
++| [`small_test` — first smoke](status/agent-run.log) — 2026-09-23 ~22:42 (17 s) | [586c7f7](https://github.com/paulzierep/COMEBin/commit/586c7f72226171870615138687404767662c1225) | **Failed, exit 1.** It passed seed generation, then `gen_cov.py` raised `KeyError: scaffold_22978`, a BAM-header reference absent from the 300-contig assembly. This first use of the run name was later overwritten. | Commit the contig filter in [`47c1449`](https://github.com/paulzierep/COMEBin/commit/47c1449e874c366defe4470f1d43abf91fb8117c), then rerun under a fresh name. |
++| [`small_test` — logged rerun](runs/small_test/comebin_run.log) — 2026-09-23 23:09:40 → 23:10:21 (41 s) | [ee2e507](https://github.com/paulzierep/COMEBin/commit/ee2e5079ae8fd04caa381486a4bba8c2d2a34a14) | **Failed, exit 1.** `get_kmer_coverage` indexed the 300-contig matrix with uninitialized values because `np.empty` left missing contig-to-k-mer positions unset, causing an out-of-bounds `IndexError`. | Replace `np.empty` with zero-initialized state in [`904f649`](https://github.com/paulzierep/COMEBin/commit/904f649ef5cbb4582a6f0e5ec8b0b1f45778d85b); rerun as `small_test_v2`. |
++| [`small_test_v2`](runs/small_test_v2/comebin_run.log) — 2026-09-23 23:37:13 → 23:37:56 (43 s) | [904f649](https://github.com/paulzierep/COMEBin/commit/904f649ef5cbb4582a6f0e5ec8b0b1f45778d85b) | **Failed, exit 1.** After augmentation and epoch 0, `lengths[seq_id]` raised `KeyError`: `aug0_datacoverage_mean.tsv` contained all 29,434 BAM-header references instead of only the 300 input contigs. | Producer filtering and defensive alignment are committed on `comebin-small-fix` as [`5c77bc8`](https://github.com/paulzierep/COMEBin/commit/5c77bc87ce2c8a83be20016c8f62eb2d6b3feb88); the offline six-view test passes. After the baseline, run the end-to-end small gate and CheckM2/CheckM before building the medium set. |
++| [`baseline_rerun`](runs/baseline_rerun/comebin_run.log) — 2026-09-24 00:15:46 → 00:25:46 (600 s) | [904f649](https://github.com/paulzierep/COMEBin/commit/904f649ef5cbb4582a6f0e5ec8b0b1f45778d85b) | **Failed, exit 143.** This was not a COMEBin exception: a foreground agent tool call imposed a 600 s timeout and sent `SIGTERM` after augmentation, the first feature pass and epoch 0. | Never launch a multi-hour baseline in a foreground tool call. Start it detached in a fresh directory, verify `.active_run`, and let `benchmark-watchdog.sh` own the handoff. |
++| `baseline_rerun` — [retry 1](status/agent-run.log) — ~2026-09-24 00:26 | [904f649](https://github.com/paulzierep/COMEBin/commit/904f649ef5cbb4582a6f0e5ec8b0b1f45778d85b) | **No run, 0 CPU.** The overwrite guard correctly rejected the same-name retry because the timed run already had `run_meta.txt` and `comebin_out/`; the follow-up then deleted that directory instead of preserving it. | Never delete or overwrite a run directory. Keep its evidence and choose a fresh run name. |
++| `baseline_rerun` — [retry 2](status/agent-run.log) — ~2026-09-24 00:29 | [904f649](https://github.com/paulzierep/COMEBin/commit/904f649ef5cbb4582a6f0e5ec8b0b1f45778d85b) | **No run, 0 CPU.** `.active_run` still referenced the failed wrapper (`pid=262046`) for the reused path, so the overlap guard refused another launch. | Run `benchmark-watchdog.sh`; at 00:30 it classified exit 143, cleared the stale registration and launched `baseline_rerun_autorestart1`. |
++| [`baseline_rerun_autorestart1`](runs/baseline_rerun_autorestart1/comebin_run.log) — 2026-09-24 00:30 → **running** | [904f649](https://github.com/paulzierep/COMEBin/commit/904f649ef5cbb4582a6f0e5ec8b0b1f45778d85b) | **In progress.** The watchdog-managed run is advancing normally from an immutable committed snapshot with the crash-only fixes, 32 threads and `--earlystop`; live epoch/loss/accuracy are in the top banner. | On clean exit, run `scripts/run_eval.sh` for CheckM2 + CheckM v1 and fill the performance table; then run the queued end-to-end small test without overlapping timed runs. |
+ 
+ ## Branch strategy
+> build · space-bunny-free
+[0m→ [0mRead /vol/data/benchmark/logs/agent-run.log [90m[offset=14320, limit=280][0m
+> build · space-bunny-free
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/README.md
+Index: /vol/data/repos/metagenomic-binning-benchmark/README.md
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/README.md
++++ /vol/data/repos/metagenomic-binning-benchmark/README.md
+@@ -64,9 +64,9 @@
+ | [`baseline_unmodified`](runs/baseline_unmodified/comebin_run.log) — 2026-09-23 14:36 → 21:42 | [987db95](https://github.com/paulzierep/COMEBin/commit/987db95d8d399f30b7c82a5f5f40ed6bfdc906c7) upstream | **Failed after epoch 175/200; no evaluation claimed.** Clustering had no hmmsearch marker `.seed` file (`FileNotFoundError` in `gen_seed_idx`) and `biolib` was not installed. | Installed `biolib`; committed missing-seed handling in [`586c7f7`](https://github.com/paulzierep/COMEBin/commit/586c7f72226171870615138687404767662c1225) and later crash fixes through [`904f649`](https://github.com/paulzierep/COMEBin/commit/904f649ef5cbb4582a6f0e5ec8b0b1f45778d85b); use a fresh clean run. |
+ | [`baseline_unmodified_autorestart1`](status/supervisor-run.log) — 2026-09-23 21:33 | [987db95](https://github.com/paulzierep/COMEBin/commit/987db95d8d399f30b7c82a5f5f40ed6bfdc906c7) + 4 dirty files | **No run, 0 CPU.** The pristine-baseline guard rejected the launch because the COMEBin worktree was modified. | Commit or revert the source edits before retrying; preserve the original failure evidence. |
+ | [`baseline_unmodified_autorestart2`](status/supervisor-run.log) — 2026-09-23 21:35 | [987db95](https://github.com/paulzierep/COMEBin/commit/987db95d8d399f30b7c82a5f5f40ed6bfdc906c7) + 4 dirty files | **No run, 0 CPU.** The same dirty-source guard blocked a non-reproducible baseline launch. | Stop duplicate no-CPU retries and restore a clean source tree. |
+ | [`baseline_unmodified_autorestart3`](status/supervisor-run.log) — 2026-09-23 21:40 | [987db95](https://github.com/paulzierep/COMEBin/commit/987db95d8d399f30b7c82a5f5f40ed6bfdc906c7) + 4 dirty files | **No run, 0 CPU.** The third attempt had the same refusal and exhausted the watchdog restart budget. | Let the watchdog classify the original terminal failure; use committed source only for the next baseline. |
+-| [`small_test` — first smoke](status/agent-run.log) — 2026-09-23 ~22:42 (17 s) | [586c7f7](https://github.com/paulzierep/COMEBin/commit/586c7f72226171870615138687404767662c1225) | **Failed, exit 1.** It passed seed generation, then `gen_cov.py` raised `KeyError: scaffold_22978`, a BAM-header reference absent from the 300-contig assembly. This first use of the run name was later overwritten. | Commit the contig filter in [`47c1449`](https://github.com/paulzierep/COMEBin/commit/47c1449e874c366defe4470f1d43abf91fb8117c), then rerun under a fresh name. |
++| [`small_test` — first smoke](status/agent-run.log) — 2026-09-23 22:39:28 → 22:39:45 (17 s) | [586c7f7](https://github.com/paulzierep/COMEBin/commit/586c7f72226171870615138687404767662c1225) | **Failed during augmentation, exit 1.** `gen_cov.py` raised `KeyError: scaffold_22978`, a BAM-header reference absent from the 300-contig assembly. Because it failed before clustering, this run did **not** validate the missing-seed fix. This first use of the run name was later overwritten. | Commit the contig filter in [`47c1449`](https://github.com/paulzierep/COMEBin/commit/47c1449e874c366defe4470f1d43abf91fb8117c), then rerun under a fresh name. |
+ | [`small_test` — logged rerun](runs/small_test/comebin_run.log) — 2026-09-23 23:09:40 → 23:10:21 (41 s) | [ee2e507](https://github.com/paulzierep/COMEBin/commit/ee2e5079ae8fd04caa381486a4bba8c2d2a34a14) | **Failed, exit 1.** `get_kmer_coverage` indexed the 300-contig matrix with uninitialized values because `np.empty` left missing contig-to-k-mer positions unset, causing an out-of-bounds `IndexError`. | Replace `np.empty` with zero-initialized state in [`904f649`](https://github.com/paulzierep/COMEBin/commit/904f649ef5cbb4582a6f0e5ec8b0b1f45778d85b); rerun as `small_test_v2`. |
+ | [`small_test_v2`](runs/small_test_v2/comebin_run.log) — 2026-09-23 23:37:13 → 23:37:56 (43 s) | [904f649](https://github.com/paulzierep/COMEBin/commit/904f649ef5cbb4582a6f0e5ec8b0b1f45778d85b) | **Failed, exit 1.** After augmentation and epoch 0, `lengths[seq_id]` raised `KeyError`: `aug0_datacoverage_mean.tsv` contained all 29,434 BAM-header references instead of only the 300 input contigs. | Producer filtering and defensive alignment are committed on `comebin-small-fix` as [`5c77bc8`](https://github.com/paulzierep/COMEBin/commit/5c77bc87ce2c8a83be20016c8f62eb2d6b3feb88); the offline six-view test passes. After the baseline, run the end-to-end small gate and CheckM2/CheckM before building the medium set. |
+ | [`baseline_rerun`](runs/baseline_rerun/comebin_run.log) — 2026-09-24 00:15:46 → 00:25:46 (600 s) | [904f649](https://github.com/paulzierep/COMEBin/commit/904f649ef5cbb4582a6f0e5ec8b0b1f45778d85b) | **Failed, exit 143.** This was not a COMEBin exception: a foreground agent tool call imposed a 600 s timeout and sent `SIGTERM` after augmentation, the first feature pass and epoch 0. | Never launch a multi-hour baseline in a foreground tool call. Start it detached in a fresh directory, verify `.active_run`, and let `benchmark-watchdog.sh` own the handoff. |
+ | `baseline_rerun` — [retry 1](status/agent-run.log) — ~2026-09-24 00:26 | [904f649](https://github.com/paulzierep/COMEBin/commit/904f649ef5cbb4582a6f0e5ec8b0b1f45778d85b) | **No run, 0 CPU.** The overwrite guard correctly rejected the same-name retry because the timed run already had `run_meta.txt` and `comebin_out/`; the follow-up then deleted that directory instead of preserving it. | Never delete or overwrite a run directory. Keep its evidence and choose a fresh run name. |
+
+> build · space-bunny-free
+[0m$ [0mgit diff --check && git status --short --branch
+## main...origin/main
+ M PROGRESS.md
+ M README.md
+ M scripts/agent-watchdog.sh
+ M scripts/status-heartbeat.sh
+[0m$ [0mset -euo pipefail
+python3 - <<'PY'
+from pathlib import Path
+p = Path('README.md')
+text = p.read_text()
+section = text.split("## Run history — what happened and what's next", 1)[1].split('## Branch strategy', 1)[0]
+rows = [line for line in section.splitlines() if line.startswith('|')]
+assert len(rows) == 13, len(rows)
+for row in rows:
+    assert row.count('|') == 5, (row.count('|'), row)
+expected = [
+    'baseline_unmodified', 'baseline_unmodified_autorestart1',
+    'baseline_unmodified_autorestart2', 'baseline_unmodified_autorestart3',
+    'small_test` — first smoke', 'small_test` — logged rerun', 'small_test_v2',
+    'baseline_rerun', 'baseline_rerun` — [retry 1',
+    'baseline_rerun` — [retry 2', 'baseline_rerun_autorestart1',
+]
+for name in expected:
+    assert name in section, name
+for evidence in [
+    'runs/baseline_unmodified/comebin_run.log', 'runs/small_test/comebin_run.log',
+    'runs/small_test_v2/comebin_run.log', 'runs/baseline_rerun/comebin_run.log',
+    'runs/baseline_rerun_autorestart1/comebin_run.log',
+    'status/supervisor-run.log', 'status/agent-run.log',
+]:
+    assert Path(evidence).is_file(), evidence
+print('README run-history structure/evidence: ok (11 attempts)')
+PY
+for sha in 987db95d8d399f30b7c82a5f5f40ed6bfdc906c7 586c7f72226171870615138687404767662c1225 47c1449e874c366defe4470f1d43abf91fb8117c ee2e5079ae8fd04caa381486a4bba8c2d2a34a14 904f649ef5cbb4582a6f0e5ec8b0b1f45778d85b 5c77bc87ce2c8a83be20016c8f62eb2d6b3feb88; do git -C /vol/data/repos/COMEBin cat-file -e "$sha^{commit}"; done
+printf 'README source commits resolve: ok\n'
+README run-history structure/evidence: ok (11 attempts)
+README source commits resolve: ok
+> build · space-bunny-free
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/README.md
+Index: /vol/data/repos/metagenomic-binning-benchmark/README.md
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/README.md
++++ /vol/data/repos/metagenomic-binning-benchmark/README.md
+@@ -56,9 +56,15 @@
+ performance deltas vs. baseline are visible directly in this table.
+ 
+ ## Run history — what happened and what's next
+ 
+-One row per recorded attempt, including launches refused before any CPU was used. Run links point to the tracked evidence mirrors. Refused watchdog launches are retained in `/vol/data/benchmark/logs/*.launch.log` and [`status/supervisor-run.log`](status/supervisor-run.log); the first `small_test` directory was later reused, so its surviving evidence is the timestamped [`status/agent-run.log`](status/agent-run.log) entry. The status banner at the top of this file is authoritative for the running row.
++One row per recorded attempt, including launches refused before any CPU was
++used. Run links point to the tracked evidence mirrors. Refused watchdog launches
++are retained in `/vol/data/benchmark/logs/*.launch.log` and
++[`status/supervisor-run.log`](status/supervisor-run.log); the first `small_test`
++directory was later reused, so its surviving evidence is the timestamped
++[`status/agent-run.log`](status/agent-run.log) entry. The status banner at the
++top of this file is authoritative for the running row.
+ 
+ | Run / time (UTC) | Source | Result and cause | Next step |
+ |---|---|---|---|
+ | [`baseline_unmodified`](runs/baseline_unmodified/comebin_run.log) — 2026-09-23 14:36 → 21:42 | [987db95](https://github.com/paulzierep/COMEBin/commit/987db95d8d399f30b7c82a5f5f40ed6bfdc906c7) upstream | **Failed after epoch 175/200; no evaluation claimed.** Clustering had no hmmsearch marker `.seed` file (`FileNotFoundError` in `gen_seed_idx`) and `biolib` was not installed. | Installed `biolib`; committed missing-seed handling in [`586c7f7`](https://github.com/paulzierep/COMEBin/commit/586c7f72226171870615138687404767662c1225) and later crash fixes through [`904f649`](https://github.com/paulzierep/COMEBin/commit/904f649ef5cbb4582a6f0e5ec8b0b1f45778d85b); use a fresh clean run. |
+
+> build · space-bunny-free
+[0m→ [0mRead /vol/data/repos/COMEBin/COMEBin/cluster.py [90m[offset=330, limit=90][0m
+[0m$ [0mgit -C /vol/data/repos/COMEBin show --format=fuller --stat 586c7f7 && git -C /vol/data/repos/COMEBin show --format= --unified=30 586c7f7 -- COMEBin/cluster.py
+commit 586c7f72226171870615138687404767662c1225
+Author:     paulzierep <paulzierep@users.noreply.github.com>
+AuthorDate: Wed Sep 23 22:39:26 2026 +0000
+Commit:     paulzierep <paulzierep@users.noreply.github.com>
+CommitDate: Wed Sep 23 22:39:26 2026 +0000
+
+    fix: gen_seed_idx handles FileNotFoundError when seed file missing (hmmsearch --cut_tc produces no marker hits)
+
+ COMEBin/cluster.py | 12 ++++++++----
+ 1 file changed, 8 insertions(+), 4 deletions(-)
+diff --git a/COMEBin/cluster.py b/COMEBin/cluster.py
+index 2b5dc58..d76a6ca 100644
+--- a/COMEBin/cluster.py
++++ b/COMEBin/cluster.py
+@@ -94,64 +94,68 @@ def seed_kmeans_full(logger, contig_file: str, namelist: List[str], out_path: st
+     This function performs weighted seed-based k-means clustering on the input data using specified parameters and saves the results.
+     """
+     out_path = out_path + prefix
+     seed_bacar_marker_idx = gen_seed_idx(seed_bacar_marker_url, contig_id_list=namelist)
+     time_start = time.time()
+     # run seed-kmeans; length weight
+     output_temp = out_path + '_k_' + str(
+         bin_number) + '_result.tsv'
+     if not (os.path.exists(output_temp)):
+         km = KMeans(n_clusters=bin_number, n_jobs=-1, random_state=7, algorithm="full",
+                     init=functools.partial(partial_seed_init, seed_idx=seed_bacar_marker_idx))
+         km.fit(X_mat, sample_weight=length_weight)
+         idx = km.labels_
+         save_result(idx, output_temp, namelist)
+ 
+         gen_bins_from_tsv(contig_file, output_temp, output_temp+'_bins')
+ 
+         time_end = time.time()
+         logger.info("Running weighted seed-kmeans cost:\t"+str(time_end - time_start) + 's.')
+ 
+ 
+ def gen_seed_idx(seedURL: str, contig_id_list: List[str]) -> List[int]:
+     """
+     Generate a list of indices corresponding to seed contig IDs from a given URL.
+ 
+     :param seedURL: The URL or path to the file containing seed contig names.
+     :param contig_id_list: List of all contig IDs to match with the seed contig names.
+     :return: List[int]
+     """
+     seed_list = []
+-    with open(seedURL) as f:
+-        for line in f:
+-            if line.rstrip('\n') in contig_id_list:
+-                seed_list.append(line.rstrip('\n'))
++    try:
++        with open(seedURL) as f:
++            for line in f:
++                stripped = line.rstrip('\n')
++                if stripped in contig_id_list:
++                    seed_list.append(stripped)
++    except FileNotFoundError:
++        pass
+     name_map = dict(zip(contig_id_list, range(len(contig_id_list))))
+     seed_idx = [name_map[seed_name] for seed_name in seed_list]
+     return seed_idx
+ 
+ 
+ # change from sklearn.cluster.kmeans
+ def partial_seed_init(X, n_clusters: int, random_state, seed_idx, n_local_trials=None) -> np.ndarray:
+     """
+     Partial initialization of KMeans centers with seeds from seed_idx.
+ 
+     Parameters:
+     :param X: Features.
+     :param n_clusters: The number of clusters.
+     :param random_state: Determines random number generation for centroid initialization. Use an int for reproducibility.
+     :param seed_idx: Indices of seed points for initialization.
+     :param n_local_trials: The number of local seeding trials. Default is None.
+ 
+     Returns:
+     :return centers (ndarray): The initialized cluster centers.
+ 
+     This function initializes a KMeans clustering by partially seeding the centers with provided seeds.
+     It is a modification of the KMeans initialization algorithm.
+     """
+     random_state = check_random_state(random_state)
+     x_squared_norms = row_norms(X, squared=True)
+ 
+     n_samples, n_features = X.shape
+ 
+     centers = np.empty((n_clusters, n_features), dtype=X.dtype)
+[0m→ [0mRead /vol/data/benchmark/runs/baseline_unmodified/comebin_run.log [90m[offset=215, limit=60][0m
+[0m→ [0mRead /vol/data/benchmark/logs/agent-run.log [90m[offset=16135, limit=80][0m
+[0m→ [0mRead /vol/data/benchmark/logs/agent-run.log [90m[offset=16435, limit=50][0m
+[0m→ [0mRead /vol/data/benchmark/logs/agent-run.log [90m[offset=17435, limit=40][0m
+> build · space-bunny-free
+[0m✱ [0mGrep "last_benchmark_failure" [90min /vol/data/repos/metagenomic-binning-benchmark/scripts · 5 matches[0m
+> build · space-bunny-free
