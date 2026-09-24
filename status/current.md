@@ -3,10 +3,10 @@
 | | |
 |---|---|
 | Status | 🟢 `running` |
-| ⏱ Updated (Europe/Berlin) | `2026-09-24T12:34 CEST` |
-| 🏃 Last benchmark (not active) | `medium_v11_20260924` — last observed **epoch 199/200** (log 1849s old) |
+| ⏱ Updated (Europe/Berlin) | `2026-09-24T12:36 CEST` |
+| 🏃 Last benchmark (not active) | `medium_v11_20260924` — last observed **epoch 199/200** (log 1969s old) |
 | 🧠 Model (last turn) | `big-pickle` (watchdog rotates to free models on quota) |
-| 📌 Agent note · **5 min old** | Baseline training epoch ~109/200 (~2.4 min/epoch, ETA ~22:35 UTC unless early-stop); next: baseline eval (run_eval.sh) → issue #2 small-dataset test → v1.1.0 fix run
+| 📌 Agent note · **1 min old** | Baseline training epoch ~109/200 (~2.4 min/epoch, ETA ~22:35 UTC unless early-stop); next: baseline eval (run_eval.sh) → issue #2 small-dataset test → v1.1.0 fix run
 2026-09-23 20:33:11 UTC - heartbeat
 2026-09-23 20:43:58 UTC - heartbeat
 2026-09-23 20:56:28 UTC - heartbeat
@@ -257,10 +257,11 @@
 2026-09-24T09:36:37Z issue-13-reply-push-7a80d7e
 2026-09-24T09:59:22Z wrapup
 2026-09-24T10:17:55Z medium-eval-complete
-2026-09-24T10:29:00Z triage-7-15-16 |
-| ⚙️ Load · uptime | `0.17 0.19 4.18` · 20 hours, 58 minutes — 32 cores, 62 GiB, no GPU |
-| 💾 RAM used/total | `1954/64295 MB` |
+2026-09-24T10:29:00Z triage-7-15-16
+2026-09-24T10:34:38Z issue-15 |
+| ⚙️ Load · uptime | `0.05 0.14 3.67` · 21 hours, 0 minutes — 32 cores, 62 GiB, no GPU |
+| 💾 RAM used/total | `1965/64295 MB` |
 | 🔗 Session | `ses_f31799c77ffeTq9gcYgqc4hBhg` |
-| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `76c7f34 meta: supervise tick 2026-09-24T10:33:01Z — 0 fix(es)` |
-| 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `3127120 B` — every run, command & tool result |
+| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `869754a results: per-bin quality for all evaluated runs + README flowchart (issu` |
+| 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `3179375 B` — every run, command & tool result |
 | 📈 Timeline | [status/status.log](status/status.log) |
