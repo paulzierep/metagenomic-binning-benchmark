@@ -3,10 +3,10 @@
 | | |
 |---|---|
 | Status | 🟢 `running` |
-| ⏱ Updated (Europe/Berlin) | `2026-09-24T05:00 CEST` |
-| 🏃 Live benchmark | `baseline_rerun_autorestart1` — **epoch 62/200** · loss `3.09631609916687` · top1 acc `95.419921875` (log 119s fresh) |
+| ⏱ Updated (Europe/Berlin) | `2026-09-24T05:02 CEST` |
+| 🏃 Live benchmark | `baseline_rerun_autorestart1` — **epoch 63/200** · loss `3.0740997791290283` · top1 acc `95.19205474853516` (log 102s fresh) |
 | 🧠 Model (last turn) | `mimo-v2.6-flash-free` (watchdog rotates to free models on quota) |
-| 📌 Agent note · **3 min old** | Baseline training epoch ~109/200 (~2.4 min/epoch, ETA ~22:35 UTC unless early-stop); next: baseline eval (run_eval.sh) → issue #2 small-dataset test → v1.1.0 fix run
+| 📌 Agent note · **5 min old** | Baseline training epoch ~109/200 (~2.4 min/epoch, ETA ~22:35 UTC unless early-stop); next: baseline eval (run_eval.sh) → issue #2 small-dataset test → v1.1.0 fix run
 2026-09-23 20:33:11 UTC - heartbeat
 2026-09-23 20:43:58 UTC - heartbeat
 2026-09-23 20:56:28 UTC - heartbeat
@@ -83,9 +83,9 @@
 2026-09-24 02:35:57 UTC - heartbeat
 2026-09-24 02:46:15 UTC - heartbeat
 2026-09-24 02:56:42 UTC - heartbeat |
-| ⚙️ Load · uptime | `32.06 31.60 31.62` · 13 hours, 24 minutes — 32 cores, 62 GiB, no GPU |
-| 💾 RAM used/total | `7931/64295 MB` |
+| ⚙️ Load · uptime | `31.46 31.36 31.52` · 13 hours, 26 minutes — 32 cores, 62 GiB, no GPU |
+| 💾 RAM used/total | `6613/64295 MB` |
 | 🔗 Session | `ses_f31799c77ffeTq9gcYgqc4hBhg` |
-| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `b231204 status: yes — baseline_rerun_autorestart1 epoch 61/200 loss 3.08929491` |
+| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `6b5e2a6 status: yes — baseline_rerun_autorestart1 epoch 62/200 loss 3.09631609` |
 | 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `1464370 B` — every run, command & tool result |
 | 📈 Timeline | [status/status.log](status/status.log) |
