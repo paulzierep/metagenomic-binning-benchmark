@@ -35125,3 +35125,51 @@ d8feee0 log: append per-turn agent activity entries for issue #14 triage and REA
 All commits pushed. Now I need to add the "25 bins → 60 bins" correction on issue #2 as specified in the Next Move plan. Let me check the current #2 comment state and add the correction:
 [0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && gh api repos/paulzierep/metagenomic-binning-benchmark/issues/2/comments --jq '.[].id + ": " + .body.substring(0, 200)' | head -10
 unexpected token "("
+> build · nemotron-3.5-lightning-free
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && gh api repos/paulzierep/metagenomic-binning-benchmark/issues/2/comments --jq '.[].id as $i | "\($i): \(.body[:200])"' 2>/dev/null | head -10
+{"exit":0,"truncated":false,"output":"","status":"completed"}
+> build · nemotron-3.5-lightning-free
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && gh api repos/paulzierep/metagenomic-binning-benchmark/issues/2/comments --jq '.[].id' 2>&1
+5799864662
+5799893091
+5800998494
+5801330301
+5804726129
+5804726689
+5804727277
+5805494130
+5805590716
+5810737932
+5811158490
+> build · nemotron-3.5-lightning-free
+Now I'll add the correction comment on #2 noting the baseline produced 60 bins (not 25):
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && gh issue comment 2 -R paulzierep/metagenomic-binning-benchmark --body "Correction: the baseline rerun (`baseline_rerun_autorestart1`) produced **60 bins**, not 25. The earlier reference to '25 bins' in comment 5810737930 reflected an intermediate count; the final evaluation with CheckM2/CheckM confirmed 60 bins with mean completeness 25.01% and contamination 2.98% (CheckM v1: 21.23% / 3.40%)."
+/bin/bash: line 1: baseline_rerun_autorestart1: command not found
+https://github.com/paulzierep/metagenomic-binning-benchmark/issues/2#issuecomment-5812016757
+> build · nemotron-3.5-lightning-free
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && cat > /tmp/issue2_correction.md <<'EOF'
+Correction: the baseline rerun (`baseline_rerun_autorestart1`) produced **60 bins**, not 25. The earlier reference to '25 bins' in comment 5810737932 reflected an intermediate count; the final evaluation with CheckM2/CheckM confirmed 60 bins with mean completeness 25.01% and contamination 2.98% (CheckM v1: 21.23% / 3.40% via py3.10 + LD_LIBRARY_PATH workaround).
+EOF
+gh issue comment 2 -R paulzierep/metagenomic-binning-benchmark --body-file /tmp/issue2_correction.md
+https://github.com/paulzierep/metagenomic-binning-benchmark/issues/2#issuecomment-5812019747
+> build · nemotron-3.5-lightning-free
+Comment posted successfully. Now final wrap-up:
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && python3 -c "
+with open('status/agent-activity.log','r',encoding='utf-8') as f:
+    lines = f.readlines()
+print('Last 3 lines of agent-activity.log:')
+for line in lines[-3:]:
+    print(line.strip())
+" && echo "---" && cat /vol/data/benchmark/.activity | tail -3 && echo "---" && date -u +%FT%TZ; test -f /vol/data/benchmark/.heartbeat && echo ".heartbeat exists" || echo "NO heartbeat"
+Last 3 lines of agent-activity.log:
+2026-09-24T09:35:29Z progress+readme: replaced stale CURRENT marker, recorded verified CheckM v1 means (21.23/3.40) in README run-history row + PROGRESS COMPLETE entry, mirrored PROGRESS.md
+2026-09-24T09:36:37Z issue-13: replied with README reporting fix (7a80d7e); medium_v11 run active -> eval gated on completion
+2026-09-24T09:59:22Z wrapup: #14 comment posted, README banner OK, PROGRESS/mirror checked, medium run active epoch 170/200
+---
+2026-09-24T09:35:29Z readme-progress-checkm1-fix
+2026-09-24T09:36:37Z issue-13-reply-push-7a80d7e
+2026-09-24T09:59:22Z wrapup
+---
+2026-09-24T10:03:06Z
+.heartbeat exists
+> build · nemotron-3.5-lightning-free
