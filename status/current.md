@@ -3,10 +3,10 @@
 | | |
 |---|---|
 | Status | 🟢 `running` |
-| ⏱ Updated (Europe/Berlin) | `2026-09-24T11:10 CEST` |
-| 🏃 Last benchmark (not active) | `small_test_v4` — last observed **epoch 29/30** (log 1219s old) |
+| ⏱ Updated (Europe/Berlin) | `2026-09-24T11:12 CEST` |
+| 🏃 Last benchmark (not active) | `small_test_v4` — last observed **epoch 29/30** (log 1339s old) |
 | 🧠 Model (last turn) | `mimo-v2.6-flash-free` (watchdog rotates to free models on quota) |
-| 📌 Agent note · **2 min old** | Baseline training epoch ~109/200 (~2.4 min/epoch, ETA ~22:35 UTC unless early-stop); next: baseline eval (run_eval.sh) → issue #2 small-dataset test → v1.1.0 fix run
+| 📌 Agent note · **1 min old** | Baseline training epoch ~109/200 (~2.4 min/epoch, ETA ~22:35 UTC unless early-stop); next: baseline eval (run_eval.sh) → issue #2 small-dataset test → v1.1.0 fix run
 2026-09-23 20:33:11 UTC - heartbeat
 2026-09-23 20:43:58 UTC - heartbeat
 2026-09-23 20:56:28 UTC - heartbeat
@@ -246,10 +246,11 @@
 2026-09-24T08:39:35Z - baseline rerun complete + eval; github issues #2 and #8 commented; PROGRESS.md update pending
 2026-09-24T08:49:28Z verify-eval-consolidate
 2026-09-24T09:06:59Z eval-rerun-baseline-start
-2026-09-24T09:07:17Z eval-rerun-refused-bins-check |
-| ⚙️ Load · uptime | `0.03 0.30 1.63` · 19 hours, 34 minutes — 32 cores, 62 GiB, no GPU |
-| 💾 RAM used/total | `1964/64295 MB` |
+2026-09-24T09:07:17Z eval-rerun-refused-bins-check
+2026-09-24T09:10:11Z checkm-v1-baseline-retry |
+| ⚙️ Load · uptime | `1.51 0.92 1.70` · 19 hours, 36 minutes — 32 cores, 62 GiB, no GPU |
+| 💾 RAM used/total | `37635/64295 MB` |
 | 🔗 Session | `ses_f31799c77ffeTq9gcYgqc4hBhg` |
-| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `f7b0594 status: yes — small_test_v4 epoch 29/30 loss 5.521730899810791 acc 2.8` |
-| 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `2687344 B` — every run, command & tool result |
+| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `63e6224 status: yes — small_test_v4 epoch 29/30 loss 5.521730899810791 acc 2.8` |
+| 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `2697462 B` — every run, command & tool result |
 | 📈 Timeline | [status/status.log](status/status.log) |
