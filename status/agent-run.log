@@ -19318,3 +19318,135 @@ cd /vol/data/repos/COMEBin-v11 && git status -sb | head -5 && git log --oneline 
 1b476a4 Clarify PyTorch installation options
 fd7ff06 Update Bioconda CUDA installation example
 > build · mimo-v2.6-flash-free
+Full picture assembled. The sibling's last activity (01:10Z) is baseline monitoring only — no one has reported the **small_test_v2 KeyError root cause** on issue #2 yet. Posting the non-duplicative triage comment now:
+[0m$ [0mRUN=/vol/data/benchmark/runs/baseline_rerun_autorestart1
+EP=$(grep -c '^DEBUG:root:Epoch' "$RUN/comebin_out/comebin_res/training.log" 2>/dev/null)
+cat > /tmp/issue2-comment.md <<EOF
+## Small test v2 (post-fix run) — next blocker root-caused
+
+Status after the IndexError fix (\`904f649\`): \`small_test_v2\` got through data augmentation and into training, then failed (exit 1, 43 s) with:
+
+\`\`\`
+train_CLmodel.py", line 46, in <module> ... lengths[seq_id]
+KeyError: 'BATS_SAMN07137077_METAG-scaffold_22978'
+\`\`\`
+
+**Root cause (verified on disk):** \`aug0_datacoverage_mean.tsv\` in the run has **29,434 rows — every reference in the BAM header** — while the small run's input/augmented fasta has only **300 contigs**. \`namelist\` is read from that tsv (\`get_augfeature.py:29\`), but \`lengths = get_length(.../aug0/sequences_aug0.fasta)\` covers only the 300, so any BAM-only contig KeyErrors.
+
+**Why the \`47c1449\` skip-fix didn't prevent it:** it filters \`calculate_coverage_samplebyindex\` (the aug1..N path), but the **aug0** coverage matrix is built by \`calculate_coverage\` via \`gen_cov_from_bedout\`, which walks the full bedtools genomecov output (all BAM references) and has no membership check against the input contig set.
+
+**Related silent issue:** even where the crash is avoided, \`namelist\` (29,434) vs k-mer rows (300) means 29,134 \`compositMat\` rows are duplicates of row 0 after the \`np.zeros\` fix — so the contig-set filter must happen at the producer, not just crash-avoidance at the consumer.
+
+**Plan (fix batch 2, branch \`comebin-optimizations-v11\`, one commit):** filter the aug0 coverage output to the input/augmented contig set (producer) + a defensive \`namelist ∩ lengths\` filter in \`get_kmer_coverage\`/\`train_CLmodel\` (consumer). Per docs/08 the validation is an end-to-end run on the small dataset — queued behind the active baseline rerun (\`runs/baseline_rerun_autorestart1\`, started 00:30 UTC, currently epoch ${EP}/200), since no timed run may overlap a registered run.
+EOF
+gh issue comment 2 -R paulzierep/metagenomic-binning-benchmark --body-file /tmp/issue2-comment.md
+date -u +"%Y-%m-%d %H:%M:%S UTC - issues: #2 replied with small_test_v2 KeyError root cause (aug0 cov tsv = all BAM refs) + batch-2 plan" >> /vol/data/repos/metagenomic-binning-benchmark/status/agent-activity.log
+date -u +"%Y-%m-%d %H:%M:%S UTC - issue #2 root-cause comment posted" >> /vol/data/benchmark/.activity
+touch /vol/data/benchmark/.heartbeat
+https://github.com/paulzierep/metagenomic-binning-benchmark/issues/2#issuecomment-5805494130
+> build · mimo-v2.6-flash-free
+Comment posted (`#issuecomment-5805494130`). Now implementing fix batch 2 on the v11 branch — first checking what v1.1.0's sources look like:
+[0m$ [0mcd /vol/data/repos/COMEBin-v11
+git show HEAD:COMEBin/data_aug/gen_cov.py | sed -n '1,40p'
+from dataclasses import dataclass
+from itertools import groupby
+import multiprocessing
+import os
+from pathlib import Path
+import subprocess
+import tempfile
+
+import numpy as np
+
+from feature_bundle import FEATURE_SCHEMA_VERSION, load_augmentation_bundle
+from feature_bundle import publish_ids_atomic, publish_json_atomic
+
+
+@dataclass(frozen=True)
+class CoverageContext:
+    contig_names: tuple
+    contig_index: dict
+    contig_lengths: np.ndarray
+    starts: np.ndarray
+    ends: np.ndarray
+
+
+_COVERAGE_CONTEXT = None
+
+
+def _build_coverage_context(out_path, n_views, contig_len):
+    bundle = load_augmentation_bundle(out_path, n_views=n_views)
+    if np.any(bundle.contig_lengths <= contig_len):
+        raise ValueError(
+            f'At least one retained contig is not longer than {contig_len}.')
+    contig_index = {
+        name: index for index, name in enumerate(bundle.contig_ids)
+    }
+    return CoverageContext(
+        bundle.contig_ids, contig_index, bundle.contig_lengths,
+        bundle.augmentation_intervals[:, :, 0],
+        bundle.augmentation_intervals[:, :, 1])
+[0m$ [0mcd /vol/data/repos/COMEBin-v11
+git show HEAD:COMEBin/data_aug/gen_cov.py | grep -n "def calculate_coverage\|def gen_cov_from_bedout\|not in aug_seq_info_dict\|contig_name not in\|aug0_datacoverage_mean\|calculate_coverage," | head -20
+echo "=== get_augfeature namelist+idx ==="
+git show HEAD:COMEBin/get_augfeature.py | sed -n '28,45p'
+echo "=== train lengths loop ==="
+git show HEAD:COMEBin/train_CLmodel.py | sed -n '40,50p'
+=== get_augfeature namelist+idx ===
+        raise ValueError(
+            f'{label} has an invalid normalization denominator: {denominator}.')
+    if denominator == 0:
+        logger.warning(
+            '%s is constant; its normalized values are set to zero.', label)
+        values.fill(0.0)
+    else:
+        values -= offset
+        values /= denominator
+
+
+def get_kmer_coverage(
+        data_path, n_views=2, cov_meannormalize=False,
+        cov_minmaxnormalize=False, cov_standardization=False, addvars=False,
+        vars_sqrt=False, logger=None):
+    logger = logger or logging.getLogger('COMEBin')
+    data_path = Path(data_path).expanduser().resolve()
+    bundle = load_binary_feature_bundle(data_path, n_views=n_views)
+=== train lengths loop ===
+            f"{cuda_environment}.") from error
+    if not cuda_available:
+        raise RuntimeError(
+            "CUDA training was requested, but CUDA is unavailable; "
+            f"{cuda_environment}, visible_devices={visible_devices}.")
+
+    requested_device = torch.device(requested)
+    try:
+        device_index = torch.cuda.current_device() if requested_device.index is None else requested_device.index
+    except Exception as error:
+        raise RuntimeError(
+> build · mimo-v2.6-flash-free
+v1.1.0 is a major rewrite (binary feature-bundle architecture) — the bug I root-caused may not exist there in the same form. Checking the v11 branch's actual namelist/lengths logic before writing any fix:
+[0m$ [0mcd /vol/data/repos/COMEBin-v11
+grep -n "seq_id\|KeyError\|contig_ids" COMEBin/train_CLmodel.py | head -15
+echo "=== who writes aug0_datacoverage_mean in v1.1.0 ==="
+grep -rn "datacoverage_mean" COMEBin/*.py COMEBin/data_aug/*.py run_comebin.sh 2>/dev/null | head
+=== who writes aug0_datacoverage_mean in v1.1.0 ===
+[0m$ [0mcd /vol/data/repos/COMEBin-v11
+grep -n "get_length\|lengths\[" COMEBin/train_CLmodel.py | head
+echo "=== namelist source in v1.1.0 ==="
+grep -rn "datacoverage_mean\|namelist" COMEBin/get_augfeature.py COMEBin/feature_bundle.py 2>/dev/null | head -15
+echo "=== feature_bundle ids ==="
+grep -n "contig_ids\|def load_binary_feature_bundle\|def load_augmentation_bundle" COMEBin/feature_bundle.py | head -15
+=== namelist source in v1.1.0 ===
+=== feature_bundle ids ===
+17:    contig_ids: tuple
+40:    def contig_ids(self):
+41:        return self.augmentation.contig_ids
+145:def load_augmentation_bundle(data_path, n_views=None):
+167:    expected_identifiers = {'file': 'contig_ids.txt', 'rows': contig_count}
+182:    contig_ids = read_ids(data_path / 'contig_ids.txt', 'Contig')
+183:    if len(contig_ids) != contig_count:
+185:            f'Contig identifier count mismatch: file={len(contig_ids)}, manifest={contig_count}.')
+207:        data_path, manifest, contig_ids, contig_lengths, intervals, kmer_counts)
+210:def load_binary_feature_bundle(data_path, n_views=None):
+214:    contig_count = len(augmentation.contig_ids)
+> build · mimo-v2.6-flash-free

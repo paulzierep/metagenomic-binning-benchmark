@@ -3,10 +3,10 @@
 | | |
 |---|---|
 | Status | 🟢 `running` |
-| ⏱ Updated (Europe/Berlin) | `2026-09-24T02:54 CEST` |
-| 🏃 Live benchmark | `baseline_rerun_autorestart1` — **epoch 6/200** · loss `4.049522399902344` · top1 acc `71.54947662353516` (log 53s fresh) |
+| ⏱ Updated (Europe/Berlin) | `2026-09-24T02:56 CEST` |
+| 🏃 Live benchmark | `baseline_rerun_autorestart1` — **epoch 7/200** · loss `3.944610118865967` · top1 acc `74.20572662353516` (log 39s fresh) |
 | 🧠 Model (last turn) | `mimo-v2.6-flash-free` (watchdog rotates to free models on quota) |
-| 📌 Agent note · **3 min old** | Baseline training epoch ~109/200 (~2.4 min/epoch, ETA ~22:35 UTC unless early-stop); next: baseline eval (run_eval.sh) → issue #2 small-dataset test → v1.1.0 fix run
+| 📌 Agent note · **1 min old** | Baseline training epoch ~109/200 (~2.4 min/epoch, ETA ~22:35 UTC unless early-stop); next: baseline eval (run_eval.sh) → issue #2 small-dataset test → v1.1.0 fix run
 2026-09-23 20:33:11 UTC - heartbeat
 2026-09-23 20:43:58 UTC - heartbeat
 2026-09-23 20:56:28 UTC - heartbeat
@@ -59,10 +59,11 @@
 2026-09-24 00:15:09 UTC
 2026-09-24 00:26:39 UTC
 2026-09-24 00:29:27 UTC
-2026-09-24 00:50:45 UTC - triage: investigating small_test_v2 KeyError root cause for issue #2 |
-| ⚙️ Load · uptime | `32.13 31.02 21.96` · 11 hours, 18 minutes — 32 cores, 62 GiB, no GPU |
-| 💾 RAM used/total | `8940/64295 MB` |
+2026-09-24 00:50:45 UTC - triage: investigating small_test_v2 KeyError root cause for issue #2
+2026-09-24 00:54:48 UTC - issue #2 root-cause comment posted |
+| ⚙️ Load · uptime | `31.70 31.00 23.00` · 11 hours, 20 minutes — 32 cores, 62 GiB, no GPU |
+| 💾 RAM used/total | `5936/64295 MB` |
 | 🔗 Session | `ses_f31799c77ffeTq9gcYgqc4hBhg` |
-| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `3b063bd meta: supervise tick 2026-09-24T00:53:01Z — 0 fix(es)` |
-| 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `1352398 B` — every run, command & tool result |
+| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `a2022eb status: yes — baseline_rerun_autorestart1 epoch 6/200 loss 4.049522399` |
+| 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `1359964 B` — every run, command & tool result |
 | 📈 Timeline | [status/status.log](status/status.log) |
