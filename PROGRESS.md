@@ -328,7 +328,12 @@ included; fixes land on branch `comebin-optimizations` in this repo.
       **`EPOCHS`** env, default 30, recorded in `run_meta.txt`, passed only when
       the CLI supports `-E`; benchmark runs keep the full 200 epochs. Comment:
       `#issuecomment-5807975873`.
-- [x] **← COMPLETE: baseline rerun + eval** (2026-09-24) — registered watchdog run `baseline_rerun_autorestart1`, exit_code: 0, wall_s: 24327 (~6.75h), 200/200 epochs, 99.19% Top1 accuracy. Evaluation: CheckM2 60 bins, 25.01% mean completeness, 2.98% mean contamination (65s); CheckM v1 lineage_wf rc=0 (multiprocessing warnings). Fixes applied: hmmer 3.1b2 (replaced 3.4, resolves `--cut_tc` on TC-less bacar_marker.hmm), sklearn KMeans `n_jobs=-1` removed (358ddd8), `run_comebin_baseline.sh` BENCHMARK_RESUME (8bb73dd). Commit `904f649`. See `runs/baseline_rerun_autorestart1/eval/checkm2/quality_report.tsv`. → push
+- [x] **← COMPLETE: baseline rerun + eval** (2026-09-24) — registered watchdog run `baseline_rerun_autorestart1`, exit_code: 0, wall_s: 24327 (~6.75h), 200/200 epochs, 99.19% Top1 accuracy. Evaluation: CheckM2 60 bins, 25.01% mean completeness, 2.98% mean contamination (65s); CheckM v1: 60 bins, 21.23% mean completeness, 3.40% mean contamination (rerun in
+      the COMEBin env py3.10 + `LD_LIBRARY_PATH` workaround after the standalone
+      checkm env errored: `Models must be parsed before identifying HMM hits`).
+      Fixes applied: hmmer 3.1b2 (replaced 3.4, resolves `--cut_tc` on TC-less bacar_marker.hmm), sklearn KMeans `n_jobs=-1` removed (358ddd8), `run_comebin_baseline.sh` BENCHMARK_RESUME (8bb73dd). Commit `904f649`. Evidence: `runs/baseline_rerun_autorestart1/eval/checkm2/quality_report.tsv`
+      and `runs/baseline_rerun_autorestart1/eval/checkm/out/storage/bin_stats_ext.tsv`;
+      parsed row in `results/baseline_rerun_autorestart1.csv` (60 bins). Pushed.
 - [x] **Small end-to-end gate** — `small_test_v4` completed via
       `scripts/run_small_test.sh` with 3 non-empty bins; CheckM2 and CheckM v1
       outputs are verified and mirrored in the repository.
