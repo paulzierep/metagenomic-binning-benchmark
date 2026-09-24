@@ -33700,3 +33700,23 @@ issue_10_state=CLOSED
 2026-09-24T05:02:39+00:00 [issue-closer] closed #10 (Try less epoches): EPOCHS passthrough is committed/pushed in COMEBin a0be243; the installed small-test runner defaults to 30, honors custom/legacy CLIs, and releases the launch lock promptly. 
 2026-09-24T05:02:41+00:00 [issue-closer] RESULT closed=1 (no failures)
 > build · space-bunny-free
+[0m$ [0mset -euo pipefail
+META_WATCHDOG_NO_LLM=1 META_WATCHDOG_LOCK=/tmp/meta-supervisor-verify-2.lock timeout 180s bash /vol/data/benchmark/bin/meta-watchdog.sh
+cat /vol/data/benchmark/meta/checks.tsv
+if grep -Eq $'\t(broken|degraded)\t' /vol/data/benchmark/meta/checks.tsv; then
+  echo 'meta verification found unresolved checks' >&2
+  exit 1
+fi
+printf 'meta-watchdog no-LLM verification: all checks healthy\n'
+C1_cron	ok	4 exact jobs; cron active; installed/source scripts identical + executable
+C2_service	ok	pid 5551; service status + /api/info healthy
+C3_agent	ok	run_alive=0 driver=1 hb=37s transcript=30s
+C4_ratelimit	ok	failed-launch markers=0 in 360min window
+C5_github	ok	HEAD=remote after concurrent publisher; worktree edits=0
+C6_benchmark	ok	pid 267462 mode=baseline alive, log -1s fresh
+C7_disk	ok	379 GiB free
+C8_issues	ok	4 open, none new
+C8b_issue_close	ok	no issues marked addressed
+C9_repo_publish	ok	meta artifacts committed and HEAD=remote main
+meta-watchdog no-LLM verification: all checks healthy
+> build · space-bunny-free
