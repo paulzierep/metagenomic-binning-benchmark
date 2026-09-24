@@ -3,10 +3,10 @@
 | | |
 |---|---|
 | Status | 🟢 `running` |
-| ⏱ Updated (Europe/Berlin) | `2026-09-24T11:36 CEST` |
-| 🏃 Live benchmark | `medium_v11_20260924` — **epoch 49/200** · loss `5.387827396392822` · top1 acc `16.796875` (log 0s fresh) |
+| ⏱ Updated (Europe/Berlin) | `2026-09-24T11:38 CEST` |
+| 🏃 Live benchmark | `medium_v11_20260924` — **epoch 60/200** · loss `5.204677104949951` · top1 acc `21.34765625` (log 0s fresh) |
 | 🧠 Model (last turn) | `mimo-v2.6-flash-free` (watchdog rotates to free models on quota) |
-| 📌 Agent note · **0 min old** | Baseline training epoch ~109/200 (~2.4 min/epoch, ETA ~22:35 UTC unless early-stop); next: baseline eval (run_eval.sh) → issue #2 small-dataset test → v1.1.0 fix run
+| 📌 Agent note · **1 min old** | Baseline training epoch ~109/200 (~2.4 min/epoch, ETA ~22:35 UTC unless early-stop); next: baseline eval (run_eval.sh) → issue #2 small-dataset test → v1.1.0 fix run
 2026-09-23 20:33:11 UTC - heartbeat
 2026-09-23 20:43:58 UTC - heartbeat
 2026-09-23 20:56:28 UTC - heartbeat
@@ -253,10 +253,11 @@
 2026-09-24T09:25:50Z medium-run: launched detached v1.1.0 3000-contig benchmark (712004, /vol/data/benchmark/runs/medium_v11_20260924)
 2026-09-24T09:25:52Z checkm-v1-baseline-done
 2026-09-24T09:33:26Z triage-new-issues-12-13
-2026-09-24T09:35:29Z readme-progress-checkm1-fix |
-| ⚙️ Load · uptime | `31.65 26.04 15.07` · 20 hours, 0 minutes — 32 cores, 62 GiB, no GPU |
-| 💾 RAM used/total | `3992/64295 MB` |
+2026-09-24T09:35:29Z readme-progress-checkm1-fix
+2026-09-24T09:36:37Z issue-13-reply-push-7a80d7e |
+| ⚙️ Load · uptime | `30.27 27.63 17.00` · 20 hours, 2 minutes — 32 cores, 62 GiB, no GPU |
+| 💾 RAM used/total | `3848/64295 MB` |
 | 🔗 Session | `ses_f31799c77ffeTq9gcYgqc4hBhg` |
-| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `7a80d7e report: show parsed CheckM v1 means in README, drop stale CURRENT marker` |
-| 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `2836554 B` — every run, command & tool result |
+| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `12335be status: yes — medium_v11_20260924 epoch 49/200 loss 5.387827396392822 ` |
+| 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `2845769 B` — every run, command & tool result |
 | 📈 Timeline | [status/status.log](status/status.log) |
