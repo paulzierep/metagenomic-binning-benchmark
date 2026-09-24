@@ -3,10 +3,10 @@
 | | |
 |---|---|
 | Status | 🟢 `running` |
-| ⏱ Updated (Europe/Berlin) | `2026-09-24T12:04 CEST` |
-| 🏃 Live benchmark | `medium_v11_20260924` — **epoch 199/200** · loss `4.206282138824463` · top1 acc `61.23372268676758` (log 49s fresh) |
+| ⏱ Updated (Europe/Berlin) | `2026-09-24T12:06 CEST` |
+| 🏃 Last benchmark (not active) | `medium_v11_20260924` — last observed **epoch 199/200** (log 169s old) |
 | 🧠 Model (last turn) | `nemotron-3.5-lightning-free` (watchdog rotates to free models on quota) |
-| 📌 Agent note · **4 min old** | Baseline training epoch ~109/200 (~2.4 min/epoch, ETA ~22:35 UTC unless early-stop); next: baseline eval (run_eval.sh) → issue #2 small-dataset test → v1.1.0 fix run
+| 📌 Agent note · **6 min old** | Baseline training epoch ~109/200 (~2.4 min/epoch, ETA ~22:35 UTC unless early-stop); next: baseline eval (run_eval.sh) → issue #2 small-dataset test → v1.1.0 fix run
 2026-09-23 20:33:11 UTC - heartbeat
 2026-09-23 20:43:58 UTC - heartbeat
 2026-09-23 20:56:28 UTC - heartbeat
@@ -256,9 +256,9 @@
 2026-09-24T09:35:29Z readme-progress-checkm1-fix
 2026-09-24T09:36:37Z issue-13-reply-push-7a80d7e
 2026-09-24T09:59:22Z wrapup |
-| ⚙️ Load · uptime | `15.10 26.15 26.67` · 20 hours, 28 minutes — 32 cores, 62 GiB, no GPU |
-| 💾 RAM used/total | `2741/64295 MB` |
+| ⚙️ Load · uptime | `11.94 20.40 24.45` · 20 hours, 30 minutes — 32 cores, 62 GiB, no GPU |
+| 💾 RAM used/total | `2934/64295 MB` |
 | 🔗 Session | `ses_f31799c77ffeTq9gcYgqc4hBhg` |
-| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `c1c48b8 meta: supervise tick 2026-09-24T10:03:01Z — 0 fix(es)` |
-| 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `2952176 B` — every run, command & tool result |
+| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `af8c8d7 status: yes — medium_v11_20260924 epoch 199/200 loss 4.206282138824463` |
+| 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `2953516 B` — every run, command & tool result |
 | 📈 Timeline | [status/status.log](status/status.log) |
