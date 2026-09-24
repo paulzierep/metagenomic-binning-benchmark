@@ -3,10 +3,10 @@
 | | |
 |---|---|
 | Status | 🟢 `running` |
-| ⏱ Updated (Europe/Berlin) | `2026-09-24T10:10 CEST` |
-| 🏃 Last benchmark (not active) | `baseline_rerun_autorestart1` — last observed **epoch 176/200** (log 3286s old) |
+| ⏱ Updated (Europe/Berlin) | `2026-09-24T10:12 CEST` |
+| 🏃 Last benchmark (not active) | `baseline_rerun_autorestart1` — last observed **epoch 176/200** (log 3406s old) |
 | 🧠 Model (last turn) | `mimo-v2.6-flash-free` (watchdog rotates to free models on quota) |
-| 📌 Agent note · **30 min old** | Baseline training epoch ~109/200 (~2.4 min/epoch, ETA ~22:35 UTC unless early-stop); next: baseline eval (run_eval.sh) → issue #2 small-dataset test → v1.1.0 fix run
+| 📌 Agent note · **32 min old** | Baseline training epoch ~109/200 (~2.4 min/epoch, ETA ~22:35 UTC unless early-stop); next: baseline eval (run_eval.sh) → issue #2 small-dataset test → v1.1.0 fix run
 2026-09-23 20:33:11 UTC - heartbeat
 2026-09-23 20:43:58 UTC - heartbeat
 2026-09-23 20:56:28 UTC - heartbeat
@@ -241,9 +241,9 @@
 2026-09-24 07:14:23 UTC - heartbeat
 2026-09-24 07:15:09 UTC - heartbeat
 2026-09-24T07:39:23Z [agent] root cause: hmmsearch 3.4 vs pinned 3.1b2; 3.1b2 yields 2227 marker hits on TC-less bacar_marker.hmm |
-| ⚙️ Load · uptime | `0.10 0.12 1.02` · 18 hours, 34 minutes — 32 cores, 62 GiB, no GPU |
-| 💾 RAM used/total | `1917/64295 MB` |
+| ⚙️ Load · uptime | `0.07 0.11 0.91` · 18 hours, 36 minutes — 32 cores, 62 GiB, no GPU |
+| 💾 RAM used/total | `1934/64295 MB` |
 | 🔗 Session | `ses_f31799c77ffeTq9gcYgqc4hBhg` |
-| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `fa4adfe status: yes — baseline_rerun_autorestart1 epoch 176/200 loss 2.8607368` |
-| 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `2161861 B` — every run, command & tool result |
+| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `4261872 status: yes — baseline_rerun_autorestart1 epoch 176/200 loss 2.8607368` |
+| 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `2168339 B` — every run, command & tool result |
 | 📈 Timeline | [status/status.log](status/status.log) |

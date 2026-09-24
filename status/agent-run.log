@@ -28896,3 +28896,93 @@ no .active_run
  480981       00:00 /bin/bash -c DS=/vol/data/datasets/comebin_test_data echo "=== stale seed/hmmout artifacts in dataset dir ===" ls -la "$DS"/*.seed "$DS"/*hmmout* "$DS"/*hmmerr* 2>/dev/null || echo "(none matching)" echo "=== copies of run_comebin_baseline.sh on /vol/data ===" find /vol/data -name "run_comebin_baseline.sh" -not -path "*/.git/*" 2>/dev/null echo "=== active run / processes ===" cat /vol/data/benchmark/.active_run 2>/dev/null || echo "no .active_run" ps -eo pid,etime,args | grep -E '[m]ain.py|[r]un_comebin|[c]heckm' | head -5 || echo "no bench procs" date -u +"now: %Y-%m-%d %H:%M UTC"
 now: 2026-09-24 08:06 UTC
 > build · mimo-v2.6-flash-free
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark
+echo "=== make_results_csv.py fields ==="
+grep -n "run_meta\|exit_code\|wall\|ram\|rss\|bins" scripts/make_results_csv.py | head -20
+echo "=== README perf table header + run history header ==="
+grep -n -A3 "^| *tool\|^| *Tool\|^| *Run\|^| *tool " README.md | head -20
+grep -n "Run history" README.md
+echo "=== resources.tsv reference in README ==="
+grep -n "resources.tsv\|peak\|RAM" README.md | head
+=== make_results_csv.py fields ===
+4:#   run,source_commit,dataset,threads,total_time_s,n_bins,
+8:# Reads meta from <rundir>/run_meta.txt, per-bin scores from
+16:meta = os.path.join(run, "run_meta.txt")
+28:t_total = meta_val("wall_s")
+29:n_bins = meta_val("bins").split()[0] if meta_val("bins") else ""
+68:header = ["run", "source_commit", "dataset", "threads", "total_time_s", "n_bins",
+71:row = [name, commit, dataset, threads, t_total, n_bins, *c2, *c1]
+=== README perf table header + run history header ===
+47:| Run | Date | Source commit | Dataset | Threads | Wall time | Peak RAM | Bins | CheckM2 comp/cont % | CheckM comp/cont % | Status |
+48-|---|---|---|---|---|---|---|---|---|---|---|
+49-| `baseline_unmodified` | 2026-09-23 | [987db95](https://github.com/paulzierep/COMEBin/commit/987db95d8d399f30b7c82a5f5f40ed6bfdc906c7) (upstream) | COMEBin demo (29,434 contigs) | 32 | – | – | – | – | – | ⏹ failed at epoch 175/200 — see [Run history](#run-history--what-happened-and-whats-next) |
+50-
+--
+70:| Run / time (UTC) | Source | Result and cause | Next step |
+71-|---|---|---|---|
+72-| [`baseline_unmodified`](runs/baseline_unmodified/comebin_run.log) — 2026-09-23 14:36:06 → 21:30:28; watchdog classified 21:42:31 | [987db95](https://github.com/paulzierep/COMEBin/commit/987db95d8d399f30b7c82a5f5f40ed6bfdc906c7) upstream | **Failed after epoch 175/200; no bins or evaluation.** `test_getmarker_2quarter.pl` produced no `.seed`, then `cluster.py:368` unconditionally read it and raised `FileNotFoundError`; `get_result` then hit `ModuleNotFoundError: biolib`. | `biolib` import is now verified. [`586c7f7`](https://github.com/paulzierep/COMEBin/commit/586c7f72226171870615138687404767662c1225) hardens the later `gen_seed_idx` call but does not fix the observed line-368 read; fix and verify that read on a future clean run before claiming clustering success. |
+73-| [`small_test` — attempt 1](status/agent-run.log) — 2026-09-23 22:39:28 → 22:39:45 (17 s) | [586c7f7](https://github.com/paulzierep/COMEBin/commit/586c7f72226171870615138687404767662c1225) | **Failed during augmentation, exit 1.** `gen_cov.py` raised `KeyError: scaffold_22978`, a BAM-header reference absent from the 300-contig assembly. It failed before clustering, so it did not validate the seed change. | Commit the contig filter in [`47c1449`](https://github.com/paulzierep/COMEBin/commit/47c1449e874c366defe4470f1d43abf91fb8117c), then rerun under a fresh name. |
+49:| `baseline_unmodified` | 2026-09-23 | [987db95](https://github.com/paulzierep/COMEBin/commit/987db95d8d399f30b7c82a5f5f40ed6bfdc906c7) (upstream) | COMEBin demo (29,434 contigs) | 32 | – | – | – | – | – | ⏹ failed at epoch 175/200 — see [Run history](#run-history--what-happened-and-whats-next) |
+58:## Run history — what happened and what's next
+=== resources.tsv reference in README ===
+47:| Run | Date | Source commit | Dataset | Threads | Wall time | Peak RAM | Bins | CheckM2 comp/cont % | CheckM comp/cont % | Status |
+107:(timing + RAM + CheckM2/CheckM v1 + CAMI-style F1), committed only if it keeps or
+[0m$ [0mcd /vol/data/repos/COMEBin/COMEBin
+echo "=== main.py bin block (gen_seed call?) ==="
+grep -n -A10 "subcmd == 'bin'" main.py
+echo "=== gen_seed callsites ==="
+grep -rn "gen_seed(" main.py cluster.py utils.py | head
+echo "=== 'Unexpected error' / 'Missing quality table' source ==="
+grep -rn "Unexpected error" . --include="*.py" | head -5
+grep -rn "Missing quality table" . --include="*.py" | head -3
+echo "=== run_get_final_result method iteration ==="
+grep -n -B3 -A25 "def run_get_final_result" get_final_result.py | head -60
+=== main.py bin block (gen_seed call?) ===
+292:    if args.subcmd == 'bin':
+293-        logger.info('bin')
+294-        from utils import gen_seed
+295-
+296-        num_threads = args.num_threads
+297-        _ = gen_seed(logger, args.contig_file, num_threads, args.contig_len, marker_name="bacar_marker", quarter="2quarter")
+298-
+299-        cluster(logger, args)
+300-
+301-
+302-    ## clustering NoContrast
+=== gen_seed callsites ===
+main.py:297:        _ = gen_seed(logger, args.contig_file, num_threads, args.contig_len, marker_name="bacar_marker", quarter="2quarter")
+main.py:363:        seed_num = gen_seed(logger, args.contig_file, num_threads, args.contig_len, marker_name="bacar_marker", quarter="2quarter")
+utils.py:200:def gen_seed(logger, contig_file: str, threads: int, contig_length_threshold: int,
+=== 'Unexpected error' / 'Missing quality table' source ===
+./scripts/unitem_profile.py:210:                self.logger.error('Missing quality table for %s.' % method_id)
+=== run_get_final_result method iteration ===
+196-    return best_method
+197-
+198-
+199:def run_get_final_result(logger, args, seed_num: int, num_threads: int = 40,
+200-                         res_name: Optional[str] = None, ignore_kmeans_res: bool = True):
+201-    """
+202-    Run the final step to get the best clustering result based on estimated bin quality.
+203-
+204-    :param seed_num: The seed number.
+205-    :param num_threads: The number of threads to use (default: 40).
+206-    :param res_name: The name of the result (default: None).
+207-    :param ignore_kmeans_res: Whether to ignore K-means results (default: True).
+208-    """
+209-    logger.info("Seed_num:\t" + str(seed_num))
+210-
+211-    if not (args.bac_mg_table and args.ar_mg_table):
+212-        logger.info("Run unitem profile:\t" + str(seed_num))
+213-        bin_dirs = {}
+214-        if res_name==None:
+215-            res_name = 'weight_seed_kmeans_k_' + str(seed_num) + '_result.tsv'
+216-        bin_dirs[res_name] = (args.output_path + '/cluster_res/' + res_name + '_bins', 'fa')
+217-
+218-        output_dir = args.output_path + '/cluster_res/unitem_profile'
+219-
+220-        if not (os.path.exists(output_dir)):
+221-            make_sure_path_exists(output_dir)
+222-            profile = Profile(num_threads)
+223-            profile.run(bin_dirs,
+224-                        output_dir)
+> build · mimo-v2.6-flash-free
