@@ -19948,3 +19948,76 @@ epoch: 13/200
  M scripts/benchmark-watchdog.sh
  M scripts/make_medium_dataset.sh
 now UTC: 01:07
+> build · mimo-v2.6-flash-free
+**Turn complete.** Summary:
+
+**State verified**: Original baseline terminally failed (175/200 → missing HMM seed/`biolib`); the watchdog-managed **baseline rerun** (`runs/baseline_rerun_autorestart1`, commit `904f649`) is healthy — **epoch 13/200** at 01:07 UTC, ETA ~10:15 UTC worst case.
+
+**Issue triage (no duplicates)**:
+- Issue #2's 23:35 comments already covered the IndexError (fixed by sibling commit `904f649`) — skipped.
+- Posted the **missing root-cause analysis** for the *next* blocker (`small_test_v2` KeyError, comment [`5805494130`](https://github.com/paulzierep/metagenomic-binning-benchmark/issues/2#issuecomment-5805494130)): `bedtools genomecov -bga` emits zero-depth rows for all 29,434 BAM header refs, the aug0 `calculate_coverage` path has no input-contig membership filter (only `calculate_coverage_samplebyindex` got the `47c1449` skip) → 29,434-row cov tsv vs 300-contig fasta → `lengths[seq_id]` KeyError. Supervisor's 01:05 status comment is complementary — no reply needed.
+
+**Investigation outcomes**:
+- Verified reads exist on **exactly** the 300 target contigs; attempted a 300-@SQ header fix — `samtools index` failed (stale record refIDs = needs SAM-text rebuild, not header swap).
+- The concurrent **supervisor agent reverted the dataset** and owns the BAM repair now ("do not treat reheader as verified") — I did **not** race it, restored the original `reads.bam.bai` name, and documented ownership in PROGRESS.
+- Verified **v1.1.0 is structurally immune** (count-validated `contig_ids.txt` + `CoverageContext`); empirical confirmation queued for `runs/small_fix_v11` after the baseline.
+
+**Bookkeeping**: PROGRESS.md updated + repo copy synced, 4 agent-activity lines appended, committed/pushed **`19fe611`** under `/tmp/bench-repo.lock` with only `PROGRESS.md` + `status/agent-activity.log` (supervisor's in-flight script edits left untouched); heartbeats maintained throughout.
+[0m
+> build · mimo-v2.6-flash-free
+[0m→ [0mRead /vol/data/benchmark/PROGRESS.md [90m[offset=262, limit=70][0m
+[0m$ [0mtest -f /vol/data/benchmark/TASK_COMPLETE && echo "TASK_COMPLETE exists - EXIT" || echo "no TASK_COMPLETE"
+RUN=/vol/data/benchmark/runs/baseline_rerun_autorestart1
+ps -eo pid,etime,args | grep -E '[m]ain.py train' | head -1 || echo "no train proc"
+echo "epoch: $(grep -c '^DEBUG:root:Epoch' "$RUN/comebin_out/comebin_res/training.log" 2>/dev/null)/200"
+grep -E 'exit_code' "$RUN/run_meta.txt" 2>/dev/null || echo "no exit_code yet"
+date -u +"now UTC: %Y-%m-%d %H:%M"
+touch /vol/data/benchmark/.heartbeat
+no TASK_COMPLETE
+ 270796       31:30 python main.py train --data /vol/data/benchmark/runs/baseline_rerun_autorestart1/comebin_out/data_augmentation --temperature 0.15 --emb_szs_forcov 2048 --batch_size 1024 --emb_szs 2048 --n_views 6 --add_model_for_coverage --output_path /vol/data/benchmark/runs/baseline_rerun_autorestart1/comebin_out/comebin_res --earlystop --addvars --vars_sqrt --num_threads 32
+epoch: 14/200
+no exit_code yet
+now UTC: 2026-09-24 01:09
+[0m$ [0mgh issue list -R paulzierep/metagenomic-binning-benchmark --state open --json number,title,updatedAt 2>&1 | head -60
+gh issue list -R paulzierep/COMEBin --state open --json number,title,updatedAt 2>&1 | head -40
+[{"number":8,"title":"Add benchmark data to zenodo","updatedAt":"2026-09-23T20:58:44Z"},{"number":6,"title":"Optimization","updatedAt":"2026-09-23T20:56:21Z"},{"number":2,"title":"Can you try to create a small benchmark dataset for comebin ?","updatedAt":"2026-09-24T01:05:04Z"},{"number":1,"title":"Idea inbox: benchmark ideas, COMEBin fixes, dataset requests","updatedAt":"2026-09-23T14:53:13Z"}]
+the 'paulzierep/COMEBin' repository has disabled issues
+> build · mimo-v2.6-flash-free
+[0m$ [0mdate -u +"%Y-%m-%d %H:%M:%S UTC - turn: verified baseline rerun (pid 270796 train / 267462 wrapper), epoch 14/200; issues unchanged since 01:05 comment" >> /vol/data/repos/metagenomic-binning-benchmark/status/agent-activity.log
+date -u +"%Y-%m-%d %H:%M:%S UTC - heartbeat" >> /vol/data/benchmark/.activity
+touch /vol/data/benchmark/.heartbeat
+{"exit":0,"truncated":false,"output":"","status":"completed"}
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark
+git fetch origin -q
+git status -sb | head -6
+git log --oneline -3
+echo "=== PROGRESS sync check ==="
+diff -q PROGRESS.md /vol/data/benchmark/PROGRESS.md && echo "synced" || echo "DIFFER"
+## main...origin/main
+ M status/agent-activity.log
+9f276fb ops: recognize snapshot runners and harden small-data prep
+415d00e status: yes — baseline_rerun_autorestart1 epoch 12/200 loss 3.5801565647125244 acc 84.19596099853516 model mimo-v2.6-flash-free — Baseline training epoch ~109/200 (~2.4 m 2026-09-23 20:33:11 UTC - heartbeat 2026-09-23 20:43:58 UTC - heartbeat 2026-09-23 20:56:28 UTC - heartbeat 2026-09-23 20:57:36 UTC - heartbeat 2026-09-23 20:58:25 UTC - issue #7 close 2026-09-23 20:59:20 UTC - heartbeat 2026-09-23 20:59:58 UTC - heartbeat 2026-09-23 21:00:37 UTC - heartbeat 2026-09-23 21:01:19 UTC - heartbeat 2026-09-23 21:01:58 UTC - heartbeat 2026-09-23 21:02:37 UTC - heartbeat 2026-09-23 21:03:22 UTC - heartbeat 2026-09-23 21:04:00 UTC - heartbeat 2026-09-23 21:04:40 UTC - heartbeat 2026-09-23 21:05:21 UTC - heartbeat 2026-09-23 21:05:59 UTC - heartbeat 2026-09-23 21:06:39 UTC - heartbeat 2026-09-23 21:07:53 UTC - heartbeat 2026-09-23 21:08:31 UTC - heartbeat 2026-09-23 21:09:10 UTC - heartbeat 2026-09-23 21:09:49 UTC - heartbeat 2026-09-23 21:10:27 UTC - heartbeat 2026-09-23 21:11:06 UTC - heartbeat 2026-09-23 21:11:52 UTC - heartbeat 2026-09-23 21:12:29 UTC - heartbeat 2026-09-23 21:13:08 UTC - heartbeat 2026-09-23 21:13:48 UTC - heartbeat 2026-09-23 21:14:29 UTC - heartbeat 2026-09-23 21:15:07 UTC - heartbeat 2026-09-23 21:15:49 UTC - heartbeat 2026-09-23 21:16:28 UTC - heartbeat 2026-09-23 21:17:09 UTC - heartbeat 2026-09-23 21:17:50 UTC - heartbeat 2026-09-23 21:18:29 UTC - heartbeat 2026-09-23 21:19:08 UTC - heartbeat 2026-09-23 21:19:49 UTC - heartbeat 2026-09-23 21:20:27 UTC - heartbeat 2026-09-23 21:21:08 UTC - heartbeat 2026-09-23 21:21:48 UTC - heartbeat 2026-09-23 21:22:26 UTC - heartbeat 2026-09-23 21:23:09 UTC - heartbeat 2026-09-23 21:23:47 UTC - heartbeat 2026-09-23 21:24:25 UTC - heartbeat 2026-09-23 21:25:05 UTC - heartbeat 2026-09-23 21:25:44 UTC - heartbeat 2026-09-23 21:27:45 UTC - heartbeat 2026-09-23 21:28:29 UTC - heartbeat 2026-09-23 21:29:07 UTC - heartbeat 2026-09-23T22:42Z | small functional tes 2026-09-24 00:15:09 UTC 2026-09-24 00:26:39 UTC 2026-09-24 00:29:27 UTC 2026-09-24 00:50:45 UTC - triage: invest 2026-09-24 00:54:48 UTC - issue #2 root- 2026-09-24 00:58:23 UTC - dataset: build 2026-09-24 01:00:04 UTC - dataset: verif 2026-09-24 01:00:49 UTC - dataset: rehea 2026-09-24T01:01:51Z [supervisor] restor 2026-09-24 01:02:13 UTC - dataset: censu 2026-09-24 01:05:29 UTC - dataset: resto 2026-09-24 01:06:11 UTC - progress sync: 2026-09-24 01:07:02 UTC - progress: PROG 2026-09-24 01:07:15 UTC - heartbeat
+19fe611 docs: issue #2 root cause (aug0 coverage vs input contig-set mismatch), v1.1.0 immunity, reheader attempt/restore, baseline rerun state
+=== PROGRESS sync check ===
+synced
+[0m$ [0mps -p 267462 -o pid,etime,args 2>/dev/null | tail -1 || echo "267462 gone"
+echo "=== small-fix branch ==="
+cd /vol/data/repos/COMEBin && git log --oneline -2 comebin-small-fix 2>/dev/null; git fetch origin -q 2>/dev/null; git branch -r | grep -i small || echo "not on origin"
+git diff origin/master...comebin-small-fix --stat 2>/dev/null | tail -8
+echo "=== run_small_test default ==="
+grep -n "SRC_COMEBIN:-" /vol/data/repos/metagenomic-binning-benchmark/scripts/run_small_test.sh
+267462       39:47 bash /vol/data/benchmark/.runner-snapshots/baseline_rerun_1790209801802838194.sh /vol/data/benchmark/runs/baseline_rerun_autorestart1
+=== small-fix branch ===
+5c77bc8 Fix feature alignment for reduced assemblies with extra BAM references
+904f649 Fix: initialize covIdxArr with np.zeros instead of np.empty to prevent IndexError from uninitialized garbage values in get_kmer_coverage
+  origin/comebin-small-fix
+  origin/fix-small-test-data
+ COMEBin/cluster.py          | 12 ++++++++----
+ COMEBin/data_aug/gen_cov.py | 12 ++++++++++--
+ COMEBin/data_aug/gen_var.py | 12 ++++++++++--
+ COMEBin/get_augfeature.py   | 28 ++++++++++++--------------
+ COMEBin/utils.py            | 48 +++++++++++++++++++++++++++++++++++----------
+ 5 files changed, 78 insertions(+), 34 deletions(-)
+=== run_small_test default ===
+16:SRC=${SRC_COMEBIN:-/vol/data/repos/COMEBin-small-fix}
+> build · mimo-v2.6-flash-free

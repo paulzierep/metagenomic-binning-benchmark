@@ -3,8 +3,8 @@
 | | |
 |---|---|
 | Status | 🟢 `running` |
-| ⏱ Updated (Europe/Berlin) | `2026-09-24T03:08 CEST` |
-| 🏃 Live benchmark | `baseline_rerun_autorestart1` — **epoch 12/200** · loss `3.5801565647125244` · top1 acc `84.19596099853516` (log 81s fresh) |
+| ⏱ Updated (Europe/Berlin) | `2026-09-24T03:10 CEST` |
+| 🏃 Live benchmark | `baseline_rerun_autorestart1` — **epoch 13/200** · loss `3.508558511734009` · top1 acc `86.66340637207031` (log 63s fresh) |
 | 🧠 Model (last turn) | `mimo-v2.6-flash-free` (watchdog rotates to free models on quota) |
 | 📌 Agent note · **0 min old** | Baseline training epoch ~109/200 (~2.4 min/epoch, ETA ~22:35 UTC unless early-stop); next: baseline eval (run_eval.sh) → issue #2 small-dataset test → v1.1.0 fix run
 2026-09-23 20:33:11 UTC - heartbeat
@@ -69,10 +69,11 @@
 2026-09-24 01:05:29 UTC - dataset: restored original reads.bam.bai index name after supervisor reverted my reheader attempt (supervisor owns BAM repair now)
 2026-09-24 01:06:11 UTC - progress sync: writing root-cause + reheader-restore state into PROGRESS.md
 2026-09-24 01:07:02 UTC - progress: PROGRESS.md updated with issue-#2 root cause, v1.1.0 immunity, reheader-restore state
-2026-09-24 01:07:15 UTC - heartbeat |
-| ⚙️ Load · uptime | `32.10 32.08 27.99` · 11 hours, 32 minutes — 32 cores, 62 GiB, no GPU |
-| 💾 RAM used/total | `7017/64295 MB` |
+2026-09-24 01:07:15 UTC - heartbeat
+2026-09-24 01:09:49 UTC - heartbeat |
+| ⚙️ Load · uptime | `32.07 32.08 28.51` · 11 hours, 34 minutes — 32 cores, 62 GiB, no GPU |
+| 💾 RAM used/total | `6700/64295 MB` |
 | 🔗 Session | `ses_f31799c77ffeTq9gcYgqc4hBhg` |
-| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `19fe611 docs: issue #2 root cause (aug0 coverage vs input contig-set mismatch), ` |
-| 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `1424253 B` — every run, command & tool result |
+| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `9f276fb ops: recognize snapshot runners and harden small-data prep` |
+| 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `1432855 B` — every run, command & tool result |
 | 📈 Timeline | [status/status.log](status/status.log) |
