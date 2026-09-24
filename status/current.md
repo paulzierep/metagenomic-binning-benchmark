@@ -3,10 +3,10 @@
 | | |
 |---|---|
 | Status | 🟢 `running` |
-| ⏱ Updated (Europe/Berlin) | `2026-09-24T13:08 CEST` |
-| 🏃 Live benchmark | `fix_v11_20260924` — **epoch 10/200** · loss `3.6309878826141357` · top1 acc `82.03450012207031` (log 109s fresh) |
+| ⏱ Updated (Europe/Berlin) | `2026-09-24T13:10 CEST` |
+| 🏃 Live benchmark | `fix_v11_20260924` — **epoch 11/200** · loss `3.5778746604919434` · top1 acc `84.12434387207031` (log 98s fresh) |
 | 🧠 Model (last turn) | `big-pickle` (watchdog rotates to free models on quota) |
-| 📌 Agent note · **0 min old** | Baseline training epoch ~109/200 (~2.4 min/epoch, ETA ~22:35 UTC unless early-stop); next: baseline eval (run_eval.sh) → issue #2 small-dataset test → v1.1.0 fix run
+| 📌 Agent note · **2 min old** | Baseline training epoch ~109/200 (~2.4 min/epoch, ETA ~22:35 UTC unless early-stop); next: baseline eval (run_eval.sh) → issue #2 small-dataset test → v1.1.0 fix run
 2026-09-23 20:33:11 UTC - heartbeat
 2026-09-23 20:43:58 UTC - heartbeat
 2026-09-23 20:56:28 UTC - heartbeat
@@ -267,9 +267,9 @@
 2026-09-24T10:47:16Z fix_v11-epoch2
 2026-09-24T10:57:38Z fix_v11-epoch7
 2026-09-24T11:07:59Z fix_v11-epoch11 |
-| ⚙️ Load · uptime | `30.52 29.99 25.04` · 21 hours, 32 minutes — 32 cores, 62 GiB, no GPU |
-| 💾 RAM used/total | `6132/64295 MB` |
+| ⚙️ Load · uptime | `29.61 30.19 25.74` · 21 hours, 34 minutes — 32 cores, 62 GiB, no GPU |
+| 💾 RAM used/total | `5388/64295 MB` |
 | 🔗 Session | `ses_f31799c77ffeTq9gcYgqc4hBhg` |
-| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `2524e12 supervisor: wire auto-reporting into run_eval + fix flowchart, Zenodo re` |
-| 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `3239303 B` — every run, command & tool result |
+| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `ccd62eb status: yes — fix_v11_20260924 epoch 10/200 loss 3.6309878826141357 ac` |
+| 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `3239992 B` — every run, command & tool result |
 | 📈 Timeline | [status/status.log](status/status.log) |
