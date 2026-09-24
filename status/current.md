@@ -3,10 +3,10 @@
 | | |
 |---|---|
 | Status | 🟢 `running` |
-| ⏱ Updated (Europe/Berlin) | `2026-09-24T12:16 CEST` |
-| 🏃 Last benchmark (not active) | `medium_v11_20260924` — last observed **epoch 199/200** (log 769s old) |
+| ⏱ Updated (Europe/Berlin) | `2026-09-24T12:18 CEST` |
+| 🏃 Last benchmark (not active) | `medium_v11_20260924` — last observed **epoch 199/200** (log 889s old) |
 | 🧠 Model (last turn) | `nemotron-3.5-lightning-free` (watchdog rotates to free models on quota) |
-| 📌 Agent note · **16 min old** | Baseline training epoch ~109/200 (~2.4 min/epoch, ETA ~22:35 UTC unless early-stop); next: baseline eval (run_eval.sh) → issue #2 small-dataset test → v1.1.0 fix run
+| 📌 Agent note · **0 min old** | Baseline training epoch ~109/200 (~2.4 min/epoch, ETA ~22:35 UTC unless early-stop); next: baseline eval (run_eval.sh) → issue #2 small-dataset test → v1.1.0 fix run
 2026-09-23 20:33:11 UTC - heartbeat
 2026-09-23 20:43:58 UTC - heartbeat
 2026-09-23 20:56:28 UTC - heartbeat
@@ -255,10 +255,11 @@
 2026-09-24T09:33:26Z triage-new-issues-12-13
 2026-09-24T09:35:29Z readme-progress-checkm1-fix
 2026-09-24T09:36:37Z issue-13-reply-push-7a80d7e
-2026-09-24T09:59:22Z wrapup |
-| ⚙️ Load · uptime | `0.04 3.34 13.27` · 20 hours, 40 minutes — 32 cores, 62 GiB, no GPU |
-| 💾 RAM used/total | `1921/64295 MB` |
+2026-09-24T09:59:22Z wrapup
+2026-09-24T10:17:55Z medium-eval-complete |
+| ⚙️ Load · uptime | `0.05 2.25 11.66` · 20 hours, 42 minutes — 32 cores, 62 GiB, no GPU |
+| 💾 RAM used/total | `1962/64295 MB` |
 | 🔗 Session | `ses_f31799c77ffeTq9gcYgqc4hBhg` |
-| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `eee9992 status: yes — medium_v11_20260924 epoch 199/200 loss 4.206282138824463` |
-| 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `3070579 B` — every run, command & tool result |
+| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `539b542 status: yes — medium_v11_20260924 epoch 199/200 loss 4.206282138824463` |
+| 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `3075089 B` — every run, command & tool result |
 | 📈 Timeline | [status/status.log](status/status.log) |
