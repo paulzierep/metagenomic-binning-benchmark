@@ -47398,3 +47398,147 @@ status ok
 873786 873784 /vol/data/benchmark/runs/fix_v11_20260924/comebin_run.log /vol/data/benchmark/runs/fix_v11_20260924 1790246235 fix /vol/data/repos/COMEBin-v11 /vol/data/datasets/comebin_test_data/BATS_SAMN07137077_METAG.scaffolds.min500.fasta.f1k.fasta /vol/data/datasets/comebin_test_data/bamfiles
 === C7 disk ===
 /dev/vdb        492G   90G  377G  20% /vol/data
+> build · big-pickle
+Picking up the supervisor checklist. Let me verify current state first.
+[0m$ [0mls -la /vol/data/benchmark/meta/.issues_done/ 2>&1; echo '---'; cat /vol/data/benchmark/meta/.issues_done/* 2>&1 | head -50
+total 32
+drwxrwxr-x 2 ubuntu ubuntu 4096 Sep 24 11:10 .
+drwxrwxr-x 8 ubuntu ubuntu 4096 Sep 24 10:43 ..
+-rw-rw-r-- 1 ubuntu ubuntu  209 Sep 24 11:10 11
+-rw-rw-r-- 1 ubuntu ubuntu  249 Sep 24 11:10 12
+-rw-rw-r-- 1 ubuntu ubuntu  190 Sep 24 11:10 13
+-rw-rw-r-- 1 ubuntu ubuntu  217 Sep 24 11:10 15
+-rw-rw-r-- 1 ubuntu ubuntu  199 Sep 24 11:10 16
+-rw-rw-r-- 1 ubuntu ubuntu  168 Sep 24 11:10 8
+---
+RCA complete in issue body: hmmer 3.1b2 pin + seed regeneration + unguarded cluster.py:368 read + wrapper exit masking; fixed and verified end-to-end via baseline_rerun_autorestart1 (200/200 epochs, 60 bins).
+Plots auto-generated (per-bin bar runs/<run>/per_bins.png + all-runs scatter results/figures/comp_vs_cont_all-runs.png, 3 PNGs committed 7c0d4bd); make_per_bin_plots.py --all wired into run_eval.sh (2524e12) to regenerate after every evaluated run.
+rc=0 removed from README/docs/results; CheckM v1 means parsed (baseline 21.23/3.40); results/<run>.csv carries all four means + HQ/MQ counts; rc values kept only in run_meta.txt provenance.
+Per-bin results for every evaluated run under runs/<run>/per_bin_results.csv (baseline 60, medium 16, small 3 rows), joined CheckM2 + CheckM v1; generator scripts/make_per_bin_csv.py wired into run_eval.sh (2524e12).
+Model choice: DEFAULT_MODEL=opencode/big-pickle committed (c42fa84) at scripts/agent-watchdog.sh:52 and verified deployed; rotation only on big-pickle quota, resets to big-pickle after healthy runs.
+Zenodo record 22935025 metadata edited in place to MIT with expanded description (no new version); DOI + public API verified HTTP 200; docs/01,10,11 updated (2524e12).
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && git status --short && echo '---HEAD---' && git rev-parse HEAD && git rev-parse origin/main
+---HEAD---
+0accf44787722958d6f1f119b1de2ef3bf96cc9d
+0accf44787722958d6f1f119b1de2ef3bf96cc9d
+> build · big-pickle
+Markers intact (6), git clean, HEAD=origin/main at a new heartbeat commit `0accf447`. Now let me check the issue-closer contract before consuming markers.
+[0m→ [0mRead /vol/data/repos/metagenomic-binning-benchmark/scripts/issue-closer.sh 
+> build · big-pickle
+The closer uses its own `/tmp/issue-closer.lock` (not the watchdog lock), so I can run it directly. 6 markers, MAX_PER_RUN=5 → two runs.
+[0m$ [0m/vol/data/benchmark/bin/issue-closer.sh 2>&1; echo "EXIT=$?"; echo '---LOG---'; tail -8 /vol/data/benchmark/logs/issue-closer.log
+EXIT=0
+---LOG---
+2026-09-24T07:26:12+00:00 [issue-closer] RESULT closed=0 (no failures)
+2026-09-24T11:12:42+00:00 [issue-closer] closed #11 (Baseline zero-bins failure chain: hmmer 3.4 vs pinned 3.1b2 poisons marker seed, unguarded cluster.py:368 read, wrapper ): RCA complete in issue body: hmmer 3.1b2 pin + seed regeneration + unguarded cluster.py:368 read + wrapper exit masking; fixed and verified end-to-end via baseline_rerun_autorestart1 (200/200 epochs, 60 bins). 
+2026-09-24T11:12:45+00:00 [issue-closer] closed #12 (Improve reporting): Plots auto-generated (per-bin bar runs/<run>/per_bins.png + all-runs scatter results/figures/comp_vs_cont_all-runs.png, 3 PNGs committed 7c0d4bd); make_per_bin_plots.py --all wired into run_eval.sh (2524e12) to regenerate after every evaluated run. 
+2026-09-24T11:12:48+00:00 [issue-closer] closed #13 (CheckM v1: rc=0.): rc=0 removed from README/docs/results; CheckM v1 means parsed (baseline 21.23/3.40); results/<run>.csv carries all four means + HQ/MQ counts; rc values kept only in run_meta.txt provenance. 
+2026-09-24T11:12:52+00:00 [issue-closer] closed #15 (Improve results): Per-bin results for every evaluated run under runs/<run>/per_bin_results.csv (baseline 60, medium 16, small 3 rows), joined CheckM2 + CheckM v1; generator scripts/make_per_bin_csv.py wired into run_eval.sh (2524e12). 
+2026-09-24T11:12:56+00:00 [issue-closer] closed #16 (Model choice): Model choice: DEFAULT_MODEL=opencode/big-pickle committed (c42fa84) at scripts/agent-watchdog.sh:52 and verified deployed; rotation only on big-pickle quota, resets to big-pickle after healthy runs. 
+2026-09-24T11:12:56+00:00 [issue-closer] hit MAX_PER_RUN=5; leaving remaining markers for next tick
+2026-09-24T11:12:58+00:00 [issue-closer] RESULT closed=5 (no failures)
+> build · big-pickle
+First run closed 5 (#11, #12, #13, #15, #16). Running again for #8.
+[0m$ [0m/vol/data/benchmark/bin/issue-closer.sh 2>&1; echo "EXIT=$?"; echo '---LOG---'; tail -4 /vol/data/benchmark/logs/issue-closer.log; echo '---MARKERS LEFT---'; ls -la /vol/data/benchmark/meta/.issues_done/
+EXIT=0
+---LOG---
+2026-09-24T11:12:56+00:00 [issue-closer] hit MAX_PER_RUN=5; leaving remaining markers for next tick
+2026-09-24T11:12:58+00:00 [issue-closer] RESULT closed=5 (no failures)
+2026-09-24T11:13:05+00:00 [issue-closer] closed #8 (Add benchmark data to zenodo): Zenodo record 22935025 metadata edited in place to MIT with expanded description (no new version); DOI + public API verified HTTP 200; docs/01,10,11 updated (2524e12). 
+2026-09-24T11:13:07+00:00 [issue-closer] RESULT closed=1 (no failures)
+---MARKERS LEFT---
+total 8
+drwxrwxr-x 2 ubuntu ubuntu 4096 Sep 24 11:13 .
+drwxrwxr-x 8 ubuntu ubuntu 4096 Sep 24 10:43 ..
+> build · big-pickle
+All 6 markers consumed. Verifying closure on GitHub plus the meta records.
+[0m$ [0mexport HOME=/home/ubuntu; export PATH=/home/ubuntu/.opencode/bin:/home/ubuntu/.local/bin:/usr/local/bin:/usr/bin:/bin
+for n in 8 11 12 13 15 16; do
+  st=$(gh issue view $n -R paulzierep/metagenomic-binning-benchmark --json state,title --jq '.state + " | " + .title' 2>/dev/null || echo ERR)
+  echo "#$n: $st"
+done
+echo '---closed dir---'; ls /vol/data/benchmark/meta/.issues_closed/
+echo '---seen---'; ls /vol/data/benchmark/meta/.issues_seen/ | tr '\n' ' '; echo
+echo '---tsv---'; tail -n +1 /vol/data/benchmark/meta/issues_closed.tsv | cut -c1-120
+#8: CLOSED | Add benchmark data to zenodo
+#11: CLOSED | Baseline zero-bins failure chain: hmmer 3.4 vs pinned 3.1b2 poisons marker seed, unguarded cluster.py:368 read, wrapper masks the failure
+#12: CLOSED | Improve reporting
+#13: CLOSED | CheckM v1: rc=0.
+#15: CLOSED | Improve results
+#16: CLOSED | Model choice
+---closed dir---
+10
+11
+12
+13
+15
+16
+3
+4
+5
+7
+8
+9
+---seen---
+1 10 11 12 13 15 16 2 3 4 5 6 7 8 9 
+---tsv---
+closed_at	number	title	reason
+2026-09-23T19:25:50Z	3	I think comebin is stuck	Verified healthy — training advancing normally (epoch 100+, loss falli
+2026-09-23T19:25:53Z	4	Why agent often broken	Root cause fixed: opencode run --auto is single-turn in v2; watchdog now d
+2026-09-23T19:25:57Z	5	I updated the comebin fork	Rebased onto user v1.1.0 fork (origin/master 1b476a4); baseline + eval
+2026-09-23T20:57:43Z	7	Optimization plan	Verified complete — optimization decision flowchart, commit-selection gates, 
+2026-09-24T04:58:45Z	9	No idea whag happened to the runs	README run history now accounts for all 7 COMEBin-executing att
+2026-09-24T05:02:39Z	10	Try less epoches	EPOCHS passthrough is committed/pushed in COMEBin a0be243; the installed small-
+2026-09-24T11:12:42Z	11	Baseline zero-bins failure chain: hmmer 3.4 vs pinned 3.1b2 poisons marker seed, unguarded clust
+2026-09-24T11:12:45Z	12	Improve reporting	Plots auto-generated (per-bin bar runs/<run>/per_bins.png + all-runs scatter r
+2026-09-24T11:12:48Z	13	CheckM v1: rc=0.	rc=0 removed from README/docs/results; CheckM v1 means parsed (baseline 21.23/3
+2026-09-24T11:12:52Z	15	Improve results	Per-bin results for every evaluated run under runs/<run>/per_bin_results.csv (ba
+2026-09-24T11:12:56Z	16	Model choice	Model choice: DEFAULT_MODEL=opencode/big-pickle committed (c42fa84) at scripts/agen
+2026-09-24T11:13:05Z	8	Add benchmark data to zenodo	Zenodo record 22935025 metadata edited in place to MIT with expanded
+> build · big-pickle
+All 6 closed + verified on GitHub; TSV/seens consistent. Now verifying closure comments, git state after the closer's publish, training run health, and open issues.
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && git status --short && echo '---HEAD---' && git rev-parse HEAD && git rev-parse origin/main && echo '---last commit---' && git log -1 --format='%h %s' && echo '---tracked status files---' && git ls-files status/meta/
+---HEAD---
+306a16cb2c29d3b11fa25466ef7aaf18b2875cd4
+306a16cb2c29d3b11fa25466ef7aaf18b2875cd4
+---last commit---
+306a16c meta: issue-closer closed 1, failed: — 11:13Z
+---tracked status files---
+status/meta/close-log.txt
+status/meta/escalate-1790189584.txt
+status/meta/escalate-1790196787.txt
+status/meta/escalate-1790199188.txt
+status/meta/escalate-1790211186.txt
+status/meta/escalate-1790224989.txt
+status/meta/escalate-1790234586.txt
+status/meta/escalate-1790239386.txt
+status/meta/escalate-1790246590.txt
+status/meta/issue-close-log.txt
+status/meta/issues.tsv
+status/meta/issues_closed.tsv
+status/meta/last.txt
+[0m$ [0mps -p 873786 -o pid,etime,cmd --no-headers 2>/dev/null || echo 'fix_v11 pid 873786 NOT FOUND'; echo '---'; ls -la /vol/data/benchmark/runs/fix_v11_20260924 2>/dev/null | head -5
+873786       36:09 bash scripts/run_comebin_fix.sh /vol/data/benchmark/runs/fix_v11_20260924
+---
+total 56
+drwxrwxr-x  4 ubuntu ubuntu  4096 Sep 24 10:37 .
+drwxrwxr-x 11 ubuntu ubuntu  4096 Sep 24 10:37 ..
+drwxrwxr-x  4 ubuntu ubuntu  4096 Sep 24 10:42 comebin_out
+-rw-rw-r--  1 ubuntu ubuntu 32378 Sep 24 11:13 comebin_run.log
+[0m$ [0mexport HOME=/home/ubuntu; export PATH=/home/ubuntu/.opencode/bin:/home/ubuntu/.local/bin:/usr/local/bin:/usr/bin:/bin
+echo '--- comments on #8 ---'; gh issue view 8 -R paulzierep/metagenomic-binning-benchmark --json comments --jq '.comments[] | .createdAt + " | " + (.body|.[0:80])' | tail -3
+echo '--- comments on #11 ---'; gh issue view 11 -R paulzierep/metagenomic-binning-benchmark --json comments --jq '.comments[] | .createdAt + " | " + (.body|.[0:80])' | tail -3
+echo '--- open issues ---'; gh issue list -R paulzierep/metagenomic-binning-benchmark --state open --limit 20 --json number,title --jq '.[] | "#" + (.number|tostring) + " " + .title'
+--- comments on #8 ---
+2026-09-24T09:37:14Z | You can update a license on Zenodo at any time by editing the record's metadata.
+2026-09-24T11:10:01Z | Done — Zenodo allows license changes as plain metadata, so record **22935025** w
+2026-09-24T11:13:03Z | Closed by automation — addressed: Zenodo record 22935025 metadata edited in plac
+--- comments on #11 ---
+2026-09-24T11:12:40Z | Closed by automation — addressed: RCA complete in issue body: hmmer 3.1b2 pin + 
+--- open issues ---
+#17 Only perform big benchmark runs when fixes wored on the small datasets
+#14 Improve the readme
+#7 Optimization plan
+#6 Optimization
+#2 Can you try to create a small benchmark dataset for comebin ?
+#1 Idea inbox: benchmark ideas, COMEBin fixes, dataset requests
