@@ -355,6 +355,15 @@ included; fixes land on branch `comebin-optimizations` in this repo.
       32-core CPU ~2900%, RAM 9.4 GB). Next after
       terminal status: `scripts/run_eval.sh runs/fix_v11_20260924` (CheckM2 +
       CheckM v1) → `make_results_csv.py` → per-bin CSV → README/docs-11 row.
+- [x] **Issue #12 subplot request + issue #7 mermaid truncation (2026-09-24 ~11:32 UTC)**:
+      `make_per_bin_plots.py` now writes `results/figures/comp_vs_cont_by_dataset.png`
+      (one panel per benchmark dataset auto-derived from run_meta.txt `contigs:`;
+      runs colored within panel → direct same-dataset comparison) and the README
+      Results section embeds it; all-runs scatter + per-run bar charts kept.
+      Mermaid flowchart labels shortened (GitHub clips long labels) in README +
+      docs/09, full gate rule stays in the bullets below. Commit `53a4b25`;
+      replies `5813259715` (#7), `5813260237` (#12).
+
 - [x] **Issues #17/#14/#7/#8 triaged by supervisor (2026-09-24 ~11:07 UTC)**: #17 — gate
       rule made explicit in README + docs/09: big benchmark runs only after small AND
       medium validation, parameter tuning on small sets first; fix_v11 passed that gate
