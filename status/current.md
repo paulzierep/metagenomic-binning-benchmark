@@ -3,10 +3,10 @@
 | | |
 |---|---|
 | Status | 🟢 `running` |
-| ⏱ Updated (Europe/Berlin) | `2026-09-24T10:04 CEST` |
-| 🏃 Last benchmark (not active) | `baseline_rerun_autorestart1` — last observed **epoch 176/200** (log 2926s old) |
+| ⏱ Updated (Europe/Berlin) | `2026-09-24T10:06 CEST` |
+| 🏃 Last benchmark (not active) | `baseline_rerun_autorestart1` — last observed **epoch 176/200** (log 3046s old) |
 | 🧠 Model (last turn) | `mimo-v2.6-flash-free` (watchdog rotates to free models on quota) |
-| 📌 Agent note · **24 min old** | Baseline training epoch ~109/200 (~2.4 min/epoch, ETA ~22:35 UTC unless early-stop); next: baseline eval (run_eval.sh) → issue #2 small-dataset test → v1.1.0 fix run
+| 📌 Agent note · **26 min old** | Baseline training epoch ~109/200 (~2.4 min/epoch, ETA ~22:35 UTC unless early-stop); next: baseline eval (run_eval.sh) → issue #2 small-dataset test → v1.1.0 fix run
 2026-09-23 20:33:11 UTC - heartbeat
 2026-09-23 20:43:58 UTC - heartbeat
 2026-09-23 20:56:28 UTC - heartbeat
@@ -241,9 +241,9 @@
 2026-09-24 07:14:23 UTC - heartbeat
 2026-09-24 07:15:09 UTC - heartbeat
 2026-09-24T07:39:23Z [agent] root cause: hmmsearch 3.4 vs pinned 3.1b2; 3.1b2 yields 2227 marker hits on TC-less bacar_marker.hmm |
-| ⚙️ Load · uptime | `0.11 0.16 1.47` · 18 hours, 28 minutes — 32 cores, 62 GiB, no GPU |
-| 💾 RAM used/total | `1945/64295 MB` |
+| ⚙️ Load · uptime | `0.05 0.13 1.30` · 18 hours, 30 minutes — 32 cores, 62 GiB, no GPU |
+| 💾 RAM used/total | `1940/64295 MB` |
 | 🔗 Session | `ses_f31799c77ffeTq9gcYgqc4hBhg` |
-| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `01d0f09 meta: supervise tick 2026-09-24T08:03:01Z — 0 fix(es)` |
+| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `b44fc65 status: yes — baseline_rerun_autorestart1 epoch 176/200 loss 2.8607368` |
 | 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `2154767 B` — every run, command & tool result |
 | 📈 Timeline | [status/status.log](status/status.log) |
