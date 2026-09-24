@@ -33894,3 +33894,54 @@ no active run
 /tmp/status-heartbeat.lock
 LOCK_FREE
 > build · mimo-v2.6-flash-free
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && git diff PROGRESS.md | head -100
+{"exit":0,"truncated":false,"output":"","status":"completed"}
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && gh issue create -R paulzierep/metagenomic-binning-benchmark --title "Baseline zero-bins failure chain: hmmer 3.4 vs pinned 3.1b2 poisons marker seed, unguarded cluster.py:368 read, wrapper masks the failure" --body "## What happened
+
+The original pristine baseline (\`987db95\`, run \`baseline_unmodified\`) trained to epoch 175/200 but produced **zero bins and no evaluation**, and the wrapper's exit code did not reflect a failed binning stage. Root cause is a four-link failure chain, each link verified on disk.
+
+## Failure chain (all links verified)
+
+1. **Environment drift vs. the authors' pin.** \`comebin_env.yaml\` pins \`hmmer=3.1b2\`, but the live env had **hmmer 3.4**. \`hmmsearch --cut_tc\` against \`auxiliary/bacar_marker.hmm\` — a TC-less HMM — **hard-errors on 3.4** (zero hits), while **3.1b2 runs \`--cut_tc\` leniently and yields 2227 marker hits** (both measured directly).
+2. **Stale empty outputs poison the resume path.** The failed run left 0-byte \`.bacar_marker.hmmout\`/\`.err\`/\`.out\` files (dated 2026-09-23 21:30). \`COMEBin/utils.py\` \`gen_seed\` skips hmmsearch when \`os.path.exists(hmmout)\` — so on any retry the empty file makes the step look done and **no seed is ever generated**.
+3. **Unguarded read crashes the run.** \`COMEBin/cluster.py:368\` reads the marker seed unconditionally → \`FileNotFoundError\` after hours of training.
+4. **Wrapper masks the failure.** \`run_comebin.sh\` swallowed the clustering/get_result exit status, so the run could be recorded as successful while bins were missing. Our baseline runner now traps a missing bins dir and forces \`rc=1\` ([\`8bb73dd\`](https://github.com/paulzierep/metagenomic-binning-benchmark/commit/8bb73dd)).
+
+A secondary crash on the same path: sklearn ≥1.0 removed \`KMeans(n_jobs=...)\` (and the private \`sklearn.cluster._kmeans\` import), so clustering died with \`TypeError\` even once seeds existed — fixed as COMEBin commit [\`358ddd8\`](https://github.com/paulzierep/COMEBin/commit/358ddd8) (also [\`c8f22e4\`](https://github.com/paulzierep/COMEBin/commit/c8f22e4) on \`comebin-small-fix\`).
+
+## Resolution
+
+* Env downgraded to **hmmer 3.1b2** (only package changed; before/after \`micromamba list\` snapshots in \`runs/baseline_rerun_autorestart1/logs/env_list_{before,after}_hmmerfix.txt\`).
+* Baseline runner gained \`BENCHMARK_RESUME=1\` (fresh seed regeneration, phase-1 archiving, bins-missing trap, \`hmmsearch\` version stamp) — benchmark-repo commit \`8bb73dd\`.
+* sklearn KMeans compat fix: COMEBin \`358ddd8\` / \`c8f22e4\`.
+* **Verified end-to-end:** rerun \`baseline_rerun_autorestart1\` completed 200/200 epochs (99.19% Top1), clustering + \`get_result\` produced **60 bins**, CheckM2 mean 25.01% completeness / 2.98% contamination.
+
+## Upstream status
+
+COMEBin **v1.1.0** already mitigates link 1+2 with \`_hmm_models_have_tc_cutoffs()\\` → falls back to \`-E 1e-5\` when TC cutoffs are absent (plus empty-cache/seed guards), so \`comebin-optimizations-v11\` is immune to this chain. The remaining gap upstream is the unguarded seed read / wrapper exit masking, which is why the fix chain above is kept on our branches.
+
+Related eval-side environment issue: the standalone CheckM v1 env (Python 3.14) breaks \`lineage_wf\` worker pickling; eval now uses the CheckM v1 in the COMEBin env (Python 3.10) + \`LD_LIBRARY_PATH\` — see \`scripts/run_eval.sh\`." 2>&1 | tail -3
+/bin/bash: -c: line 23: unexpected EOF while looking for matching ``'
+[0m$ [0mset -e; RUN=/vol/data/benchmark/runs/baseline_rerun_autorestart1; SNAP=$RUN/logs/run_eval_snapshot_$(date +%s).sh; cp /vol/data/repos/metagenomic-binning-benchmark/scripts/run_eval.sh "$SNAP"; chmod +x "$SNAP"; echo "snapshot: $SNAP"; cd /vol/data/repos/metagenomic-binning-benchmark; nohup bash "$SNAP" "$RUN" 32 > "$RUN/logs/eval_rerun_$(date +%Y%m%dT%H%M%S).log" 2>&1 & echo "eval pid $!"; sleep 5; ls -t $RUN/logs/eval_rerun_*.log | head -1 | xargs tail -5; date -u +%FT%TZ; echo "$(date -u +%FT%TZ) eval-rerun: baseline CheckM2+CheckM v1 re-run via fixed run_eval.sh snapshot $SNAP (pid $!)" >> status/agent-activity.log; echo "$(date -u +%FT%TZ) eval-rerun-baseline-start" >> /vol/data/benchmark/.activity; touch /vol/data/benchmark/.heartbeat
+snapshot: /vol/data/benchmark/runs/baseline_rerun_autorestart1/logs/run_eval_snapshot_1790240814.sh
+eval pid 581192
+ERROR: bins dir contains no non-empty files: /vol/data/benchmark/runs/baseline_rerun_autorestart1/comebin_out/comebin_res/comebin_res_bins
+2026-09-24T09:06:59Z
+> build · mimo-v2.6-flash-free
+[0m$ [0mdate -u +%FT%TZ; echo "$(date -u +%FT%TZ) eval-rerun attempt: fixed run_eval.sh refused baseline bins dir (find -type f -size +0c = 0) — investigating before retry" >> /vol/data/repos/metagenomic-binning-benchmark/status/agent-activity.log; echo "$(date -u +%FT%TZ) eval-rerun-refused-bins-check" >> /vol/data/benchmark/.activity; touch /vol/data/benchmark/.heartbeat; cat /vol/data/benchmark/runs/baseline_rerun_autorestart1/comebin_out/comebin_res/comebin_res_bins/0.fasta 2>/dev/null | head -2; echo "rc=$?"
+2026-09-24T09:07:17Z
+>BATS_SAMN07137077_METAG-scaffold_22978
+GAAAAATGCATGAAGTTGAAATGTGGAAGTACTGGTTTTTACAAGAAGGTGTATTGGGTGTAGATGCAGATTATTTAAAAACTAATGAAGGTAAACCGCCTCCAGTAATTCATGTTGATACAGATGCACCACTTTATTCTGACAAAGATGGTAAAATAATTACAGAAGACTTATGGGGTATTTATTATAAACCTGATATTGAAGGATTGGGAGTTCAAGGTGGAACATCACCTTACATTGTTCAAAAACATTTTGATGAAGTTAATGTTGACCCATATGGAATTGACTCTCCTGAATATCAAACTACTGATAAATTTTCTGATATGTGGACTTCAGCACTTGCACATATTCAGAAACGTTTTGTTGGTAAATCTCATTTGTATAGAAAGGGACCATCAGGAGGATTGGGTTGTTTAACTCCAGATTCATTCCCGATATTCGATAGATTTTTTGAAAATGTTTACATGATTGCAGATGCAAATCATGGTTATAAAATGATAGGTGTTGGACACCTTGTTGCACAAGAAATTTTAGGTCAAGAAAGTGAATTACTAAAACCGTTCAGGTTCGATAGATATGAAAAAGGAAAACTTCATCCGACATCGAACAGTCCGTTTCCTTGGAGCTAATTTATCTAAGTAGACAAACGTTTTTTTTTCAGTTACCTTTTTGATCTGAAAATTCAAAGGGGGAAGAATGACGGATCTTGAAAAACACGTAAACCAACCAGGTAGAGCTAAACTCGTCAAAAAGGTTAGAGAAAAAATAAACGAATTAGGAATTACTTATATCTATTATCAATTTATTTCAGTAACTGGAAGAGTTGTTGGAAAAGGAATACCAGCAGACCACTGGGAAAGAACTGCAGAAAAAGGTTTTCAATTGGTTTATGGAGCAACAGCAAATTTATTTTTAGATCGTCATAATAATTATATTGGATATGGTCCAGAAGCTATGGAATTGGTAGGAATACCTGATCCAGAAACTTTTGTTCAATTGCCTTGGGATAAGAGAGTTGGAAGAGTCTTTGTTACATGTTTTAGAAATAGAGAAGAAAGAAAAAATCCAGGTGGTCATTTAACAAGTGACTGCAGAGGTAATC
+rc=0
+[0m$ [0mB=/vol/data/benchmark/runs/baseline_rerun_autorestart1/comebin_out/comebin_res/comebin_res_bins; ls -la "$B" | head -8; echo "---"; find "$B" -maxdepth 1 -type f | wc -l; find "$B" -maxdepth 1 -type l | wc -l; find "$B" -maxdepth 1 -size +0c | wc -l; echo "---nonlink sample---"; find "$B" -maxdepth 1 | head -5; stat -c '%F %s %N' "$B"/0.fasta 2>/dev/null
+lrwxrwxrwx 1 ubuntu ubuntu 81 Sep 24 08:37 /vol/data/benchmark/runs/baseline_rerun_autorestart1/comebin_out/comebin_res/comebin_res_bins -> /vol/data/benchmark/runs/baseline_rerun_autorestart1/comebin_out/comebin_res_bins
+---
+0
+1
+1
+---nonlink sample---
+/vol/data/benchmark/runs/baseline_rerun_autorestart1/comebin_out/comebin_res/comebin_res_bins
+regular file 323156 '/vol/data/benchmark/runs/baseline_rerun_autorestart1/comebin_out/comebin_res/comebin_res_bins/0.fasta'
+> build · mimo-v2.6-flash-free
+[91m[1mError: [0mECONNRESET: The socket connection was closed unexpectedly. For more information, pass `verbose: true` in the second argument to fetch()
+> build · mimo-v2.6-flash-free

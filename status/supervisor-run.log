@@ -41843,3 +41843,293 @@ results/small_test_v4.csv:2: trailing whitespace.
 > build · space-bunny-free
 [0m← [0mWrite /vol/data/repos/metagenomic-binning-benchmark/results/small_test_v4.csv
 Wrote file successfully: /vol/data/repos/metagenomic-binning-benchmark/results/small_test_v4.csv
+> build · space-bunny-free
+[0m← [0mWrite /vol/data/repos/metagenomic-binning-benchmark/results/small_test_v4.csv
+Wrote file successfully: /vol/data/repos/metagenomic-binning-benchmark/results/small_test_v4.csv
+> build · space-bunny-free
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/scripts/make_results_csv.py
+Index: /vol/data/repos/metagenomic-binning-benchmark/scripts/make_results_csv.py
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/scripts/make_results_csv.py
++++ /vol/data/repos/metagenomic-binning-benchmark/scripts/make_results_csv.py
+@@ -82,9 +82,9 @@
+           "checkm2_mean_completeness", "checkm2_mean_contamination", "checkm2_HQ", "checkm2_MQ",
+           "checkm_mean_completeness", "checkm_mean_contamination", "checkm_HQ", "checkm_MQ"]
+ row = [name, commit, dataset, threads, t_total, n_bins, *c2, *c1]
+ with open(out, "w", newline="") as f:
+-    w = csv.writer(f)
++    w = csv.writer(f, lineterminator="\n")
+     w.writerow(header)
+     w.writerow(row)
+ print(f"wrote {out}")
+ print(",".join(row))
+\ No newline at end of file
+
+> build · space-bunny-free
+[0m$ [0mpython3 scripts/make_results_csv.py /vol/data/benchmark/runs/small_test_v4 comebin_small 8 >/tmp/small-csv.out; cat /tmp/small-csv.out; file results/small_test_v4.csv; git diff --check -- results/small_test_v4.csv scripts/make_results_csv.py; tmp=/vol/data/benchmark/bin/.make_results_csv.py.deploy-new; cp scripts/make_results_csv.py "$tmp"; chmod 755 "$tmp"; python3 -m py_compile "$tmp"; mv -f "$tmp" /vol/data/benchmark/bin/make_results_csv.py
+wrote /vol/data/repos/metagenomic-binning-benchmark/results/small_test_v4.csv
+small_test_v4,c8f22e4935a66a0fd58b794489a9021671b15437,comebin_small,8,122,3,26.07,2.02,0,0,29.08,0.71,0,0
+results/small_test_v4.csv: CSV ASCII text
+> build · space-bunny-free
+[0m$ [0mset -euo pipefail
+exec 8>/tmp/bench-repo.lock
+flock -w 30 8
+cd /vol/data/repos/metagenomic-binning-benchmark
+if [ -n "$(git diff --cached --name-only)" ]; then echo 'unexpected pre-existing staged paths:' >&2; git diff --cached --name-only >&2; exit 1; fi
+git add -- PROGRESS.md docs/04-evaluation.md docs/06-benchmark-commands.md scripts/make_results_csv.py scripts/parse_eval.py scripts/run_eval.sh scripts/run_small_test.sh results/small_test_v4.csv runs/small_test_v3/supervisor_postcheck.txt
+expected=$(printf '%s\n' PROGRESS.md docs/04-evaluation.md docs/06-benchmark-commands.md scripts/make_results_csv.py scripts/parse_eval.py scripts/run_eval.sh scripts/run_small_test.sh results/small_test_v4.csv runs/small_test_v3/supervisor_postcheck.txt | sort)
+actual=$(git diff --cached --name-only | sort)
+if [ "$actual" != "$expected" ]; then echo 'staged path set mismatch' >&2; printf 'expected:\n%s\nactual:\n%s\n' "$expected" "$actual" >&2; exit 1; fi
+git diff --cached --check
+git commit -m "fix: make small evaluation and functional gate reliable" --only PROGRESS.md docs/04-evaluation.md docs/06-benchmark-commands.md scripts/make_results_csv.py scripts/parse_eval.py scripts/run_eval.sh scripts/run_small_test.sh results/small_test_v4.csv runs/small_test_v3/supervisor_postcheck.txt
+git push origin main
+echo "committed_and_pushed=$(git rev-parse HEAD)"
+unexpected pre-existing staged paths:
+PROGRESS.md
+docs/04-evaluation.md
+docs/06-benchmark-commands.md
+results/small_test_v4.csv
+scripts/make_results_csv.py
+scripts/parse_eval.py
+scripts/run_eval.sh
+scripts/run_small_test.sh
+> build · space-bunny-free
+[0m$ [0mset -euo pipefail
+exec 8>/tmp/bench-repo.lock
+flock -w 30 8
+cd /vol/data/repos/metagenomic-binning-benchmark
+expected=$(printf '%s\n' PROGRESS.md docs/04-evaluation.md docs/06-benchmark-commands.md scripts/make_results_csv.py scripts/parse_eval.py scripts/run_eval.sh scripts/run_small_test.sh results/small_test_v4.csv runs/small_test_v3/supervisor_postcheck.txt | sort)
+actual=$(git diff --cached --name-only | sort)
+if [ "$actual" != "$expected" ]; then echo 'staged path set mismatch' >&2; printf 'expected:\n%s\nactual:\n%s\n' "$expected" "$actual" >&2; exit 1; fi
+git add -- PROGRESS.md docs/04-evaluation.md docs/06-benchmark-commands.md scripts/make_results_csv.py scripts/parse_eval.py scripts/run_eval.sh scripts/run_small_test.sh results/small_test_v4.csv runs/small_test_v3/supervisor_postcheck.txt
+actual=$(git diff --cached --name-only | sort)
+if [ "$actual" != "$expected" ]; then echo 'staged path set changed unexpectedly' >&2; exit 1; fi
+git diff --cached --check
+git commit -m "fix: make small evaluation and functional gate reliable" --only PROGRESS.md docs/04-evaluation.md docs/06-benchmark-commands.md scripts/make_results_csv.py scripts/parse_eval.py scripts/run_eval.sh scripts/run_small_test.sh results/small_test_v4.csv runs/small_test_v3/supervisor_postcheck.txt
+git push origin main
+echo "committed_and_pushed=$(git rev-parse HEAD)"
+staged path set mismatch
+expected:
+PROGRESS.md
+docs/04-evaluation.md
+docs/06-benchmark-commands.md
+results/small_test_v4.csv
+runs/small_test_v3/supervisor_postcheck.txt
+scripts/make_results_csv.py
+scripts/parse_eval.py
+scripts/run_eval.sh
+scripts/run_small_test.sh
+actual:
+PROGRESS.md
+docs/04-evaluation.md
+docs/06-benchmark-commands.md
+results/small_test_v4.csv
+scripts/make_results_csv.py
+scripts/parse_eval.py
+scripts/run_eval.sh
+scripts/run_small_test.sh
+> build · space-bunny-free
+[0m$ [0mgit status --porcelain=v1; git check-ignore -v runs/small_test_v3/supervisor_postcheck.txt || true; git ls-files --stage runs/small_test_v3/supervisor_postcheck.txt; ls -l runs/small_test_v3/supervisor_postcheck.txt
+M  PROGRESS.md
+M  docs/04-evaluation.md
+M  docs/06-benchmark-commands.md
+AM results/small_test_v4.csv
+MM scripts/make_results_csv.py
+M  scripts/parse_eval.py
+M  scripts/run_eval.sh
+M  scripts/run_small_test.sh
+100644 237d9558a719b5d82ac1a4c637914713d2199dab 0	runs/small_test_v3/supervisor_postcheck.txt
+-rw-rw-r-- 1 ubuntu ubuntu 202 Sep 24 09:04 runs/small_test_v3/supervisor_postcheck.txt
+> build · space-bunny-free
+[0m$ [0mset -euo pipefail
+exec 8>/tmp/bench-repo.lock
+flock -w 30 8
+cd /vol/data/repos/metagenomic-binning-benchmark
+expected=$(printf '%s\n' PROGRESS.md docs/04-evaluation.md docs/06-benchmark-commands.md scripts/make_results_csv.py scripts/parse_eval.py scripts/run_eval.sh scripts/run_small_test.sh results/small_test_v4.csv | sort)
+git add -- PROGRESS.md docs/04-evaluation.md docs/06-benchmark-commands.md scripts/make_results_csv.py scripts/parse_eval.py scripts/run_eval.sh scripts/run_small_test.sh results/small_test_v4.csv
+actual=$(git diff --cached --name-only | sort)
+if [ "$actual" != "$expected" ]; then echo 'staged path set mismatch' >&2; printf 'expected:\n%s\nactual:\n%s\n' "$expected" "$actual" >&2; exit 1; fi
+git diff --cached --check
+git commit -m "fix: make small evaluation and functional gate reliable" --only PROGRESS.md docs/04-evaluation.md docs/06-benchmark-commands.md scripts/make_results_csv.py scripts/parse_eval.py scripts/run_eval.sh scripts/run_small_test.sh results/small_test_v4.csv
+git push origin main
+echo "committed_and_pushed=$(git rev-parse HEAD)"
+[main 88389e7] fix: make small evaluation and functional gate reliable
+ 8 files changed, 243 insertions(+), 108 deletions(-)
+ create mode 100644 results/small_test_v4.csv
+To https://github.com/paulzierep/metagenomic-binning-benchmark
+   1dba2b3..88389e7  main -> main
+committed_and_pushed=88389e7635a7fdd9527bfdac66aa5f91b21f593d
+> build · space-bunny-free
+[0m$ [0mset -euo pipefail
+ROOT=/vol/data/benchmark/releases/comebin_small_20260924
+PAYLOAD=$ROOT/payload
+MAN=$ROOT/comebin_small.release.public.json
+rm -f "$MAN"
+python3 /vol/data/repos/metagenomic-binning-benchmark/scripts/make_release_manifest.py "$PAYLOAD" "$MAN" \
+  --metadata dataset=comebin_small \
+  --metadata release_version=1 \
+  --metadata source_commit=c8f22e4935a66a0fd58b794489a9021671b15437 \
+  --metadata benchmark_repo_commit=88389e7635a7fdd9527bfdac66aa5f91b21f593d \
+  --metadata selection=top-300-contigs-by-length \
+  --metadata source=COMEBin_demo_BATS \
+  --metadata license=CC-BY-4.0 \
+  --metadata result_run=small_test_v4 \
+  --omit-local-path
+sha256sum "$MAN"
+python3 - <<'PY'
+import json
+p='/vol/data/benchmark/releases/comebin_small_20260924/comebin_small.release.public.json'
+d=json.load(open(p))
+print('manifest_files', d['file_count'], 'bytes', d['total_bytes'], 'dataset_path' in d)
+print('has_local_path', any('/vol/data' in str(v) for v in d.get('metadata', {}).values()))
+PY
+wrote /vol/data/benchmark/releases/comebin_small_20260924/comebin_small.release.public.json (18 files, 98078536 bytes)
+84131ae359d07a78db7ae7ca2005758f4f0ec9df67a33ec62f8af50ac1702f1b  /vol/data/benchmark/releases/comebin_small_20260924/comebin_small.release.public.json
+manifest_files 18 bytes 98078536 False
+has_local_path False
+> build · space-bunny-free
+[0m$ [0mset -euo pipefail
+ROOT=/vol/data/benchmark/releases/comebin_small_20260924
+ARCHIVE=$ROOT/comebin_small_release_v1.tar.gz
+rm -f "$ARCHIVE"
+python3 - "$ROOT/payload" "$ARCHIVE" <<'PY'
+import gzip, io, os, sys, tarfile
+from pathlib import Path
+src=Path(sys.argv[1]); out=Path(sys.argv[2])
+with out.open('wb') as raw:
+    with gzip.GzipFile(fileobj=raw, mode='wb', mtime=0) as gz:
+        with tarfile.open(fileobj=gz, mode='w', format=tarfile.PAX_FORMAT) as tar:
+            for path in sorted(src.rglob('*')):
+                rel=path.relative_to(src).as_posix()
+                arc='comebin_small_release_v1/'+rel
+                info=tar.gettarinfo(str(path), arcname=arc)
+                info.uid=info.gid=0; info.uname=info.gname='root'
+                info.mtime=0; info.mode=0o755 if path.is_dir() else 0o644
+                if path.is_file():
+                    with path.open('rb') as fh:
+                        tar.addfile(info, fh)
+                else:
+                    tar.addfile(info)
+print(out)
+PY
+sha256sum "$ARCHIVE"
+stat -c '%s bytes' "$ARCHIVE"
+tar -tzf "$ARCHIVE" | head -30
+/vol/data/benchmark/releases/comebin_small_20260924/comebin_small_release_v1.tar.gz
+0c698d208639f4fadd4ac4477a67074320c975528b23dd61743c83ad1658b6d2  /vol/data/benchmark/releases/comebin_small_20260924/comebin_small_release_v1.tar.gz
+95216539 bytes
+comebin_small_release_v1/PROVENANCE.txt
+comebin_small_release_v1/README.txt
+comebin_small_release_v1/inputs/
+comebin_small_release_v1/inputs/comebin_small/
+comebin_small_release_v1/inputs/comebin_small/bamfiles/
+comebin_small_release_v1/inputs/comebin_small/bamfiles/bedtools.err
+comebin_small_release_v1/inputs/comebin_small/bamfiles/reads.bam
+comebin_small_release_v1/inputs/comebin_small/bamfiles/reads.bam.bai
+comebin_small_release_v1/inputs/comebin_small/contig_names.txt
+comebin_small_release_v1/inputs/comebin_small/contigs.bed
+comebin_small_release_v1/inputs/comebin_small/contigs.fa
+comebin_small_release_v1/results/
+comebin_small_release_v1/results/small_test_v4/
+comebin_small_release_v1/results/small_test_v4/comebin_res/
+comebin_small_release_v1/results/small_test_v4/comebin_res/comebin.log
+comebin_small_release_v1/results/small_test_v4/comebin_res/config.yml
+comebin_small_release_v1/results/small_test_v4/comebin_res/training.log
+comebin_small_release_v1/results/small_test_v4/comebin_run.log
+comebin_small_release_v1/results/small_test_v4/eval/
+comebin_small_release_v1/results/small_test_v4/eval/checkm/
+comebin_small_release_v1/results/small_test_v4/eval/checkm/checkm.log
+comebin_small_release_v1/results/small_test_v4/eval/checkm/storage/
+comebin_small_release_v1/results/small_test_v4/eval/checkm/storage/bin_stats_ext.tsv
+comebin_small_release_v1/results/small_test_v4/eval/checkm2/
+comebin_small_release_v1/results/small_test_v4/eval/checkm2/quality_report.tsv
+comebin_small_release_v1/results/small_test_v4/logs/
+comebin_small_release_v1/results/small_test_v4/logs/resources.tsv
+comebin_small_release_v1/results/small_test_v4/results.csv
+comebin_small_release_v1/results/small_test_v4/run_meta.txt
+> build · space-bunny-free
+[0m$ [0mset -euo pipefail
+ROOT=/vol/data/benchmark/releases/comebin_small_20260924
+TMP=/tmp/comebin_small_release_verify
+rm -rf "$TMP"; mkdir -p "$TMP"
+tar -xzf "$ROOT/comebin_small_release_v1.tar.gz" -C "$TMP"
+python3 - "$TMP/comebin_small_release_v1" "$ROOT/comebin_small.release.public.json" <<'PY'
+import hashlib, json, sys
+from pathlib import Path
+root=Path(sys.argv[1]); manifest=json.load(open(sys.argv[2]))
+errors=[]
+for item in manifest['files']:
+    p=root/item['path']
+    if not p.is_file(): errors.append(f'missing:{item["path"]}'); continue
+    h=hashlib.sha256(p.read_bytes()).hexdigest()
+    if p.stat().st_size != item['bytes'] or h != item['sha256']:
+        errors.append(f'mismatch:{item["path"]}')
+print('verified_files', len(manifest['files']), 'errors', len(errors))
+if errors: print('\n'.join(errors)); raise SystemExit(1)
+PY
+python3 - "$ROOT" <<'PY'
+import hashlib, json, os, sys
+from datetime import datetime, timezone
+from pathlib import Path
+root=Path(sys.argv[1])
+def sha(p):
+ h=hashlib.sha256();
+ with p.open('rb') as f:
+  for b in iter(lambda:f.read(1024*1024),b''): h.update(b)
+ return h.hexdigest()
+archive=root/'comebin_small_release_v1.tar.gz'; manifest=root/'comebin_small.release.public.json'
+data={
+ 'schema_version':1,
+ 'dataset':'comebin_small',
+ 'release_version':1,
+ 'created_at_utc':datetime.now(timezone.utc).replace(microsecond=0).isoformat(),
+ 'license':'CC-BY-4.0',
+ 'source_commit':'c8f22e4935a66a0fd58b794489a9021671b15437',
+ 'benchmark_repo_commit':'88389e7635a7fdd9527bfdac66aa5f91b21f593d',
+ 'selection':'top-300-contigs-by-length',
+ 'functional_run':'small_test_v4',
+ 'metrics':{'checkm2_mean_completeness':26.07,'checkm2_mean_contamination':2.02,'checkm_mean_completeness':29.08,'checkm_mean_contamination':0.71,'bins':3},
+ 'files':[
+  {'name':archive.name,'bytes':archive.stat().st_size,'sha256':sha(archive)},
+  {'name':manifest.name,'bytes':manifest.stat().st_size,'sha256':sha(manifest)},
+ ],
+ 'sandbox_attempt':'not available: token rejected by sandbox.zenodo.org (HTTP 403); production API access verified',
+}
+out=root/'release_metadata.json'; out.write_text(json.dumps(data,indent=2,sort_keys=True)+'\n')
+print(out)
+print(json.dumps(data,indent=2,sort_keys=True))
+PY
+rm -rf "$TMP"
+verified_files 18 errors 0
+/vol/data/benchmark/releases/comebin_small_20260924/release_metadata.json
+{
+  "benchmark_repo_commit": "88389e7635a7fdd9527bfdac66aa5f91b21f593d",
+  "created_at_utc": "2026-09-24T09:07:04+00:00",
+  "dataset": "comebin_small",
+  "files": [
+    {
+      "bytes": 95216539,
+      "name": "comebin_small_release_v1.tar.gz",
+      "sha256": "0c698d208639f4fadd4ac4477a67074320c975528b23dd61743c83ad1658b6d2"
+    },
+    {
+      "bytes": 3650,
+      "name": "comebin_small.release.public.json",
+      "sha256": "84131ae359d07a78db7ae7ca2005758f4f0ec9df67a33ec62f8af50ac1702f1b"
+    }
+  ],
+  "functional_run": "small_test_v4",
+  "license": "CC-BY-4.0",
+  "metrics": {
+    "bins": 3,
+    "checkm2_mean_completeness": 26.07,
+    "checkm2_mean_contamination": 2.02,
+    "checkm_mean_completeness": 29.08,
+    "checkm_mean_contamination": 0.71
+  },
+  "release_version": 1,
+  "sandbox_attempt": "not available: token rejected by sandbox.zenodo.org (HTTP 403); production API access verified",
+  "schema_version": 1,
+  "selection": "top-300-contigs-by-length",
+  "source_commit": "c8f22e4935a66a0fd58b794489a9021671b15437"
+}
