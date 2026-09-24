@@ -37117,3 +37117,296 @@ done
 **Bookkeeping:** `status/agent-activity.log` + `/vol/data/benchmark/.activity` appended; `.heartbeat` touched. No git changes (PROGRESS ETA remains valid).
 
 **Next turn:** on terminal status → `run_eval.sh runs/fix_v11_20260924` → `make_results_csv.py` + `make_per_bin_plots.py -k demo` → README / docs-11 row → CAMI II marine prep + run.
+[0m
+> build · big-pickle
+[0m$ [0mtest -f /vol/data/benchmark/TASK_COMPLETE && echo "TASK_COMPLETE EXISTS" || echo "no TASK_COMPLETE"; echo "===active_run==="; cat /vol/data/benchmark/.active_run 2>/dev/null || echo "none"; echo "===fix_v11==="; L=/vol/data/benchmark/runs/fix_v11_20260924/comebin_run.log; grep -o 'epoch=[0-9]*/200, batches=[0-9]*, loss=[0-9.]*, top1=[0-9.]*' $L 2>/dev/null | tail -2; grep -E '^exit_code|^wall_s|^bins:' /vol/data/benchmark/runs/fix_v11_20260924/run_meta.txt 2>/dev/null || echo "not finished"; date -u +%FT%TZ; touch /vol/data/benchmark/.heartbeat
+no TASK_COMPLETE
+===active_run===
+873786 873784 /vol/data/benchmark/runs/fix_v11_20260924/comebin_run.log /vol/data/benchmark/runs/fix_v11_20260924 1790246235 fix /vol/data/repos/COMEBin-v11 /vol/data/datasets/comebin_test_data/BATS_SAMN07137077_METAG.scaffolds.min500.fasta.f1k.fasta /vol/data/datasets/comebin_test_data/bamfiles
+===fix_v11===
+epoch=15/200, batches=28, loss=3.457881, top1=87.4186
+epoch=16/200, batches=28, loss=3.428304, top1=87.4707
+not finished
+2026-09-24T11:18:08Z
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && gh issue list -R paulzierep/metagenomic-binning-benchmark --state open --json number,title,updatedAt --jq '.[] | "\(.number) \(.title) \(.updatedAt)"' | sort -k3 | tail -4
+17 Only perform big benchmark runs when fixes wored on the small datasets 2026-09-24T11:09:53Z
+7 Optimization plan 2026-09-24T11:10:02Z
+14 Improve the readme 2026-09-24T11:09:52Z
+2 Can you try to create a small benchmark dataset for comebin ? 2026-09-24T10:02:55Z
+> build · big-pickle
+New issue **#17** — checking it and the #7/#14 updates:
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && gh issue view 17 -R paulzierep/metagenomic-binning-benchmark --json title,body,createdAt,state --jq '"\(.title) | \(.state) | created \(.createdAt)\n---\n\(.body)"'; echo "=== #17 comments ==="; gh api repos/paulzierep/metagenomic-binning-benchmark/issues/17/comments --jq '.[] | "[\(.created_at)] \(.user.login): \(.body[0:500])"'
+Only perform big benchmark runs when fixes wored on the small datasets | OPEN | created 2026-09-24T10:53:01Z
+---
+Currently we got
+train fix_v11_20260924: epoch 2/200
+why, first run on the small sets,
+also optimize paramters on small sets before doing big benchmarks
+=== #17 comments ===
+[2026-09-24T11:09:53Z] paulzierep: Agreed, and it's now an explicit gate rule (README + docs/09, commit 2524e12): full-large benchmark runs are launched only after the fix passes the small functional test AND a medium set, and parameter tuning happens on small sets before big benchmarks.
+
+For the current run: fix_v11_20260924 is the full-large fix-benchmark on the demo dataset (29,434 contigs), and it did pass the gate first — small_test_v4 (3 bins, 122 s, 26.07% CheckM2 comp) at 08:50 and medium_v11_20260924 (16 bins, CheckM2 35
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && for n in 7 14; do echo "=== #$n ==="; gh api repos/paulzierep/metagenomic-binning-benchmark/issues/$n/comments --jq '.[] | "[\(.created_at)] \(.body[0:300])"' | tail -3; done
+=== #7 ===
+[2026-09-24T10:35:35Z] Done — the optimization flowchart is now rendered directly in the README (live mermaid, colored keep/drop nodes, emoji labels) under a new "Optimization workflow" section, with the full gate rules right below it. The same (nicer) flowchart also replaces the old one in `docs/09-optimization-strategy.
+[2026-09-24T10:50:28Z] flowchart text is broken
+[2026-09-24T11:10:02Z] Fixed — the flowchart was rewritten with renderer-safe mermaid syntax (commit 2524e12) in both the README and docs/09: no `<br/>` inside labels and no emoji in edge labels (those are the usual GitHub-renderer breakers), explicit chains instead of chained labeled edges, all labels quoted, same keep/d
+=== #14 ===
+2. **Move the full tabl
+[2026-09-24T10:17:32Z] still not showin much
+[2026-09-24T11:09:52Z] README updated since your comment (commits 869754a, 7c0d4bd, 2524e12). The top now leads with a short 'Current / Next': the actual achievements — baseline 60 bins (CheckM2 25.01% / 2.98%), small gate 3 bins (122 s), medium 16 bins (CheckM2 35.93% / 4.67%) — plus what runs next. The Results section i
+> build · big-pickle
+A concurrent supervisor session already triaged #17 (gate rule + commit `2524e12`) and fixed the #7 flowchart. Verifying that commit and the current README mermaid actually render safely:
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && git log --oneline -4; echo "=== 2524e12 files ==="; git show 2524e12 --stat --oneline | head -15; echo "=== README mermaid block ==="; sed -n '/```mermaid/,/```/p' README.md | head -40
+80337c7 status: yes — fix_v11_20260924 epoch 15/200 loss 3.4283039569854736 acc 87.470703125 model big-pickle — Baseline training epoch ~109/200 (~2.4 m 2026-09-23 20:33:11 UTC - heartbeat 2026-09-23 20:43:58 UTC - heartbeat 2026-09-23 20:56:28 UTC - heartbeat 2026-09-23 20:57:36 UTC - heartbeat 2026-09-23 20:58:25 UTC - issue #7 close 2026-09-23 20:59:20 UTC - heartbeat 2026-09-23 20:59:58 UTC - heartbeat 2026-09-23 21:00:37 UTC - heartbeat 2026-09-23 21:01:19 UTC - heartbeat 2026-09-23 21:01:58 UTC - heartbeat 2026-09-23 21:02:37 UTC - heartbeat 2026-09-23 21:03:22 UTC - heartbeat 2026-09-23 21:04:00 UTC - heartbeat 2026-09-23 21:04:40 UTC - heartbeat 2026-09-23 21:05:21 UTC - heartbeat 2026-09-23 21:05:59 UTC - heartbeat 2026-09-23 21:06:39 UTC - heartbeat 2026-09-23 21:07:53 UTC - heartbeat 2026-09-23 21:08:31 UTC - heartbeat 2026-09-23 21:09:10 UTC - heartbeat 2026-09-23 21:09:49 UTC - heartbeat 2026-09-23 21:10:27 UTC - heartbeat 2026-09-23 21:11:06 UTC - heartbeat 2026-09-23 21:11:52 UTC - heartbeat 2026-09-23 21:12:29 UTC - heartbeat 2026-09-23 21:13:08 UTC - heartbeat 2026-09-23 21:13:48 UTC - heartbeat 2026-09-23 21:14:29 UTC - heartbeat 2026-09-23 21:15:07 UTC - heartbeat 2026-09-23 21:15:49 UTC - heartbeat 2026-09-23 21:16:28 UTC - heartbeat 2026-09-23 21:17:09 UTC - heartbeat 2026-09-23 21:17:50 UTC - heartbeat 2026-09-23 21:18:29 UTC - heartbeat 2026-09-23 21:19:08 UTC - heartbeat 2026-09-23 21:19:49 UTC - heartbeat 2026-09-23 21:20:27 UTC - heartbeat 2026-09-23 21:21:08 UTC - heartbeat 2026-09-23 21:21:48 UTC - heartbeat 2026-09-23 21:22:26 UTC - heartbeat 2026-09-23 21:23:09 UTC - heartbeat 2026-09-23 21:23:47 UTC - heartbeat 2026-09-23 21:24:25 UTC - heartbeat 2026-09-23 21:25:05 UTC - heartbeat 2026-09-23 21:25:44 UTC - heartbeat 2026-09-23 21:27:45 UTC - heartbeat 2026-09-23 21:28:29 UTC - heartbeat 2026-09-23 21:29:07 UTC - heartbeat 2026-09-23T22:42Z | small functional tes 2026-09-24 00:15:09 UTC 2026-09-24 00:26:39 UTC 2026-09-24 00:29:27 UTC 2026-09-24 00:50:45 UTC - triage: invest 2026-09-24 00:54:48 UTC - issue #2 root- 2026-09-24 00:58:23 UTC - dataset: build 2026-09-24 01:00:04 UTC - dataset: verif 2026-09-24 01:00:49 UTC - dataset: rehea 2026-09-24T01:01:51Z [supervisor] restor 2026-09-24 01:02:13 UTC - dataset: censu 2026-09-24 01:05:29 UTC - dataset: resto 2026-09-24 01:06:11 UTC - progress sync: 2026-09-24 01:07:02 UTC - progress: PROG 2026-09-24 01:07:15 UTC - heartbeat 2026-09-24 01:09:49 UTC - heartbeat 2026-09-24 01:10:10 UTC - heartbeat 2026-09-24 01:11:31 UTC - heartbeat 2026-09-24 01:22:51 UTC - heartbeat 2026-09-24 01:33:37 UTC - heartbeat 2026-09-24 01:44:01 UTC - heartbeat 2026-09-24 01:54:33 UTC - heartbeat 2026-09-24 02:04:51 UTC - heartbeat 2026-09-24 02:15:11 UTC - heartbeat 2026-09-24 02:25:33 UTC - heartbeat 2026-09-24 02:35:57 UTC - heartbeat 2026-09-24 02:46:15 UTC - heartbeat 2026-09-24 02:56:42 UTC - heartbeat 2026-09-24 03:07:10 UTC - heartbeat 2026-09-24 03:17:30 UTC - heartbeat 2026-09-24 03:28:04 UTC - heartbeat 2026-09-24 03:38:22 UTC - heartbeat 2026-09-24 03:48:46 UTC - heartbeat 2026-09-24 03:59:11 UTC - heartbeat 2026-09-24 04:09:34 UTC - heartbeat 2026-09-24 04:19:55 UTC - heartbeat 2026-09-24 04:30:21 UTC - heartbeat 2026-09-24 04:44:40 UTC - heartbeat 2026-09-24 04:45:34 UTC - heartbeat 2026-09-24 05:00:12 UTC - heartbeat 2026-09-24 05:01:16 UTC - heartbeat 2026-09-24 05:02:09 UTC - heartbeat 2026-09-24 05:03:22 UTC - heartbeat 2026-09-24 05:04:12 UTC - heartbeat 2026-09-24 05:05:00 UTC - heartbeat 2026-09-24 05:05:48 UTC - heartbeat 2026-09-24 05:06:39 UTC - heartbeat 2026-09-24 05:07:26 UTC - heartbeat 2026-09-24 05:08:14 UTC - heartbeat 2026-09-24 05:09:06 UTC - heartbeat 2026-09-24 05:09:58 UTC - heartbeat 2026-09-24 05:10:46 UTC - heartbeat 2026-09-24 05:11:40 UTC - heartbeat 2026-09-24 05:12:38 UTC - heartbeat 2026-09-24 05:13:28 UTC - heartbeat 2026-09-24 05:14:26 UTC - heartbeat 2026-09-24 05:15:13 UTC - heartbeat 2026-09-24 05:16:11 UTC - heartbeat 2026-09-24 05:16:56 UTC - heartbeat 2026-09-24 05:17:44 UTC - heartbeat 2026-09-24 05:18:42 UTC - heartbeat 2026-09-24 05:19:36 UTC - heartbeat 2026-09-24 05:20:28 UTC - heartbeat 2026-09-24 05:21:27 UTC - heartbeat 2026-09-24 05:22:22 UTC - heartbeat 2026-09-24 05:23:15 UTC - heartbeat 2026-09-24 05:24:09 UTC - heartbeat 2026-09-24 05:24:59 UTC - heartbeat 2026-09-24 05:26:17 UTC - heartbeat 2026-09-24 05:27:01 UTC - heartbeat 2026-09-24 05:28:06 UTC - heartbeat 2026-09-24 05:29:07 UTC - heartbeat 2026-09-24 05:29:59 UTC - heartbeat 2026-09-24 05:30:58 UTC - heartbeat 2026-09-24 05:31:51 UTC - heartbeat 2026-09-24 05:33:02 UTC - heartbeat 2026-09-24 05:34:19 UTC - heartbeat 2026-09-24 05:35:21 UTC - heartbeat 2026-09-24 05:36:18 UTC - heartbeat 2026-09-24 05:37:24 UTC - heartbeat 2026-09-24 05:38:37 UTC - heartbeat 2026-09-24 05:39:33 UTC - heartbeat 2026-09-24 05:40:24 UTC - heartbeat 2026-09-24 05:41:19 UTC - heartbeat 2026-09-24 05:42:18 UTC - heartbeat 2026-09-24 05:43:29 UTC - heartbeat 2026-09-24 05:44:24 UTC - heartbeat 2026-09-24 05:45:29 UTC - heartbeat 2026-09-24 05:46:23 UTC - heartbeat 2026-09-24 05:47:13 UTC - heartbeat 2026-09-24 05:48:06 UTC - heartbeat 2026-09-24 05:48:54 UTC - heartbeat 2026-09-24 05:50:00 UTC - heartbeat 2026-09-24 05:51:09 UTC - heartbeat 2026-09-24 05:51:58 UTC - heartbeat 2026-09-24 05:52:48 UTC - heartbeat 2026-09-24 05:53:37 UTC - heartbeat 2026-09-24 05:54:28 UTC - heartbeat 2026-09-24 05:55:37 UTC - heartbeat 2026-09-24 05:56:32 UTC - heartbeat 2026-09-24 05:57:18 UTC - heartbeat 2026-09-24 05:58:10 UTC - heartbeat 2026-09-24 05:59:00 UTC - heartbeat 2026-09-24 05:59:55 UTC - heartbeat 2026-09-24 06:00:50 UTC - heartbeat 2026-09-24 06:01:43 UTC - heartbeat 2026-09-24 06:02:33 UTC - heartbeat 2026-09-24 06:03:28 UTC - heartbeat 2026-09-24 06:04:20 UTC - heartbeat 2026-09-24 06:05:14 UTC - heartbeat 2026-09-24 06:06:49 UTC - heartbeat 2026-09-24 06:07:48 UTC - heartbeat 2026-09-24 06:08:38 UTC - heartbeat 2026-09-24 06:09:25 UTC - heartbeat 2026-09-24 06:10:21 UTC - heartbeat 2026-09-24 06:11:08 UTC - heartbeat 2026-09-24 06:12:02 UTC - heartbeat 2026-09-24 06:12:51 UTC - heartbeat 2026-09-24 06:13:38 UTC - heartbeat 2026-09-24 06:14:36 UTC - heartbeat 2026-09-24 06:15:31 UTC - heartbeat 2026-09-24 06:16:26 UTC - heartbeat 2026-09-24 06:17:21 UTC - heartbeat 2026-09-24 06:18:16 UTC - heartbeat 2026-09-24 06:19:15 UTC - heartbeat 2026-09-24 06:20:12 UTC - heartbeat 2026-09-24 06:21:22 UTC - heartbeat 2026-09-24 06:22:24 UTC - heartbeat 2026-09-24 06:23:27 UTC - heartbeat 2026-09-24 06:24:26 UTC - heartbeat 2026-09-24 06:26:11 UTC - heartbeat 2026-09-24 06:26:58 UTC - heartbeat 2026-09-24 06:27:45 UTC - heartbeat 2026-09-24 06:28:28 UTC - heartbeat 2026-09-24 06:29:23 UTC - heartbeat 2026-09-24 06:30:08 UTC - heartbeat 2026-09-24 06:30:54 UTC - heartbeat 2026-09-24 06:31:58 UTC - heartbeat 2026-09-24 06:32:50 UTC - heartbeat 2026-09-24 06:33:41 UTC - heartbeat 2026-09-24 06:34:23 UTC - heartbeat 2026-09-24 06:35:12 UTC - heartbeat 2026-09-24 06:36:08 UTC - heartbeat 2026-09-24 06:37:05 UTC - heartbeat 2026-09-24 06:37:52 UTC - heartbeat 2026-09-24 06:38:42 UTC - heartbeat 2026-09-24 06:39:48 UTC - heartbeat 2026-09-24 06:40:44 UTC - heartbeat 2026-09-24 06:42:03 UTC - heartbeat 2026-09-24 06:43:07 UTC - heartbeat 2026-09-24 06:43:58 UTC - heartbeat 2026-09-24 06:44:45 UTC - heartbeat 2026-09-24 06:45:32 UTC - heartbeat 2026-09-24 06:46:19 UTC - heartbeat 2026-09-24 06:47:07 UTC - heartbeat 2026-09-24 06:47:53 UTC - heartbeat 2026-09-24 06:48:37 UTC - heartbeat 2026-09-24 06:49:25 UTC - heartbeat 2026-09-24 06:50:21 UTC - heartbeat 2026-09-24 06:51:12 UTC - heartbeat 2026-09-24 06:52:00 UTC - heartbeat 2026-09-24 06:53:00 UTC - heartbeat 2026-09-24 06:54:01 UTC - heartbeat 2026-09-24 06:55:05 UTC - heartbeat 2026-09-24 06:55:59 UTC - heartbeat 2026-09-24 06:56:54 UTC - heartbeat 2026-09-24 06:57:56 UTC - heartbeat 2026-09-24 06:59:03 UTC - heartbeat 2026-09-24 07:00:04 UTC - heartbeat 2026-09-24 07:01:02 UTC - heartbeat 2026-09-24 07:01:56 UTC - heartbeat 2026-09-24 07:02:48 UTC - heartbeat 2026-09-24 07:03:31 UTC - heartbeat 2026-09-24 07:05:03 UTC - heartbeat 2026-09-24 07:06:06 UTC - heartbeat 2026-09-24 07:07:07 UTC - heartbeat 2026-09-24 07:08:01 UTC - heartbeat 2026-09-24 07:09:09 UTC - heartbeat 2026-09-24 07:10:08 UTC - heartbeat 2026-09-24 07:11:06 UTC - heartbeat 2026-09-24 07:11:56 UTC - heartbeat 2026-09-24 07:12:44 UTC - heartbeat 2026-09-24 07:13:39 UTC - heartbeat 2026-09-24 07:14:23 UTC - heartbeat 2026-09-24 07:15:09 UTC - heartbeat 2026-09-24T07:39:23Z [agent] root cause: 2026-09-24T08:31:15Z - baseline rerun co 2026-09-24T08:36:12Z - baseline eval: Ch 2026-09-24T08:39:35Z - baseline rerun co 2026-09-24T08:49:28Z verify-eval-consoli 2026-09-24T09:06:59Z eval-rerun-baseline 2026-09-24T09:07:17Z eval-rerun-refused- 2026-09-24T09:10:11Z checkm-v1-baseline- 2026-09-24T09:17:45Z eval-verify: deploy 2026-09-24T09:25:05Z medium-build: start 2026-09-24T09:25:50Z medium-run: launche 2026-09-24T09:25:52Z checkm-v1-baseline- 2026-09-24T09:33:26Z triage-new-issues-1 2026-09-24T09:35:29Z readme-progress-che 2026-09-24T09:36:37Z issue-13-reply-push 2026-09-24T09:59:22Z wrapup 2026-09-24T10:17:55Z medium-eval-complet 2026-09-24T10:29:00Z triage-7-15-16 2026-09-24T10:34:38Z issue-15 2026-09-24T10:37:05Z issue-16 2026-09-24T10:38:20Z fix_v11-launch-7-15 2026-09-24T10:43:15Z issue-12-plots 2026-09-24T10:44:46Z issue-12-reply 2026-09-24T10:45:01Z turn-end 2026-09-24T10:47:16Z fix_v11-epoch2 2026-09-24T10:57:38Z fix_v11-epoch7 2026-09-24T11:07:59Z fix_v11-epoch11
+5ec1a06 status: yes — fix_v11_20260924 epoch 14/200 loss 3.457880973815918 acc 87.41861724853516 model big-pickle — Baseline training epoch ~109/200 (~2.4 m 2026-09-23 20:33:11 UTC - heartbeat 2026-09-23 20:43:58 UTC - heartbeat 2026-09-23 20:56:28 UTC - heartbeat 2026-09-23 20:57:36 UTC - heartbeat 2026-09-23 20:58:25 UTC - issue #7 close 2026-09-23 20:59:20 UTC - heartbeat 2026-09-23 20:59:58 UTC - heartbeat 2026-09-23 21:00:37 UTC - heartbeat 2026-09-23 21:01:19 UTC - heartbeat 2026-09-23 21:01:58 UTC - heartbeat 2026-09-23 21:02:37 UTC - heartbeat 2026-09-23 21:03:22 UTC - heartbeat 2026-09-23 21:04:00 UTC - heartbeat 2026-09-23 21:04:40 UTC - heartbeat 2026-09-23 21:05:21 UTC - heartbeat 2026-09-23 21:05:59 UTC - heartbeat 2026-09-23 21:06:39 UTC - heartbeat 2026-09-23 21:07:53 UTC - heartbeat 2026-09-23 21:08:31 UTC - heartbeat 2026-09-23 21:09:10 UTC - heartbeat 2026-09-23 21:09:49 UTC - heartbeat 2026-09-23 21:10:27 UTC - heartbeat 2026-09-23 21:11:06 UTC - heartbeat 2026-09-23 21:11:52 UTC - heartbeat 2026-09-23 21:12:29 UTC - heartbeat 2026-09-23 21:13:08 UTC - heartbeat 2026-09-23 21:13:48 UTC - heartbeat 2026-09-23 21:14:29 UTC - heartbeat 2026-09-23 21:15:07 UTC - heartbeat 2026-09-23 21:15:49 UTC - heartbeat 2026-09-23 21:16:28 UTC - heartbeat 2026-09-23 21:17:09 UTC - heartbeat 2026-09-23 21:17:50 UTC - heartbeat 2026-09-23 21:18:29 UTC - heartbeat 2026-09-23 21:19:08 UTC - heartbeat 2026-09-23 21:19:49 UTC - heartbeat 2026-09-23 21:20:27 UTC - heartbeat 2026-09-23 21:21:08 UTC - heartbeat 2026-09-23 21:21:48 UTC - heartbeat 2026-09-23 21:22:26 UTC - heartbeat 2026-09-23 21:23:09 UTC - heartbeat 2026-09-23 21:23:47 UTC - heartbeat 2026-09-23 21:24:25 UTC - heartbeat 2026-09-23 21:25:05 UTC - heartbeat 2026-09-23 21:25:44 UTC - heartbeat 2026-09-23 21:27:45 UTC - heartbeat 2026-09-23 21:28:29 UTC - heartbeat 2026-09-23 21:29:07 UTC - heartbeat 2026-09-23T22:42Z | small functional tes 2026-09-24 00:15:09 UTC 2026-09-24 00:26:39 UTC 2026-09-24 00:29:27 UTC 2026-09-24 00:50:45 UTC - triage: invest 2026-09-24 00:54:48 UTC - issue #2 root- 2026-09-24 00:58:23 UTC - dataset: build 2026-09-24 01:00:04 UTC - dataset: verif 2026-09-24 01:00:49 UTC - dataset: rehea 2026-09-24T01:01:51Z [supervisor] restor 2026-09-24 01:02:13 UTC - dataset: censu 2026-09-24 01:05:29 UTC - dataset: resto 2026-09-24 01:06:11 UTC - progress sync: 2026-09-24 01:07:02 UTC - progress: PROG 2026-09-24 01:07:15 UTC - heartbeat 2026-09-24 01:09:49 UTC - heartbeat 2026-09-24 01:10:10 UTC - heartbeat 2026-09-24 01:11:31 UTC - heartbeat 2026-09-24 01:22:51 UTC - heartbeat 2026-09-24 01:33:37 UTC - heartbeat 2026-09-24 01:44:01 UTC - heartbeat 2026-09-24 01:54:33 UTC - heartbeat 2026-09-24 02:04:51 UTC - heartbeat 2026-09-24 02:15:11 UTC - heartbeat 2026-09-24 02:25:33 UTC - heartbeat 2026-09-24 02:35:57 UTC - heartbeat 2026-09-24 02:46:15 UTC - heartbeat 2026-09-24 02:56:42 UTC - heartbeat 2026-09-24 03:07:10 UTC - heartbeat 2026-09-24 03:17:30 UTC - heartbeat 2026-09-24 03:28:04 UTC - heartbeat 2026-09-24 03:38:22 UTC - heartbeat 2026-09-24 03:48:46 UTC - heartbeat 2026-09-24 03:59:11 UTC - heartbeat 2026-09-24 04:09:34 UTC - heartbeat 2026-09-24 04:19:55 UTC - heartbeat 2026-09-24 04:30:21 UTC - heartbeat 2026-09-24 04:44:40 UTC - heartbeat 2026-09-24 04:45:34 UTC - heartbeat 2026-09-24 05:00:12 UTC - heartbeat 2026-09-24 05:01:16 UTC - heartbeat 2026-09-24 05:02:09 UTC - heartbeat 2026-09-24 05:03:22 UTC - heartbeat 2026-09-24 05:04:12 UTC - heartbeat 2026-09-24 05:05:00 UTC - heartbeat 2026-09-24 05:05:48 UTC - heartbeat 2026-09-24 05:06:39 UTC - heartbeat 2026-09-24 05:07:26 UTC - heartbeat 2026-09-24 05:08:14 UTC - heartbeat 2026-09-24 05:09:06 UTC - heartbeat 2026-09-24 05:09:58 UTC - heartbeat 2026-09-24 05:10:46 UTC - heartbeat 2026-09-24 05:11:40 UTC - heartbeat 2026-09-24 05:12:38 UTC - heartbeat 2026-09-24 05:13:28 UTC - heartbeat 2026-09-24 05:14:26 UTC - heartbeat 2026-09-24 05:15:13 UTC - heartbeat 2026-09-24 05:16:11 UTC - heartbeat 2026-09-24 05:16:56 UTC - heartbeat 2026-09-24 05:17:44 UTC - heartbeat 2026-09-24 05:18:42 UTC - heartbeat 2026-09-24 05:19:36 UTC - heartbeat 2026-09-24 05:20:28 UTC - heartbeat 2026-09-24 05:21:27 UTC - heartbeat 2026-09-24 05:22:22 UTC - heartbeat 2026-09-24 05:23:15 UTC - heartbeat 2026-09-24 05:24:09 UTC - heartbeat 2026-09-24 05:24:59 UTC - heartbeat 2026-09-24 05:26:17 UTC - heartbeat 2026-09-24 05:27:01 UTC - heartbeat 2026-09-24 05:28:06 UTC - heartbeat 2026-09-24 05:29:07 UTC - heartbeat 2026-09-24 05:29:59 UTC - heartbeat 2026-09-24 05:30:58 UTC - heartbeat 2026-09-24 05:31:51 UTC - heartbeat 2026-09-24 05:33:02 UTC - heartbeat 2026-09-24 05:34:19 UTC - heartbeat 2026-09-24 05:35:21 UTC - heartbeat 2026-09-24 05:36:18 UTC - heartbeat 2026-09-24 05:37:24 UTC - heartbeat 2026-09-24 05:38:37 UTC - heartbeat 2026-09-24 05:39:33 UTC - heartbeat 2026-09-24 05:40:24 UTC - heartbeat 2026-09-24 05:41:19 UTC - heartbeat 2026-09-24 05:42:18 UTC - heartbeat 2026-09-24 05:43:29 UTC - heartbeat 2026-09-24 05:44:24 UTC - heartbeat 2026-09-24 05:45:29 UTC - heartbeat 2026-09-24 05:46:23 UTC - heartbeat 2026-09-24 05:47:13 UTC - heartbeat 2026-09-24 05:48:06 UTC - heartbeat 2026-09-24 05:48:54 UTC - heartbeat 2026-09-24 05:50:00 UTC - heartbeat 2026-09-24 05:51:09 UTC - heartbeat 2026-09-24 05:51:58 UTC - heartbeat 2026-09-24 05:52:48 UTC - heartbeat 2026-09-24 05:53:37 UTC - heartbeat 2026-09-24 05:54:28 UTC - heartbeat 2026-09-24 05:55:37 UTC - heartbeat 2026-09-24 05:56:32 UTC - heartbeat 2026-09-24 05:57:18 UTC - heartbeat 2026-09-24 05:58:10 UTC - heartbeat 2026-09-24 05:59:00 UTC - heartbeat 2026-09-24 05:59:55 UTC - heartbeat 2026-09-24 06:00:50 UTC - heartbeat 2026-09-24 06:01:43 UTC - heartbeat 2026-09-24 06:02:33 UTC - heartbeat 2026-09-24 06:03:28 UTC - heartbeat 2026-09-24 06:04:20 UTC - heartbeat 2026-09-24 06:05:14 UTC - heartbeat 2026-09-24 06:06:49 UTC - heartbeat 2026-09-24 06:07:48 UTC - heartbeat 2026-09-24 06:08:38 UTC - heartbeat 2026-09-24 06:09:25 UTC - heartbeat 2026-09-24 06:10:21 UTC - heartbeat 2026-09-24 06:11:08 UTC - heartbeat 2026-09-24 06:12:02 UTC - heartbeat 2026-09-24 06:12:51 UTC - heartbeat 2026-09-24 06:13:38 UTC - heartbeat 2026-09-24 06:14:36 UTC - heartbeat 2026-09-24 06:15:31 UTC - heartbeat 2026-09-24 06:16:26 UTC - heartbeat 2026-09-24 06:17:21 UTC - heartbeat 2026-09-24 06:18:16 UTC - heartbeat 2026-09-24 06:19:15 UTC - heartbeat 2026-09-24 06:20:12 UTC - heartbeat 2026-09-24 06:21:22 UTC - heartbeat 2026-09-24 06:22:24 UTC - heartbeat 2026-09-24 06:23:27 UTC - heartbeat 2026-09-24 06:24:26 UTC - heartbeat 2026-09-24 06:26:11 UTC - heartbeat 2026-09-24 06:26:58 UTC - heartbeat 2026-09-24 06:27:45 UTC - heartbeat 2026-09-24 06:28:28 UTC - heartbeat 2026-09-24 06:29:23 UTC - heartbeat 2026-09-24 06:30:08 UTC - heartbeat 2026-09-24 06:30:54 UTC - heartbeat 2026-09-24 06:31:58 UTC - heartbeat 2026-09-24 06:32:50 UTC - heartbeat 2026-09-24 06:33:41 UTC - heartbeat 2026-09-24 06:34:23 UTC - heartbeat 2026-09-24 06:35:12 UTC - heartbeat 2026-09-24 06:36:08 UTC - heartbeat 2026-09-24 06:37:05 UTC - heartbeat 2026-09-24 06:37:52 UTC - heartbeat 2026-09-24 06:38:42 UTC - heartbeat 2026-09-24 06:39:48 UTC - heartbeat 2026-09-24 06:40:44 UTC - heartbeat 2026-09-24 06:42:03 UTC - heartbeat 2026-09-24 06:43:07 UTC - heartbeat 2026-09-24 06:43:58 UTC - heartbeat 2026-09-24 06:44:45 UTC - heartbeat 2026-09-24 06:45:32 UTC - heartbeat 2026-09-24 06:46:19 UTC - heartbeat 2026-09-24 06:47:07 UTC - heartbeat 2026-09-24 06:47:53 UTC - heartbeat 2026-09-24 06:48:37 UTC - heartbeat 2026-09-24 06:49:25 UTC - heartbeat 2026-09-24 06:50:21 UTC - heartbeat 2026-09-24 06:51:12 UTC - heartbeat 2026-09-24 06:52:00 UTC - heartbeat 2026-09-24 06:53:00 UTC - heartbeat 2026-09-24 06:54:01 UTC - heartbeat 2026-09-24 06:55:05 UTC - heartbeat 2026-09-24 06:55:59 UTC - heartbeat 2026-09-24 06:56:54 UTC - heartbeat 2026-09-24 06:57:56 UTC - heartbeat 2026-09-24 06:59:03 UTC - heartbeat 2026-09-24 07:00:04 UTC - heartbeat 2026-09-24 07:01:02 UTC - heartbeat 2026-09-24 07:01:56 UTC - heartbeat 2026-09-24 07:02:48 UTC - heartbeat 2026-09-24 07:03:31 UTC - heartbeat 2026-09-24 07:05:03 UTC - heartbeat 2026-09-24 07:06:06 UTC - heartbeat 2026-09-24 07:07:07 UTC - heartbeat 2026-09-24 07:08:01 UTC - heartbeat 2026-09-24 07:09:09 UTC - heartbeat 2026-09-24 07:10:08 UTC - heartbeat 2026-09-24 07:11:06 UTC - heartbeat 2026-09-24 07:11:56 UTC - heartbeat 2026-09-24 07:12:44 UTC - heartbeat 2026-09-24 07:13:39 UTC - heartbeat 2026-09-24 07:14:23 UTC - heartbeat 2026-09-24 07:15:09 UTC - heartbeat 2026-09-24T07:39:23Z [agent] root cause: 2026-09-24T08:31:15Z - baseline rerun co 2026-09-24T08:36:12Z - baseline eval: Ch 2026-09-24T08:39:35Z - baseline rerun co 2026-09-24T08:49:28Z verify-eval-consoli 2026-09-24T09:06:59Z eval-rerun-baseline 2026-09-24T09:07:17Z eval-rerun-refused- 2026-09-24T09:10:11Z checkm-v1-baseline- 2026-09-24T09:17:45Z eval-verify: deploy 2026-09-24T09:25:05Z medium-build: start 2026-09-24T09:25:50Z medium-run: launche 2026-09-24T09:25:52Z checkm-v1-baseline- 2026-09-24T09:33:26Z triage-new-issues-1 2026-09-24T09:35:29Z readme-progress-che 2026-09-24T09:36:37Z issue-13-reply-push 2026-09-24T09:59:22Z wrapup 2026-09-24T10:17:55Z medium-eval-complet 2026-09-24T10:29:00Z triage-7-15-16 2026-09-24T10:34:38Z issue-15 2026-09-24T10:37:05Z issue-16 2026-09-24T10:38:20Z fix_v11-launch-7-15 2026-09-24T10:43:15Z issue-12-plots 2026-09-24T10:44:46Z issue-12-reply 2026-09-24T10:45:01Z turn-end 2026-09-24T10:47:16Z fix_v11-epoch2 2026-09-24T10:57:38Z fix_v11-epoch7 2026-09-24T11:07:59Z fix_v11-epoch11
+e6d9bdd status: yes — fix_v11_20260924 epoch 13/200 loss 3.460366725921631 acc 87.20051574707031 model big-pickle — Baseline training epoch ~109/200 (~2.4 m 2026-09-23 20:33:11 UTC - heartbeat 2026-09-23 20:43:58 UTC - heartbeat 2026-09-23 20:56:28 UTC - heartbeat 2026-09-23 20:57:36 UTC - heartbeat 2026-09-23 20:58:25 UTC - issue #7 close 2026-09-23 20:59:20 UTC - heartbeat 2026-09-23 20:59:58 UTC - heartbeat 2026-09-23 21:00:37 UTC - heartbeat 2026-09-23 21:01:19 UTC - heartbeat 2026-09-23 21:01:58 UTC - heartbeat 2026-09-23 21:02:37 UTC - heartbeat 2026-09-23 21:03:22 UTC - heartbeat 2026-09-23 21:04:00 UTC - heartbeat 2026-09-23 21:04:40 UTC - heartbeat 2026-09-23 21:05:21 UTC - heartbeat 2026-09-23 21:05:59 UTC - heartbeat 2026-09-23 21:06:39 UTC - heartbeat 2026-09-23 21:07:53 UTC - heartbeat 2026-09-23 21:08:31 UTC - heartbeat 2026-09-23 21:09:10 UTC - heartbeat 2026-09-23 21:09:49 UTC - heartbeat 2026-09-23 21:10:27 UTC - heartbeat 2026-09-23 21:11:06 UTC - heartbeat 2026-09-23 21:11:52 UTC - heartbeat 2026-09-23 21:12:29 UTC - heartbeat 2026-09-23 21:13:08 UTC - heartbeat 2026-09-23 21:13:48 UTC - heartbeat 2026-09-23 21:14:29 UTC - heartbeat 2026-09-23 21:15:07 UTC - heartbeat 2026-09-23 21:15:49 UTC - heartbeat 2026-09-23 21:16:28 UTC - heartbeat 2026-09-23 21:17:09 UTC - heartbeat 2026-09-23 21:17:50 UTC - heartbeat 2026-09-23 21:18:29 UTC - heartbeat 2026-09-23 21:19:08 UTC - heartbeat 2026-09-23 21:19:49 UTC - heartbeat 2026-09-23 21:20:27 UTC - heartbeat 2026-09-23 21:21:08 UTC - heartbeat 2026-09-23 21:21:48 UTC - heartbeat 2026-09-23 21:22:26 UTC - heartbeat 2026-09-23 21:23:09 UTC - heartbeat 2026-09-23 21:23:47 UTC - heartbeat 2026-09-23 21:24:25 UTC - heartbeat 2026-09-23 21:25:05 UTC - heartbeat 2026-09-23 21:25:44 UTC - heartbeat 2026-09-23 21:27:45 UTC - heartbeat 2026-09-23 21:28:29 UTC - heartbeat 2026-09-23 21:29:07 UTC - heartbeat 2026-09-23T22:42Z | small functional tes 2026-09-24 00:15:09 UTC 2026-09-24 00:26:39 UTC 2026-09-24 00:29:27 UTC 2026-09-24 00:50:45 UTC - triage: invest 2026-09-24 00:54:48 UTC - issue #2 root- 2026-09-24 00:58:23 UTC - dataset: build 2026-09-24 01:00:04 UTC - dataset: verif 2026-09-24 01:00:49 UTC - dataset: rehea 2026-09-24T01:01:51Z [supervisor] restor 2026-09-24 01:02:13 UTC - dataset: censu 2026-09-24 01:05:29 UTC - dataset: resto 2026-09-24 01:06:11 UTC - progress sync: 2026-09-24 01:07:02 UTC - progress: PROG 2026-09-24 01:07:15 UTC - heartbeat 2026-09-24 01:09:49 UTC - heartbeat 2026-09-24 01:10:10 UTC - heartbeat 2026-09-24 01:11:31 UTC - heartbeat 2026-09-24 01:22:51 UTC - heartbeat 2026-09-24 01:33:37 UTC - heartbeat 2026-09-24 01:44:01 UTC - heartbeat 2026-09-24 01:54:33 UTC - heartbeat 2026-09-24 02:04:51 UTC - heartbeat 2026-09-24 02:15:11 UTC - heartbeat 2026-09-24 02:25:33 UTC - heartbeat 2026-09-24 02:35:57 UTC - heartbeat 2026-09-24 02:46:15 UTC - heartbeat 2026-09-24 02:56:42 UTC - heartbeat 2026-09-24 03:07:10 UTC - heartbeat 2026-09-24 03:17:30 UTC - heartbeat 2026-09-24 03:28:04 UTC - heartbeat 2026-09-24 03:38:22 UTC - heartbeat 2026-09-24 03:48:46 UTC - heartbeat 2026-09-24 03:59:11 UTC - heartbeat 2026-09-24 04:09:34 UTC - heartbeat 2026-09-24 04:19:55 UTC - heartbeat 2026-09-24 04:30:21 UTC - heartbeat 2026-09-24 04:44:40 UTC - heartbeat 2026-09-24 04:45:34 UTC - heartbeat 2026-09-24 05:00:12 UTC - heartbeat 2026-09-24 05:01:16 UTC - heartbeat 2026-09-24 05:02:09 UTC - heartbeat 2026-09-24 05:03:22 UTC - heartbeat 2026-09-24 05:04:12 UTC - heartbeat 2026-09-24 05:05:00 UTC - heartbeat 2026-09-24 05:05:48 UTC - heartbeat 2026-09-24 05:06:39 UTC - heartbeat 2026-09-24 05:07:26 UTC - heartbeat 2026-09-24 05:08:14 UTC - heartbeat 2026-09-24 05:09:06 UTC - heartbeat 2026-09-24 05:09:58 UTC - heartbeat 2026-09-24 05:10:46 UTC - heartbeat 2026-09-24 05:11:40 UTC - heartbeat 2026-09-24 05:12:38 UTC - heartbeat 2026-09-24 05:13:28 UTC - heartbeat 2026-09-24 05:14:26 UTC - heartbeat 2026-09-24 05:15:13 UTC - heartbeat 2026-09-24 05:16:11 UTC - heartbeat 2026-09-24 05:16:56 UTC - heartbeat 2026-09-24 05:17:44 UTC - heartbeat 2026-09-24 05:18:42 UTC - heartbeat 2026-09-24 05:19:36 UTC - heartbeat 2026-09-24 05:20:28 UTC - heartbeat 2026-09-24 05:21:27 UTC - heartbeat 2026-09-24 05:22:22 UTC - heartbeat 2026-09-24 05:23:15 UTC - heartbeat 2026-09-24 05:24:09 UTC - heartbeat 2026-09-24 05:24:59 UTC - heartbeat 2026-09-24 05:26:17 UTC - heartbeat 2026-09-24 05:27:01 UTC - heartbeat 2026-09-24 05:28:06 UTC - heartbeat 2026-09-24 05:29:07 UTC - heartbeat 2026-09-24 05:29:59 UTC - heartbeat 2026-09-24 05:30:58 UTC - heartbeat 2026-09-24 05:31:51 UTC - heartbeat 2026-09-24 05:33:02 UTC - heartbeat 2026-09-24 05:34:19 UTC - heartbeat 2026-09-24 05:35:21 UTC - heartbeat 2026-09-24 05:36:18 UTC - heartbeat 2026-09-24 05:37:24 UTC - heartbeat 2026-09-24 05:38:37 UTC - heartbeat 2026-09-24 05:39:33 UTC - heartbeat 2026-09-24 05:40:24 UTC - heartbeat 2026-09-24 05:41:19 UTC - heartbeat 2026-09-24 05:42:18 UTC - heartbeat 2026-09-24 05:43:29 UTC - heartbeat 2026-09-24 05:44:24 UTC - heartbeat 2026-09-24 05:45:29 UTC - heartbeat 2026-09-24 05:46:23 UTC - heartbeat 2026-09-24 05:47:13 UTC - heartbeat 2026-09-24 05:48:06 UTC - heartbeat 2026-09-24 05:48:54 UTC - heartbeat 2026-09-24 05:50:00 UTC - heartbeat 2026-09-24 05:51:09 UTC - heartbeat 2026-09-24 05:51:58 UTC - heartbeat 2026-09-24 05:52:48 UTC - heartbeat 2026-09-24 05:53:37 UTC - heartbeat 2026-09-24 05:54:28 UTC - heartbeat 2026-09-24 05:55:37 UTC - heartbeat 2026-09-24 05:56:32 UTC - heartbeat 2026-09-24 05:57:18 UTC - heartbeat 2026-09-24 05:58:10 UTC - heartbeat 2026-09-24 05:59:00 UTC - heartbeat 2026-09-24 05:59:55 UTC - heartbeat 2026-09-24 06:00:50 UTC - heartbeat 2026-09-24 06:01:43 UTC - heartbeat 2026-09-24 06:02:33 UTC - heartbeat 2026-09-24 06:03:28 UTC - heartbeat 2026-09-24 06:04:20 UTC - heartbeat 2026-09-24 06:05:14 UTC - heartbeat 2026-09-24 06:06:49 UTC - heartbeat 2026-09-24 06:07:48 UTC - heartbeat 2026-09-24 06:08:38 UTC - heartbeat 2026-09-24 06:09:25 UTC - heartbeat 2026-09-24 06:10:21 UTC - heartbeat 2026-09-24 06:11:08 UTC - heartbeat 2026-09-24 06:12:02 UTC - heartbeat 2026-09-24 06:12:51 UTC - heartbeat 2026-09-24 06:13:38 UTC - heartbeat 2026-09-24 06:14:36 UTC - heartbeat 2026-09-24 06:15:31 UTC - heartbeat 2026-09-24 06:16:26 UTC - heartbeat 2026-09-24 06:17:21 UTC - heartbeat 2026-09-24 06:18:16 UTC - heartbeat 2026-09-24 06:19:15 UTC - heartbeat 2026-09-24 06:20:12 UTC - heartbeat 2026-09-24 06:21:22 UTC - heartbeat 2026-09-24 06:22:24 UTC - heartbeat 2026-09-24 06:23:27 UTC - heartbeat 2026-09-24 06:24:26 UTC - heartbeat 2026-09-24 06:26:11 UTC - heartbeat 2026-09-24 06:26:58 UTC - heartbeat 2026-09-24 06:27:45 UTC - heartbeat 2026-09-24 06:28:28 UTC - heartbeat 2026-09-24 06:29:23 UTC - heartbeat 2026-09-24 06:30:08 UTC - heartbeat 2026-09-24 06:30:54 UTC - heartbeat 2026-09-24 06:31:58 UTC - heartbeat 2026-09-24 06:32:50 UTC - heartbeat 2026-09-24 06:33:41 UTC - heartbeat 2026-09-24 06:34:23 UTC - heartbeat 2026-09-24 06:35:12 UTC - heartbeat 2026-09-24 06:36:08 UTC - heartbeat 2026-09-24 06:37:05 UTC - heartbeat 2026-09-24 06:37:52 UTC - heartbeat 2026-09-24 06:38:42 UTC - heartbeat 2026-09-24 06:39:48 UTC - heartbeat 2026-09-24 06:40:44 UTC - heartbeat 2026-09-24 06:42:03 UTC - heartbeat 2026-09-24 06:43:07 UTC - heartbeat 2026-09-24 06:43:58 UTC - heartbeat 2026-09-24 06:44:45 UTC - heartbeat 2026-09-24 06:45:32 UTC - heartbeat 2026-09-24 06:46:19 UTC - heartbeat 2026-09-24 06:47:07 UTC - heartbeat 2026-09-24 06:47:53 UTC - heartbeat 2026-09-24 06:48:37 UTC - heartbeat 2026-09-24 06:49:25 UTC - heartbeat 2026-09-24 06:50:21 UTC - heartbeat 2026-09-24 06:51:12 UTC - heartbeat 2026-09-24 06:52:00 UTC - heartbeat 2026-09-24 06:53:00 UTC - heartbeat 2026-09-24 06:54:01 UTC - heartbeat 2026-09-24 06:55:05 UTC - heartbeat 2026-09-24 06:55:59 UTC - heartbeat 2026-09-24 06:56:54 UTC - heartbeat 2026-09-24 06:57:56 UTC - heartbeat 2026-09-24 06:59:03 UTC - heartbeat 2026-09-24 07:00:04 UTC - heartbeat 2026-09-24 07:01:02 UTC - heartbeat 2026-09-24 07:01:56 UTC - heartbeat 2026-09-24 07:02:48 UTC - heartbeat 2026-09-24 07:03:31 UTC - heartbeat 2026-09-24 07:05:03 UTC - heartbeat 2026-09-24 07:06:06 UTC - heartbeat 2026-09-24 07:07:07 UTC - heartbeat 2026-09-24 07:08:01 UTC - heartbeat 2026-09-24 07:09:09 UTC - heartbeat 2026-09-24 07:10:08 UTC - heartbeat 2026-09-24 07:11:06 UTC - heartbeat 2026-09-24 07:11:56 UTC - heartbeat 2026-09-24 07:12:44 UTC - heartbeat 2026-09-24 07:13:39 UTC - heartbeat 2026-09-24 07:14:23 UTC - heartbeat 2026-09-24 07:15:09 UTC - heartbeat 2026-09-24T07:39:23Z [agent] root cause: 2026-09-24T08:31:15Z - baseline rerun co 2026-09-24T08:36:12Z - baseline eval: Ch 2026-09-24T08:39:35Z - baseline rerun co 2026-09-24T08:49:28Z verify-eval-consoli 2026-09-24T09:06:59Z eval-rerun-baseline 2026-09-24T09:07:17Z eval-rerun-refused- 2026-09-24T09:10:11Z checkm-v1-baseline- 2026-09-24T09:17:45Z eval-verify: deploy 2026-09-24T09:25:05Z medium-build: start 2026-09-24T09:25:50Z medium-run: launche 2026-09-24T09:25:52Z checkm-v1-baseline- 2026-09-24T09:33:26Z triage-new-issues-1 2026-09-24T09:35:29Z readme-progress-che 2026-09-24T09:36:37Z issue-13-reply-push 2026-09-24T09:59:22Z wrapup 2026-09-24T10:17:55Z medium-eval-complet 2026-09-24T10:29:00Z triage-7-15-16 2026-09-24T10:34:38Z issue-15 2026-09-24T10:37:05Z issue-16 2026-09-24T10:38:20Z fix_v11-launch-7-15 2026-09-24T10:43:15Z issue-12-plots 2026-09-24T10:44:46Z issue-12-reply 2026-09-24T10:45:01Z turn-end 2026-09-24T10:47:16Z fix_v11-epoch2 2026-09-24T10:57:38Z fix_v11-epoch7 2026-09-24T11:07:59Z fix_v11-epoch11
+306a16c meta: issue-closer closed 1, failed: — 11:13Z
+=== 2524e12 files ===
+2524e12 supervisor: wire auto-reporting into run_eval + fix flowchart, Zenodo record docs (issues #7/#8/#12/#15/#17)
+ docs/01-datasets.md                       |   3 ++-
+ docs/09-optimization-strategy.md          |  24 +++++++++++++++---------
+ docs/10-data-preservation.md              |  14 ++++++++------
+ docs/11-run-results.md                    |   2 +-
+ results/figures/comp_vs_cont_all-runs.png | Bin 50547 -> 50299 bytes
+ scripts/make_per_bin_plots.py             |  20 +++++++++++++++++++-
+ scripts/make_results_csv.py               |  21 +++++++++++++++++++++
+ scripts/run_eval.sh                       |  12 ++++++++++++
+ 8 files changed, 78 insertions(+), 18 deletions(-)
+=== README mermaid block ===
+```mermaid
+flowchart TD
+    A["Pick candidate change or parameter"] --> B["Small functional test on the 300-contig dataset"]
+    B -->|fail| G["Investigate, fix, or drop the change"]
+    G --> A
+    B -->|pass| C["Benchmark on a small or medium set"]
+    C --> D{"Better or equal time AND quality?"}
+    D -->|keep| E["Keep the commit; record in results and PROGRESS"]
+    E --> F["Next batch from this commit"]
+    D -->|no| H["Revert or rework"]
+    H --> I["Combine with surviving ideas"]
+    I --> A
+    F --> J["Optimize parameters on small sets first"]
+    J --> K["Full large benchmark only after small and medium validation (demo, then CAMI II marine, then CAMI III)"]
+    classDef keep fill:#d9f7be,stroke:#389e0d;
+    classDef drop fill:#ffccc7,stroke:#cf1322;
+    class A,B,C,E,F,J,K keep;
+    class G,H,I drop;
+```
+> build · big-pickle
+The concurrent supervisor session already triaged **#17** (explicit gate rule + reply), fixed the **#7** flowchart (renderer-safe mermaid, verified above — no emoji/`<br/>` in labels), and wired auto-reporting into the eval scripts (`2524e12`). Nothing to duplicate. Verifying my PROGRESS copy is still in sync and the tree is consistent:
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && git status -sb | head -3; diff -q PROGRESS.md /vol/data/benchmark/PROGRESS.md && echo "PROGRESS in sync" || echo "PROGRESS DIVERGED"; echo "=== last commits ==="; git log --oneline -6 | cut -c1-90; echo "=== run ==="; L=/vol/data/benchmark/runs/fix_v11_20260924/comebin_run.log; grep -o 'epoch=[0-9]*/200, batches=[0-9]*, loss=[0-9.]*, top1=[0-9.]*' $L | tail -1; grep -E '^exit_code|^wall_s' /vol/data/benchmark/runs/fix_v11_20260924/run_meta.txt 2>/dev/null || echo not-finished; date -u +%FT%TZ; touch /vol/data/benchmark/.heartbeat
+## main...origin/main
+PROGRESS in sync
+=== last commits ===
+80337c7 status: yes — fix_v11_20260924 epoch 15/200 loss 3.4283039569854736 acc 87.47070
+5ec1a06 status: yes — fix_v11_20260924 epoch 14/200 loss 3.457880973815918 acc 87.418617
+e6d9bdd status: yes — fix_v11_20260924 epoch 13/200 loss 3.460366725921631 acc 87.200515
+306a16c meta: issue-closer closed 1, failed: — 11:13Z
+cbfc484 meta: issue-closer closed 5, failed: — 11:12Z
+0accf44 status: yes — fix_v11_20260924 epoch 12/200 loss 3.538832426071167 acc 83.912757
+=== run ===
+epoch=16/200, batches=28, loss=3.428304, top1=87.4707
+not-finished
+2026-09-24T11:18:41Z
+> build · big-pickle
+[0m$ [0mtest -f /vol/data/benchmark/TASK_COMPLETE && echo "TASK_COMPLETE EXISTS" || echo "no TASK_COMPLETE"; echo "===active_run==="; cat /vol/data/benchmark/.active_run 2>/dev/null || echo "none"; echo "===fix_v11==="; L=/vol/data/benchmark/runs/fix_v11_20260924/comebin_run.log; grep -o 'epoch=[0-9]*/200, batches=[0-9]*, loss=[0-9.]*, top1=[0-9.]*' $L 2>/dev/null | tail -2; grep -E '^exit_code|^wall_s|^bins:' /vol/data/benchmark/runs/fix_v11_20260924/run_meta.txt 2>/dev/null || echo "not finished"; date -u +%FT%TZ; touch /vol/data/benchmark/.heartbeat
+no TASK_COMPLETE
+===active_run===
+873786 873784 /vol/data/benchmark/runs/fix_v11_20260924/comebin_run.log /vol/data/benchmark/runs/fix_v11_20260924 1790246235 fix /vol/data/repos/COMEBin-v11 /vol/data/datasets/comebin_test_data/BATS_SAMN07137077_METAG.scaffolds.min500.fasta.f1k.fasta /vol/data/datasets/comebin_test_data/bamfiles
+===fix_v11===
+epoch=15/200, batches=28, loss=3.457881, top1=87.4186
+epoch=16/200, batches=28, loss=3.428304, top1=87.4707
+not finished
+2026-09-24T11:19:21Z
+> build · big-pickle
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && gh issue list -R paulzierep/metagenomic-binning-benchmark --state open --json number,title,updatedAt --jq '.[] | "\(.number) \(.title) \(.updatedAt)"' | sort -k3 | tail -8; echo "===COMEBin==="; gh issue list -R paulzierep/COMEBin --state open --json number,title,updatedAt 2>&1 | head -3
+6 Optimization 2026-09-23T20:56:21Z
+1 Idea inbox: benchmark ideas, COMEBin fixes, dataset requests 2026-09-23T14:53:13Z
+17 Only perform big benchmark runs when fixes wored on the small datasets 2026-09-24T11:09:53Z
+7 Optimization plan 2026-09-24T11:10:02Z
+14 Improve the readme 2026-09-24T11:09:52Z
+2 Can you try to create a small benchmark dataset for comebin ? 2026-09-24T10:02:55Z
+===COMEBin===
+the 'paulzierep/COMEBin' repository has disabled issues
+> build · big-pickle
+Issue list is unchanged from last turn (identical update timestamps — all already triaged). Verifying PROGRESS.md and repo state per turn duties:
+[0m→ [0mRead /vol/data/benchmark/PROGRESS.md 
+> build · big-pickle
+PROGRESS.md and disk state are consistent (fix_v11 active, running, ETA ~16:00 UTC). Issue list unchanged — nothing new to triage. Verifying repo state after the supervisor's concurrent commits:
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && git status -sb | head -3; echo "=== supervisor commits since mine (7c0d4bd) ==="; git log --oneline 7c0d4bd..HEAD | head -12 | cut -c1-100; echo "=== 2524e12 files ==="; git show 2524e12 --stat --oneline | head -12
+## main...origin/main
+=== supervisor commits since mine (7c0d4bd) ===
+80337c7 status: yes — fix_v11_20260924 epoch 15/200 loss 3.4283039569854736 acc 87.470703125 model
+5ec1a06 status: yes — fix_v11_20260924 epoch 14/200 loss 3.457880973815918 acc 87.41861724853516 m
+e6d9bdd status: yes — fix_v11_20260924 epoch 13/200 loss 3.460366725921631 acc 87.20051574707031 m
+306a16c meta: issue-closer closed 1, failed: — 11:13Z
+cbfc484 meta: issue-closer closed 5, failed: — 11:12Z
+0accf44 status: yes — fix_v11_20260924 epoch 12/200 loss 3.538832426071167 acc 83.91275787353516 m
+e7eb01d status: yes — fix_v11_20260924 epoch 11/200 loss 3.5778746604919434 acc 84.12434387207031 
+ccd62eb status: yes — fix_v11_20260924 epoch 10/200 loss 3.6309878826141357 acc 82.03450012207031 
+2524e12 supervisor: wire auto-reporting into run_eval + fix flowchart, Zenodo record docs (issues #7
+f054269 status: yes — fix_v11_20260924 epoch 9/200 loss 3.6885147094726562 acc 80.458984375 model 
+838d120 status: yes — fix_v11_20260924 epoch 9/200 loss 3.6885147094726562 acc 80.458984375 model 
+957dfb0 status: yes — fix_v11_20260924 epoch 8/200 loss 3.765296459197998 acc 79.44660949707031 mo
+=== 2524e12 files ===
+2524e12 supervisor: wire auto-reporting into run_eval + fix flowchart, Zenodo record docs (issues #7/#8/#12/#15/#17)
+ docs/01-datasets.md                       |   3 ++-
+ docs/09-optimization-strategy.md          |  24 +++++++++++++++---------
+ docs/10-data-preservation.md              |  14 ++++++++------
+ docs/11-run-results.md                    |   2 +-
+ results/figures/comp_vs_cont_all-runs.png | Bin 50547 -> 50299 bytes
+ scripts/make_per_bin_plots.py             |  20 +++++++++++++++++++-
+ scripts/make_results_csv.py               |  21 +++++++++++++++++++++
+ scripts/run_eval.sh                       |  12 ++++++++++++
+ 8 files changed, 78 insertions(+), 18 deletions(-)
+> build · big-pickle
+Working tree clean and synced. Let me quickly understand the supervisor's auto-reporting changes to my scripts so I stay consistent with them:
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && git show 2524e12 -- scripts/run_eval.sh scripts/make_results_csv.py scripts/make_per_bin_plots.py | head -120
+commit 2524e12c8d1add11be5e1b721d5b9a0c02ae8517
+Author: paulzierep <paulzierep@users.noreply.github.com>
+Date:   Thu Sep 24 11:07:20 2026 +0000
+
+    supervisor: wire auto-reporting into run_eval + fix flowchart, Zenodo record docs (issues #7/#8/#12/#15/#17)
+    
+    - run_eval.sh: after a successful eval, regenerate aggregate CSV
+      (make_results_csv.py), per-bin CSV (make_per_bin_csv.py) and per-run
+      bar chart + all-runs comparison scatter (make_per_bin_plots.py --all);
+      generators best-effort so report failures never fail the eval.
+      Deployed copy in /vol/data/benchmark/bin kept byte-identical; the two
+      per-bin generators are now deployed there too.
+    - make_results_csv.py: auto-derive dataset label and threads from
+      run_meta.txt when not passed, so no-arg auto-runs produce complete rows.
+    - make_per_bin_plots.py: new --all mode keeps the comparison scatter
+      spanning every run with per-bin data, even when one run is re-evaluated.
+    - README/docs/09: rewrite the optimization flowchart with renderer-safe
+      mermaid syntax (no <br/>, no emoji in edge labels, explicit chains);
+      gate rules now state big benchmark runs only after small+medium
+      validation and parameter optimization on small sets first (issue #17).
+    - docs/01/10/11: Zenodo record 22935025 metadata edited in place to MIT
+      with an expanded description (no new version); DOI verified HTTP 200.
+
+diff --git a/scripts/make_per_bin_plots.py b/scripts/make_per_bin_plots.py
+index df984fe..f83dda3 100644
+--- a/scripts/make_per_bin_plots.py
++++ b/scripts/make_per_bin_plots.py
+@@ -82,6 +82,8 @@ def main():
+     ap = argparse.ArgumentParser()
+     ap.add_argument("rundirs", nargs="+")
+     ap.add_argument("-k", "--key", help="comparison key (dataset) for the scatter")
++    ap.add_argument("--all", action="store_true",
++                    help="include every run under runs/ that has per_bin_results.csv in the comparison scatter")
+     args = ap.parse_args()
+ 
+     import matplotlib
+@@ -91,6 +93,8 @@ def main():
+     key = args.key or "all-runs"
+     figures = os.path.join(REPO, "results", "figures")
+     os.makedirs(figures, exist_ok=True)
++
++    # Per-run bar chart for each explicitly given run.
+     groups = []
+     for rd in args.rundirs:
+         name = os.path.basename(rd.rstrip("/"))
+@@ -104,10 +108,24 @@ def main():
+         run_bar_plot(plt, rows, out)
+         print(f"{name}: per-bin bar chart -> runs/{name}/per_bins.png")
+         groups.append((name, rows))
++
++    # Comparison scatter: the runs just plotted, or (with --all) every run
++    # that has per-bin data, so the scatter keeps comparing across runs even
++    # when only one run is being re-evaluated.
++    if args.all:
++        runs_root = os.path.join(REPO, "runs")
++        known = {g[0] for g in groups}
++        if os.path.isdir(runs_root):
++            for entry in sorted(os.listdir(runs_root)):
++                if entry in known:
++                    continue
++                rows = load_per_bin(os.path.join(runs_root, entry), entry)
++                if rows is not None:
++                    groups.append((entry, rows))
+     if len(groups) >= 1:
+         out = os.path.join(figures, f"comp_vs_cont_{key}.png")
+         comparison_scatter(plt, groups, out, key)
+-        print(f"comparison scatter ({key}) -> results/figures/comp_vs_cont_{key}.png")
++        print(f"comparison scatter ({key}, {len(groups)} runs) -> results/figures/comp_vs_cont_{key}.png")
+     return 0
+ 
+ 
+diff --git a/scripts/make_results_csv.py b/scripts/make_results_csv.py
+index 061f4fd..852c185 100644
+--- a/scripts/make_results_csv.py
++++ b/scripts/make_results_csv.py
+@@ -25,6 +25,23 @@ def meta_val(key):
+                 return line.split(":", 1)[1].strip()
+     return ""
+ 
++def default_dataset(contigs_path):
++    """Human-readable dataset label derived from the run's contigs path, for
++    automatic (no-arg) regeneration after an evaluated run (issues #12/#15)."""
++    if not contigs_path:
++        return ""
++    known = [
++        ("BATS_SAMN07137077_METAG", "COMEBin demo (29,434 contigs)"),
++        ("comebin_medium", "comebin_medium (3,000 contigs)"),
++        ("comebin_small", "comebin_small (300 contigs)"),
++        ("cami2", "CAMI II"),
++        ("cami3", "CAMI III"),
++    ]
++    for key, label in known:
++        if key in contigs_path:
++            return label
++    return os.path.basename(os.path.dirname(contigs_path))
++
+ commit = meta_val("commit")
+ t_total = meta_val("wall_s")
+ n_bins = meta_val("bins").split()[0] if meta_val("bins") else ""
+@@ -74,6 +91,10 @@ def summarize(cs, ts):
+ 
+ mk2c, mk2t = scores(os.path.join(run, "eval", "checkm2", "quality_report.tsv"), "Completeness", "Contamination")
+ mkc, mkt = scores(os.path.join(run, "eval", "checkm", "out", "storage", "bin_stats_ext.tsv"), "Completeness", "Contamination")
++if not dataset:
++    dataset = default_dataset(meta_val("contigs"))
++if not threads:
++    threads = meta_val("threads")
+ # Older baseline wrappers did not emit a `bins:` metadata line. Derive the
+ # count from the evaluator rows so the committed result table is complete.
+ if not n_bins:
+diff --git a/scripts/run_eval.sh b/scripts/run_eval.sh
+index 65aa07b..6d38c6a 100755
+--- a/scripts/run_eval.sh
++++ b/scripts/run_eval.sh
+@@ -100,6 +100,18 @@ echo "checkm_rc: $rc1 checkm_wall_s: $(( $(date +%s) - T ))" | tee -a "$RUN/run_
+ # Summary and final status ----------------------------------------------------
+ echo "=== summary ==="
+ python3 "$(dirname "$0")/parse_eval.py" "$RUN" 9>&-
++if [ "$rc2" -eq 0 ] && [ "$rc1" -eq 0 ]; then
++  # Automatic reporting (issues #12/#15): aggregate CSV + per-bin CSV + plots,
+> build · big-pickle
+Repo is clean and the supervisor's `2524e12` extended my scripts well (auto-reporting wired into run_eval, `--all` mode for the scatter, renderer-safe flowchart, Zenodo docs). Adding a small PROGRESS note for that triage so the resume doc stays accurate, then logging out the turn:
+[0m$ [0mpython3 - <<'PY'
+p = "/vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md"
+with open(p) as f: c = f.read()
+addition = """- [x] **Issues #17/#14/#7/#8 triaged by supervisor (2026-09-24 ~11:07 UTC)**: #17 — gate
+      rule made explicit in README + docs/09: big benchmark runs only after small AND
+      medium validation, parameter tuning on small sets first; fix_v11 passed that gate
+      (small_test_v4 + medium_v11 before launch). #7 — optimization flowchart rewritten
+      with renderer-safe mermaid (no `<br/>`, no emoji in edge labels). #14 — README
+      Current/Next + Results refreshed. #8 — Zenodo record 22935025 metadata edited to
+      MIT + expanded description (no new version), DOI HTTP 200. Commit `2524e12`:
+      auto-reporting wired into `run_eval.sh` (aggregate CSV + per-bin CSV + bar chart +
+      comparison scatter on every successful eval), `make_results_csv.py` auto-derives
+      dataset/threads from run_meta, `make_per_bin_plots.py` gained `--all`.
+
+"""
+marker = "- [ ] CAMI II marine sample 0 benchmark run"
+c = c.replace(marker, addition + marker, 1)
+with open(p, "w") as f: f.write(c)
+print("ok")
+PY
+cp /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md /vol/data/benchmark/PROGRESS.md
+R=/vol/data/repos/metagenomic-binning-benchmark; TS=$(date -u +%FT%TZ); echo "$TS fix_v11: epoch ~16/200 on track (ETA ~16:00Z); PROGRESS records supervisor triage #17/#14/#7/#8 (2524e12); no new issues" >> $R/status/agent-activity.log; echo "$TS monitor-turn" >> /vol/data/benchmark/.activity; touch /vol/data/benchmark/.heartbeat; flock /tmp/bench-repo.lock bash -c "cd $R && git add PROGRESS.md status/agent-activity.log && git commit -m 'meta: record supervisor triage of #17/#14/#7/#8 + 2524e12 in PROGRESS' -q && git push origin main -q"; cd $R && git status -sb | head -1; echo done
+ok
+## main...origin/main
+done
