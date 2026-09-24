@@ -31322,3 +31322,277 @@ http://127.0.0.1:49374
 api:
 {"version":"2.0.15","pid":5551,"urls":["http://127.0.0.1:49374"],"paths":{"tmp":"/tmp/opencode"}}
 > build · space-bunny-free
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/scripts/status-heartbeat.sh
+Index: /vol/data/repos/metagenomic-binning-benchmark/scripts/status-heartbeat.sh
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/scripts/status-heartbeat.sh
++++ /vol/data/repos/metagenomic-binning-benchmark/scripts/status-heartbeat.sh
+@@ -248,9 +248,15 @@
+ sync_run_logs() {
+     for d in /vol/data/benchmark/runs/*/; do
+         [ -d "$d" ] || continue
+         name=$(basename "$d")
+-        m() { mkdir -p "runs/$name/$(dirname "$1")" && cp "$d/$2" "runs/$name/$1"; }
++        # Do not create empty repo-side run directories for refused/aborted
++        # launches whose optional evidence files were never produced.
++        m() {
++          local src="$d/$2"
++          [ -f "$src" ] || return 0
++          mkdir -p "runs/$name/$(dirname "$1")" && cp "$src" "runs/$name/$1"
++        }
+         m run_meta.txt run_meta.txt 2>/dev/null
+         m comebin_run.log comebin_run.log 2>/dev/null
+         m logs/resources.tsv logs/resources.tsv 2>/dev/null
+         m logs/sampler.out logs/sampler.out 2>/dev/null
+
+> build · space-bunny-free
+[0m$ [0mgit diff --check -- scripts/status-heartbeat.sh && git diff -- scripts/status-heartbeat.sh
+diff --git a/scripts/status-heartbeat.sh b/scripts/status-heartbeat.sh
+index 9da7ce0..20cddbe 100755
+--- a/scripts/status-heartbeat.sh
++++ b/scripts/status-heartbeat.sh
+@@ -249,7 +249,13 @@ sync_run_logs() {
+     for d in /vol/data/benchmark/runs/*/; do
+         [ -d "$d" ] || continue
+         name=$(basename "$d")
+-        m() { mkdir -p "runs/$name/$(dirname "$1")" && cp "$d/$2" "runs/$name/$1"; }
++        # Do not create empty repo-side run directories for refused/aborted
++        # launches whose optional evidence files were never produced.
++        m() {
++          local src="$d/$2"
++          [ -f "$src" ] || return 0
++          mkdir -p "runs/$name/$(dirname "$1")" && cp "$src" "runs/$name/$1"
++        }
+         m run_meta.txt run_meta.txt 2>/dev/null
+         m comebin_run.log comebin_run.log 2>/dev/null
+         m logs/resources.tsv logs/resources.tsv 2>/dev/null
+[0m$ [0mset -euo pipefail
+bash -n scripts/status-heartbeat.sh
+if command -v shellcheck >/dev/null 2>&1; then shellcheck -S error scripts/status-heartbeat.sh; fi
+fixture=$(mktemp -d /tmp/opencode/status-sync-test.XXXXXX)
+trap 'rm -rf "$fixture"' EXIT
+mkdir -p "$fixture/bench/runs/refused" "$fixture/bench/runs/withmeta" "$fixture/repo"
+printf 'metadata\n' > "$fixture/bench/runs/withmeta/run_meta.txt"
+awk '/^sync_run_logs\(\)/,/^}/' scripts/status-heartbeat.sh > "$fixture/sync-function.sh"
+test -s "$fixture/sync-function.sh"
+(
+  BENCH="$fixture/bench"
+  cd "$fixture/repo"
+  # shellcheck disable=SC1091
+  source "$fixture/sync-function.sh"
+  sync_run_logs
+)
+test ! -e "$fixture/repo/runs/refused"
+cmp "$fixture/bench/runs/withmeta/run_meta.txt" "$fixture/repo/runs/withmeta/run_meta.txt"
+printf 'status-heartbeat syntax and missing-file fixture: ok\n'
+cmp: /tmp/opencode/status-sync-test.q1ZH4b/repo/runs/withmeta/run_meta.txt: No such file or directory
+> build · space-bunny-free
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/scripts/status-heartbeat.sh
+Index: /vol/data/repos/metagenomic-binning-benchmark/scripts/status-heartbeat.sh
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/scripts/status-heartbeat.sh
++++ /vol/data/repos/metagenomic-binning-benchmark/scripts/status-heartbeat.sh
+@@ -245,9 +245,9 @@
+ fi
+ 
+ # ---- 4. sync per-run detailed logs into the repo (small files only) ------- #
+ sync_run_logs() {
+-    for d in /vol/data/benchmark/runs/*/; do
++    for d in "$BENCH"/runs/*/; do
+         [ -d "$d" ] || continue
+         name=$(basename "$d")
+         # Do not create empty repo-side run directories for refused/aborted
+         # launches whose optional evidence files were never produced.
+
+> build · space-bunny-free
+[0m$ [0mset -euo pipefail
+bash -n scripts/status-heartbeat.sh
+if command -v shellcheck >/dev/null 2>&1; then shellcheck -S error scripts/status-heartbeat.sh; fi
+fixture=$(mktemp -d /tmp/opencode/status-sync-test.XXXXXX)
+trap 'rm -rf "$fixture"' EXIT
+mkdir -p "$fixture/bench/runs/refused" "$fixture/bench/runs/withmeta" "$fixture/repo"
+printf 'metadata\n' > "$fixture/bench/runs/withmeta/run_meta.txt"
+awk '/^sync_run_logs\(\)/,/^}/' scripts/status-heartbeat.sh > "$fixture/sync-function.sh"
+test -s "$fixture/sync-function.sh"
+(
+  BENCH="$fixture/bench"
+  cd "$fixture/repo"
+  # shellcheck disable=SC1091
+  source "$fixture/sync-function.sh"
+  sync_run_logs
+)
+test ! -e "$fixture/repo/runs/refused"
+cmp "$fixture/bench/runs/withmeta/run_meta.txt" "$fixture/repo/runs/withmeta/run_meta.txt"
+printf 'status-heartbeat syntax and missing-file fixture: ok\n'
+status-heartbeat syntax and missing-file fixture: ok
+[0m$ [0mgit diff --check -- scripts/status-heartbeat.sh && git diff --stat && git status --short
+scripts/status-heartbeat.sh | 10 ++++++++--
+ 1 file changed, 8 insertions(+), 2 deletions(-)
+ M scripts/status-heartbeat.sh
+> build · space-bunny-free
+[0m$ [0mset -euo pipefail
+src=scripts/status-heartbeat.sh
+dst=/vol/data/benchmark/bin/status-heartbeat.sh
+tmp="$dst.deploy-new.$$"
+trap 'rm -f "$tmp"' EXIT
+cp "$src" "$tmp"
+chmod 755 "$tmp"
+bash -n "$tmp"
+mv -f "$tmp" "$dst"
+trap - EXIT
+cmp -s "$src" "$dst"
+test -x "$dst"
+printf 'deployed status-heartbeat.sh sha256=%s\n' "$(sha256sum "$dst" | awk '{print $1}')"
+deployed status-heartbeat.sh sha256=0fcaf6827e5d5a6a833636f5abeaf95f673599a2f5f3618ccd0edb09c33b2d55
+> build · space-bunny-free
+[0m$ [0mset -euo pipefail
+flock -w 30 /tmp/status-heartbeat.lock bash -eu -o pipefail -c '
+  for name in baseline_unmodified_autorestart1 baseline_unmodified_autorestart2 baseline_unmodified_autorestart3; do
+    root="/vol/data/repos/metagenomic-binning-benchmark/runs/$name"
+    [ -d "$root" ] || continue
+    if find "$root" -mindepth 1 ! -type d -print -quit | grep -q .; then
+      echo "refusing to remove non-empty stale mirror: $root" >&2
+      exit 1
+    fi
+    rmdir "$root/comebin_res" "$root/logs" "$root"
+    echo "removed empty stale run mirror: $name"
+  done
+'
+for name in baseline_unmodified_autorestart1 baseline_unmodified_autorestart2 baseline_unmodified_autorestart3; do test ! -e "/vol/data/repos/metagenomic-binning-benchmark/runs/$name"; done
+printf 'stale empty run mirrors cleared\n'
+removed empty stale run mirror: baseline_unmodified_autorestart1
+removed empty stale run mirror: baseline_unmodified_autorestart2
+removed empty stale run mirror: baseline_unmodified_autorestart3
+stale empty run mirrors cleared
+> build · space-bunny-free
+[0m$ [0mgit status --short --branch && git log -3 --oneline --decorate && git diff --stat && git diff --cached --name-only
+## main...origin/main
+ M scripts/status-heartbeat.sh
+7ead6eb (HEAD -> main, origin/main) status: yes — baseline_rerun_autorestart1 epoch 109/200 loss 2.9473090171813965 acc 98.08918762207031 model mimo-v2.6-flash-free — Baseline training epoch ~109/200 (~2.4 m 2026-09-23 20:33:11 UTC - heartbeat 2026-09-23 20:43:58 UTC - heartbeat 2026-09-23 20:56:28 UTC - heartbeat 2026-09-23 20:57:36 UTC - heartbeat 2026-09-23 20:58:25 UTC - issue #7 close 2026-09-23 20:59:20 UTC - heartbeat 2026-09-23 20:59:58 UTC - heartbeat 2026-09-23 21:00:37 UTC - heartbeat 2026-09-23 21:01:19 UTC - heartbeat 2026-09-23 21:01:58 UTC - heartbeat 2026-09-23 21:02:37 UTC - heartbeat 2026-09-23 21:03:22 UTC - heartbeat 2026-09-23 21:04:00 UTC - heartbeat 2026-09-23 21:04:40 UTC - heartbeat 2026-09-23 21:05:21 UTC - heartbeat 2026-09-23 21:05:59 UTC - heartbeat 2026-09-23 21:06:39 UTC - heartbeat 2026-09-23 21:07:53 UTC - heartbeat 2026-09-23 21:08:31 UTC - heartbeat 2026-09-23 21:09:10 UTC - heartbeat 2026-09-23 21:09:49 UTC - heartbeat 2026-09-23 21:10:27 UTC - heartbeat 2026-09-23 21:11:06 UTC - heartbeat 2026-09-23 21:11:52 UTC - heartbeat 2026-09-23 21:12:29 UTC - heartbeat 2026-09-23 21:13:08 UTC - heartbeat 2026-09-23 21:13:48 UTC - heartbeat 2026-09-23 21:14:29 UTC - heartbeat 2026-09-23 21:15:07 UTC - heartbeat 2026-09-23 21:15:49 UTC - heartbeat 2026-09-23 21:16:28 UTC - heartbeat 2026-09-23 21:17:09 UTC - heartbeat 2026-09-23 21:17:50 UTC - heartbeat 2026-09-23 21:18:29 UTC - heartbeat 2026-09-23 21:19:08 UTC - heartbeat 2026-09-23 21:19:49 UTC - heartbeat 2026-09-23 21:20:27 UTC - heartbeat 2026-09-23 21:21:08 UTC - heartbeat 2026-09-23 21:21:48 UTC - heartbeat 2026-09-23 21:22:26 UTC - heartbeat 2026-09-23 21:23:09 UTC - heartbeat 2026-09-23 21:23:47 UTC - heartbeat 2026-09-23 21:24:25 UTC - heartbeat 2026-09-23 21:25:05 UTC - heartbeat 2026-09-23 21:25:44 UTC - heartbeat 2026-09-23 21:27:45 UTC - heartbeat 2026-09-23 21:28:29 UTC - heartbeat 2026-09-23 21:29:07 UTC - heartbeat 2026-09-23T22:42Z | small functional tes 2026-09-24 00:15:09 UTC 2026-09-24 00:26:39 UTC 2026-09-24 00:29:27 UTC 2026-09-24 00:50:45 UTC - triage: invest 2026-09-24 00:54:48 UTC - issue #2 root- 2026-09-24 00:58:23 UTC - dataset: build 2026-09-24 01:00:04 UTC - dataset: verif 2026-09-24 01:00:49 UTC - dataset: rehea 2026-09-24T01:01:51Z [supervisor] restor 2026-09-24 01:02:13 UTC - dataset: censu 2026-09-24 01:05:29 UTC - dataset: resto 2026-09-24 01:06:11 UTC - progress sync: 2026-09-24 01:07:02 UTC - progress: PROG 2026-09-24 01:07:15 UTC - heartbeat 2026-09-24 01:09:49 UTC - heartbeat 2026-09-24 01:10:10 UTC - heartbeat 2026-09-24 01:11:31 UTC - heartbeat 2026-09-24 01:22:51 UTC - heartbeat 2026-09-24 01:33:37 UTC - heartbeat 2026-09-24 01:44:01 UTC - heartbeat 2026-09-24 01:54:33 UTC - heartbeat 2026-09-24 02:04:51 UTC - heartbeat 2026-09-24 02:15:11 UTC - heartbeat 2026-09-24 02:25:33 UTC - heartbeat 2026-09-24 02:35:57 UTC - heartbeat 2026-09-24 02:46:15 UTC - heartbeat 2026-09-24 02:56:42 UTC - heartbeat 2026-09-24 03:07:10 UTC - heartbeat 2026-09-24 03:17:30 UTC - heartbeat 2026-09-24 03:28:04 UTC - heartbeat 2026-09-24 03:38:22 UTC - heartbeat 2026-09-24 03:48:46 UTC - heartbeat 2026-09-24 03:59:11 UTC - heartbeat 2026-09-24 04:09:34 UTC - heartbeat 2026-09-24 04:19:55 UTC - heartbeat 2026-09-24 04:30:21 UTC - heartbeat 2026-09-24 04:44:40 UTC - heartbeat 2026-09-24 04:45:34 UTC - heartbeat
+bcccd7c docs: README run-history table (issue #9) + PROGRESS sync
+00f13e0 status: yes — baseline_rerun_autorestart1 epoch 109/200 loss 2.9473090171813965 acc 98.08918762207031 model mimo-v2.6-flash-free — Baseline training epoch ~109/200 (~2.4 m 2026-09-23 20:33:11 UTC - heartbeat 2026-09-23 20:43:58 UTC - heartbeat 2026-09-23 20:56:28 UTC - heartbeat 2026-09-23 20:57:36 UTC - heartbeat 2026-09-23 20:58:25 UTC - issue #7 close 2026-09-23 20:59:20 UTC - heartbeat 2026-09-23 20:59:58 UTC - heartbeat 2026-09-23 21:00:37 UTC - heartbeat 2026-09-23 21:01:19 UTC - heartbeat 2026-09-23 21:01:58 UTC - heartbeat 2026-09-23 21:02:37 UTC - heartbeat 2026-09-23 21:03:22 UTC - heartbeat 2026-09-23 21:04:00 UTC - heartbeat 2026-09-23 21:04:40 UTC - heartbeat 2026-09-23 21:05:21 UTC - heartbeat 2026-09-23 21:05:59 UTC - heartbeat 2026-09-23 21:06:39 UTC - heartbeat 2026-09-23 21:07:53 UTC - heartbeat 2026-09-23 21:08:31 UTC - heartbeat 2026-09-23 21:09:10 UTC - heartbeat 2026-09-23 21:09:49 UTC - heartbeat 2026-09-23 21:10:27 UTC - heartbeat 2026-09-23 21:11:06 UTC - heartbeat 2026-09-23 21:11:52 UTC - heartbeat 2026-09-23 21:12:29 UTC - heartbeat 2026-09-23 21:13:08 UTC - heartbeat 2026-09-23 21:13:48 UTC - heartbeat 2026-09-23 21:14:29 UTC - heartbeat 2026-09-23 21:15:07 UTC - heartbeat 2026-09-23 21:15:49 UTC - heartbeat 2026-09-23 21:16:28 UTC - heartbeat 2026-09-23 21:17:09 UTC - heartbeat 2026-09-23 21:17:50 UTC - heartbeat 2026-09-23 21:18:29 UTC - heartbeat 2026-09-23 21:19:08 UTC - heartbeat 2026-09-23 21:19:49 UTC - heartbeat 2026-09-23 21:20:27 UTC - heartbeat 2026-09-23 21:21:08 UTC - heartbeat 2026-09-23 21:21:48 UTC - heartbeat 2026-09-23 21:22:26 UTC - heartbeat 2026-09-23 21:23:09 UTC - heartbeat 2026-09-23 21:23:47 UTC - heartbeat 2026-09-23 21:24:25 UTC - heartbeat 2026-09-23 21:25:05 UTC - heartbeat 2026-09-23 21:25:44 UTC - heartbeat 2026-09-23 21:27:45 UTC - heartbeat 2026-09-23 21:28:29 UTC - heartbeat 2026-09-23 21:29:07 UTC - heartbeat 2026-09-23T22:42Z | small functional tes 2026-09-24 00:15:09 UTC 2026-09-24 00:26:39 UTC 2026-09-24 00:29:27 UTC 2026-09-24 00:50:45 UTC - triage: invest 2026-09-24 00:54:48 UTC - issue #2 root- 2026-09-24 00:58:23 UTC - dataset: build 2026-09-24 01:00:04 UTC - dataset: verif 2026-09-24 01:00:49 UTC - dataset: rehea 2026-09-24T01:01:51Z [supervisor] restor 2026-09-24 01:02:13 UTC - dataset: censu 2026-09-24 01:05:29 UTC - dataset: resto 2026-09-24 01:06:11 UTC - progress sync: 2026-09-24 01:07:02 UTC - progress: PROG 2026-09-24 01:07:15 UTC - heartbeat 2026-09-24 01:09:49 UTC - heartbeat 2026-09-24 01:10:10 UTC - heartbeat 2026-09-24 01:11:31 UTC - heartbeat 2026-09-24 01:22:51 UTC - heartbeat 2026-09-24 01:33:37 UTC - heartbeat 2026-09-24 01:44:01 UTC - heartbeat 2026-09-24 01:54:33 UTC - heartbeat 2026-09-24 02:04:51 UTC - heartbeat 2026-09-24 02:15:11 UTC - heartbeat 2026-09-24 02:25:33 UTC - heartbeat 2026-09-24 02:35:57 UTC - heartbeat 2026-09-24 02:46:15 UTC - heartbeat 2026-09-24 02:56:42 UTC - heartbeat 2026-09-24 03:07:10 UTC - heartbeat 2026-09-24 03:17:30 UTC - heartbeat 2026-09-24 03:28:04 UTC - heartbeat 2026-09-24 03:38:22 UTC - heartbeat 2026-09-24 03:48:46 UTC - heartbeat 2026-09-24 03:59:11 UTC - heartbeat 2026-09-24 04:09:34 UTC - heartbeat 2026-09-24 04:19:55 UTC - heartbeat 2026-09-24 04:30:21 UTC - heartbeat
+ scripts/status-heartbeat.sh | 10 ++++++++--
+ 1 file changed, 8 insertions(+), 2 deletions(-)
+[0m$ [0mfor job in agent-watchdog.sh status-heartbeat.sh benchmark-watchdog.sh meta-watchdog.sh; do cmp -s "scripts/$job" "/vol/data/benchmark/bin/$job" && test -x "/vol/data/benchmark/bin/$job" && printf '%s ok\n' "$job" || printf '%s mismatch\n' "$job"; done
+bash -n /vol/data/benchmark/bin/status-heartbeat.sh
+agent-watchdog.sh ok
+status-heartbeat.sh ok
+benchmark-watchdog.sh ok
+meta-watchdog.sh ok
+[0m$ [0mset -euo pipefail
+printf 'time=%s\n' "$(date -Is)"
+printf 'active='; cat /vol/data/benchmark/.active_run
+pid=$(awk '{print $1}' /vol/data/benchmark/.active_run)
+run_dir=$(awk '{print $4}' /vol/data/benchmark/.active_run)
+ps -o pid=,ppid=,pgid=,stat=,etime=,args= -p "$pid"
+printf 'active_log_age=%ss training_log_age=%ss\n' "$(( $(date +%s)-$(stat -c %Y "$run_dir/comebin_run.log") ))" "$(( $(date +%s)-$(stat -c %Y "$run_dir/comebin_out/comebin_res/training.log") ))"
+grep -aoE 'Epoch: [0-9]+|Loss: [0-9.]+|Top1 accuracy: [0-9.]+' "$run_dir/comebin_out/comebin_res/training.log" | tail -3
+time=2026-09-24T04:47:19+00:00
+active=267462 267355 /vol/data/benchmark/runs/baseline_rerun_autorestart1/comebin_run.log /vol/data/benchmark/runs/baseline_rerun_autorestart1 1790209801 baseline /vol/data/repos/COMEBin
+ 267462       1  267355 S       04:17:17 bash /vol/data/benchmark/.runner-snapshots/baseline_rerun_1790209801802838194.sh /vol/data/benchmark/runs/baseline_rerun_autorestart1
+active_log_age=1s training_log_age=71s
+Epoch: 110
+Loss: 2.9370787143707275
+Top1 accuracy: 97.78645324707031
+> build · space-bunny-free
+[0m$ [0mgit show --format=fuller --stat bcccd7c && git show --format= --name-status bcccd7c && git show --format= --unified=3 bcccd7c -- PROGRESS.md | sed -n '1,220p'
+commit bcccd7c6442800da79964571754ffbc607b14819
+Author:     benchmark-agent <agent@localhost>
+AuthorDate: Thu Sep 24 04:44:38 2026 +0000
+Commit:     benchmark-agent <agent@localhost>
+CommitDate: Thu Sep 24 04:44:38 2026 +0000
+
+    docs: README run-history table (issue #9) + PROGRESS sync
+    
+    - New README section: one row per run attempt with failure cause and
+      next step (baseline_unmodified, refused relaunch, running rerun,
+      small_test, small_test_v2); performance-table baseline row links to it
+    - Fix two 39-char commit-hash typos in links (now 40 chars)
+    - PROGRESS: issue #9 triaged, CURRENT epoch 108/200
+    - status/agent-activity.log: issue #9 triage trail
+
+ PROGRESS.md | 9 +++++++--
+ 1 file changed, 7 insertions(+), 2 deletions(-)
+M	PROGRESS.md
+diff --git a/PROGRESS.md b/PROGRESS.md
+index b943d16..93a7ba4 100644
+--- a/PROGRESS.md
++++ b/PROGRESS.md
+@@ -262,8 +262,8 @@ included; fixes land on branch `comebin-optimizations` in this repo.
+ - [ ] **← CURRENT: baseline rerun active (started 2026-09-24 00:30 UTC)** — registered
+       watchdog run `baseline_rerun_autorestart1`, immutable snapshot
+       `baseline_rerun_1790209801802838194.sh`, PID 267462, source commit
+-      `904f649` (`-t 32`). Training is advancing normally (epoch 12/200 at the
+-      last verification); do not signal, edit, or overlap this run. The prior
++      `904f649` (`-t 32`). Training is advancing normally (epoch 108/200 @ 04:40 UTC,
++      loss 3.58 ↓, Top1 84 %); do not signal, edit, or overlap this run. The prior
+       baseline terminal failure (missing marker seed at epoch 175) remains
+       historical; no evaluation result is claimed yet.
+ - [x] **C6 snapshot identity remediation (2026-09-24)** — benchmark-watchdog and
+@@ -296,6 +296,11 @@ included; fixes land on branch `comebin-optimizations` in this repo.
+       and `scripts/make_release_manifest.py` document owner prerequisites,
+       provenance/checksum packaging, and DOI verification; no upload claimed
+       without an approved Zenodo token/manual deposit.
++- [x] **Issue #9 triaged (2026-09-24 04:39 → 04:45 UTC)**: per-run failure/next-step
++      explanation requested → new README section **“Run history — what happened and
++      what’s next”** (one row per run attempt: result, root cause, next step, commit
++      links; performance-table baseline row now links to it); summary comment posted
++      (`#issuecomment-5807827932`).
+ - [ ] After a successful baseline rerun: CheckM2 + CheckM v1 eval (`scripts/run_eval.sh`) → README
+       performance row (wall time per stage, peak RAM from resources.tsv, bins,
+       CheckM2/CheckM means) with linked commit → push
+> build · space-bunny-free
+[0m$ [0mset -euo pipefail
+fixture=$(mktemp -d /tmp/opencode/status-sync-installed-test.XXXXXX)
+trap 'rm -rf "$fixture"' EXIT
+mkdir -p "$fixture/bench/runs/refused" "$fixture/bench/runs/withmeta" "$fixture/repo"
+printf 'metadata\n' > "$fixture/bench/runs/withmeta/run_meta.txt"
+awk '/^sync_run_logs\(\)/,/^}/' /vol/data/benchmark/bin/status-heartbeat.sh > "$fixture/sync-function.sh"
+(
+  BENCH="$fixture/bench"
+  cd "$fixture/repo"
+  # shellcheck disable=SC1091
+  source "$fixture/sync-function.sh"
+  sync_run_logs
+)
+test ! -e "$fixture/repo/runs/refused"
+cmp "$fixture/bench/runs/withmeta/run_meta.txt" "$fixture/repo/runs/withmeta/run_meta.txt"
+printf 'installed status-heartbeat fixture: ok\n'
+installed status-heartbeat fixture: ok
+> build · space-bunny-free
+[0m$ [0mtail -20 status/agent-activity.log && printf '\nwatchdog tail:\n' && tail -12 /vol/data/benchmark/logs/watchdog.log
+2026-09-24 02:25:33 UTC - turn: baseline rerun healthy epoch 48/200; issues unchanged
+2026-09-24 02:35:57 UTC - turn: baseline rerun healthy epoch 53/200; issues unchanged
+2026-09-24 02:46:15 UTC - turn: baseline rerun healthy epoch 57/200; issues unchanged
+2026-09-24 02:56:42 UTC - turn: baseline rerun healthy epoch 62/200; issues unchanged
+2026-09-24 03:07:10 UTC - turn: baseline rerun healthy epoch 66/200; issues unchanged
+2026-09-24 03:17:30 UTC - turn: baseline rerun healthy epoch 71/200; issues unchanged
+2026-09-24 03:28:04 UTC - turn: baseline rerun healthy epoch 76/200; issues unchanged
+2026-09-24 03:38:22 UTC - turn: baseline rerun healthy epoch 80/200; issues unchanged
+2026-09-24 03:48:46 UTC - turn: baseline rerun healthy epoch 85/200; issues unchanged
+2026-09-24 03:59:11 UTC - turn: baseline rerun healthy epoch 90/200; issues unchanged
+2026-09-24 04:09:34 UTC - turn: baseline rerun healthy epoch 94/200; issues unchanged
+2026-09-24 04:19:55 UTC - turn: baseline rerun healthy epoch 99/200; issues unchanged
+2026-09-24 04:30:21 UTC - turn: baseline rerun healthy epoch 103/200; issues unchanged
+2026-09-24 04:40:45 UTC - triage: new issue #9 received, reading
+2026-09-24 04:41:18 UTC - triage: gathering per-run failure facts for issue #9 README table
+2026-09-24 04:41:40 UTC - triage: issue #9 = README run-history table requested; writing it
+2026-09-24 04:42:52 UTC - docs: wrote README Run-history table (issue #9); fixed 39-char commit-hash typo
+2026-09-24 04:43:07 UTC - issues: #9 replied with run-history table summary
+2026-09-24 04:44:40 UTC - pushed README run-history table + PROGRESS (issue #9)
+2026-09-24 04:45:34 UTC - turn: baseline rerun healthy epoch 110/200; #9 update = own reply (5807827932), no new comments
+
+watchdog tail:
+2026-09-24T04:30:01+00:00 [watchdog] skipped: another driver holds the lock
+2026-09-24T04:30:28+00:00 [watchdog] driver turn #23 exited rc=0 (transcript 1485968->1488684B)
+2026-09-24T04:30:28+00:00 [watchdog] driver turn #24 healthy; next turn in 600s
+2026-09-24T04:35:01+00:00 [watchdog] skipped: another driver holds the lock
+2026-09-24T04:40:01+00:00 [watchdog] skipped: another driver holds the lock
+2026-09-24T04:40:28+00:00 [watchdog] driver turn #24: model=default | opencode run --session ses_f31799c77ffeTq9gcYgqc4hBhg
+2026-09-24T04:44:47+00:00 [watchdog] driver turn #24 exited rc=0 (transcript 1488684->1517506B)
+2026-09-24T04:44:47+00:00 [watchdog] driver turn #25 healthy; next turn in 30s
+2026-09-24T04:45:01+00:00 [watchdog] skipped: another driver holds the lock
+2026-09-24T04:45:17+00:00 [watchdog] driver turn #25: model=default | opencode run --session ses_f31799c77ffeTq9gcYgqc4hBhg
+2026-09-24T04:45:45+00:00 [watchdog] driver turn #25 exited rc=0 (transcript 1517506->1520961B)
+2026-09-24T04:45:45+00:00 [watchdog] driver turn #26 healthy; next turn in 600s
+> build · space-bunny-free
