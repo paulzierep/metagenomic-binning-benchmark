@@ -44,7 +44,8 @@ licensing, and Zenodo verification checklist in
 ### Published small release (Zenodo)
 
 The owner-approved small release is published as **[10.5281/zenodo.22935025](https://doi.org/10.5281/zenodo.22935025)**
-(version 1, CC BY 4.0). The record contains the verified
+(version 1, **MIT** since 2026-09-24 — the record metadata was edited in
+place, no new version; the DOI resolves HTTP 200). The record contains the verified
 `comebin_small_release_v1.tar.gz` (95,216,539 bytes,
 SHA-256 `0c698d208639f4fadd4ac4477a67074320c975528b23dd61743c83ad1658b6d2`)
 and `comebin_small.release.public.json` (3,650 bytes,

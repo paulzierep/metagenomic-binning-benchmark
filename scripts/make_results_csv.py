@@ -25,6 +25,23 @@ def meta_val(key):
                 return line.split(":", 1)[1].strip()
     return ""
 
+def default_dataset(contigs_path):
+    """Human-readable dataset label derived from the run's contigs path, for
+    automatic (no-arg) regeneration after an evaluated run (issues #12/#15)."""
+    if not contigs_path:
+        return ""
+    known = [
+        ("BATS_SAMN07137077_METAG", "COMEBin demo (29,434 contigs)"),
+        ("comebin_medium", "comebin_medium (3,000 contigs)"),
+        ("comebin_small", "comebin_small (300 contigs)"),
+        ("cami2", "CAMI II"),
+        ("cami3", "CAMI III"),
+    ]
+    for key, label in known:
+        if key in contigs_path:
+            return label
+    return os.path.basename(os.path.dirname(contigs_path))
+
 commit = meta_val("commit")
 t_total = meta_val("wall_s")
 n_bins = meta_val("bins").split()[0] if meta_val("bins") else ""
@@ -74,6 +91,10 @@ def summarize(cs, ts):
 
 mk2c, mk2t = scores(os.path.join(run, "eval", "checkm2", "quality_report.tsv"), "Completeness", "Contamination")
 mkc, mkt = scores(os.path.join(run, "eval", "checkm", "out", "storage", "bin_stats_ext.tsv"), "Completeness", "Contamination")
+if not dataset:
+    dataset = default_dataset(meta_val("contigs"))
+if not threads:
+    threads = meta_val("threads")
 # Older baseline wrappers did not emit a `bins:` metadata line. Derive the
 # count from the evaluator rows so the committed result table is complete.
 if not n_bins:

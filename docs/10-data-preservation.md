@@ -94,12 +94,14 @@ report the failure; do not claim that preservation is complete.
 - The small derived dataset exists locally at `/vol/data/datasets/comebin_small`
   and its real COMEBin/CheckM2/CheckM gate is complete (`small_test_v4`).
 - **Production Zenodo record:** [10.5281/zenodo.22935025](https://doi.org/10.5281/zenodo.22935025),
-  version 1, CC BY 4.0. The record was checked through a fresh unauthenticated
-  `GET /api/records/22935025` (HTTP 200), and both uploaded file sizes and MD5
-  checksums match the local release. A later owner comment requested MIT and
-  expanded metadata; because that would change a published version's terms,
-  it is being handled as an explicit versioning decision rather than silently
-  changing version 1.
+  version 1, **MIT** since 2026-09-24. The owner asked for MIT plus a much
+  richer description (what the benchmark is used for, how to run, project
+  links); Zenodo allows license edits as plain metadata, so the record was
+  edited in place and re-published **without creating a new version** (still
+  1.0). The public record was re-checked through a fresh unauthenticated
+  `GET /api/records/22935025` (HTTP 200, license `mit-license`, expanded
+  description live) and both uploaded file sizes and MD5 checksums match the
+  local release; the DOI resolver check now returns HTTP 200.
 - Uploaded files: `comebin_small_release_v1.tar.gz` (95,216,539 bytes,
   SHA-256 `0c698d208639f4fadd4ac4477a67074320c975528b23dd61743c83ad1658b6d2`)
   and `comebin_small.release.public.json` (3,650 bytes, SHA-256

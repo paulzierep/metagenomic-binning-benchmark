@@ -33,18 +33,21 @@ per batch** (see `docs/07-fix-batches.md`). Each batch goes through the gate bel
 
 ```mermaid
 flowchart TD
-    A["💡 Pick candidate change / param"] --> B["Small functional test<br/>(300-contig dataset)"]
-    B -->|"❌ fail"| G["Investigate, fix, or drop"] --> A
-    B -->|"✅ pass"| C["Benchmark small / medium set"]
-    C --> D{"Better or equal<br/>time AND quality?"}
-    D -->|"✅ keep"| E["Keep commit<br/>record in results/ + PROGRESS"]
+    A["Pick candidate change or parameter"] --> B["Small functional test on the 300-contig dataset"]
+    B -->|fail| G["Investigate, fix, or drop the change"]
+    G --> A
+    B -->|pass| C["Benchmark on a small or medium set"]
+    C --> D{"Better or equal time AND quality?"}
+    D -->|keep| E["Keep the commit; record in results and PROGRESS"]
     E --> F["Next batch from this commit"]
-    D -->|"❌ no"| H["Revert or rework"]
-    H --> I["Combine with surviving ideas"] --> A
-    F --> J["After major commits:<br/>full large benchmark<br/>(demo → CAMI II marine → CAMI III)"]
+    D -->|no| H["Revert or rework"]
+    H --> I["Combine with surviving ideas"]
+    I --> A
+    F --> J["Optimize parameters on small sets first"]
+    J --> K["Full large benchmark only after small and medium validation (demo, then CAMI II marine, then CAMI III)"]
     classDef keep fill:#d9f7be,stroke:#389e0d;
     classDef drop fill:#ffccc7,stroke:#cf1322;
-    class A,B,C,E,F,J keep;
+    class A,B,C,E,F,J,K keep;
     class G,H,I drop;
 ```
 
@@ -61,6 +64,9 @@ Invariants:
   stay comparable.
 - **Record or reject:** a commit is kept *only* if the evidence says keep;
   otherwise it is reverted or reworked and combined with other ideas.
+- **Big runs only after small + medium (issue #17):** a full-large benchmark is
+  launched only after the fix is validated on both the small functional set and
+  a medium set, and parameter tuning is done on small sets before big benchmarks.
 - Cost guardrail: if we accrue several sequential failures, go back and pick a
   different idea (per the flowchart) instead of spending more time on a dead end.
 

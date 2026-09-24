@@ -82,6 +82,8 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("rundirs", nargs="+")
     ap.add_argument("-k", "--key", help="comparison key (dataset) for the scatter")
+    ap.add_argument("--all", action="store_true",
+                    help="include every run under runs/ that has per_bin_results.csv in the comparison scatter")
     args = ap.parse_args()
 
     import matplotlib
@@ -91,6 +93,8 @@ def main():
     key = args.key or "all-runs"
     figures = os.path.join(REPO, "results", "figures")
     os.makedirs(figures, exist_ok=True)
+
+    # Per-run bar chart for each explicitly given run.
     groups = []
     for rd in args.rundirs:
         name = os.path.basename(rd.rstrip("/"))
@@ -104,10 +108,24 @@ def main():
         run_bar_plot(plt, rows, out)
         print(f"{name}: per-bin bar chart -> runs/{name}/per_bins.png")
         groups.append((name, rows))
+
+    # Comparison scatter: the runs just plotted, or (with --all) every run
+    # that has per-bin data, so the scatter keeps comparing across runs even
+    # when only one run is being re-evaluated.
+    if args.all:
+        runs_root = os.path.join(REPO, "runs")
+        known = {g[0] for g in groups}
+        if os.path.isdir(runs_root):
+            for entry in sorted(os.listdir(runs_root)):
+                if entry in known:
+                    continue
+                rows = load_per_bin(os.path.join(runs_root, entry), entry)
+                if rows is not None:
+                    groups.append((entry, rows))
     if len(groups) >= 1:
         out = os.path.join(figures, f"comp_vs_cont_{key}.png")
         comparison_scatter(plt, groups, out, key)
-        print(f"comparison scatter ({key}) -> results/figures/comp_vs_cont_{key}.png")
+        print(f"comparison scatter ({key}, {len(groups)} runs) -> results/figures/comp_vs_cont_{key}.png")
     return 0
 
 

@@ -100,6 +100,18 @@ echo "checkm_rc: $rc1 checkm_wall_s: $(( $(date +%s) - T ))" | tee -a "$RUN/run_
 # Summary and final status ----------------------------------------------------
 echo "=== summary ==="
 python3 "$(dirname "$0")/parse_eval.py" "$RUN" 9>&-
+if [ "$rc2" -eq 0 ] && [ "$rc1" -eq 0 ]; then
+  # Automatic reporting (issues #12/#15): aggregate CSV + per-bin CSV + plots,
+  # regenerated after every successfully evaluated run. Best-effort: a report
+  # failure must not turn a successful evaluation into a failed one.
+  echo "=== auto-reporting: results/<run>.csv, runs/<run>/per_bin_results.csv, per_bins.png ==="
+  python3 "$(dirname "$0")/make_results_csv.py" "$RUN" 9>&- \
+    || echo "WARNING: make_results_csv.py failed (rc=$?)" >&2
+  python3 "$(dirname "$0")/make_per_bin_csv.py" "$RUN" 9>&- \
+    || echo "WARNING: make_per_bin_csv.py failed (rc=$?)" >&2
+  "$MM" run -p "$CHECKM_ENV" python3 "$(dirname "$0")/make_per_bin_plots.py" --all "$RUN" 9>&- \
+    || echo "WARNING: make_per_bin_plots.py failed (rc=$?)" >&2
+fi
 echo "done (checkm2 rc=$rc2, checkm rc=$rc1)"
 if [ "$rc2" -ne 0 ] || [ "$rc1" -ne 0 ]; then
   exit 1
