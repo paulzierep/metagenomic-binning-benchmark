@@ -32248,3 +32248,358 @@ index 2b5dc58..d76a6ca 100644
 > build · space-bunny-free
 [0m✱ [0mGrep "last_benchmark_failure" [90min /vol/data/repos/metagenomic-binning-benchmark/scripts · 5 matches[0m
 > build · space-bunny-free
+[0m→ [0mRead /vol/data/repos/metagenomic-binning-benchmark/README.md [90m[offset=57, limit=50][0m
+> build · space-bunny-free
+[0m$ [0m/vol/data/tools/bin/micromamba run -p /vol/data/envs/comebin python -c 'import biolib; print("biolib import ok")'
+biolib import ok
+> build · space-bunny-free
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/README.md
+Index: /vol/data/repos/metagenomic-binning-benchmark/README.md
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/README.md
++++ /vol/data/repos/metagenomic-binning-benchmark/README.md
+@@ -56,30 +56,45 @@
+ performance deltas vs. baseline are visible directly in this table.
+ 
+ ## Run history — what happened and what's next
+ 
+-One row per recorded attempt, including launches refused before any CPU was
+-used. Run links point to the tracked evidence mirrors. Refused watchdog launches
+-are retained in `/vol/data/benchmark/logs/*.launch.log` and
+-[`status/supervisor-run.log`](status/supervisor-run.log); the first `small_test`
+-directory was later reused, so its surviving evidence is the timestamped
+-[`status/agent-run.log`](status/agent-run.log) entry. The status banner at the
+-top of this file is authoritative for the running row.
++Seven COMEBin-executing attempts have been recorded: six terminal failures and
++one active run. No successful end-to-end benchmark or CheckM evaluation has been
++recorded yet. Run links point to tracked evidence mirrors. The first two
++`small_test` directories were later reused, and the raw `baseline_rerun`
++directory now contains only the final refusal's `out.txt`; their earlier evidence
++survives in [`status/agent-run.log`](status/agent-run.log) and the Git mirror.
++The status banner at the top of this file is authoritative for the active run.
+ 
++### COMEBin-executing attempts
++
+ | Run / time (UTC) | Source | Result and cause | Next step |
+ |---|---|---|---|
+-| [`baseline_unmodified`](runs/baseline_unmodified/comebin_run.log) — 2026-09-23 14:36 → 21:42 | [987db95](https://github.com/paulzierep/COMEBin/commit/987db95d8d399f30b7c82a5f5f40ed6bfdc906c7) upstream | **Failed after epoch 175/200; no evaluation claimed.** Clustering had no hmmsearch marker `.seed` file (`FileNotFoundError` in `gen_seed_idx`) and `biolib` was not installed. | Installed `biolib`; committed missing-seed handling in [`586c7f7`](https://github.com/paulzierep/COMEBin/commit/586c7f72226171870615138687404767662c1225) and later crash fixes through [`904f649`](https://github.com/paulzierep/COMEBin/commit/904f649ef5cbb4582a6f0e5ec8b0b1f45778d85b); use a fresh clean run. |
+-| [`baseline_unmodified_autorestart1`](status/supervisor-run.log) — 2026-09-23 21:33 | [987db95](https://github.com/paulzierep/COMEBin/commit/987db95d8d399f30b7c82a5f5f40ed6bfdc906c7) + 4 dirty files | **No run, 0 CPU.** The pristine-baseline guard rejected the launch because the COMEBin worktree was modified. | Commit or revert the source edits before retrying; preserve the original failure evidence. |
+-| [`baseline_unmodified_autorestart2`](status/supervisor-run.log) — 2026-09-23 21:35 | [987db95](https://github.com/paulzierep/COMEBin/commit/987db95d8d399f30b7c82a5f5f40ed6bfdc906c7) + 4 dirty files | **No run, 0 CPU.** The same dirty-source guard blocked a non-reproducible baseline launch. | Stop duplicate no-CPU retries and restore a clean source tree. |
+-| [`baseline_unmodified_autorestart3`](status/supervisor-run.log) — 2026-09-23 21:40 | [987db95](https://github.com/paulzierep/COMEBin/commit/987db95d8d399f30b7c82a5f5f40ed6bfdc906c7) + 4 dirty files | **No run, 0 CPU.** The third attempt had the same refusal and exhausted the watchdog restart budget. | Let the watchdog classify the original terminal failure; use committed source only for the next baseline. |
+-| [`small_test` — first smoke](status/agent-run.log) — 2026-09-23 22:39:28 → 22:39:45 (17 s) | [586c7f7](https://github.com/paulzierep/COMEBin/commit/586c7f72226171870615138687404767662c1225) | **Failed during augmentation, exit 1.** `gen_cov.py` raised `KeyError: scaffold_22978`, a BAM-header reference absent from the 300-contig assembly. Because it failed before clustering, this run did **not** validate the missing-seed fix. This first use of the run name was later overwritten. | Commit the contig filter in [`47c1449`](https://github.com/paulzierep/COMEBin/commit/47c1449e874c366defe4470f1d43abf91fb8117c), then rerun under a fresh name. |
+-| [`small_test` — logged rerun](runs/small_test/comebin_run.log) — 2026-09-23 23:09:40 → 23:10:21 (41 s) | [ee2e507](https://github.com/paulzierep/COMEBin/commit/ee2e5079ae8fd04caa381486a4bba8c2d2a34a14) | **Failed, exit 1.** `get_kmer_coverage` indexed the 300-contig matrix with uninitialized values because `np.empty` left missing contig-to-k-mer positions unset, causing an out-of-bounds `IndexError`. | Replace `np.empty` with zero-initialized state in [`904f649`](https://github.com/paulzierep/COMEBin/commit/904f649ef5cbb4582a6f0e5ec8b0b1f45778d85b); rerun as `small_test_v2`. |
+-| [`small_test_v2`](runs/small_test_v2/comebin_run.log) — 2026-09-23 23:37:13 → 23:37:56 (43 s) | [904f649](https://github.com/paulzierep/COMEBin/commit/904f649ef5cbb4582a6f0e5ec8b0b1f45778d85b) | **Failed, exit 1.** After augmentation and epoch 0, `lengths[seq_id]` raised `KeyError`: `aug0_datacoverage_mean.tsv` contained all 29,434 BAM-header references instead of only the 300 input contigs. | Producer filtering and defensive alignment are committed on `comebin-small-fix` as [`5c77bc8`](https://github.com/paulzierep/COMEBin/commit/5c77bc87ce2c8a83be20016c8f62eb2d6b3feb88); the offline six-view test passes. After the baseline, run the end-to-end small gate and CheckM2/CheckM before building the medium set. |
+-| [`baseline_rerun`](runs/baseline_rerun/comebin_run.log) — 2026-09-24 00:15:46 → 00:25:46 (600 s) | [904f649](https://github.com/paulzierep/COMEBin/commit/904f649ef5cbb4582a6f0e5ec8b0b1f45778d85b) | **Failed, exit 143.** This was not a COMEBin exception: a foreground agent tool call imposed a 600 s timeout and sent `SIGTERM` after augmentation, the first feature pass and epoch 0. | Never launch a multi-hour baseline in a foreground tool call. Start it detached in a fresh directory, verify `.active_run`, and let `benchmark-watchdog.sh` own the handoff. |
+-| `baseline_rerun` — [retry 1](status/agent-run.log) — ~2026-09-24 00:26 | [904f649](https://github.com/paulzierep/COMEBin/commit/904f649ef5cbb4582a6f0e5ec8b0b1f45778d85b) | **No run, 0 CPU.** The overwrite guard correctly rejected the same-name retry because the timed run already had `run_meta.txt` and `comebin_out/`; the follow-up then deleted that directory instead of preserving it. | Never delete or overwrite a run directory. Keep its evidence and choose a fresh run name. |
+-| `baseline_rerun` — [retry 2](status/agent-run.log) — ~2026-09-24 00:29 | [904f649](https://github.com/paulzierep/COMEBin/commit/904f649ef5cbb4582a6f0e5ec8b0b1f45778d85b) | **No run, 0 CPU.** `.active_run` still referenced the failed wrapper (`pid=262046`) for the reused path, so the overlap guard refused another launch. | Run `benchmark-watchdog.sh`; at 00:30 it classified exit 143, cleared the stale registration and launched `baseline_rerun_autorestart1`. |
+-| [`baseline_rerun_autorestart1`](runs/baseline_rerun_autorestart1/comebin_run.log) — 2026-09-24 00:30 → **running** | [904f649](https://github.com/paulzierep/COMEBin/commit/904f649ef5cbb4582a6f0e5ec8b0b1f45778d85b) | **In progress.** The watchdog-managed run is advancing normally from an immutable committed snapshot with the crash-only fixes, 32 threads and `--earlystop`; live epoch/loss/accuracy are in the top banner. | On clean exit, run `scripts/run_eval.sh` for CheckM2 + CheckM v1 and fill the performance table; then run the queued end-to-end small test without overlapping timed runs. |
++| [`baseline_unmodified`](runs/baseline_unmodified/comebin_run.log) — 2026-09-23 14:36:06 → 21:30:28; watchdog classified 21:42:31 | [987db95](https://github.com/paulzierep/COMEBin/commit/987db95d8d399f30b7c82a5f5f40ed6bfdc906c7) upstream | **Failed after epoch 175/200; no bins or evaluation.** `test_getmarker_2quarter.pl` produced no `.seed`, then `cluster.py:368` unconditionally read it and raised `FileNotFoundError`; `get_result` then hit `ModuleNotFoundError: biolib`. | `biolib` import is now verified. [`586c7f7`](https://github.com/paulzierep/COMEBin/commit/586c7f72226171870615138687404767662c1225) hardens the later `gen_seed_idx` call but does not fix the observed line-368 read; fix and verify that read on a future clean run before claiming clustering success. |
++| [`small_test` — attempt 1](status/agent-run.log) — 2026-09-23 22:39:28 → 22:39:45 (17 s) | [586c7f7](https://github.com/paulzierep/COMEBin/commit/586c7f72226171870615138687404767662c1225) | **Failed during augmentation, exit 1.** `gen_cov.py` raised `KeyError: scaffold_22978`, a BAM-header reference absent from the 300-contig assembly. It failed before clustering, so it did not validate the seed change. | Commit the contig filter in [`47c1449`](https://github.com/paulzierep/COMEBin/commit/47c1449e874c366defe4470f1d43abf91fb8117c), then rerun under a fresh name. |
++| [`small_test` — attempt 2](status/agent-run.log) — ~2026-09-23 23:08:34 → 23:09:05 (31 s) | [47c1449](https://github.com/paulzierep/COMEBin/commit/47c1449e874c366defe4470f1d43abf91fb8117c) | **Failed during augmentation, exit 1.** The mean-coverage filter worked, but `gen_var.py` raised the equivalent `KeyError` for the same extra scaffold and its expected variance CSV was absent. | Apply the matching `gen_var.py` filter in [`ee2e507`](https://github.com/paulzierep/COMEBin/commit/ee2e5079ae8fd04caa381486a4bba8c2d2a34a14), then rerun under a fresh name. |
++| [`small_test` — attempt 3](runs/small_test/comebin_run.log) — 2026-09-23 23:09:40 → 23:10:21 (41 s) | [ee2e507](https://github.com/paulzierep/COMEBin/commit/ee2e5079ae8fd04caa381486a4bba8c2d2a34a14) | **Failed, exit 1.** `get_kmer_coverage` indexed the 300-contig matrix with uninitialized values because `np.empty` left missing contig-to-k-mer positions unset, causing an out-of-bounds `IndexError`. | Replace `np.empty` with zero-initialized state in [`904f649`](https://github.com/paulzierep/COMEBin/commit/904f649ef5cbb4582a6f0e5ec8b0b1f45778d85b); rerun as `small_test_v2`. |
++| [`small_test_v2`](runs/small_test_v2/comebin_run.log) — 2026-09-23 23:37:13 → 23:37:56 (43 s) | [904f649](https://github.com/paulzierep/COMEBin/commit/904f649ef5cbb4582a6f0e5ec8b0b1f45778d85b) | **Failed before completing epoch 0, exit 1.** `lengths[seq_id]` raised `KeyError`: `aug0_datacoverage_mean.tsv` contained all 29,434 BAM-header references instead of only the 300 input contigs. | Producer filtering and defensive alignment are committed on `comebin-small-fix` as [`5c77bc8`](https://github.com/paulzierep/COMEBin/commit/5c77bc87ce2c8a83be20016c8f62eb2d6b3feb88); the offline six-view test passes. After the baseline, run the end-to-end small gate and CheckM2/CheckM before building the medium set. |
++| [`baseline_rerun` — attempt 1](runs/baseline_rerun/comebin_run.log) — 2026-09-24 00:15:46 → 00:25:46 (600 s) | [904f649](https://github.com/paulzierep/COMEBin/commit/904f649ef5cbb4582a6f0e5ec8b0b1f45778d85b) | **Failed, exit 143.** This was not a COMEBin exception: a foreground agent tool call imposed a 600 s timeout and sent `SIGTERM` after epoch 0 was logged and the next epoch started. | Never launch a multi-hour baseline in a foreground tool call. Start it detached in a fresh directory, verify `.active_run`, and let `benchmark-watchdog.sh` own the handoff. |
++| [`baseline_rerun_autorestart1`](runs/baseline_rerun_autorestart1/comebin_run.log) — 2026-09-24 00:30:01 → **running** | [904f649](https://github.com/paulzierep/COMEBin/commit/904f649ef5cbb4582a6f0e5ec8b0b1f45778d85b) | **In progress.** The watchdog-managed run is advancing from an immutable snapshot and has not reached clustering; live epoch/loss/accuracy are in the top banner. No exit code, bins, or evaluation exist yet. | On clean exit, run `scripts/run_eval.sh` for CheckM2 + CheckM v1 and fill the performance table. If the line-368 seed read recurs, fix and verify it before rerunning; then run the queued small test without overlap. |
+ 
++### Guard-only launches
++
++Twelve launches stopped before COMEBin started. They are grouped by episode so
++refusals are not mistaken for benchmark runs; raw watchdog refusals remain in
++`/vol/data/benchmark/logs/*.launch.log`.
++
++| Episode / time (UTC) | Count | Cause | Next step |
++|---|---:|---|---|
++| [`baseline_unmodified_autorestart1/2/3`](status/supervisor-run.log) — 21:33, 21:35, 21:40 | 3 | Pristine-baseline guard rejected commit `987db95` plus four dirty files. | Restore a clean committed source tree before retrying. |
++| [Default-path baseline before the rerun](status/agent-run.log) — shortly before 00:15 | 1 | Existing `runs/baseline_unmodified` directory blocked an overwrite. | Pass a fresh explicit run directory. |
++| [Small-test preflight before attempt 1](status/agent-run.log) — ~22:39 | 2 | Dirty-source guard rejected the uncommitted seed change. | Commit or clean the source before running. |
++| [Small-test preflight before attempt 2](status/agent-run.log) — ~23:08 | 1 | Existing `runs/small_test` directory blocked an overwrite. | Use a fresh run name; preserve the prior evidence. |
++| [Small-test preflight before attempt 3](status/agent-run.log) — ~23:09 | 2 | Start lock was held, then stale failed registration `pid=239956` blocked launch. | Do not delete lock/state files manually; let the benchmark watchdog triage them. |
++| [Small-test-v2 preflight](status/agent-run.log) — ~23:37 | 1 | Dirty-source guard rejected the uncommitted `np.zeros` fix. | Commit or clean the source before running. |
++| [`baseline_rerun` retry 1](status/agent-run.log) — ~00:26 | 1 | Existing timed-run artifacts blocked same-name overwrite; the follow-up then deleted the directory. | Never delete a run directory; preserve evidence and choose a fresh name. |
++| [`baseline_rerun` retry 2](status/agent-run.log) — ~00:29 | 1 | `.active_run` still referenced failed wrapper `pid=262046` for the reused path. | Let `benchmark-watchdog.sh` classify exit 143 and perform the fresh-directory handoff. |
++
+ ## Branch strategy
+ 
+ - `main` — documentation, harness scripts, result tables.
+ - `comebin-optimizations` — COMEBin source changes, **batched fixes, one commit per
+
+> build · space-bunny-free
+[0m$ [0mgit diff --check && git status --short --branch && git diff --stat
+## main...origin/main
+ M PROGRESS.md
+ M README.md
+ M scripts/agent-watchdog.sh
+ M scripts/status-heartbeat.sh
+ M status/agent-activity.log
+ PROGRESS.md                 |  5 +++++
+ README.md                   | 51 +++++++++++++++++++++++++++++----------------
+ scripts/agent-watchdog.sh   |  7 +++++--
+ scripts/status-heartbeat.sh | 13 ++++++++++--
+ status/agent-activity.log   |  1 +
+ 5 files changed, 55 insertions(+), 22 deletions(-)
+[0m$ [0mset -euo pipefail
+python3 - <<'PY'
+from pathlib import Path
+text = Path('README.md').read_text()
+section = text.split("## Run history — what happened and what's next", 1)[1].split('## Branch strategy', 1)[0]
+main = section.split('### COMEBin-executing attempts', 1)[1].split('### Guard-only launches', 1)[0]
+guard = section.split('### Guard-only launches', 1)[1]
+main_rows = [x for x in main.splitlines() if x.startswith('|')]
+guard_rows = [x for x in guard.splitlines() if x.startswith('|')]
+assert len(main_rows) == 9, len(main_rows)   # header + separator + 7 attempts
+assert len(guard_rows) == 10, len(guard_rows) # header + separator + 8 groups
+for row in main_rows:
+    assert row.count('|') == 5, (row.count('|'), row)
+for row in guard_rows:
+    assert row.count('|') == 5, (row.count('|'), row)
+counts = []
+for row in guard_rows[2:]:
+    cells = [c.strip() for c in row.strip('|').split('|')]
+    counts.append(int(cells[1]))
+assert sum(counts) == 12, counts
+for name in [
+    'baseline_unmodified', 'small_test` — attempt 1', 'small_test` — attempt 2',
+    'small_test` — attempt 3', 'small_test_v2', 'baseline_rerun` — attempt 1',
+    'baseline_rerun_autorestart1',
+]:
+    assert name in main, name
+for evidence in [
+    'runs/baseline_unmodified/comebin_run.log', 'runs/small_test/comebin_run.log',
+    'runs/small_test_v2/comebin_run.log', 'runs/baseline_rerun/comebin_run.log',
+    'runs/baseline_rerun_autorestart1/comebin_run.log',
+    'status/supervisor-run.log', 'status/agent-run.log',
+]:
+    assert Path(evidence).is_file(), evidence
+print('README run history: 7 COMEBin attempts + 12 grouped guard-only launches; structure/evidence ok')
+PY
+for sha in 987db95d8d399f30b7c82a5f5f40ed6bfdc906c7 586c7f72226171870615138687404767662c1225 47c1449e874c366defe4470f1d43abf91fb8117c ee2e5079ae8fd04caa381486a4bba8c2d2a34a14 904f649ef5cbb4582a6f0e5ec8b0b1f45778d85b 5c77bc87ce2c8a83be20016c8f62eb2d6b3feb88; do git -C /vol/data/repos/COMEBin cat-file -e "$sha^{commit}"; done
+printf 'README source commits resolve: ok\n'
+README run history: 7 COMEBin attempts + 12 grouped guard-only launches; structure/evidence ok
+README source commits resolve: ok
+> build · space-bunny-free
+[0m→ [0mRead /vol/data/benchmark/.last_benchmark_failure [90m[offset=1, limit=20][0m
+> build · space-bunny-free
+[0m$ [0mset -euo pipefail
+file=/vol/data/benchmark/.last_benchmark_failure
+tmp="$file.tmp.$$"
+trap 'rm -f "$tmp"' EXIT
+printf '%s\t%s\t%s\n' \
+  '2026-09-24T00:25:46+00:00' \
+  '/vol/data/benchmark/runs/baseline_rerun (evidence mirrored in /vol/data/repos/metagenomic-binning-benchmark/runs/baseline_rerun)' \
+  'run_meta exit_code=143; foreground agent-tool timeout after 600s' > "$tmp"
+mv -f "$tmp" "$file"
+trap - EXIT
+[ "$(wc -l < "$file")" -eq 1 ]
+grep -Fq 'baseline_rerun' "$file"
+grep -Fq 'exit_code=143' "$file"
+printf 'updated stale last-failure pointer to baseline_rerun exit 143\n'
+updated stale last-failure pointer to baseline_rerun exit 143
+> build · space-bunny-free
+[0m$ [0mfind /vol/data/repos/metagenomic-binning-benchmark/runs -mindepth 1 -type d -empty -print | sort; find /vol/data/benchmark/runs -mindepth 1 -type d -empty -print | sort
+/vol/data/repos/metagenomic-binning-benchmark/runs/baseline_rerun/logs
+/vol/data/repos/metagenomic-binning-benchmark/runs/baseline_rerun_autorestart1/logs
+/vol/data/benchmark/runs/baseline_unmodified/comebin_out/comebin_res/cluster_res
+> build · space-bunny-free
+[0m$ [0mset -euo pipefail
+flock -w 30 /tmp/status-heartbeat.lock bash -eu -c '
+  for d in \
+    /vol/data/repos/metagenomic-binning-benchmark/runs/baseline_rerun/logs \
+    /vol/data/repos/metagenomic-binning-benchmark/runs/baseline_rerun_autorestart1/logs
+  do
+    [ -d "$d" ] || continue
+    [ -z "$(find "$d" -mindepth 1 -print -quit)" ]
+    rmdir "$d"
+    echo "removed empty stale mirror directory: $d"
+  done
+'
+printf 'remaining empty repo run dirs: '
+count=$(find /vol/data/repos/metagenomic-binning-benchmark/runs -mindepth 1 -type d -empty | wc -l)
+echo "$count"
+test "$count" -eq 0
+removed empty stale mirror directory: /vol/data/repos/metagenomic-binning-benchmark/runs/baseline_rerun/logs
+removed empty stale mirror directory: /vol/data/repos/metagenomic-binning-benchmark/runs/baseline_rerun_autorestart1/logs
+remaining empty repo run dirs: 0
+> build · space-bunny-free
+[0m$ [0mgit diff -- PROGRESS.md scripts/agent-watchdog.sh scripts/status-heartbeat.sh | sed -n '1,320p'
+diff --git a/PROGRESS.md b/PROGRESS.md
+index 93a7ba4..1f5d1a3 100644
+--- a/PROGRESS.md
++++ b/PROGRESS.md
+@@ -266,6 +266,11 @@ included; fixes land on branch `comebin-optimizations` in this repo.
+       loss 3.58 ↓, Top1 84 %); do not signal, edit, or overlap this run. The prior
+       baseline terminal failure (missing marker seed at epoch 175) remains
+       historical; no evaluation result is claimed yet.
++- [x] **Long-run launch safety guard (2026-09-24)** — multi-hour baseline/fix
++      runs must be launched detached in a fresh run directory, then verified via
++      `.active_run` and handed off to `benchmark-watchdog.sh`; never run them in
++      a foreground tool call, delete an existing run directory, or overwrite its
++      evidence. The primary-agent prompts now enforce this on future turns.
+ - [x] **C6 snapshot identity remediation (2026-09-24)** — benchmark-watchdog and
+       meta-watchdog now accept only an existing immutable snapshot tied to the
+       registered run family plus the exact registered run directory; unrelated
+diff --git a/scripts/agent-watchdog.sh b/scripts/agent-watchdog.sh
+index b97e9cb..62e4e07 100755
+--- a/scripts/agent-watchdog.sh
++++ b/scripts/agent-watchdog.sh
+@@ -127,8 +127,11 @@ fi
+ age=$(( hb_age < tl_age ? hb_age : tl_age ))
+ log "agent idle (hb ${hb_age}s, transcript ${tl_age}s, run_alive=$run_alive) -> launching driver (model_args='${MODEL_ARGS[*]:-default}')"
+ 
+-CONT_PPT="Continue the metagenomic-binning-benchmark task you were working on; you may have been interrupted. First read /vol/data/benchmark/PROGRESS.md, verify the 'Current state' section against what is actually on disk, then check NEW/updated issues with: gh issue list -R paulzierep/metagenomic-binning-benchmark --state open --json number,title,updatedAt and gh issue list -R paulzierep/COMEBin --state open --json number,title,updatedAt. Triage and comment on actionable updates without duplicating an existing response. Resume from the first unfinished step. Update PROGRESS.md and /vol/data/benchmark/.activity, touch /vol/data/benchmark/.heartbeat in shell commands while active, and append one timestamped line per meaningful action to /vol/data/repos/metagenomic-binning-benchmark/status/agent-activity.log. Before final git stage/commit/push, acquire /tmp/bench-repo.lock and commit only intended paths. Never overlap the registered benchmark run. If /vol/data/benchmark/TASK_COMPLETE exists, do nothing and exit."
+-FRESH_PPT="You are resuming the metagenomic-binning-benchmark project after an agent restart (the previous session may have crashed, run out of context, or exhausted model tokens). Read /vol/data/benchmark/PROGRESS.md FIRST, then check NEW/updated issues in paulzierep/metagenomic-binning-benchmark and paulzierep/COMEBin with gh issue list --state open --json number,title,updatedAt; triage and comment without duplicating an existing response. Verify state on disk and continue from the first unfinished step. Update PROGRESS.md and /vol/data/benchmark/.activity, touch /vol/data/benchmark/.heartbeat in shell commands while active, and append one timestamped line per meaningful action to /vol/data/repos/metagenomic-binning-benchmark/status/agent-activity.log. Before final git stage/commit/push, acquire /tmp/bench-repo.lock and commit only intended paths. Never overlap the registered benchmark run. If /vol/data/benchmark/TASK_COMPLETE exists, do nothing and exit."
++# A multi-hour benchmark must outlive any foreground tool timeout. Require a
++# detached, fresh-directory launch and forbid destructive retries that erase
++# evidence or leave .active_run pointing at a removed run.
++CONT_PPT="Continue the metagenomic-binning-benchmark task you were working on; you may have been interrupted. First read /vol/data/benchmark/PROGRESS.md, verify the 'Current state' section against what is actually on disk, then check NEW/updated issues with: gh issue list -R paulzierep/metagenomic-binning-benchmark --state open --json number,title,updatedAt and gh issue list -R paulzierep/COMEBin --state open --json number,title,updatedAt. Triage and comment on actionable updates without duplicating an existing response. Resume from the first unfinished step. Update PROGRESS.md and /vol/data/benchmark/.activity, touch /vol/data/benchmark/.heartbeat in shell commands while active, and append one timestamped line per meaningful action to /vol/data/repos/metagenomic-binning-benchmark/status/agent-activity.log. Before final git stage/commit/push, acquire /tmp/bench-repo.lock and commit only intended paths. Never overlap the registered benchmark run. Never launch a multi-hour baseline/fix run in a foreground tool call: start it detached with a fresh run directory, verify /vol/data/benchmark/.active_run, and let benchmark-watchdog.sh own the handoff. Never delete or overwrite an existing run directory. If /vol/data/benchmark/TASK_COMPLETE exists, do nothing and exit."
++FRESH_PPT="You are resuming the metagenomic-binning-benchmark project after an agent restart (the previous session may have crashed, run out of context, or exhausted model tokens). Read /vol/data/benchmark/PROGRESS.md FIRST, then check NEW/updated issues in paulzierep/metagenomic-binning-benchmark and paulzierep/COMEBin with gh issue list --state open --json number,title,updatedAt; triage and comment without duplicating an existing response. Verify state on disk and continue from the first unfinished step. Update PROGRESS.md and /vol/data/benchmark/.activity, touch /vol/data/benchmark/.heartbeat in shell commands while active, and append one timestamped line per meaningful action to /vol/data/repos/metagenomic-binning-benchmark/status/agent-activity.log. Before final git stage/commit/push, acquire /tmp/bench-repo.lock and commit only intended paths. Never overlap the registered benchmark run. Never launch a multi-hour baseline/fix run in a foreground tool call: start it detached with a fresh run directory, verify /vol/data/benchmark/.active_run, and let benchmark-watchdog.sh own the handoff. Never delete or overwrite an existing run directory. If /vol/data/benchmark/TASK_COMPLETE exists, do nothing and exit."
+ 
+ run_driver() {
+     local turns=0 start rc=0 quota_hits=0 healthy_turns=0 before after
+diff --git a/scripts/status-heartbeat.sh b/scripts/status-heartbeat.sh
+index 9da7ce0..9c1b78e 100755
+--- a/scripts/status-heartbeat.sh
++++ b/scripts/status-heartbeat.sh
+@@ -193,6 +193,9 @@ if [ "$changed" = "1" ]; then
+         awk -v rn="$run_name" -v st="$st" '
+           $0 ~ "^\\| *`" rn "` *\\|" {
+             n = split($0, a, "|")
++            # The performance table has 11 columns. Do not rewrite same-named
++            # rows in the narrower run-history table.
++            if (n != 13) { print; next }
+             out = a[1]
+             for (i = 2; i <= n - 2; i++) out = out "|" a[i]
+             out = out "| " st " |"
+@@ -246,10 +249,16 @@ fi
+ 
+ # ---- 4. sync per-run detailed logs into the repo (small files only) ------- #
+ sync_run_logs() {
+-    for d in /vol/data/benchmark/runs/*/; do
++    for d in "$BENCH"/runs/*/; do
+         [ -d "$d" ] || continue
+         name=$(basename "$d")
+-        m() { mkdir -p "runs/$name/$(dirname "$1")" && cp "$d/$2" "runs/$name/$1"; }
++        # Do not create empty repo-side run directories for refused/aborted
++        # launches whose optional evidence files were never produced.
++        m() {
++          local src="$d/$2"
++          [ -f "$src" ] || return 0
++          mkdir -p "runs/$name/$(dirname "$1")" && cp "$src" "runs/$name/$1"
++        }
+         m run_meta.txt run_meta.txt 2>/dev/null
+         m comebin_run.log comebin_run.log 2>/dev/null
+         m logs/resources.tsv logs/resources.tsv 2>/dev/null
+[0m$ [0mgit diff --cached --name-only; git status --short --branch
+## main...origin/main
+ M PROGRESS.md
+ M README.md
+ M scripts/agent-watchdog.sh
+ M scripts/status-heartbeat.sh
+ M status/agent-activity.log
+[0m$ [0mfor job in agent-watchdog.sh status-heartbeat.sh benchmark-watchdog.sh meta-watchdog.sh; do cmp -s "scripts/$job" "/vol/data/benchmark/bin/$job" && test -x "/vol/data/benchmark/bin/$job" && printf '%s identical+executable\n' "$job" || printf '%s MISMATCH\n' "$job"; done
+for job in agent-watchdog.sh status-heartbeat.sh benchmark-watchdog.sh meta-watchdog.sh; do bash -n "scripts/$job"; done
+printf 'all watchdog syntax checks: ok\n'
+agent-watchdog.sh identical+executable
+status-heartbeat.sh identical+executable
+benchmark-watchdog.sh identical+executable
+meta-watchdog.sh identical+executable
+all watchdog syntax checks: ok
+> build · space-bunny-free
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md
+Index: /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md
++++ /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md
+@@ -261,10 +261,11 @@
+       Microbiome), 391 GB free, planned data ≤ ~105 GB. Replies posted.
+ - [ ] **← CURRENT: baseline rerun active (started 2026-09-24 00:30 UTC)** — registered
+       watchdog run `baseline_rerun_autorestart1`, immutable snapshot
+       `baseline_rerun_1790209801802838194.sh`, PID 267462, source commit
+-      `904f649` (`-t 32`). Training is advancing normally (epoch 108/200 @ 04:40 UTC,
+-      loss 3.58 ↓, Top1 84 %); do not signal, edit, or overlap this run. The prior
++      `904f649` (`-t 32`). Training is advancing normally; live epoch/loss/Top1
++      are in the README status banner and `status/status.log`. Do not signal, edit,
++      or overlap this run. The prior
+       baseline terminal failure (missing marker seed at epoch 175) remains
+       historical; no evaluation result is claimed yet.
+ - [x] **Long-run launch safety guard (2026-09-24)** — multi-hour baseline/fix
+       runs must be launched detached in a fresh run directory, then verified via
+
+> build · space-bunny-free
+[0m$ [0mset -euo pipefail
+python3 - <<'PY'
+from pathlib import Path
+text = Path('README.md').read_text()
+section = text.split("## Run history — what happened and what's next", 1)[1].split('## Branch strategy', 1)[0]
+main = section.split('### COMEBin-executing attempts', 1)[1].split('### Guard-only launches', 1)[0]
+guard = section.split('### Guard-only launches', 1)[1]
+main_rows = [x for x in main.splitlines() if x.startswith('|')]
+guard_rows = [x for x in guard.splitlines() if x.startswith('|')]
+assert len(main_rows) == 9
+assert len(guard_rows) == 10
+assert all(x.count('|') == 5 for x in main_rows + guard_rows)
+counts = [int([c.strip() for c in row.strip('|').split('|')][1]) for row in guard_rows[2:]]
+assert counts == [3, 1, 2, 1, 2, 1, 1, 1]
+assert sum(counts) == 12
+for p in ['runs/baseline_unmodified/comebin_run.log','runs/small_test/comebin_run.log','runs/small_test_v2/comebin_run.log','runs/baseline_rerun/comebin_run.log','runs/baseline_rerun_autorestart1/comebin_run.log','status/supervisor-run.log','status/agent-run.log']:
+    assert Path(p).is_file(), p
+print('README history/evidence regression: ok')
+PY
+git diff --check
+[ "$(find runs -mindepth 1 -type d -empty | wc -l)" -eq 0 ]
+grep -Fq 'baseline_rerun' /vol/data/benchmark/.last_benchmark_failure
+grep -Fq 'exit_code=143' /vol/data/benchmark/.last_benchmark_failure
+printf 'documentation/stale-state regression: ok\n'
+README history/evidence regression: ok
+documentation/stale-state regression: ok
+[0m$ [0mset -euo pipefail
+pid=$(awk '{print $1}' /vol/data/benchmark/.active_run)
+[ "$pid" = 267462 ]
+kill -0 "$pid"
+state=$(ps -o stat= -p "$pid" | tr -d ' ')
+[[ "$state" != Z* ]]
+run_dir=$(awk '{print $4}' /vol/data/benchmark/.active_run)
+[ "$run_dir" = /vol/data/benchmark/runs/baseline_rerun_autorestart1 ]
+age=$(( $(date +%s)-$(stat -c %Y "$run_dir/comebin_run.log") ))
+[ "$age" -lt 2400 ]
+printf 'active benchmark untouched: pid=%s state=%s log_age=%ss\n' "$pid" "$state" "$age"
+active benchmark untouched: pid=267462 state=S log_age=1s
+[0m$ [0mset -euo pipefail
+# Shell syntax and source/install identity.
+for job in agent-watchdog.sh status-heartbeat.sh benchmark-watchdog.sh meta-watchdog.sh; do
+  bash -n "scripts/$job"
+  bash -n "/vol/data/benchmark/bin/$job"
+  cmp -s "scripts/$job" "/vol/data/benchmark/bin/$job"
+  test -x "/vol/data/benchmark/bin/$job"
+done
+# Long-run guard is present in both future-driver prompts.
+[ "$(grep -Fc 'Never launch a multi-hour baseline/fix run in a foreground tool call' scripts/agent-watchdog.sh)" -eq 2 ]
+grep -Fq 'Never delete or overwrite an existing run directory.' scripts/agent-watchdog.sh
+# Installed status sync: missing evidence must not create a run directory.
+fixture=$(mktemp -d /tmp/opencode/status-sync-final.XXXXXX)
+trap 'rm -rf "$fixture"' EXIT
+mkdir -p "$fixture/bench/runs/refused" "$fixture/bench/runs/withmeta" "$fixture/repo"
+printf 'metadata\n' > "$fixture/bench/runs/withmeta/run_meta.txt"
+awk '/^sync_run_logs\(\)/,/^}/' /vol/data/benchmark/bin/status-heartbeat.sh > "$fixture/sync-function.sh"
+(
+  BENCH="$fixture/bench"
+  cd "$fixture/repo"
+  # shellcheck disable=SC1091
+  source "$fixture/sync-function.sh"
+  sync_run_logs
+)
+test ! -e "$fixture/repo/runs/refused"
+cmp "$fixture/bench/runs/withmeta/run_meta.txt" "$fixture/repo/runs/withmeta/run_meta.txt"
+# Installed status update: only the 11-column performance row may change.
+cat > "$fixture/table.md" <<'EOF'
+| Run | Date | Source | Dataset | Threads | Wall time | Peak RAM | Bins | CheckM2 comp/cont % | CheckM comp/cont % | Status |
+|---|---|---|---|---|---|---|---|---|---|---|
+| `baseline_rerun_autorestart1` | date | src | data | 32 | 1 | 2 | 3 | 4 | 5 | old |
+| `baseline_rerun_autorestart1` | time | src | running | preserved cause | preserved next |
+EOF
+sed -n '194,205p' /vol/data/benchmark/bin/status-heartbeat.sh > "$fixture/row.awk"
+awk -v rn='baseline_rerun_autorestart1' -v st='new' -f "$fixture/row.awk" "$fixture/table.md" > "$fixture/out.md"
+grep -Fq '| new |' "$fixture/out.md"
+grep -Fq '| preserved cause | preserved next |' "$fixture/out.md"
+printf 'deployed watchdog regression fixtures: ok\n'
+deployed watchdog regression fixtures: ok
+> build · space-bunny-free
