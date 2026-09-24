@@ -28682,3 +28682,101 @@ Transaction finished
 ---
 >   hmmer                      3.1b2         3                           bioconda
 > build · mimo-v2.6-flash-free
+[0m$ [0mecho "=== run_eval.sh expectations ==="
+sed -n '1,60p' /vol/data/repos/metagenomic-binning-benchmark/scripts/run_eval.sh
+echo "=== watchdog restart budget ==="
+sed -n '245,268p' /vol/data/repos/metagenomic-binning-benchmark/scripts/benchmark-watchdog.sh
+=== run_eval.sh expectations ===
+#!/usr/bin/env bash
+# run_eval.sh <rundir> [threads] — CheckM2 + CheckM v1 bin-quality evaluation for a
+# finished COMEBin run. Appends the exact command lines + rc/wall times to
+# <rundir>/run_meta.txt and writes outputs to <rundir>/eval/.
+set -euo pipefail
+MM=/vol/data/tools/bin/micromamba
+export MAMBA_ROOT_PREFIX=/vol/data/envs/.mamba
+RUN=${1:?usage: run_eval.sh <rundir> [threads]}
+THREADS=${2:-32}
+exec 9>/tmp/benchmark-start.lock
+flock -n 9 || { echo "ERROR: another benchmark launch/evaluation holds /tmp/benchmark-start.lock"; exit 1; }
+if [ -f /vol/data/benchmark/.active_run ]; then
+  read -r active_pid _ < /vol/data/benchmark/.active_run || true
+  active_state=$(ps -o stat= -p "${active_pid:-0}" 2>/dev/null | tr -d ' ' || true)
+  if [ -n "${active_pid:-}" ] && kill -0 "$active_pid" 2>/dev/null && [[ "$active_state" != Z* ]]; then
+    echo "ERROR: refusing CheckM evaluation while benchmark pid $active_pid is active"
+    exit 1
+  fi
+fi
+BINS="$RUN/comebin_out/comebin_res/comebin_res_bins"
+[ -d "$BINS" ] || { echo "ERROR: no bins dir: $BINS"; exit 1; }
+CK2DB=${CHECKM2DB:-/vol/data/benchmark/checkm2db/CheckM2_database/uniref100.KO.1.dmnd}
+[ -f "$CK2DB" ] || { echo "WARNING: checkm2 db not found at $CK2DB (set CHECKM2DB)"; }
+mkdir -p "$RUN/eval/checkm2" "$RUN/eval/checkm/tmp"
+
+echo "=== CheckM2 (predict) ==="
+CMD2="$MM run -p /vol/data/envs/checkm2 checkm2 predict --threads $THREADS --database_path $CK2DB --input $BINS --output-directory $RUN/eval/checkm2 -x fasta"
+echo "cmd_checkm2: $CMD2" | tee -a "$RUN/run_meta.txt"
+T=$(date +%s); bash -c "$CMD2" 9>&-; rc2=$?
+echo "checkm2_rc: $rc2 checkm2_wall_s: $(( $(date +%s) - T ))" | tee -a "$RUN/run_meta.txt"
+[ -f "$RUN/eval/checkm2/quality_report.tsv" ] && echo "checkm2 report: $RUN/eval/checkm2/quality_report.tsv"
+
+echo "=== CheckM v1 (lineage_wf) ==="
+CMD1="$MM run -p /vol/data/envs/checkm checkm lineage_wf -x fasta -t $THREADS --tmpdir $RUN/eval/checkm/tmp $BINS $RUN/eval/checkm/out"
+echo "cmd_checkm: $CMD1" | tee -a "$RUN/run_meta.txt"
+T=$(date +%s); bash -c "$CMD1" 9>&-; rc1=$?
+echo "checkm_rc: $rc1 checkm_wall_s: $(( $(date +%s) - T ))" | tee -a "$RUN/run_meta.txt"
+[ -f "$RUN/eval/checkm/out/storage/bin_stats_ext.tsv" ] && echo "checkm statistics: $RUN/eval/checkm/out/storage/bin_stats_ext.tsv"
+
+echo "=== summary ==="
+python3 "$(dirname "$0")/parse_eval.py" "$RUN" 9>&-
+echo "done (checkm2 rc=$rc2, checkm rc=$rc1)"
+=== watchdog restart budget ===
+
+# budget check (rolling 24 h), keyed to the stable pre-autorestart run name
+restarts=$(find "$BENCH" -maxdepth 1 -name ".hang_restarts.$root_name.*" -mmin -1440 2>/dev/null | wc -l)
+if [ "$restarts" -ge "$MAX_PER_RUN" ]; then
+    log "$name needs restart but budget exhausted ($restarts/$MAX_PER_RUN) — leaving to agent"
+    exit 0
+fi
+
+# Kill only the registered process group and wrapper. Never use pkill -f on a
+# run name: prompts and status commands may contain that text too.
+if [ "$alive" -eq 1 ]; then
+    log "$name HUNG: log silent ${age}s -> killing pid $pid pgid $pgid"
+    kill -9 -- -"$pgid" 2>/dev/null || true
+    kill -9 "$pid" 2>/dev/null || true
+    sleep 3
+fi
+
+# Restart into a fresh directory (keeps every attempt's raw artifacts). New
+# registrations carry mode + source; legacy five-field baseline registrations
+# default to mode=baseline above.
+marker="$BENCH/.hang_restarts.$root_name.$(date +%s)"
+touch "$marker"
+new="${root_name}_autorestart$((restarts+1))"
+newdir="$BENCH/runs/$new"
+[0m$ [0mR=/vol/data/benchmark/runs/baseline_rerun_autorestart1
+echo "=== RUN dir tree (top) ==="; ls -la "$R"
+echo "=== logs/ ==="; ls -la "$R/logs" 2>/dev/null
+echo "=== resources.tsv anywhere ==="; find "$R" -name "resources.tsv" 2>/dev/null
+echo "=== runner snapshots ==="; ls -la /vol/data/benchmark/.runner-snapshots/ 2>/dev/null | tail -8
+=== RUN dir tree (top) ===
+total 348
+drwxrwxr-x 4 ubuntu ubuntu   4096 Sep 24 07:43 .
+drwxrwxr-x 7 ubuntu ubuntu   4096 Sep 24 00:30 ..
+drwxrwxr-x 4 ubuntu ubuntu   4096 Sep 24 00:37 comebin_out
+-rw-rw-r-- 1 ubuntu ubuntu 330653 Sep 24 07:15 comebin_run.log
+drwxrwxr-x 2 ubuntu ubuntu   4096 Sep 24 07:57 logs
+-rw-rw-r-- 1 ubuntu ubuntu    813 Sep 24 07:15 run_meta.txt
+=== logs/ ===
+total 48
+drwxrwxr-x 2 ubuntu ubuntu  4096 Sep 24 07:57 .
+drwxrwxr-x 4 ubuntu ubuntu  4096 Sep 24 07:43 ..
+-rw-rw-r-- 1 ubuntu ubuntu 19983 Sep 24 07:57 env_list_after_hmmerfix.txt
+-rw-rw-r-- 1 ubuntu ubuntu 19983 Sep 24 07:43 env_list_before_hmmerfix.txt
+=== resources.tsv anywhere ===
+=== runner snapshots ===
+total 16
+drwxrwxr-x  2 ubuntu ubuntu 4096 Sep 24 00:30 .
+drwxrwxr-x 11 ubuntu ubuntu 4096 Sep 24 07:15 ..
+-rwxr-xr-x  1 ubuntu ubuntu 6476 Sep 24 00:30 baseline_rerun_1790209801802838194.sh
+> build · mimo-v2.6-flash-free
