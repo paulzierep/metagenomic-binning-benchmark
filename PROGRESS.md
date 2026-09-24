@@ -259,14 +259,28 @@ included; fixes land on branch `comebin-optimizations` in this repo.
       (c) large benchmarks only after major commits; (d) dataset/space plan
       includes human host-associated CAMI II (Multisample HMP / Toy Human
       Microbiome), 391 GB free, planned data ≤ ~105 GB. Replies posted.
-- [ ] **← CURRENT: baseline demo run terminal failure (21:30 UTC)** (started 14:36 UTC,
-      commit `987db95d8d399f30b7c82a5f5f40ed6bfdc906c7`, `-t 32`): training reached
-      epoch 175/200, then clustering stopped because the upstream marker HMM run
-      produced no seed file (`TC bit thresholds unavailable` / missing seed);
-      `biolib` was also missing at failure (now installed). No active benchmark
-      remains; the watchdog recorded the terminal reason and stopped automatic
-      retries. Do not claim evaluation results; first validate the small
-      functional path/fix branch, then deliberately rerun the baseline if needed.
+- [ ] **← CURRENT: baseline rerun active (started 2026-09-24 00:30 UTC)** — registered
+      watchdog run `baseline_rerun_autorestart1`, immutable snapshot
+      `baseline_rerun_1790209801802838194.sh`, PID 267462, source commit
+      `904f649` (`-t 32`). Training is advancing normally (epoch 12/200 at the
+      last verification); do not signal, edit, or overlap this run. The prior
+      baseline terminal failure (missing marker seed at epoch 175) remains
+      historical; no evaluation result is claimed yet.
+- [x] **C6 snapshot identity remediation (2026-09-24)** — benchmark-watchdog and
+      meta-watchdog now accept only an existing immutable snapshot tied to the
+      registered run family plus the exact registered run directory; unrelated
+      live PIDs still fail closed. Source and installed copies were syntax-checked
+      and the active snapshot was verified without a restart.
+- [x] **Issue #2 small-data fix prepared and tested offline** — the observed
+      `aug0_datacoverage_mean.tsv` contained 29,434 BAM-header references while
+      the reduced assembly had 300. COMEBin branch `comebin-small-fix` commit
+      `5c77bc8` (pushed to `paulzierep/COMEBin`) filters producer mean/variance
+      rows to the assembly and defensively aligns all feature matrices to the
+      FASTA order. Existing failed-run artifacts pass the 300-contig/6-view
+      feature test; a real end-to-end run is still pending and must wait for the
+      active baseline. Dataset builders now emit explicit BED intervals and use
+      `samtools -L` correctly; the full-header BAM was restored after an
+      unindexable header-only reheader experiment.
 - [x] **Supervisor C6 remediation (2026-09-23 21:42 UTC)**: deterministic terminal
       failures are recorded and cleared instead of retried; replacement runners
       use committed immutable snapshots; baseline wrapper failures now persist
@@ -286,7 +300,8 @@ included; fixes land on branch `comebin-optimizations` in this repo.
       performance row (wall time per stage, peak RAM from resources.tsv, bins,
       CheckM2/CheckM means) with linked commit → push
 - [ ] After baseline: small end-to-end COMEBin + CheckM2/CheckM run via
-      `scripts/run_small_test.sh` (runner now overlap-guarded and resource-logged)
+      `scripts/run_small_test.sh` (defaults to the verified `comebin-small-fix`
+      worktree; overlap-guarded and resource-logged)
 - [ ] After the small run passes: build/run the medium 3,000-contig derivative
       (≤5 GB) via `scripts/make_medium_dataset.sh` (provenance+size in
       PROVENANCE.txt, md5s) → COMEBin run+eval, then evaluate
