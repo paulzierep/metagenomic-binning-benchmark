@@ -21529,3 +21529,37 @@ run_comebin.sh syntax OK
 84:  COMEBIN_ARGS+=(-E "$EPOCHS")
 99:  echo "epochs:     $EPOCHS (passed as -E when the CLI supports it)"
 > build · mimo-v2.6-flash-free
+Syntax OK. Committing the COMEBin change + posting the #10 reply:
+[0m$ [0mflock -w 120 /tmp/bench-repo.lock bash -c '
+set -e
+cd /vol/data/repos/COMEBin-small-fix
+git add COMEBin/run_comebin.sh
+git -c user.name="benchmark-agent" -c user.email="agent@localhost" commit -q -m "run_comebin.sh: optional -E epochs flag (issue #10, functional-test speed)
+
+Default 200 = unchanged upstream behavior; benchmark runs keep full
+epochs, small functional tests pass -E 30."
+git push origin comebin-small-fix 2>&1 | tail -2
+git log --oneline -1
+'
+date -u +"%Y-%m-%d %H:%M:%S UTC - pushed run_comebin.sh -E epochs flag on comebin-small-fix" >> /vol/data/repos/metagenomic-binning-benchmark/status/agent-activity.log
+cat > /tmp/issue10-comment.md <<'EOF'
+Implemented — functional tests can now run with fewer epochs.
+
+- **Why the tests looked slow:** COMEBin's `train` defaults to `--epochs 200` and `run_comebin.sh` never exposed it, so every invocation inherited the full budget. The two small runs so far (41 s / 43 s) actually died on bugs long before epoch count mattered — but once fixed, a full 200-epoch budget would apply, so the flag is worth adding now.
+
+- **What changed:**
+  - `COMEBin/run_comebin.sh` (branch `comebin-small-fix`): new optional **`-E INT`** → passes `--epochs` to `main.py train`; default stays `200` (upstream behavior, so benchmark comparability is untouched).
+  - `scripts/run_small_test.sh`: new **`EPOCHS`** env var, **default 30**, recorded in `run_meta.txt` as `epochs: …`, and only passed when the CLI supports `-E` (same defensive pattern as the existing `-d`/`-s` checks). `--earlystop` still arms and can stop even earlier.
+
+- **Usage:** `EPOCHS=10 bash scripts/run_small_test.sh runs/small_test 8` — or rely on the new default of 30.
+
+Full benchmark runs (`run_comebin_fix.sh`, baseline rerun) intentionally keep the full 200-epoch budget so results stay comparable to the baseline row.
+EOF
+gh issue comment 10 -R paulzierep/metagenomic-binning-benchmark --body-file /tmp/issue10-comment.md
+date -u +"%Y-%m-%d %H:%M:%S UTC - issues: #10 replied with -E/EPOCHS implementation" >> /vol/data/repos/metagenomic-binning-benchmark/status/agent-activity.log
+touch /vol/data/benchmark/.heartbeat
+To https://github.com/paulzierep/COMEBin.git
+   5c77bc8..a0be243  comebin-small-fix -> comebin-small-fix
+a0be243 run_comebin.sh: optional -E epochs flag (issue #10, functional-test speed)
+https://github.com/paulzierep/metagenomic-binning-benchmark/issues/10#issuecomment-5807975873
+> build · mimo-v2.6-flash-free
