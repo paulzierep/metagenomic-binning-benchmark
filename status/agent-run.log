@@ -36176,3 +36176,53 @@ run_small_test.sh
 status-heartbeat.sh
 test_batch1.py
 > build · mimo-v2.6-flash-free
+Backtick quoting broke the second command. Re-running it, plus checking which runs have eval data:
+[0m$ [0mR=/vol/data/repos/metagenomic-binning-benchmark; grep -n 'flowchart\|graph TD\|graph LR' "$R/docs/09-optimization-strategy.md" | head; echo "=== fences ==="; grep -cn '```' "$R/docs/09-optimization-strategy.md"; echo "=== README refs ==="; grep -n '09-optimization\|flowchart' "$R/README.md"; wc -l "$R/README.md" "$R/docs/09-optimization-strategy.md"
+35:flowchart TD
+61:  different idea (per the flowchart) instead of spending more time on a dead end.
+81:  flowchart and this doc current.
+=== fences ===
+2
+=== README refs ===
+   6 /vol/data/repos/metagenomic-binning-benchmark/README.md
+  83 /vol/data/repos/metagenomic-binning-benchmark/docs/09-optimization-strategy.md
+  89 total
+[0m$ [0mfor d in /vol/data/benchmark/runs/*/; do n=$(basename $d); c2=$([ -f "$d/eval/checkm2/quality_report.tsv" ] && echo Y || echo n); c1=$([ -f "$d/eval/checkm/out/storage/bin_stats_ext.tsv" ] && echo Y || echo n); echo "$n checkm2=$c2 checkm1=$c1"; done; echo "=== repo root stray csv ==="; ls -la /vol/data/repos/metagenomic-binning-benchmark/medium_v11_20260924_checkm2_stats.csv 2>/dev/null; echo "=== repo runs/medium contents ==="; find /vol/data/repos/metagenomic-binning-benchmark/runs/medium_v11_20260924 -type f | head -20
+baseline_rerun checkm2=n checkm1=n
+baseline_rerun_autorestart1 checkm2=Y checkm1=Y
+baseline_unmodified checkm2=n checkm1=n
+medium_v11_20260924 checkm2=Y checkm1=Y
+small_test checkm2=n checkm1=n
+small_test_v2 checkm2=n checkm1=n
+small_test_v3 checkm2=n checkm1=n
+small_test_v4 checkm2=Y checkm1=Y
+=== repo root stray csv ===
+-rw-rw-r-- 1 ubuntu ubuntu 830 Sep 24 10:17 /vol/data/repos/metagenomic-binning-benchmark/medium_v11_20260924_checkm2_stats.csv
+=== repo runs/medium contents ===
+/vol/data/repos/metagenomic-binning-benchmark/runs/medium_v11_20260924/run_meta.txt
+/vol/data/repos/metagenomic-binning-benchmark/runs/medium_v11_20260924/comebin_res/training.log
+/vol/data/repos/metagenomic-binning-benchmark/runs/medium_v11_20260924/comebin_res/comebin.log
+/vol/data/repos/metagenomic-binning-benchmark/runs/medium_v11_20260924/comebin_res/config.yml
+/vol/data/repos/metagenomic-binning-benchmark/runs/medium_v11_20260924/comebin_run.log
+/vol/data/repos/metagenomic-binning-benchmark/runs/medium_v11_20260924/logs/sampler.out
+/vol/data/repos/metagenomic-binning-benchmark/runs/medium_v11_20260924/logs/resources.tsv
+> build · mimo-v2.6-flash-free
+Three runs have complete eval data. Now reading `docs/09` (issue #7 flowchart) and verifying the watchdog edit (#16):
+[0m→ [0mRead /vol/data/repos/metagenomic-binning-benchmark/docs/09-optimization-strategy.md 
+[0m$ [0mR=/vol/data/repos/metagenomic-binning-benchmark; grep -n 'MODELIX' "$R/scripts/agent-watchdog.sh"; echo "=== README full ==="; cat "$R/README.md"
+32:MODELIX="$BENCH/.watchdog_model_ix"
+111:    [ -f "$MODELIX" ] && ix=$(cat "$MODELIX" 2>/dev/null || echo 0)
+113:    echo $(( (ix + 1) % ${#FREE_MODELS[@]} )) >"$MODELIX"
+120:    echo 0 >"$MODELIX"     # restart fallback cycle at big-pickle (prioritized)
+123:    [ -f "$MODELIX" ] && ix=$(cat "$MODELIX" 2>/dev/null || echo 0)
+125:    echo $(( (ix + 1) % ${#FREE_MODELS[@]} )) >"$MODELIX"
+172:        [ "$rc" = "0" ] && echo 0 >"$MODELIX"  # restart fallback cycle at big-pickle
+193:                ix=0; [ -f "$MODELIX" ] && ix=$(cat "$MODELIX" 2>/dev/null || echo 0)
+195:                echo $(( (ix + 1) % ${#FREE_MODELS[@]} )) >"$MODELIX"
+=== README full ===
+<!--AGENT-STATUS-->
+
+> 🟢 **Agent status:** `running` · ⏱ `2026-09-24T12:30 CEST` · 🏃 last run medium_v11_20260924: epoch 199/200 · not active · 🧠 `mimo-v2.6-flash-free` · [status.log](status/status.log)
+
+**Current:** medium_v11_20260924 is complete: 200/200 epochs, 16 bins, CheckM2 35.93% / 4.67%, CheckM v1 33.83% / 6.03%. **Next:** start fix-batch 2 on the 29,434-contig demo dataset.
+> build · mimo-v2.6-flash-free
