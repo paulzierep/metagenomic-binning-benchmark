@@ -356,6 +356,14 @@ included; fixes land on branch `comebin-optimizations` in this repo.
 - [ ] CAMI II marine sample 0 benchmark run → human host-associated sample →
       CAMI III
 
+- [x] **Issue #12 plots (2026-09-24 ~10:42 UTC)**: `scripts/make_per_bin_plots.py`
+      generates per-bin bar charts (`runs/<run>/per_bins.png`, CheckM2 + CheckM v1
+      comp/cont per bin) and a comparison scatter
+      (`results/figures/comp_vs_cont_all-runs.png`, one point per bin, color = run)
+      via the comebin env's matplotlib. Run for baseline_rerun_autorestart1,
+      small_test_v4, medium_v11_20260924; each run re-renders its figures after
+      eval. Same-dataset comparisons accumulate (fix_v11 vs baseline once live).
+
 - [x] **Issues #7/#15/#16 triaged (2026-09-24 10:26–10:44 UTC)**: #7 — the
       optimization flowchart is now rendered live in the README (colored mermaid,
       fuller Current/Next text; `docs/09` synced). #15 — per-bin results for ALL
