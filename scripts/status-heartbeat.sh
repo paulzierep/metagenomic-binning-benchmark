@@ -193,6 +193,9 @@ if [ "$changed" = "1" ]; then
         awk -v rn="$run_name" -v st="$st" '
           $0 ~ "^\\| *`" rn "` *\\|" {
             n = split($0, a, "|")
+            # The performance table has 11 columns. Do not rewrite same-named
+            # rows in the narrower run-history table.
+            if (n != 13) { print; next }
             out = a[1]
             for (i = 2; i <= n - 2; i++) out = out "|" a[i]
             out = out "| " st " |"
@@ -246,10 +249,16 @@ fi
 
 # ---- 4. sync per-run detailed logs into the repo (small files only) ------- #
 sync_run_logs() {
-    for d in /vol/data/benchmark/runs/*/; do
+    for d in "$BENCH"/runs/*/; do
         [ -d "$d" ] || continue
         name=$(basename "$d")
-        m() { mkdir -p "runs/$name/$(dirname "$1")" && cp "$d/$2" "runs/$name/$1"; }
+        # Do not create empty repo-side run directories for refused/aborted
+        # launches whose optional evidence files were never produced.
+        m() {
+          local src="$d/$2"
+          [ -f "$src" ] || return 0
+          mkdir -p "runs/$name/$(dirname "$1")" && cp "$src" "runs/$name/$1"
+        }
         m run_meta.txt run_meta.txt 2>/dev/null
         m comebin_run.log comebin_run.log 2>/dev/null
         m logs/resources.tsv logs/resources.tsv 2>/dev/null

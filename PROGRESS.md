@@ -262,10 +262,16 @@ included; fixes land on branch `comebin-optimizations` in this repo.
 - [ ] **← CURRENT: baseline rerun active (started 2026-09-24 00:30 UTC)** — registered
       watchdog run `baseline_rerun_autorestart1`, immutable snapshot
       `baseline_rerun_1790209801802838194.sh`, PID 267462, source commit
-      `904f649` (`-t 32`). Training is advancing normally (epoch 108/200 @ 04:40 UTC,
-      loss 3.58 ↓, Top1 84 %); do not signal, edit, or overlap this run. The prior
+      `904f649` (`-t 32`). Training is advancing normally; live epoch/loss/Top1
+      are in the README status banner and `status/status.log`. Do not signal, edit,
+      or overlap this run. The prior
       baseline terminal failure (missing marker seed at epoch 175) remains
       historical; no evaluation result is claimed yet.
+- [x] **Long-run launch safety guard (2026-09-24)** — multi-hour baseline/fix
+      runs must be launched detached in a fresh run directory, then verified via
+      `.active_run` and handed off to `benchmark-watchdog.sh`; never run them in
+      a foreground tool call, delete an existing run directory, or overwrite its
+      evidence. The primary-agent prompts now enforce this on future turns.
 - [x] **C6 snapshot identity remediation (2026-09-24)** — benchmark-watchdog and
       meta-watchdog now accept only an existing immutable snapshot tied to the
       registered run family plus the exact registered run directory; unrelated
