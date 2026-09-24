@@ -18606,3 +18606,30 @@ if [ "$mode" != "baseline" ] && [ ! -f "$source/COMEBin/run_comebin.sh" ]; then
   exit 0
 fi
 > build · nemotron-3.5-lightning-free
+I see - the watchdog has an active run registration. Let me check the run state and clear it properly:
+[0m$ [0mls -la /vol/data/benchmark/runs/ | grep -E "baseline|autorestart"
+drwxrwxrwx  2 ubuntu ubuntu 4096 Sep 24 00:29 baseline_rerun
+drwxrwxr-x  3 ubuntu ubuntu 4096 Sep 24 00:30 baseline_rerun_autorestart1
+drwxrwxr-x  4 ubuntu ubuntu 4096 Sep 23 21:42 baseline_unmodified
+[0m$ [0mcat /vol/data/benchmark/logs/benchmark-watchdog.log 2>/dev/null | tail -20
+2026-09-23T21:33:02+00:00 [bm-watchdog] baseline_unmodified restart #1 mode=baseline source=/vol/data/repos/COMEBin -> /vol/data/benchmark/runs/baseline_unmodified_autorestart1 (launcher pid 204565; run script re-registers .active_run)
+2026-09-23T21:35:02+00:00 [bm-watchdog] baseline_unmodified restart #2 mode=baseline source=/vol/data/repos/COMEBin -> /vol/data/benchmark/runs/baseline_unmodified_autorestart2 (launcher pid 207110; run script re-registers .active_run)
+2026-09-23T21:40:01+00:00 [bm-watchdog] baseline_unmodified restart #3 mode=baseline source=/vol/data/repos/COMEBin -> /vol/data/benchmark/runs/baseline_unmodified_autorestart3 (launcher pid 209157; run script re-registers .active_run)
+2026-09-23T21:42:31+00:00 [bm-watchdog] baseline_unmodified terminal failure: terminal log evidence: Something went wrong with running clustering. Exiting. — active-run cleared; no automatic retry
+2026-09-23T22:40:01+00:00 [bm-watchdog] small_test terminal failure: run_meta exit_code=1 — active-run cleared; no automatic retry
+2026-09-23T23:13:03+00:00 [bm-watchdog] small_test terminal failure: run_meta exit_code=1 — active-run cleared; no automatic retry
+2026-09-23T23:40:01+00:00 [bm-watchdog] small_test_v2 terminal failure: run_meta exit_code=1 — active-run cleared; no automatic retry
+2026-09-24T00:30:01+00:00 [bm-watchdog] baseline_rerun restart #1 mode=baseline source=/vol/data/repos/COMEBin -> /vol/data/benchmark/runs/baseline_rerun_autorestart1 (runner=HEAD:scripts/run_comebin_baseline.sh snapshot=baseline_rerun_1790209801802838194.sh; launcher pid 267462)
+2026-09-24T00:35:01+00:00 [bm-watchdog] pid 267462 is alive but is not a registered COMEBin runner; refusing kill/restart: bash /vol/data/benchmark/.runner-snapshots/baseline_rerun_1790209801802838194.sh /vol/data/benchmark/runs/baseline_rerun_autorestart1
+> build · nemotron-3.5-lightning-free
+[0m$ [0mcat /vol/data/benchmark/.active_run
+267462 267355 /vol/data/benchmark/runs/baseline_rerun_autorestart1/comebin_run.log /vol/data/benchmark/runs/baseline_rerun_autorestart1 1790209801 baseline /vol/data/repos/COMEBin
+[0m$ [0mls -la /vol/data/benchmark/runs/baseline_rerun_autorestart1/
+total 24
+drwxrwxr-x 3 ubuntu ubuntu 4096 Sep 24 00:30 .
+drwxrwxr-x 7 ubuntu ubuntu 4096 Sep 24 00:30 ..
+drwxrwxr-x 4 ubuntu ubuntu 4096 Sep 24 00:37 comebin_out
+-rw-rw-r-- 1 ubuntu ubuntu 4233 Sep 24 00:37 comebin_run.log
+-rw-rw-r-- 1 ubuntu ubuntu  718 Sep 24 00:30 run_meta.txt
+[0m$ [0mps aux | grep 267462 | grep -v grep
+ubuntu    267462  0.0  0.0   7876  3576 ?        S    00:30   0:00 bash /vol/data/benchmark/.runner-snapshots/baseline_rerun_1790209801802838194.sh /vol/data/benchmark/runs/baseline_rerun_autorestart1
