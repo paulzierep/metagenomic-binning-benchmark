@@ -36658,3 +36658,109 @@ One progress check to confirm the run is healthy:
 2026-09-24T10:38:26Z
 > build · big-pickle
 Run is only ~1.5 min in (coverage stage). One more health check after a short gap to confirm it advanced past the augmentation barrier:
+[0m$ [0msleep 90; L=/vol/data/benchmark/runs/fix_v11_20260924/comebin_run.log; tail -2 $L | cut -c1-160; echo "=== procs ==="; ps -eo pid,etime,pcpu,args | grep -E 'run_comebin_fix|main.py|run_comebin.sh' | grep -v grep | cut -c1-120; echo "=== res ==="; tail -1 /vol/data/benchmark/runs/fix_v11_20260924/logs/resources.tsv; touch /vol/data/benchmark/.heartbeat; date -u +%FT%TZ
+2026-09-24 10:37:43,909 - Coverage requested 32 workers but only 1 BAM files exist; using 1 workers.
+2026-09-24 10:37:43,909 - Coverage inputs: contigs=29434, views=6, BAMs=1, workers=1.
+=== procs ===
+ 873785       02:57  0.0 /bin/bash -c cd /vol/data/repos/metagenomic-binning-benchmark && env SEED=42 THREADS=32 nohup b
+ 873786       02:57  0.0 bash scripts/run_comebin_fix.sh /vol/data/benchmark/runs/fix_v11_20260924
+ 873812       02:57  0.0 bash scripts/run_comebin_fix.sh /vol/data/benchmark/runs/fix_v11_20260924
+ 873819       02:57  0.0 /vol/data/tools/bin/micromamba run -p /vol/data/envs/comebin bash run_comebin.sh -a /vol/data/d
+ 873822       02:57  0.0 bash run_comebin.sh -a /vol/data/datasets/comebin_test_data/BATS_SAMN07137077_METAG.scaffolds.m
+ 873841       02:57 16.2 python /vol/data/repos/COMEBin-v11/COMEBin/main.py generate_aug_data --contig_file /vol/data/da
+ 873946       02:28 91.7 python /vol/data/repos/COMEBin-v11/COMEBin/main.py generate_aug_data --contig_file /vol/data/da
+=== res ===
+2026-09-24T10:39:45+00:00	873819,873822,873841,873946	112.4	0.709	2226
+2026-09-24T10:40:12Z
+> build · big-pickle
+The fix_v11 run is healthy — `generate_aug_data` is actively processing (two python procs, one at ~92% CPU); the log line is just buffered until the coverage stage finishes. It's 3 minutes into what will be a ~6.5–7 h job, so no further polling — `benchmark-watchdog.sh` owns the handoff and the launcher validates non-empty bins at the end.
+
+## Turn summary
+
+**Issues triaged (no duplicates):**
+- **#15** — implemented: `scripts/make_per_bin_csv.py` now emits `runs/<run>/per_bin_results.csv` (CheckM2 ↔ CheckM v1 joined per bin) for **all evaluated runs** — baseline (60), small_test_v4 (3), medium (16). Means recomputed from the tables match the committed aggregates exactly (25.01/2.98, 21.23/3.40 · 26.07/2.02, 29.08/0.71 · 35.93/4.67, 33.83/6.03). Root-level stray CSV moved → `runs/medium_v11_20260924/checkm2_per_bin.csv`. Comment `5812457731`.
+- **#7** — implemented: colored mermaid optimization flowchart + fuller "Current/Next" text landed in README; `docs/09` synced. Comment `5812470519`.
+- **#16** — watchdog change (big-pickle as `DEFAULT_MODEL`, rotation only on quota) was already committed as `c42fa84`; posted follow-up `5812489525` referencing it.
+
+**fix_v11 full-large benchmark launched** (first unfinished PROGRESS step):
+- `runs/fix_v11_20260924` registered in `.active_run` (mode `fix`), source COMEBin-v11 @ `95f5ea8` (clean), full 29,434-contig demo dataset, 32 threads, **seed 42**, 200 epochs — started 10:37Z, training pipeline confirmed running.
+
+**Pushed (under `/tmp/bench-repo.lock`):**
+- `869754a` — per-bin results for all evaluated runs + README flowchart (#15, #7)
+- `f67d94e` — PROGRESS sync (fix_v11 registered, #7/#15/#16 record)
+
+**Bookkeeping:** PROGRESS.md updated + mirrored, `.activity` and `status/agent-activity.log` appended, `.heartbeat` touched.
+
+**Next turn:** when `fix_v11_20260924` reaches terminal status → `run_eval.sh` (CheckM2 + CheckM v1) → `make_results_csv.py` + `make_per_bin_csv.py` → README / docs-11 row, then CAMI II marine prep (`prep_cami2_marine.sh`).
+[0m
+> build · big-pickle
+[0m$ [0mtest -f /vol/data/benchmark/TASK_COMPLETE && echo "TASK_COMPLETE EXISTS" || echo "no TASK_COMPLETE"; echo "===active_run==="; cat /vol/data/benchmark/.active_run 2>/dev/null || echo "none"; echo "===fix_v11 progress==="; L=/vol/data/benchmark/runs/fix_v11_20260924/comebin_run.log; git -C /vol/data/repos/COMEBin-v11 log --oneline -1; tail -3 $L 2>/dev/null | cut -c1-160; echo "===epoch==="; grep -o 'epoch=[0-9]*/200' $L 2>/dev/null | tail -1; date -u +%FT%TZ; touch /vol/data/benchmark/.heartbeat
+no TASK_COMPLETE
+===active_run===
+873786 873784 /vol/data/benchmark/runs/fix_v11_20260924/comebin_run.log /vol/data/benchmark/runs/fix_v11_20260924 1790246235 fix /vol/data/repos/COMEBin-v11 /vol/data/datasets/comebin_test_data/BATS_SAMN07137077_METAG.scaffolds.min500.fasta.f1k.fasta /vol/data/datasets/comebin_test_data/bamfiles
+===fix_v11 progress===
+95f5ea8 batch1 (v1.1.0 base): sequential bin numbering, drop empty/missing bins
+2026-09-24 10:37:43,863 - Generated binary augmentation features: assembly_contigs=29434, assembly_n50=1623, retained_contigs=29434, views=6, kmer_features=136.
+2026-09-24 10:37:43,909 - Coverage requested 32 workers but only 1 BAM files exist; using 1 workers.
+2026-09-24 10:37:43,909 - Coverage inputs: contigs=29434, views=6, BAMs=1, workers=1.
+===epoch===
+2026-09-24T10:41:13Z
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && gh issue list -R paulzierep/metagenomic-binning-benchmark --state open --json number,title,updatedAt --jq '.[] | "\(.number) \(.title) \(.updatedAt)"'; echo "===COMEBin==="; gh issue list -R paulzierep/COMEBin --state open --json number,title,updatedAt 2>&1 | head -3
+16 Model choice 2026-09-24T10:37:04Z
+15 Improve results 2026-09-24T10:34:37Z
+14 Improve the readme 2026-09-24T10:17:32Z
+13 CheckM v1: rc=0. 2026-09-24T09:35:42Z
+12 Improve reporting 2026-09-24T09:30:22Z
+11 Baseline zero-bins failure chain: hmmer 3.4 vs pinned 3.1b2 poisons marker seed, unguarded cluster.py:368 read, wrapper masks the failure 2026-09-24T09:10:20Z
+8 Add benchmark data to zenodo 2026-09-24T09:37:14Z
+7 Optimization plan 2026-09-24T10:35:35Z
+6 Optimization 2026-09-23T20:56:21Z
+2 Can you try to create a small benchmark dataset for comebin ? 2026-09-24T10:02:55Z
+1 Idea inbox: benchmark ideas, COMEBin fixes, dataset requests 2026-09-23T14:53:13Z
+===COMEBin===
+the 'paulzierep/COMEBin' repository has disabled issues
+> build · big-pickle
+[0m$ [0mecho "=== procs ==="; ps -eo pid,etime,pcpu,rss,args | grep -E 'main.py|run_comebin' | grep -v grep | cut -c1-150; echo "=== res last 3 ==="; tail -3 /vol/data/benchmark/runs/fix_v11_20260924/logs/resources.tsv; echo "=== log size ==="; ls -la /vol/data/benchmark/runs/fix_v11_20260924/comebin_run.log
+=== procs ===
+ 873785       04:12  0.0  2000 /bin/bash -c cd /vol/data/repos/metagenomic-binning-benchmark && env SEED=42 THREADS=32 nohup bash scripts/run_comebin_
+ 873786       04:12  0.0  3540 bash scripts/run_comebin_fix.sh /vol/data/benchmark/runs/fix_v11_20260924
+ 873812       04:12  0.0  3064 bash scripts/run_comebin_fix.sh /vol/data/benchmark/runs/fix_v11_20260924
+ 873819       04:12  0.0 12740 /vol/data/tools/bin/micromamba run -p /vol/data/envs/comebin bash run_comebin.sh -a /vol/data/datasets/comebin_test_dat
+ 873822       04:12  0.0  3612 bash run_comebin.sh -a /vol/data/datasets/comebin_test_data/BATS_SAMN07137077_METAG.scaffolds.min500.fasta.f1k.fasta -p
+ 873841       04:12 11.3 422480 python /vol/data/repos/COMEBin-v11/COMEBin/main.py generate_aug_data --contig_file /vol/data/datasets/comebin_test_dat
+ 873946       03:43 80.1 306272 python /vol/data/repos/COMEBin-v11/COMEBin/main.py generate_aug_data --contig_file /vol/data/datasets/comebin_test_dat
+=== res last 3 ===
+2026-09-24T10:40:15+00:00	873819,873822,873841,873946	107.8	0.709	2259
+2026-09-24T10:40:45+00:00	873819,873822,873841,873946	105.9	0.710	2203
+2026-09-24T10:41:15+00:00	873819,873822,873841,873946	96.7	0.711	2254
+=== log size ===
+-rw-rw-r-- 1 ubuntu ubuntu 1182 Sep 24 10:37 /vol/data/benchmark/runs/fix_v11_20260924/comebin_run.log
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && for n in 7 15 16; do echo "=== issue #$n ==="; gh api repos/paulzierep/metagenomic-binning-benchmark/issues/$n/comments --jq '.[] | "[\(.created_at)] \(.user.login): \(.body[0:400])"'; done
+=== issue #7 ===
+[2026-09-23T20:56:22Z] paulzierep: Delivered: optimization strategy + decision flowchart committed to `main` (f8dd2e4) in docs/09-optimization-strategy.md and linked from the README. Flow: candidate change → small functional test → benchmark on small/medium → gate on time AND quality (keep commit and continue, or revert/rework and combine with other surviving ideas) → large benchmark only after major commits. Metrics table includes
+[2026-09-23T20:57:42Z] paulzierep: Closed by automation — addressed: Verified complete — optimization decision flowchart, commit-selection gates, metrics, and README link are committed in f8dd2e4; issue comment 5802797931 records delivery.
+[2026-09-24T10:25:09Z] paulzierep: Add the flowchart to the readme and make it nicer, some text is not full
+[2026-09-24T10:35:35Z] paulzierep: Done — the optimization flowchart is now rendered directly in the README (live mermaid, colored keep/drop nodes, emoji labels) under a new "Optimization workflow" section, with the full gate rules right below it. The same (nicer) flowchart also replaces the old one in `docs/09-optimization-strategy.md`, which stays the detailed source of truth. The README "Current / Next" section is also expanded 
+=== issue #15 ===
+[2026-09-24T10:17:33Z] paulzierep: You're right — the README performance table should include per-bin statistics. I'll add a detailed per-bin breakdown in  (which already stores the full run table with all per-bin CheckM2/CheckM metrics). The top-level README will remain slim, linking to that doc. I'll also ensure  extracts HQ/MQ counts per run, so each CSV row is machine-readable and self-contained.
+[2026-09-24T10:20:47Z] paulzierep: Implementation update (commit `30cc5a8`): the medium aggregate is now recorded in [`results/medium_v11_20260924.csv`](https://github.com/paulzierep/metagenomic-binning-benchmark/blob/main/results/medium_v11_20260924.csv), and a 16-row per-bin CheckM2 supplement is committed at [`medium_v11_20260924_checkm2_stats.csv`](https://github.com/paulzierep/metagenomic-binning-benchmark/blob/main/medium_v11
+[2026-09-24T10:26:28Z] paulzierep: I want per bin results for all runs and store it in runs not the main folder
+[2026-09-24T10:34:37Z] paulzierep: Done — per-bin results are now generated for **every run with evaluation data** and stored under `runs/<run>/`, not the repo root:
+
+- `runs/baseline_rerun_autorestart1/per_bin_results.csv` (60 bins)
+- `runs/small_test_v4/per_bin_results.csv` (3 bins)
+- `runs/medium_v11_20260924/per_bin_results.csv` (16 bins)
+
+Each row joins CheckM2 (completeness, contamination, genome size, contigs, N50) with Chec
+=== issue #16 ===
+[2026-09-24T10:17:43Z] paulzierep: Model prioritization is tracked per-run in  (HQ/MQ counts) and the status banner ( etc.). The free-model rotation policy ensures a different model is selected when quota is exhausted; there is no single 'big pickle' — each run records which model produced its results. This is documented in the run metadata and mirrored in the  CSVs.
+[2026-09-24T10:37:04Z] paulzierep: Update: the watchdog now runs **big-pickle as the default model** whenever its tokens are available (commit `c42fa84`). `DEFAULT_MODEL="opencode/big-pickle"`; the free-model rotation only starts when big-pickle itself is quota-limited, and the rotation index resets to big-pickle after every healthy run. The status banner also now shows the active model (e.g. `model big-pickle`).
+> build · big-pickle
+All "new" comments on #7/#15/#16 are my own from last turn (posted via the paulzierep token) — nothing new to triage. The fix_v11 run is healthily working through coverage (two `generate_aug_data` procs on CPU). While it runs, the next free task is issue **#12** (plots, deferred until after the medium run — now done). Checking what #12 asks:
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && gh issue view 12 -R paulzierep/metagenomic-binning-benchmark --json title,body --jq '"TITLE: \(.title)\n\n\(.body)"' | head -40; echo "=== comments ==="; gh api repos/paulzierep/metagenomic-binning-benchmark/issues/12/comments --jq '.[] | "[\(.created_at)] \(.body[0:300])"' | head -20
+TITLE: Improve reporting
+
+It would be good to add some plots and table that are automatically updated for each benchmark run to the readme, showing bar / swarm plots or heatmaps that show performance comp. and cont for each bin, it woud be able to compare runs on the same benchmark dataset
+=== comments ===
+[2026-09-24T09:30:22Z] The harness already records one machine-readable CSV per completed run and keeps the living comparison table in `README.md`; raw CheckM2/CheckM tables and run metadata are mirrored under `runs/`. Automatic bar/swarm/heatmap plots are not implemented yet. I’ll treat plot generation and same-dataset c
+> build · big-pickle
