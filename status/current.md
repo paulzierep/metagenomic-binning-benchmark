@@ -3,10 +3,10 @@
 | | |
 |---|---|
 | Status | 🟢 `running` |
-| ⏱ Updated (Europe/Berlin) | `2026-09-24T03:04 CEST` |
-| 🏃 Live benchmark | `baseline_rerun_autorestart1` — **epoch 10/200** · loss `3.655977964401245` · top1 acc `83.232421875` (log 116s fresh) |
+| ⏱ Updated (Europe/Berlin) | `2026-09-24T03:06 CEST` |
+| 🏃 Live benchmark | `baseline_rerun_autorestart1` — **epoch 11/200** · loss `3.608786106109619` · top1 acc `83.388671875` (log 95s fresh) |
 | 🧠 Model (last turn) | `mimo-v2.6-flash-free` (watchdog rotates to free models on quota) |
-| 📌 Agent note · **1 min old** | Baseline training epoch ~109/200 (~2.4 min/epoch, ETA ~22:35 UTC unless early-stop); next: baseline eval (run_eval.sh) → issue #2 small-dataset test → v1.1.0 fix run
+| 📌 Agent note · **0 min old** | Baseline training epoch ~109/200 (~2.4 min/epoch, ETA ~22:35 UTC unless early-stop); next: baseline eval (run_eval.sh) → issue #2 small-dataset test → v1.1.0 fix run
 2026-09-23 20:33:11 UTC - heartbeat
 2026-09-23 20:43:58 UTC - heartbeat
 2026-09-23 20:56:28 UTC - heartbeat
@@ -65,10 +65,11 @@
 2026-09-24 01:00:04 UTC - dataset: verifying BAM ref set equality before reheader
 2026-09-24 01:00:49 UTC - dataset: reheadering comebin_small BAM to 300-contig header (original preserved as reads.fullheader.bam)
 2026-09-24T01:01:51Z [supervisor] restored comebin_small reads.bam after failed header-only reheader; preserved full-header BAM and fixed contigs.bed to explicit lengths; do not treat reheader as verified
-2026-09-24 01:02:13 UTC - dataset: census of BAM records outside the 300-contig set |
-| ⚙️ Load · uptime | `32.15 31.97 26.74` · 11 hours, 28 minutes — 32 cores, 62 GiB, no GPU |
-| 💾 RAM used/total | `6551/64295 MB` |
+2026-09-24 01:02:13 UTC - dataset: census of BAM records outside the 300-contig set
+2026-09-24 01:05:29 UTC - dataset: restored original reads.bam.bai index name after supervisor reverted my reheader attempt (supervisor owns BAM repair now) |
+| ⚙️ Load · uptime | `32.28 32.06 27.41` · 11 hours, 30 minutes — 32 cores, 62 GiB, no GPU |
+| 💾 RAM used/total | `8677/64295 MB` |
 | 🔗 Session | `ses_f31799c77ffeTq9gcYgqc4hBhg` |
-| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `5a2106a status: yes — baseline_rerun_autorestart1 epoch 9/200 loss 3.780277490` |
-| 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `1379700 B` — every run, command & tool result |
+| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `be44988 status: yes — baseline_rerun_autorestart1 epoch 10/200 loss 3.65597796` |
+| 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `1412127 B` — every run, command & tool result |
 | 📈 Timeline | [status/status.log](status/status.log) |

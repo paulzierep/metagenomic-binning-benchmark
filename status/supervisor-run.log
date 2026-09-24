@@ -28832,3 +28832,491 @@ print('PASS producer filtering: BAM-only extra reference excluded from mean and 
 PY
 PASS producer filtering: BAM-only extra reference excluded from mean and variance
 > build · space-bunny-free
+[0m$ [0mset -e
+MM=/vol/data/tools/bin/micromamba; ENV=/vol/data/envs/comebin
+D=/vol/data/benchmark/runs/small_test_v2/comebin_out/data_augmentation
+cd /vol/data/repos/COMEBin-small-fix/COMEBin
+PYTHONDONTWRITEBYTECODE=1 MAMBA_ROOT_PREFIX=/vol/data/envs/.mamba "$MM" run -p "$ENV" python - "$D" <<'PY'
+import sys
+from utils import get_kmer_coverage_aug0
+X, cov, comp, names = get_kmer_coverage_aug0(sys.argv[1] + '/')
+assert len(names) == 300
+assert cov.shape[0] == 300 and comp.shape[0] == 300 and X.shape[0] == 300
+print('PASS aug0 helper alignment:', X.shape, cov.shape, comp.shape)
+PY
+PASS aug0 helper alignment: (300, 137) (300, 1) (300, 136)
+> build · space-bunny-free
+[0m✗ [0mEdit /vol/data/repos/COMEBin-small-fix/COMEBin/data_aug/gen_cov.py failed
+[91m[1mError: [0mCould not find oldString in /vol/data/repos/COMEBin-small-fix/COMEBin/data_aug/gen_cov.py. It must match exactly, including whitespace and indentation.
+> build · space-bunny-free
+[0m→ [0mRead /vol/data/repos/COMEBin-small-fix/COMEBin/data_aug/gen_cov.py [90m[offset=150, limit=45][0m
+> build · space-bunny-free
+[0m✗ [0mEdit /vol/data/repos/COMEBin-small-fix/COMEBin/data_aug/gen_cov.py failed
+[91m[1mError: [0mCould not find oldString in /vol/data/repos/COMEBin-small-fix/COMEBin/data_aug/gen_cov.py. It must match exactly, including whitespace and indentation.
+> build · space-bunny-free
+[0m✗ [0mEdit /vol/data/repos/COMEBin-small-fix/COMEBin/data_aug/gen_cov.py failed
+[91m[1mError: [0mCould not find oldString in /vol/data/repos/COMEBin-small-fix/COMEBin/data_aug/gen_cov.py. It must match exactly, including whitespace and indentation.
+> build · space-bunny-free
+[0m✗ [0mEdit /vol/data/repos/COMEBin-small-fix/COMEBin/data_aug/gen_cov.py failed
+[91m[1mError: [0mCould not find oldString in /vol/data/repos/COMEBin-small-fix/COMEBin/data_aug/gen_cov.py. It must match exactly, including whitespace and indentation.
+> build · space-bunny-free
+[0m$ [0msed -n '158,165l' /vol/data/repos/COMEBin-small-fix/COMEBin/data_aug/gen_cov.py; sed -n '98,108l' /vol/data/repos/COMEBin-small-fix/COMEBin/data_aug/gen_var.py
+:param depth_file: Path to the position depth file (str).$
+    :param edge: Unused parameter, kept for compatibility (int, defau\
+lt: 0).$
+    :param contig_threshold: Threshold of contigs for must-link const\
+raints (int, default: 1000).$
+    :param sep: Separator for multi-sample binning (str, default: Non\
+e).$
+    :param contig_threshold_dict: Dictionary of contig thresholds by \
+sample (dict, default: None).$
+$
+    :return: None$
+    """$
+$
+    :param depth_file: Path to the position depth file generated from\
+ bedtools genomecov.$
+    :param edge: The number of bases to exclude from the edges of eac\
+h contig (default is 0).$
+    :param contig_threshold: The minimum depth threshold for a contig\
+ to be considered (default is 1000).$
+    :param sep: Separator for distinguishing sample names in contig n\
+ames (default is None).$
+    :param contig_threshold_dict: A dictionary containing sample-spec\
+ific contig thresholds when `sep` is provided (default is None).$
+$
+    :return: A tuple containing the path to the processed depth file \
+and the logger object.$
+    """$
+    contigs = []$
+    var_coverage = []$
+> build · space-bunny-free
+[0m← [0mEdit /vol/data/repos/COMEBin-small-fix/COMEBin/data_aug/gen_cov.py
+Index: /vol/data/repos/COMEBin-small-fix/COMEBin/data_aug/gen_cov.py
+===================================================================
+--- /vol/data/repos/COMEBin-small-fix/COMEBin/data_aug/gen_cov.py
++++ /vol/data/repos/COMEBin-small-fix/COMEBin/data_aug/gen_cov.py
+@@ -159,8 +159,9 @@
+     :param edge: Unused parameter, kept for compatibility (int, default: 0).
+     :param contig_threshold: Threshold of contigs for must-link constraints (int, default: 1000).
+     :param sep: Separator for multi-sample binning (str, default: None).
+     :param contig_threshold_dict: Dictionary of contig thresholds by sample (dict, default: None).
++    :param valid_contigs: Optional set of contig IDs from the input assembly; references outside it are ignored.
+ 
+     :return: None
+     """
+     contigs = []
+
+> build · space-bunny-free
+[0m← [0mEdit /vol/data/repos/COMEBin-small-fix/COMEBin/data_aug/gen_var.py
+Index: /vol/data/repos/COMEBin-small-fix/COMEBin/data_aug/gen_var.py
+===================================================================
+--- /vol/data/repos/COMEBin-small-fix/COMEBin/data_aug/gen_var.py
++++ /vol/data/repos/COMEBin-small-fix/COMEBin/data_aug/gen_var.py
+@@ -100,8 +100,9 @@
+     :param edge: The number of bases to exclude from the edges of each contig (default is 0).
+     :param contig_threshold: The minimum depth threshold for a contig to be considered (default is 1000).
+     :param sep: Separator for distinguishing sample names in contig names (default is None).
+     :param contig_threshold_dict: A dictionary containing sample-specific contig thresholds when `sep` is provided (default is None).
++    :param valid_contigs: Optional set of contig IDs from the input assembly; references outside it are ignored.
+ 
+     :return: A tuple containing the path to the processed depth file and the logger object.
+     """
+     contigs = []
+
+> build · space-bunny-free
+[0m$ [0mgit diff -- COMEBin/utils.py COMEBin/get_augfeature.py COMEBin/data_aug/gen_cov.py COMEBin/data_aug/gen_var.py
+diff --git a/COMEBin/data_aug/gen_cov.py b/COMEBin/data_aug/gen_cov.py
+index 7ec2ae4..fc95474 100644
+--- a/COMEBin/data_aug/gen_cov.py
++++ b/COMEBin/data_aug/gen_cov.py
+@@ -9,6 +9,7 @@ from atomicwrites import atomic_write
+ import pandas as pd
+ import numpy as np
+ from itertools import groupby
++from utils import read_fasta_ids
+ 
+ ### Return error message when using multiprocessing
+ def error(msg, *args):
+@@ -149,7 +150,8 @@ def calculate_coverage_samplebyindex(depth_file: str, augpredix: str, aug_seq_in
+ 
+ def calculate_coverage(depth_file: str, logger, edge: int = 0,
+                        contig_threshold: int = 1000, sep: str = None,
+-                       contig_threshold_dict: dict = None):
++                       contig_threshold_dict: dict = None,
++                       valid_contigs=None):
+     """
+     Calculate coverage based on a position depth file generated from mosdepth or bedtools genomecov.
+ 
+@@ -158,6 +160,7 @@ def calculate_coverage(depth_file: str, logger, edge: int = 0,
+     :param contig_threshold: Threshold of contigs for must-link constraints (int, default: 1000).
+     :param sep: Separator for multi-sample binning (str, default: None).
+     :param contig_threshold_dict: Dictionary of contig thresholds by sample (dict, default: None).
++    :param valid_contigs: Optional set of contig IDs from the input assembly; references outside it are ignored.
+ 
+     :return: None
+     """
+@@ -165,6 +168,8 @@ def calculate_coverage(depth_file: str, logger, edge: int = 0,
+     mean_coverage = []
+ 
+     for contig_name, lines in groupby(open(depth_file), lambda ell: ell.split('\t', 1)[0]):
++        if valid_contigs is not None and contig_name not in valid_contigs:
++            continue
+         depth_value = []
+         for line in lines:
+             line_split = line.strip().split('\t')
+@@ -219,6 +224,7 @@ def gen_cov_from_bedout(logger, out_path: str, depth_file_path: str,
+             namelist.append(filename)
+ 
+     namelist.sort()
++    valid_contigs = set(read_fasta_ids(os.path.join(out_path, 'aug0', 'sequences_aug0.fasta')))
+ 
+     pool = LoggingPool(num_process) if num_process != 0 else LoggingPool()
+     ##generate coverage for original data
+@@ -226,7 +232,7 @@ def gen_cov_from_bedout(logger, out_path: str, depth_file_path: str,
+         depth_file = depth_file_path + namelist[i]
+         pool.apply_async(
+             calculate_coverage,
+-            args=(depth_file, logger, edge, contig_len),
++            args=(depth_file, logger, edge, contig_len, None, None, valid_contigs),
+             callback=_checkback)
+ 
+     pool.close()
+diff --git a/COMEBin/data_aug/gen_var.py b/COMEBin/data_aug/gen_var.py
+index e4cc16b..ca238ec 100644
+--- a/COMEBin/data_aug/gen_var.py
++++ b/COMEBin/data_aug/gen_var.py
+@@ -9,6 +9,7 @@ import pandas as pd
+ import numpy as np
+ from itertools import groupby
+ from typing import List, Optional, Union, Dict, Tuple
++from utils import read_fasta_ids
+ 
+ ### Return error message when using multiprocessing
+ def error(msg, *args):
+@@ -90,7 +91,8 @@ def calculate_coverage_var_samplebyindex(depth_file: str, augpredix: str, aug_se
+ 
+ 
+ def calculate_coverage_var(depth_file: str, logger, edge: int = 0, contig_threshold: int = 1000, sep: Optional[str] = None,
+-                           contig_threshold_dict: Optional[Dict[str, int]] = None):
++                           contig_threshold_dict: Optional[Dict[str, int]] = None,
++                           valid_contigs=None):
+     """
+     Calculate coverage variance per contig and save the results to a CSV file.
+ 
+@@ -99,6 +101,7 @@ def calculate_coverage_var(depth_file: str, logger, edge: int = 0, contig_thresh
+     :param contig_threshold: The minimum depth threshold for a contig to be considered (default is 1000).
+     :param sep: Separator for distinguishing sample names in contig names (default is None).
+     :param contig_threshold_dict: A dictionary containing sample-specific contig thresholds when `sep` is provided (default is None).
++    :param valid_contigs: Optional set of contig IDs from the input assembly; references outside it are ignored.
+ 
+     :return: A tuple containing the path to the processed depth file and the logger object.
+     """
+@@ -106,6 +109,8 @@ def calculate_coverage_var(depth_file: str, logger, edge: int = 0, contig_thresh
+     var_coverage = []
+ 
+     for contig_name, lines in groupby(open(depth_file), lambda ell: ell.split('\t', 1)[0]):
++        if valid_contigs is not None and contig_name not in valid_contigs:
++            continue
+         depth_value = []
+         for line in lines:
+             line_split = line.strip().split('\t')
+@@ -146,6 +151,7 @@ def gen_cov_var_from_bedout(logger, out_path, depth_file_path, num_process=10, n
+             namelist.append(filename)
+ 
+     namelist.sort()
++    valid_contigs = set(read_fasta_ids(os.path.join(out_path, 'aug0', 'sequences_aug0.fasta')))
+ 
+     pool = LoggingPool(num_process) if num_process != 0 else LoggingPool()
+     ##generate coverage for original data
+@@ -153,7 +159,7 @@ def gen_cov_var_from_bedout(logger, out_path, depth_file_path, num_process=10, n
+         depth_file = depth_file_path + namelist[i]
+         pool.apply_async(
+             calculate_coverage_var,
+-            args=(depth_file, logger, edge, contig_len),
++            args=(depth_file, logger, edge, contig_len, None, None, valid_contigs),
+             callback=_checkback)
+ 
+     pool.close()
+diff --git a/COMEBin/get_augfeature.py b/COMEBin/get_augfeature.py
+index ccbf0cc..415f53a 100644
+--- a/COMEBin/get_augfeature.py
++++ b/COMEBin/get_augfeature.py
+@@ -1,7 +1,7 @@
+ import numpy as np
+ import pandas as pd
+ import torch
+-from utils import get_kmerMetric_emb
++from utils import align_feature_rows, get_kmerMetric_emb, read_fasta_ids
+ from sklearn.preprocessing import normalize
+ 
+ def get_kmer_coverage(data_path: str, n_views: int = 2, kmer_model_path: str = 'empty',
+@@ -26,9 +26,11 @@ def get_kmer_coverage(data_path: str, n_views: int = 2, kmer_model_path: str = '
+ 
+     :return: A list of preprocessed data and a list of contig names.
+     """
+-    namelist = pd.read_csv(data_path + 'aug0_datacoverage_mean.tsv', sep='\t', usecols=range(1)).values[:, 0]
+-
+-    mapObj = dict(zip(namelist, range(len(namelist))))
++    # Use the assembly/aug0 FASTA as the canonical row order.  bedtools may
++    # emit zero-depth rows for every reference in a BAM header, including
++    # references absent from a deliberately reduced benchmark assembly.
++    fasta_file = data_path.rstrip('/') + '/aug0/sequences_aug0.fasta'
++    namelist = read_fasta_ids(fasta_file)
+     for view in range(n_views):
+         cov_file = data_path + 'aug' + str(view) + '_datacoverage_mean.tsv'
+         if not nokmer:
+@@ -38,10 +40,8 @@ def get_kmer_coverage(data_path: str, n_views: int = 2, kmer_model_path: str = '
+         shuffled_covMat = pd.read_csv(cov_file, sep='\t', usecols=range(1, covHeader.shape[1])).values
+         shuffled_namelist = pd.read_csv(cov_file, sep='\t', usecols=range(1)).values[:, 0]
+ 
+-        covIdxArr = np.zeros(len(mapObj), dtype=np.int)
+-        for contigIdx in range(len(shuffled_namelist)):
+-            if shuffled_namelist[contigIdx].split('_aug')[0] in mapObj:
+-                covIdxArr[mapObj[shuffled_namelist[contigIdx].split('_aug')[0]]] = contigIdx
++        covIdxArr = align_feature_rows(shuffled_namelist, namelist,
++                                       f'{cov_file} coverage')
+         covMat = shuffled_covMat[covIdxArr]
+ 
+ 
+@@ -50,10 +50,8 @@ def get_kmer_coverage(data_path: str, n_views: int = 2, kmer_model_path: str = '
+             shuffled_compositMat = pd.read_csv(com_file, sep=',', usecols=range(1, compositHeader.shape[1])).values
+             shuffled_namelist = pd.read_csv(com_file, sep=',', usecols=range(1)).values[:, 0]
+ 
+-            covIdxArr = np.zeros(len(mapObj), dtype=np.int)
+-            for contigIdx in range(len(shuffled_namelist)):
+-                if shuffled_namelist[contigIdx].split('_aug')[0] in mapObj:
+-                    covIdxArr[mapObj[shuffled_namelist[contigIdx].split('_aug')[0]]] = contigIdx
++            covIdxArr = align_feature_rows(shuffled_namelist, namelist,
++                                           f'{com_file} k-mer features')
+             compositMat = shuffled_compositMat[covIdxArr]
+ 
+         if addvars:
+@@ -63,10 +61,8 @@ def get_kmer_coverage(data_path: str, n_views: int = 2, kmer_model_path: str = '
+             shuffled_varsMat = pd.read_csv(vars_file, sep='\t', usecols=range(1, varsHeader.shape[1])).values
+             shuffled_namelist = pd.read_csv(vars_file, sep='\t', usecols=range(1)).values[:, 0]
+ 
+-            covIdxArr = np.zeros(len(mapObj), dtype=np.int)
+-            for contigIdx in range(len(shuffled_namelist)):
+-                if shuffled_namelist[contigIdx].split('_aug')[0] in mapObj:
+-                    covIdxArr[mapObj[shuffled_namelist[contigIdx].split('_aug')[0]]] = contigIdx
++            covIdxArr = align_feature_rows(shuffled_namelist, namelist,
++                                           f'{vars_file} variance')
+             varsMat = shuffled_varsMat[covIdxArr]
+ 
+         if view == 0:
+diff --git a/COMEBin/utils.py b/COMEBin/utils.py
+index ad9fe31..48488f9 100644
+--- a/COMEBin/utils.py
++++ b/COMEBin/utils.py
+@@ -67,6 +67,38 @@ def get_length(fastx_file):
+     return length
+ 
+ 
++def read_fasta_ids(fasta_file):
++    """Return sequence identifiers in FASTA order.
++
++    Coverage matrices can contain references from a BAM header that are not
++    present in the assembly supplied to COMEBin.  Keep the feature row order
++    tied to the actual assembly rather than to a coverage artifact.
++    """
++    ids = []
++    with open(fasta_file) as fasta:
++        for line in fasta:
++            if line.startswith('>'):
++                ids.append(line[1:].split()[0])
++    if not ids:
++        raise ValueError(f'No FASTA records found in {fasta_file}')
++    return ids
++
++
++def align_feature_rows(row_names, target_names, label):
++    """Map feature rows to the assembly's contig order and fail on gaps."""
++    target_index = {name: index for index, name in enumerate(target_names)}
++    row_index = np.full(len(target_names), -1, dtype=np.int64)
++    for index, name in enumerate(row_names):
++        base_name = str(name).split('_aug', 1)[0]
++        target = target_index.get(base_name)
++        if target is not None:
++            row_index[target] = index
++    missing = [target_names[index] for index, value in enumerate(row_index) if value < 0]
++    if missing:
++        preview = ', '.join(missing[:5])
++        raise ValueError(f'{label} is missing {len(missing)} assembly contig(s): {preview}')
++    return row_index
++
+ 
+ def save_result(result, filepath, namelist):
+     filedir, filename = os.path.split(filepath)
+@@ -96,8 +128,8 @@ def calculateN50(seqLens):
+ 
+ 
+ def get_kmer_coverage_aug0(data_path):
+-    namelist = pd.read_csv(data_path + 'aug0_datacoverage_mean.tsv', sep='\t', usecols=range(1)).values[:, 0]
+-    mapObj = dict(zip(namelist, range(len(namelist))))
++    fasta_file = data_path.rstrip('/') + '/aug0/sequences_aug0.fasta'
++    namelist = read_fasta_ids(fasta_file)
+ 
+     cov_file = data_path + 'aug0_datacoverage_mean.tsv'
+     com_file = data_path + 'aug0/kmer_4_f0.csv'
+@@ -106,20 +138,16 @@ def get_kmer_coverage_aug0(data_path):
+     shuffled_covMat = pd.read_csv(cov_file, sep='\t', usecols=range(1, covHeader.shape[1])).values
+     shuffled_namelist = pd.read_csv(cov_file, sep='\t', usecols=range(1)).values[:, 0]
+ 
+-    covIdxArr = np.empty(len(mapObj), dtype=np.int)
+-    for contigIdx in range(len(shuffled_namelist)):
+-        if shuffled_namelist[contigIdx].split('_aug')[0] in mapObj:
+-            covIdxArr[mapObj[shuffled_namelist[contigIdx].split('_aug')[0]]] = contigIdx
++    covIdxArr = align_feature_rows(shuffled_namelist, namelist,
++                                   f'{cov_file} coverage')
+     covMat = shuffled_covMat[covIdxArr]
+ 
+     compositHeader = pd.read_csv(com_file, sep=',', nrows=1)
+     shuffled_compositMat = pd.read_csv(com_file, sep=',', usecols=range(1, compositHeader.shape[1])).values
+     shuffled_namelist = pd.read_csv(com_file, sep=',', usecols=range(1)).values[:, 0]
+ 
+-    covIdxArr = np.empty(len(mapObj), dtype=np.int)
+-    for contigIdx in range(len(shuffled_namelist)):
+-        if shuffled_namelist[contigIdx].split('_aug')[0] in mapObj:
+-            covIdxArr[mapObj[shuffled_namelist[contigIdx].split('_aug')[0]]] = contigIdx
++    covIdxArr = align_feature_rows(shuffled_namelist, namelist,
++                                   f'{com_file} k-mer features')
+     compositMat = shuffled_compositMat[covIdxArr]
+ 
+     # use cov_maxnormalize
+[0m$ [0mgrep -RIn --include='*.py' -E 'np\.int|np\.empty\(len\(mapObj\)|valid_contigs|align_feature_rows|read_fasta_ids' COMEBin | head -100
+COMEBin/data_aug/gen_kmer.py:60:        composition_v = np.bincount(np.array(kmers,dtype=np.int64))
+COMEBin/data_aug/gen_cov.py:12:from utils import read_fasta_ids
+COMEBin/data_aug/gen_cov.py:154:                       valid_contigs=None):
+COMEBin/data_aug/gen_cov.py:163:    :param valid_contigs: Optional set of contig IDs from the input assembly; references outside it are ignored.
+COMEBin/data_aug/gen_cov.py:171:        if valid_contigs is not None and contig_name not in valid_contigs:
+COMEBin/data_aug/gen_cov.py:227:    valid_contigs = set(read_fasta_ids(os.path.join(out_path, 'aug0', 'sequences_aug0.fasta')))
+COMEBin/data_aug/gen_cov.py:235:            args=(depth_file, logger, edge, contig_len, None, None, valid_contigs),
+COMEBin/data_aug/gen_var.py:12:from utils import read_fasta_ids
+COMEBin/data_aug/gen_var.py:95:                           valid_contigs=None):
+COMEBin/data_aug/gen_var.py:104:    :param valid_contigs: Optional set of contig IDs from the input assembly; references outside it are ignored.
+COMEBin/data_aug/gen_var.py:112:        if valid_contigs is not None and contig_name not in valid_contigs:
+COMEBin/data_aug/gen_var.py:154:    valid_contigs = set(read_fasta_ids(os.path.join(out_path, 'aug0', 'sequences_aug0.fasta')))
+COMEBin/data_aug/gen_var.py:162:            args=(depth_file, logger, edge, contig_len, None, None, valid_contigs),
+COMEBin/utils.py:70:def read_fasta_ids(fasta_file):
+COMEBin/utils.py:87:def align_feature_rows(row_names, target_names, label):
+COMEBin/utils.py:90:    row_index = np.full(len(target_names), -1, dtype=np.int64)
+COMEBin/utils.py:132:    namelist = read_fasta_ids(fasta_file)
+COMEBin/utils.py:141:    covIdxArr = align_feature_rows(shuffled_namelist, namelist,
+COMEBin/utils.py:149:    covIdxArr = align_feature_rows(shuffled_namelist, namelist,
+COMEBin/get_augfeature.py:4:from utils import align_feature_rows, get_kmerMetric_emb, read_fasta_ids
+COMEBin/get_augfeature.py:33:    namelist = read_fasta_ids(fasta_file)
+COMEBin/get_augfeature.py:43:        covIdxArr = align_feature_rows(shuffled_namelist, namelist,
+COMEBin/get_augfeature.py:53:            covIdxArr = align_feature_rows(shuffled_namelist, namelist,
+COMEBin/get_augfeature.py:64:            covIdxArr = align_feature_rows(shuffled_namelist, namelist,
+> build · space-bunny-free
+[0m$ [0mset -e
+MM=/vol/data/tools/bin/micromamba; ENV=/vol/data/envs/comebin
+cd /vol/data/repos/COMEBin-small-fix/COMEBin
+PYTHONDONTWRITEBYTECODE=1 MAMBA_ROOT_PREFIX=/vol/data/envs/.mamba "$MM" run -p "$ENV" python - <<'PY'
+import logging
+import tempfile
+from pathlib import Path
+from data_aug.gen_cov import gen_cov_from_bedout
+from data_aug.gen_var import gen_cov_var_from_bedout
+
+with tempfile.TemporaryDirectory(dir='/tmp/opencode') as tmp:
+    root = Path(tmp)
+    (root / 'aug0').mkdir()
+    (root / 'aug0' / 'sequences_aug0.fasta').write_text('>c1\nAAAA\n>c2\nCCCC\n')
+    depth_dir = root / 'depth'
+    depth_dir.mkdir()
+    (depth_dir / 'sample_0_depth.txt').write_text(
+        'c1\t0\t4\t1\nc2\t0\t4\t2\nextra\t0\t4\t0\n')
+    out = str(root) + '/'
+    logger = logging.getLogger('integration')
+    gen_cov_from_bedout(logger, out, str(depth_dir) + '/', num_process=0, num_aug=0, contig_len=1)
+    gen_cov_var_from_bedout(logger, out, str(depth_dir) + '/', num_process=0, num_aug=0, contig_len=1)
+    mean = (root / 'aug0_datacoverage_mean.tsv').read_text().splitlines()
+    var = (root / 'aug0_datacoverage_var.tsv').read_text().splitlines()
+    assert len(mean) == 3 and len(var) == 3, (mean, var)
+    assert all('extra' not in line for line in mean + var)
+    print('PASS coverage integration: producer outputs only c1/c2')
+PY
+PASS coverage integration: producer outputs only c1/c2
+> build · space-bunny-free
+[0m$ [0mfind /vol/data/repos/COMEBin-small-fix -type d -name __pycache__ -prune -exec rm -rf {} +; git status --short --branch
+## comebin-small-fix
+ M COMEBin/data_aug/gen_cov.py
+ M COMEBin/data_aug/gen_var.py
+ M COMEBin/get_augfeature.py
+ M COMEBin/utils.py
+> build · space-bunny-free
+[0m$ [0mset -e
+git add COMEBin/data_aug/gen_cov.py COMEBin/data_aug/gen_var.py COMEBin/get_augfeature.py COMEBin/utils.py
+git diff --cached --name-only
+git diff --cached --check
+git commit -m "Fix feature alignment for reduced assemblies with extra BAM references"
+git status --short --branch
+git log --oneline -2
+COMEBin/data_aug/gen_cov.py
+COMEBin/data_aug/gen_var.py
+COMEBin/get_augfeature.py
+COMEBin/utils.py
+[comebin-small-fix 5c77bc8] Fix feature alignment for reduced assemblies with extra BAM references
+ 4 files changed, 66 insertions(+), 30 deletions(-)
+## comebin-small-fix
+5c77bc8 Fix feature alignment for reduced assemblies with extra BAM references
+904f649 Fix: initialize covIdxArr with np.zeros instead of np.empty to prevent IndexError from uninitialized garbage values in get_kmer_coverage
+> build · space-bunny-free
+[0m$ [0mgit push -u origin comebin-small-fix
+remote: 
+remote: Create a pull request for 'comebin-small-fix' on GitHub by visiting:        
+remote:      https://github.com/paulzierep/COMEBin/pull/new/comebin-small-fix        
+remote: 
+To https://github.com/paulzierep/COMEBin.git
+ * [new branch]      comebin-small-fix -> comebin-small-fix
+branch 'comebin-small-fix' set up to track 'origin/comebin-small-fix'.
+> build · space-bunny-free
+[0m$ [0mtail -c 6500 /vol/data/benchmark/logs/agent-run.log | sed -n '1,240p'; printf '\n--- source branch refs ---\n'; git -C /vol/data/repos/COMEBin-small-fix status --short --branch; git -C /vol/data/repos/COMEBin-small-fix log --oneline -2; git -C /vol/data/repos/COMEBin-v11 status --short --branch
+.\n\nSupervisor commit `899f7e7` also closes runner gaps found during verification: `run_small_test.sh` now refuses overlap/overwrite, supports either the pristine or v1.1.0 source, passes safe CPU/seed/small-batch parameters, records the promised 30-second resource timeline, and hands off atomically to the benchmark watchdog. `run_eval.sh` refuses to overlap the registered benchmark.\n\nNo small end-to-end result is being claimed yet, and the medium set has intentionally **not** been built while the active baseline is running. Those remain gated on the small COMEBin + CheckM2/CheckM run.","createdAt":"2026-09-23T19:19:23Z","includesCreatedEdit":false,"isMinimized":false,"minimizedReason":"","reactionGroups":[],"url":"https://github.com/paulzierep/metagenomic-binning-benchmark/issues/2#issuecomment-5801330301","viewerDidAuthor":true},{"id":"IC_kwDOUndL2c8AAAABWf0XcQ","author":{"login":"paulzierep"},"authorAssociation":"OWNER","body":"## Small test run update\n\nThe small benchmark dataset () is ready and the test runner executed, but it failed with an IndexError in  (k-mer coverage computation). The error is: . This appears to be a bug in the contig-to-kmer index mapping where  is used instead of  in , leaving uninitialized garbage values when contig names are not found in the mapping dictionary.\n\nThis is a separate issue from the baseline run failure (seed file from hmmsearch). The small test failure needs a fix to  before the small end-to-end run can complete per the workflow in . Once fixed, the small test can rerun and serve as the validation gate before medium/large benchmarks.\n\nPlease let me know if I should prepare a fix batch for this.","createdAt":"2026-09-23T23:35:46Z","includesCreatedEdit":false,"isMinimized":false,"minimizedReason":"","reactionGroups":[],"url":"https://github.com/paulzierep/metagenomic-binning-benchmark/issues/2#issuecomment-5804726129","viewerDidAuthor":true},{"id":"IC_kwDOUndL2c8AAAABWf0ZoQ","author":{"login":"paulzierep"},"authorAssociation":"OWNER","body":"## Small test run update\n\nThe small benchmark dataset () is ready and the test runner executed, but it failed with an IndexError in get_augfeature.py (k-mer coverage computation). The error is: index out of bounds for axis 0 with size 300. This appears to be a bug in the contig-to-kmer index mapping where np.empty is used instead of np.zeros in get_kmer_coverage, leaving uninitialized garbage values when contig names are not found in the mapping dictionary.\n\nThis is a separate issue from the baseline run failure (seed file from hmmsearch). The small test failure needs a fix to get_augfeature.py before the small end-to-end run can complete per the workflow in docs/08. Once fixed, the small test can rerun and serve as the validation gate before medium/large benchmarks.\n\nPlease let me know if I should prepare a fix batch for this.","createdAt":"2026-09-23T23:35:50Z","includesCreatedEdit":false,"isMinimized":false,"minimizedReason":"","reactionGroups":[],"url":"https://github.com/paulzierep/metagenomic-binning-benchmark/issues/2#issuecomment-5804726689","viewerDidAuthor":true},{"id":"IC_kwDOUndL2c8AAAABWf0b7Q","author":{"login":"paulzierep"},"authorAssociation":"OWNER","body":"Small test run update: the small benchmark dataset is ready but the test runner failed with IndexError in get_augfeature.py (k-mer coverage computation). Bug in contig-to-kmer index mapping. Need fix before small end-to-end run can complete per workflow docs/08.","createdAt":"2026-09-23T23:35:54Z","includesCreatedEdit":false,"isMinimized":false,"minimizedReason":"","reactionGroups":[],"url":"https://github.com/paulzierep/metagenomic-binning-benchmark/issues/2#issuecomment-5804727277","viewerDidAuthor":true}],"number":2,"title":"Can you try to create a small benchmark dataset for comebin ?","updatedAt":"2026-09-23T23:35:54Z","url":"https://github.com/paulzierep/metagenomic-binning-benchmark/issues/2"}
+2026-09-23 14:57:20.546000000 +0000 /vol/data/datasets/comebin_small/bamfiles/reads.bam
+2026-09-24 01:01:33.693000000 +0000 /vol/data/datasets/comebin_small/bamfiles/reads.fullheader.bam.bai
+> build · mimo-v2.6-flash-free
+All clarified — a concurrent **supervisor agent** owns the dataset repair (`01:01:51Z ... restored comebin_small reads.bam after failed header-only reheader; ... do not treat reheader as verified`), and it also ran its own reheader experiments. I will **not race it** on the BAM. But my `.bai` rename left `reads.bam` without its index — restoring the original layout, then checking for a duplicate reply on #2:
+[0m$ [0mD=/vol/data/datasets/comebin_small/bamfiles
+# restore original index name (the .bai is the untouched original index of the restored reads.bam)
+mv "$D/reads.fullheader.bam.bai" "$D/reads.bam.bai"
+ls -la "$D"
+md5sum "$D/reads.bam"
+date -u +"%Y-%m-%d %H:%M:%S UTC - dataset: restored original reads.bam.bai index name after supervisor reverted my reheader attempt (supervisor owns BAM repair now)" >> /vol/data/benchmark/.activity
+touch /vol/data/benchmark/.heartbeat
+total 92140
+drwxrwxr-x 2 ubuntu ubuntu     4096 Sep 24 01:05 .
+drwxrwxr-x 3 ubuntu ubuntu     4096 Sep 24 01:01 ..
+-rw-rw-r-- 1 ubuntu ubuntu        0 Sep 23 14:55 bedtools.err
+-rw-rw-r-- 1 ubuntu ubuntu 94078937 Sep 23 14:57 reads.bam
+-rw-rw-r-- 1 ubuntu ubuntu   259016 Sep 24 01:01 reads.bam.bai
+76a7aea5f864fde21ffe6b1ccc8a664c  /vol/data/datasets/comebin_small/bamfiles/reads.bam
+[0m$ [0mgh issue view 2 -R paulzierep/metagenomic-binning-benchmark --json comments --jq '.comments[-3:][] | "\(.createdAt) [\(.author.login)] \(.body|split("\n")[0])"' 2>&1
+2026-09-23T23:35:54Z [paulzierep] Small test run update: the small benchmark dataset is ready but the test runner failed with IndexError in get_augfeature.py (k-mer coverage computation). Bug in contig-to-kmer index mapping. Need fix before small end-to-end run can complete per workflow docs/08.
+2026-09-24T00:54:48Z [paulzierep] ## Small test v2 (post-fix run) — next blocker root-caused
+2026-09-24T01:05:04Z [paulzierep] Update: Small benchmark dataset test (comebin_small) has been attempted twice (small_test exit_code=1 IndexError, small_test_v2 exit_code=1 KeyError), but the current COMEBin master (commit 904f649) includes fixes for gen_cov.py/gen_var.py KeyError and get_kmer_coverage IndexError. The baseline rerun is now in progress (watchdog-managed, epoch 12/200, no errors so far). Once baseline completes, small end-to-end test can proceed via scripts/run_small_test.sh.
+
+--- source branch refs ---
+## comebin-small-fix...origin/comebin-small-fix
+5c77bc8 Fix feature alignment for reduced assemblies with extra BAM references
+904f649 Fix: initialize covIdxArr with np.zeros instead of np.empty to prevent IndexError from uninitialized garbage values in get_kmer_coverage
+## comebin-optimizations-v11...origin/master [ahead 1]
+> build · space-bunny-free
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/scripts/run_small_test.sh
+Index: /vol/data/repos/metagenomic-binning-benchmark/scripts/run_small_test.sh
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/scripts/run_small_test.sh
++++ /vol/data/repos/metagenomic-binning-benchmark/scripts/run_small_test.sh
+@@ -5,8 +5,9 @@
+ # non-interactive. Usage:
+ #   bash scripts/run_small_test.sh [rundir] [threads]
+ # Environment:
+ #   SRC_COMEBIN=/path/to/repo-root   COMEBin checkout/worktree to test
++#                                   (default: the verified small-data fix worktree)
+ #   SEED=42                          optional reproducible seed (supported CLIs)
+ #   BATCH_SIZE=256 EMB_SIZE=512      small-data training defaults
+ set -euo pipefail
+ 
+
