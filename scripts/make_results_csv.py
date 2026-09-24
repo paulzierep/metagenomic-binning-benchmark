@@ -74,6 +74,10 @@ def summarize(cs, ts):
 
 mk2c, mk2t = scores(os.path.join(run, "eval", "checkm2", "quality_report.tsv"), "Completeness", "Contamination")
 mkc, mkt = scores(os.path.join(run, "eval", "checkm", "out", "storage", "bin_stats_ext.tsv"), "Completeness", "Contamination")
+# Older baseline wrappers did not emit a `bins:` metadata line. Derive the
+# count from the evaluator rows so the committed result table is complete.
+if not n_bins:
+    n_bins = str(len(mk2c or mk2t or mkc or mkt))
 c2 = summarize(mk2c, mk2t)
 c1 = summarize(mkc, mkt)
 

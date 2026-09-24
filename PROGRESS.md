@@ -265,7 +265,8 @@ included; fixes land on branch `comebin-optimizations` in this repo.
       `baseline_rerun_autorestart1`, exit_code 0, wall_s 24,327 (~6.75 h), 200/200
       epochs, 99.19% Top1. CheckM2: 60 bins, 25.01% mean completeness, 2.98%
       mean contamination; CheckM v1 lineage workflow completed with the Python
-      3.10-compatible environment. Evidence: `runs/baseline_rerun_autorestart1/`
+      3.10-compatible environment (60 bins; 21.23% mean completeness / 3.40%
+      mean contamination). Evidence: `runs/baseline_rerun_autorestart1/`
       and `eval/checkm2/quality_report.tsv`. No benchmark was active when this
       evaluation completed; the medium run is tracked separately below.
 - [x] **Long-run launch safety guard (2026-09-24)** — multi-hour baseline/fix
@@ -311,8 +312,10 @@ included; fixes land on branch `comebin-optimizations` in this repo.
       `run_small_test.sh`, `run_comebin_baseline.sh`, and `run_comebin_fix.sh`
       follow COMEBin's bin-directory symlink and reject zero/empty-bin success;
       `make_medium_dataset.sh` refuses overwrites and overlaps with the launch
-      lock. Deployed copies are byte-identical to source. A baseline evaluation
-      rerun with the deployed evaluator returned CheckM2/CheckM rc=0.
+      lock; `make_results_csv.py` derives bin counts from evaluator rows for older
+      baseline metadata. Deployed copies are byte-identical to source. A
+      baseline evaluation rerun with the deployed evaluator returned
+      CheckM2/CheckM rc=0, and the corrected baseline CSV records 60 bins.
 - [x] **Issue #9 triaged (2026-09-24 04:39 → 04:45 UTC)**: per-run failure/next-step
       explanation requested → new README section **“Run history — what happened and
       what’s next”** (one row per run attempt: result, root cause, next step, commit
