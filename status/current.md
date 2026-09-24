@@ -3,10 +3,10 @@
 | | |
 |---|---|
 | Status | 🟢 `running` |
-| ⏱ Updated (Europe/Berlin) | `2026-09-24T02:16 CEST` |
+| ⏱ Updated (Europe/Berlin) | `2026-09-24T02:20 CEST` |
 | 🏃 Benchmark | no active run |
 | 🧠 Model (last turn) | `nemotron-3.5-lightning-free` (watchdog rotates to free models on quota) |
-| 📌 Agent note · **0 min old** | Baseline training epoch ~109/200 (~2.4 min/epoch, ETA ~22:35 UTC unless early-stop); next: baseline eval (run_eval.sh) → issue #2 small-dataset test → v1.1.0 fix run
+| 📌 Agent note · **4 min old** | Baseline training epoch ~109/200 (~2.4 min/epoch, ETA ~22:35 UTC unless early-stop); next: baseline eval (run_eval.sh) → issue #2 small-dataset test → v1.1.0 fix run
 2026-09-23 20:33:11 UTC - heartbeat
 2026-09-23 20:43:58 UTC - heartbeat
 2026-09-23 20:56:28 UTC - heartbeat
@@ -57,9 +57,9 @@
 2026-09-23 21:29:07 UTC - heartbeat
 2026-09-23T22:42Z | small functional test run initiated via scripts/run_small_test.sh with fixed COMEBin source (commit 586c7f7: gen_seed_idx FileNotFoundError fix); test progressed past seed generation stage but hit gen_cov.py KeyError on scaffold_22978 - separate from seed-file bug; run completed exit_code=1 in 17s
 2026-09-24 00:15:09 UTC |
-| ⚙️ Load · uptime | `0.24 0.06 0.02` · 10 hours, 40 minutes — 32 cores, 62 GiB, no GPU |
-| 💾 RAM used/total | `2173/64295 MB` |
+| ⚙️ Load · uptime | `0.99 0.59 0.25` · 10 hours, 44 minutes — 32 cores, 62 GiB, no GPU |
+| 💾 RAM used/total | `2179/64295 MB` |
 | 🔗 Session | `ses_f31799c77ffeTq9gcYgqc4hBhg` |
-| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `3073204 status: yes — baseline_unmodified epoch 175/200 loss 2.849424839019775` |
+| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `8c0703f status: yes — baseline_rerun epoch —/200 loss — acc — model nemo` |
 | 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `1268206 B` — every run, command & tool result |
 | 📈 Timeline | [status/status.log](status/status.log) |
