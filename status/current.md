@@ -3,10 +3,10 @@
 | | |
 |---|---|
 | Status | 🟢 `running` |
-| ⏱ Updated (Europe/Berlin) | `2026-09-24T02:58 CEST` |
-| 🏃 Live benchmark | `baseline_rerun_autorestart1` — **epoch 8/200** · loss `3.856290340423584` · top1 acc `76.34765625` (log 26s fresh) |
+| ⏱ Updated (Europe/Berlin) | `2026-09-24T03:00 CEST` |
+| 🏃 Live benchmark | `baseline_rerun_autorestart1` — **epoch 9/200** · loss `3.7802774906158447` · top1 acc `77.744140625` (log 11s fresh) |
 | 🧠 Model (last turn) | `mimo-v2.6-flash-free` (watchdog rotates to free models on quota) |
-| 📌 Agent note · **3 min old** | Baseline training epoch ~109/200 (~2.4 min/epoch, ETA ~22:35 UTC unless early-stop); next: baseline eval (run_eval.sh) → issue #2 small-dataset test → v1.1.0 fix run
+| 📌 Agent note · **1 min old** | Baseline training epoch ~109/200 (~2.4 min/epoch, ETA ~22:35 UTC unless early-stop); next: baseline eval (run_eval.sh) → issue #2 small-dataset test → v1.1.0 fix run
 2026-09-23 20:33:11 UTC - heartbeat
 2026-09-23 20:43:58 UTC - heartbeat
 2026-09-23 20:56:28 UTC - heartbeat
@@ -60,10 +60,11 @@
 2026-09-24 00:26:39 UTC
 2026-09-24 00:29:27 UTC
 2026-09-24 00:50:45 UTC - triage: investigating small_test_v2 KeyError root cause for issue #2
-2026-09-24 00:54:48 UTC - issue #2 root-cause comment posted |
-| ⚙️ Load · uptime | `32.39 31.47 24.18` · 11 hours, 22 minutes — 32 cores, 62 GiB, no GPU |
-| 💾 RAM used/total | `5965/64295 MB` |
+2026-09-24 00:54:48 UTC - issue #2 root-cause comment posted
+2026-09-24 00:58:23 UTC - dataset: building reference-consistent subset BAM for comebin_small (samtools -L contigs.bed) |
+| ⚙️ Load · uptime | `32.33 31.78 25.18` · 11 hours, 24 minutes — 32 cores, 62 GiB, no GPU |
+| 💾 RAM used/total | `6034/64295 MB` |
 | 🔗 Session | `ses_f31799c77ffeTq9gcYgqc4hBhg` |
-| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `f0afdd4 status: yes — baseline_rerun_autorestart1 epoch 7/200 loss 3.944610118` |
-| 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `1363172 B` — every run, command & tool result |
+| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `95ccc16 status: yes — baseline_rerun_autorestart1 epoch 8/200 loss 3.856290340` |
+| 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `1368800 B` — every run, command & tool result |
 | 📈 Timeline | [status/status.log](status/status.log) |

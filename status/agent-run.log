@@ -19497,3 +19497,87 @@ BATS_SAMN07137077_METAG-scaffold_3
 86:  echo "bamdir:     $BAMDIR"
 96:cd "$SRC/COMEBin"
 > build · mimo-v2.6-flash-free
+The small BAM (94 MB) evidently retains reads across all 29,434 references — that's what poisons the cov tsv. Building a reference-consistent subset BAM (light, I/O-bound prep — no overlap with the registered run):
+[0m$ [0mdate -u +"%Y-%m-%d %H:%M:%S UTC - dataset: building reference-consistent subset BAM for comebin_small (samtools -L contigs.bed)" >> /vol/data/benchmark/.activity
+touch /vol/data/benchmark/.heartbeat
+{"exit":0,"truncated":false,"output":"","status":"completed"}
+[0m$ [0mD=/vol/data/datasets/comebin_small
+MM=/vol/data/tools/bin/micromamba
+$MM run -p /vol/data/envs/comebin samtools --version | head -2
+echo "bed rows: $(grep -c '' $D/bamfiles/../contigs.bed)"
+head -2 $D/contigs.bed
+echo "orig refs: $($MM run -p /vol/data/envs/comebin samtools idxstats $D/bamfiles/reads.bam | awk '$3>0' | wc -l) refs with reads"
+echo "orig header SQ: $($MM run -p /vol/data/envs/comebin samtools view -H $D/bamfiles/reads.bam | grep -c '^@SQ')"
+samtools 1.24
+Using htslib 1.24
+bed rows: 300
+BATS_SAMN07137077_METAG-scaffold_1	0	999999999
+BATS_SAMN07137077_METAG-scaffold_2	0	999999999
+orig refs: 300 refs with reads
+orig header SQ: 29434
+> build · mimo-v2.6-flash-free
+Correction needed — reads.bam has reads on only **300 refs** (header 29,434). So the full 29,434-row cov tsv must come from the depth-generation step, not the reads. Finding the actual bedtools invocation:
+[0m$ [0mgrep -n "bedtools\|genomecov\|depth" /vol/data/repos/COMEBin/COMEBin/run_comebin.sh | head -10
+echo "=== gen_cov depth callers ==="
+grep -rn "genomecov\|samtools depth\|depth.txt" /vol/data/repos/COMEBin/COMEBin/*.py /vol/data/repos/COMEBin/COMEBin/data_aug/*.py 2>/dev/null | head -10
+116:    count=$(find "$folder" -maxdepth 1 -type f -name "*$keyword*" | wc -l)
+144:    count=$(find "$folder" -maxdepth 1 -type f -name "*$keyword*" | wc -l)
+=== gen_cov depth callers ===
+/vol/data/repos/COMEBin/COMEBin/data_aug/gen_cov.py:53:    bam_depth = os.path.join(out, '{}_depth.txt'.format(bam_name))
+/vol/data/repos/COMEBin/COMEBin/data_aug/gen_cov.py:57:            ['bedtools', 'genomecov',
+/vol/data/repos/COMEBin/COMEBin/data_aug/gen_cov.py:106:    :param depth_file: Input position depth file generated from bedtools genomecov (str).
+/vol/data/repos/COMEBin/COMEBin/data_aug/gen_cov.py:154:    Calculate coverage based on a position depth file generated from mosdepth or bedtools genomecov.
+/vol/data/repos/COMEBin/COMEBin/data_aug/gen_cov.py:218:        if filename.endswith('_depth.txt'):
+/vol/data/repos/COMEBin/COMEBin/data_aug/gen_var.py:47:    :param depth_file: Path to the position depth file generated from bedtools genomecov.
+/vol/data/repos/COMEBin/COMEBin/data_aug/gen_var.py:97:    :param depth_file: Path to the position depth file generated from bedtools genomecov.
+/vol/data/repos/COMEBin/COMEBin/data_aug/gen_var.py:145:        if filename.endswith('_depth.txt'):
+[0m$ [0mfind /vol/data/benchmark/runs/small_test_v2/comebin_out -name "*depth*" 2>/dev/null | head -5
+find /vol/data/benchmark/runs/small_test_v2/comebin_out -name "*_data_cov.csv" 2>/dev/null | head -3
+/vol/data/benchmark/runs/small_test_v2/comebin_out/data_augmentation/depth
+/vol/data/benchmark/runs/small_test_v2/comebin_out/data_augmentation/depth/reads.bam_0_depth.txt_aug3_data_cov.csv
+/vol/data/benchmark/runs/small_test_v2/comebin_out/data_augmentation/depth/reads.bam_0_depth.txt_aug0_data_var.csv
+/vol/data/benchmark/runs/small_test_v2/comebin_out/data_augmentation/depth/reads.bam_0_depth.txt_aug2_data_var.csv
+/vol/data/benchmark/runs/small_test_v2/comebin_out/data_augmentation/depth/reads.bam_0_depth.txt_aug4_data_cov.csv
+/vol/data/benchmark/runs/small_test_v2/comebin_out/data_augmentation/depth/reads.bam_0_depth.txt_aug3_data_cov.csv
+/vol/data/benchmark/runs/small_test_v2/comebin_out/data_augmentation/depth/reads.bam_0_depth.txt_aug4_data_cov.csv
+/vol/data/benchmark/runs/small_test_v2/comebin_out/data_augmentation/depth/reads.bam_0_depth.txt_aug1_data_cov.csv
+> build · mimo-v2.6-flash-free
+[0m$ [0msed -n '48,70p' /vol/data/repos/COMEBin/COMEBin/data_aug/gen_cov.py
+echo "=== depth file refs ==="
+D=/vol/data/benchmark/runs/small_test_v2/comebin_out/data_augmentation/depth
+ls -la "$D" | head -5
+cut -f1 "$D/reads.bam_0_depth.txt" 2>/dev/null | sort -u | wc -l
+echo "=== aug0 cov csv rows ==="
+wc -l "$D/reads.bam_0_depth.txt_aug0_data_cov.csv" 2>/dev/null
+:return: A tuple containing the path to the processed BAM file and the logger.
+    """
+    logger.info('Processing `{}`'.format(bam_file))
+    bam_name = os.path.split(bam_file)[-1] + '_{}'.format(bam_index)
+    bam_depth = os.path.join(out, '{}_depth.txt'.format(bam_name))
+
+    with open(bam_depth, 'wb') as bedtools_out:
+        subprocess.check_call(
+            ['bedtools', 'genomecov',
+             '-bga',
+             '-ibam', bam_file],
+            stdout=bedtools_out)
+
+    return (bam_file, logger)
+
+
+
+def run_gen_bedtools_out(bam_file_path: str, out: str, logger, num_process: int = 10):
+    """
+    Run the `gen_bedtools_out` function for multiple BAM files in parallel using multiprocessing.
+
+    :param bam_file_path: Directory containing BAM files (str).
+=== depth file refs ===
+total 47584
+drwxrwxr-x 2 ubuntu ubuntu     4096 Sep 23 23:37 .
+drwxrwxr-x 9 ubuntu ubuntu     4096 Sep 23 23:37 ..
+-rw-rw-r-- 1 ubuntu ubuntu 45989163 Sep 23 23:37 reads.bam_0_depth.txt
+-rw------- 1 ubuntu ubuntu  1259028 Sep 23 23:37 reads.bam_0_depth.txt_aug0_data_cov.csv
+29434
+=== aug0 cov csv rows ===
+29435 /vol/data/benchmark/runs/small_test_v2/comebin_out/data_augmentation/depth/reads.bam_0_depth.txt_aug0_data_cov.csv
+> build · mimo-v2.6-flash-free
