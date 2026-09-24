@@ -26425,3 +26425,258 @@ Query:       BA00001  [M=226]
 >BATS_SAMN07137077_METAG-scaffold_22978_3_629_+
 KMHEVEMWKYWFLQEGVLGVDADYLKTNEGKPPPVIHVDTDAPLYSDKDGKIITEDLWGIYYKPDIEGLGVQGGTSPYIVQKHFDEVNVDPYGIDSPEYQTTDKFSDMWTSALAHIQKRFVGKSHLYRKGPSGGLGCLTPDSFPIFDRFFENVYMIADANHGYKMIGVGHLVAQEILGQESELLKPFRFDRYEKGKLHPTSNSPFPWS
 > build · mimo-v2.6-flash-free
+Training succeeded, but **clustering produced zero bins**: `hmmsearch --cut_tc` failed on the very first model (`Error: TC bit thresholds unavailable on model BA00001`), leaving an empty `.hmmout` → no seed file → `Seed_num: 0` → no `*_bins` dir → built-in CheckM crashed (wrapper still logged `exit_code: 0`). Diagnosing precisely:
+[0m$ [0msed -n '195,245p' /vol/data/repos/COMEBin/COMEBin/utils.py
+echo "=== hmmsearch version ==="
+/vol/data/envs/comebin/bin/hmmsearch -h | head -3
+echo "=== excepted_output ==="
+ls -la /vol/data/datasets/comebin_test_data/excepted_output/ 2>/dev/null
+with open(fname) as f:
+        for i, l in enumerate(f):
+            pass
+    return i + 1
+
+def gen_seed(logger, contig_file: str, threads: int, contig_length_threshold: int,
+             marker_name: str = "marker", quarter: str = "3quarter"):
+    """
+    Generate seed sequences from contigs using FragGeneScan, HMMsearch, and custom markers.
+
+    :param contig_file: Path to the input contig file.
+    :param threads: The number of threads to use for processing.
+    :param contig_length_threshold: The contig length threshold.
+    :param marker_name: The marker name (default: "marker").
+    :param quarter: The quarter identifier (default: "3quarter").
+    :return: The number of candidate seeds generated.
+    """
+    fragScanURL = 'run_FragGeneScan.pl'
+
+    hmmExeURL = 'hmmsearch'
+    markerExeURL = os.path.join(os.getcwd(), '../auxiliary', 'test_getmarker_' + quarter + '.pl')
+    markerURL = os.path.join(os.getcwd(), '../auxiliary', marker_name + '.hmm')
+    seedURL = contig_file + "." + marker_name + "." + quarter + "_lencutoff_" + str(contig_length_threshold) + ".seed"
+    fragResultURL = contig_file + ".frag.faa"
+    hmmResultURL = contig_file + '.' + marker_name + ".hmmout"
+
+    if not (os.path.exists(fragResultURL)):
+        fragCmd = fragScanURL + " -genome=" + contig_file + " -out=" + contig_file + ".frag -complete=0 -train=complete -thread=" + str(
+            threads) + " 1>" + contig_file + ".frag.out 2>" + contig_file + ".frag.err"
+        logger.info("exec cmd: " + fragCmd)
+        os.system(fragCmd)
+
+    if os.path.exists(fragResultURL):
+        if not (os.path.exists(hmmResultURL)):
+            hmmCmd = hmmExeURL + " --domtblout " + hmmResultURL + " --cut_tc --cpu " + str(
+                threads) + " " + markerURL + " " + fragResultURL + " 1>" + hmmResultURL + ".out 2>" + hmmResultURL + ".err"
+            logger.info("exec cmd: " + hmmCmd)
+            os.system(hmmCmd)
+
+        if os.path.exists(hmmResultURL):
+            if not (os.path.exists(seedURL)):
+                markerCmd = markerExeURL + " " + hmmResultURL + " " + contig_file + " " + str(
+                    contig_length_threshold) + " " + seedURL
+                logger.info("exec cmd: " + markerCmd)
+                os.system(markerCmd)
+
+            if os.path.exists(seedURL):
+                candK = file_len(seedURL)
+            else:
+                logger.info("markerCmd failed! Not exist: " + markerCmd)
+                candK = 0
+=== hmmsearch version ===
+# hmmsearch :: search profile(s) against a sequence database
+# HMMER 3.4 (Aug 2023); http://hmmer.org/
+# Copyright (C) 2023 Howard Hughes Medical Institute.
+=== excepted_output ===
+total 32
+drwxr-xr-x 3 ubuntu ubuntu  4096 Jul  4  2023 .
+drwxr-xr-x 4 ubuntu ubuntu 16384 Sep 23 21:30 ..
+-rw-r--r-- 1 ubuntu ubuntu  6148 Jul  4  2023 .DS_Store
+drwxr-xr-x 4 ubuntu ubuntu  4096 Jul  4  2023 run_comebin_test
+[0m$ [0mHMM=/vol/data/repos/COMEBin/auxiliary/bacar_marker.hmm
+echo "size: $(stat -c%s $HMM)"; echo "models: $(grep -c '^NAME' $HMM)"; echo "TC lines: $(grep -c '^TC' $HMM)"
+echo "--- around first model BA00001 ---"
+awk '/^NAME/{n++} n<=2 && !seen_exit {print} /^\/\/$/{if(n<=2) seen_exit=1}' "$HMM" | grep -E "^(NAME|ACC|TC|GA|NC)" 
+echo "--- models lacking TC (first 10) ---"
+awk '/^NAME/{name=$2} /^TC/{tc[name]=1} END{c=0; for(m in tc) if(tc[m]==0) c++; print "total with TC:", length(tc)}' "$HMM"
+grep -B20 '^NAME BA00001' "$HMM" >/dev/null 2>&1
+awk '/^NAME BA00001/,/^\/\/$/' "$HMM" | grep -E "^(NAME|TC|GA|NC|CK)" 
+size: 3671082
+models: 40
+TC lines: 0
+--- around first model BA00001 ---
+NAME  BA00001
+--- models lacking TC (first 10) ---
+total with TC: 0
+> build · mimo-v2.6-flash-free
+`bacar_marker.hmm` has **0 TC lines** across all 40 models, but `hmmsearch --cut_tc` requires them. Checking the raw file format and git history to see whether the tracked file is intact:
+[0m$ [0mHMM=/vol/data/repos/COMEBin/auxiliary/bacar_marker.hmm
+head -40 "$HMM"
+echo "=== grep TC loosely ==="
+grep -c "TC" "$HMM" || true
+grep -m3 -n "TC" "$HMM" || echo "no TC anywhere"
+HMMER3/b [3.0 | March 2010]
+NAME  BA00001
+LENG  226
+ALPH  amino
+RF    no
+CS    no
+MAP   yes
+DATE  Sun Mar 31 16:39:32 2013
+NSEQ  664
+EFFN  1.436188
+CKSUM 2390144385
+STATS LOCAL MSV      -10.5718  0.70394
+STATS LOCAL VITERBI  -11.2011  0.70394
+STATS LOCAL FORWARD   -5.3130  0.70394
+HMM          A        C        D        E        F        G        H        I        K        L        M        N        P        Q        R        S        T        V        W        Y   
+            m->m     m->i     m->d     i->m     i->i     d->m     d->d
+  COMPO   2.46624  4.50537  2.95843  2.65338  3.46897  2.94967  3.75140  2.65478  2.59735  2.45689  3.50522  3.02497  3.53370  3.07061  2.89538  2.77753  2.79379  2.55602  4.78902  3.67005
+          2.68618  4.42225  2.77519  2.73123  3.46354  2.40513  3.72494  3.29354  2.67741  2.69355  4.24690  2.90347  2.73739  3.18146  2.89801  2.37887  2.77519  2.98518  4.58477  3.61503
+          0.08073  4.40311  2.72844  0.61958  0.77255  0.00000        *
+      1   2.57929  4.65053  3.03753  2.23829  3.76327  3.50809  3.74888  3.09945  2.61151  2.65232  2.23283  3.03449  3.71039  2.90062  3.03129  2.64424  2.78461  2.94399  5.19004  3.89931      1 - -
+          2.68618  4.42225  2.77519  2.73123  3.46354  2.40513  3.72494  3.29354  2.67741  2.69355  4.24690  2.90347  2.73739  3.18146  2.89801  2.37887  2.77519  2.98518  4.58477  3.61503
+          0.01952  4.34190  5.06424  0.61958  0.77255  0.51017  0.91727
+      2   2.17482  4.17839  3.19709  2.74763  3.67421  3.56001  3.77745  3.04142  2.71879  2.40947  3.29047  3.17209  2.91071  3.03010  3.08724  2.41883  2.67763  2.78084  5.08680  3.43048      2 - -
+          2.68618  4.42225  2.77519  2.73123  3.46354  2.40513  3.72494  3.29354  2.67741  2.69355  4.24690  2.90347  2.73739  3.18146  2.89801  2.37887  2.77519  2.98518  4.58477  3.61503
+          0.01899  4.36926  5.09161  0.61958  0.77255  0.49450  0.94128
+      3   2.61054  4.69329  2.93489  2.54281  3.88909  3.52045  3.72885  3.20368  2.46850  2.29007  3.55251  3.00410  3.82136  2.75308  2.91664  2.57509  2.65732  2.38895  5.22717  3.74839      3 - -
+          2.68618  4.42225  2.77519  2.73123  3.46354  2.40513  3.72494  3.29354  2.67741  2.69355  4.24690  2.90347  2.73739  3.18146  2.89801  2.37887  2.77519  2.98518  4.58477  3.61503
+          0.01866  4.38654  5.10889  0.61958  0.77255  0.51095  0.91610
+      4   2.74283  4.16497  4.13538  3.62006  2.86095  3.89806  4.22750  1.86058  3.63696  2.20620  3.27190  3.93220  4.25756  3.84031  3.77817  3.14877  2.80336  1.43330  4.84271  3.60354      4 - -
+          2.68618  4.42225  2.77519  2.73123  3.46354  2.40513  3.72494  3.29354  2.67741  2.69355  4.24690  2.90347  2.73739  3.18146  2.89801  2.37887  2.77519  2.98518  4.58477  3.61503
+          0.01866  4.38654  5.10889  0.61958  0.77255  0.51095  0.91610
+      5   2.66625  4.83480  3.06154  2.50474  4.09681  3.45144  3.72703  3.42505  2.53024  3.08334  3.93971  2.88419  2.80939  2.84821  2.99064  2.03674  2.09713  3.18819  5.37175  3.87812      5 - -
+          2.68618  4.42225  2.77519  2.73123  3.46354  2.40513  3.72494  3.29354  2.67741  2.69355  4.24690  2.90347  2.73739  3.18146  2.89801  2.37887  2.77519  2.98518  4.58477  3.61503
+          0.01866  4.38654  5.10889  0.61958  0.77255  0.48269  0.96004
+      6   2.68851  4.13642  4.24813  3.55704  3.11890  3.81087  4.12083  2.26024  3.42102  1.92117  1.85480  3.82831  4.07811  3.67267  3.59981  3.05190  2.91469  2.11808  4.75364  3.54257      6 - -
+          2.68618  4.42225  2.77519  2.73123  3.46354  2.40513  3.72494  3.29354  2.67741  2.69355  4.24690  2.90347  2.73739  3.18146  2.89801  2.37887  2.77519  2.98518  4.58477  3.61503
+          0.01844  4.39803  5.12037  0.61958  0.77255  0.49361  0.94269
+      7   2.66406  5.20923  2.58979  2.09474  4.55310  3.46917  3.62139  4.02704  1.85962  3.50490  4.25562  2.91467  3.80989  2.69577  2.08013  2.60526  2.94660  3.60038  5.63263  4.23744      7 - -
+          2.68618  4.42225  2.77519  2.73123  3.46354  2.40513  3.72494  3.29354  2.67741  2.69355  4.24690  2.90347  2.73739  3.18146  2.89801  2.37887  2.77519  2.98518  4.58477  3.61503
+          0.01844  4.39803  5.12037  0.61958  0.77255  0.49361  0.94269
+=== grep TC loosely ===
+0
+no TC anywhere
+[0m$ [0mcd /vol/data/repos/COMEBin
+git log --oneline -3 -- auxiliary/bacar_marker.hmm
+git show HEAD:auxiliary/bacar_marker.hmm | grep -c "^TC" || echo "HEAD also 0 TC"
+echo "=== other checkouts ==="
+for f in /vol/data/repos/COMEBin-opt/auxiliary/bacar_marker.hmm /vol/data/repos/COMEBin-small-fix/auxiliary/bacar_marker.hmm /vol/data/repos/COMEBin-v11/auxiliary/bacar_marker.hmm; do echo "$f: TC=$(grep -c '^TC' $f) size=$(stat -c%s $f)"; done
+echo "=== marker.hmm (the other file) ==="
+grep -c '^TC' /vol/data/repos/COMEBin/auxiliary/marker.hmm || true
+f639a73 Initial commit
+0
+HEAD also 0 TC
+=== other checkouts ===
+/vol/data/repos/COMEBin-opt/auxiliary/bacar_marker.hmm: TC=0 size=3671082
+/vol/data/repos/COMEBin-small-fix/auxiliary/bacar_marker.hmm: TC=0 size=3671082
+/vol/data/repos/COMEBin-v11/auxiliary/bacar_marker.hmm: TC=0 size=3671082
+=== marker.hmm (the other file) ===
+111
+> build · mimo-v2.6-flash-free
+Training completed but **clustering yielded zero bins** — root cause chain identified so far: `hmmsearch --cut_tc` failed on `bacar_marker.hmm` (`TC bit thresholds unavailable on model BA00001`; the file has **0 TC lines** in all 40 models) → empty `.hmmout` (stale from 21:30 Sep 23) → no seed file → clustering crashed. Reading the actual cluster traceback and the dataset's `excepted_output`:
+[0m$ [0msed -n '225,262p' /vol/data/benchmark/runs/baseline_rerun_autorestart1/comebin_run.log
+echo "=== excepted_output ==="
+find /vol/data/datasets/comebin_test_data/excepted_output -maxdepth 3 | head -40
+6
+2026-09-24 07:15:15,026 - Finish training.
+2026-09-24 07:15:18,833 - bin
+2026-09-24 07:15:18,833 - exec cmd: /vol/data/repos/COMEBin/COMEBin/../auxiliary/test_getmarker_2quarter.pl /vol/data/datasets/comebin_test_data/BATS_SAMN07137077_METAG.scaffolds.min500.fasta.f1k.fasta.bacar_marker.hmmout /vol/data/datasets/comebin_test_data/BATS_SAMN07137077_METAG.scaffolds.min500.fasta.f1k.fasta 1001 /vol/data/datasets/comebin_test_data/BATS_SAMN07137077_METAG.scaffolds.min500.fasta.f1k.fasta.bacar_marker.2quarter_lencutoff_1001.seed
+2026-09-24 07:15:18,929 - markerCmd failed! Not exist: /vol/data/repos/COMEBin/COMEBin/../auxiliary/test_getmarker_2quarter.pl /vol/data/datasets/comebin_test_data/BATS_SAMN07137077_METAG.scaffolds.min500.fasta.f1k.fasta.bacar_marker.hmmout /vol/data/datasets/comebin_test_data/BATS_SAMN07137077_METAG.scaffolds.min500.fasta.f1k.fasta 1001 /vol/data/datasets/comebin_test_data/BATS_SAMN07137077_METAG.scaffolds.min500.fasta.f1k.fasta.bacar_marker.2quarter_lencutoff_1001.seed
+2026-09-24 07:15:18,930 - Start clustering.
+2026-09-24 07:15:19,836 - N50:	1623
+Traceback (most recent call last):
+  File "/vol/data/repos/COMEBin/COMEBin/main.py", line 369, in <module>
+    main()
+  File "/vol/data/repos/COMEBin/COMEBin/main.py", line 299, in main
+    cluster(logger, args)
+  File "/vol/data/repos/COMEBin/COMEBin/cluster.py", line 368, in cluster
+    seed_namelist = pd.read_csv(seed_file, header=None, sep='\t', usecols=range(1)).values[:, 0]
+  File "/vol/data/envs/comebin/lib/python3.10/site-packages/pandas/io/parsers/readers.py", line 1026, in read_csv
+    return _read(filepath_or_buffer, kwds)
+  File "/vol/data/envs/comebin/lib/python3.10/site-packages/pandas/io/parsers/readers.py", line 620, in _read
+    parser = TextFileReader(filepath_or_buffer, **kwds)
+  File "/vol/data/envs/comebin/lib/python3.10/site-packages/pandas/io/parsers/readers.py", line 1620, in __init__
+    self._engine = self._make_engine(f, self.engine)
+  File "/vol/data/envs/comebin/lib/python3.10/site-packages/pandas/io/parsers/readers.py", line 1880, in _make_engine
+    self.handles = get_handle(
+  File "/vol/data/envs/comebin/lib/python3.10/site-packages/pandas/io/common.py", line 873, in get_handle
+    handle = open(
+FileNotFoundError: [Errno 2] No such file or directory: '/vol/data/datasets/comebin_test_data/BATS_SAMN07137077_METAG.scaffolds.min500.fasta.f1k.fasta.bacar_marker.2quarter_lencutoff_1001.seed'
+2026-09-24 07:15:23,850 - get_result
+/vol/data/envs/comebin/lib/python3.10/site-packages/checkm/checkmData.py:27: UserWarning: pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html. The pkg_resources package is slated for removal as early as 2025-11-30. Refrain from using this package or pin to Setuptools<81.
+  from pkg_resources import resource_filename
+2026-09-24 07:15:23,896 - exec cmd: /vol/data/repos/COMEBin/COMEBin/../auxiliary/test_getmarker_2quarter.pl /vol/data/datasets/comebin_test_data/BATS_SAMN07137077_METAG.scaffolds.min500.fasta.f1k.fasta.bacar_marker.hmmout /vol/data/datasets/comebin_test_data/BATS_SAMN07137077_METAG.scaffolds.min500.fasta.f1k.fasta 1001 /vol/data/datasets/comebin_test_data/BATS_SAMN07137077_METAG.scaffolds.min500.fasta.f1k.fasta.bacar_marker.2quarter_lencutoff_1001.seed
+2026-09-24 07:15:23,990 - markerCmd failed! Not exist: /vol/data/repos/COMEBin/COMEBin/../auxiliary/test_getmarker_2quarter.pl /vol/data/datasets/comebin_test_data/BATS_SAMN07137077_METAG.scaffolds.min500.fasta.f1k.fasta.bacar_marker.hmmout /vol/data/datasets/comebin_test_data/BATS_SAMN07137077_METAG.scaffolds.min500.fasta.f1k.fasta 1001 /vol/data/datasets/comebin_test_data/BATS_SAMN07137077_METAG.scaffolds.min500.fasta.f1k.fasta.bacar_marker.2quarter_lencutoff_1001.seed
+2026-09-24 07:15:23,990 - Seed_num:	0
+2026-09-24 07:15:23,990 - Run unitem profile:	0
+/vol/data/envs/comebin/lib/python3.10/site-packages/checkm/checkmData.py:27: UserWarning: pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html. The pkg_resources package is slated for removal as early as 2025-11-30. Refrain from using this package or pin to Setuptools<81.
+  from pkg_resources import resource_filename
+[2026-09-24 07:15:24] INFO: CheckM v1.2.5
+[2026-09-24 07:15:24] INFO: checkm analyze -t 32 -x fa /vol/data/repos/COMEBin/COMEBin/scripts/checkm_ms/bacteria.ms /vol/data/benchmark/runs/baseline_rerun_autorestart1/comebin_out/comebin_res/cluster_res/weight_seed_kmeans_k_0_result.tsv_bins /vol/data/benchmark/runs/baseline_rerun_autorestart1/comebin_out/comebin_res/cluster_res/unitem_profile/binning_methods/weight_seed_kmeans_k_0_result.tsv/checkm_bac
+[2026-09-24 07:15:24] INFO: CheckM data: /vol/data/envs/comebin/checkm_data
+[2026-09-24 07:15:24] INFO: [CheckM - analyze] Identifying marker genes in bins.
+=== excepted_output ===
+/vol/data/datasets/comebin_test_data/excepted_output
+/vol/data/datasets/comebin_test_data/excepted_output/.DS_Store
+/vol/data/datasets/comebin_test_data/excepted_output/run_comebin_test
+/vol/data/datasets/comebin_test_data/excepted_output/run_comebin_test/comebin_res
+/vol/data/datasets/comebin_test_data/excepted_output/run_comebin_test/comebin_res/events.out.tfevents.1688468055.gpu13.274170.0
+/vol/data/datasets/comebin_test_data/excepted_output/run_comebin_test/comebin_res/cluster_res
+/vol/data/datasets/comebin_test_data/excepted_output/run_comebin_test/comebin_res/comebin_res.tsv
+/vol/data/datasets/comebin_test_data/excepted_output/run_comebin_test/comebin_res/covembeddings.tsv
+/vol/data/datasets/comebin_test_data/excepted_output/run_comebin_test/comebin_res/checkpoint_0200.pth.tar
+/vol/data/datasets/comebin_test_data/excepted_output/run_comebin_test/comebin_res/training.log
+/vol/data/datasets/comebin_test_data/excepted_output/run_comebin_test/comebin_res/comebin.log
+/vol/data/datasets/comebin_test_data/excepted_output/run_comebin_test/comebin_res/config.yml
+/vol/data/datasets/comebin_test_data/excepted_output/run_comebin_test/comebin_res/embeddings.tsv
+/vol/data/datasets/comebin_test_data/excepted_output/run_comebin_test/comebin_res/comebin_res_bins
+/vol/data/datasets/comebin_test_data/excepted_output/run_comebin_test/data_augmentation
+/vol/data/datasets/comebin_test_data/excepted_output/run_comebin_test/data_augmentation/aug1_datacoverage_var.tsv
+/vol/data/datasets/comebin_test_data/excepted_output/run_comebin_test/data_augmentation/aug1_datacoverage_mean.tsv
+/vol/data/datasets/comebin_test_data/excepted_output/run_comebin_test/data_augmentation/aug5
+/vol/data/datasets/comebin_test_data/excepted_output/run_comebin_test/data_augmentation/aug5_datacoverage_mean.tsv
+/vol/data/datasets/comebin_test_data/excepted_output/run_comebin_test/data_augmentation/aug5_datacoverage_var.tsv
+/vol/data/datasets/comebin_test_data/excepted_output/run_comebin_test/data_augmentation/aug4
+/vol/data/datasets/comebin_test_data/excepted_output/run_comebin_test/data_augmentation/aug4_datacoverage_mean.tsv
+/vol/data/datasets/comebin_test_data/excepted_output/run_comebin_test/data_augmentation/aug0_datacoverage_mean.tsv
+/vol/data/datasets/comebin_test_data/excepted_output/run_comebin_test/data_augmentation/aug3
+/vol/data/datasets/comebin_test_data/excepted_output/run_comebin_test/data_augmentation/aug3_datacoverage_var.tsv
+/vol/data/datasets/comebin_test_data/excepted_output/run_comebin_test/data_augmentation/aug2
+/vol/data/datasets/comebin_test_data/excepted_output/run_comebin_test/data_augmentation/aug3_datacoverage_mean.tsv
+/vol/data/datasets/comebin_test_data/excepted_output/run_comebin_test/data_augmentation/aug2_datacoverage_var.tsv
+/vol/data/datasets/comebin_test_data/excepted_output/run_comebin_test/data_augmentation/aug0_datacoverage_var.tsv
+/vol/data/datasets/comebin_test_data/excepted_output/run_comebin_test/data_augmentation/aug2_datacoverage_mean.tsv
+/vol/data/datasets/comebin_test_data/excepted_output/run_comebin_test/data_augmentation/comebin.log
+/vol/data/datasets/comebin_test_data/excepted_output/run_comebin_test/data_augmentation/aug1
+/vol/data/datasets/comebin_test_data/excepted_output/run_comebin_test/data_augmentation/depth
+/vol/data/datasets/comebin_test_data/excepted_output/run_comebin_test/data_augmentation/aug4_datacoverage_var.tsv
+/vol/data/datasets/comebin_test_data/excepted_output/run_comebin_test/data_augmentation/aug0
+/vol/data/datasets/comebin_test_data/excepted_output/run_comebin_test/.DS_Store
+[0m$ [0mDS=/vol/data/datasets/comebin_test_data/excepted_output/run_comebin_test
+ls -la "$DS" 2>/dev/null
+find "$DS" -name "*seed*" -o -name "*hmmout*" 2>/dev/null | head
+echo "=== seed/hmmout in expected ==="
+for f in $(find "$DS" -name "*.seed" 2>/dev/null | head -3); do echo "$f: $(wc -l < $f) lines"; head -2 "$f"; done
+echo "=== perl script thresholds ==="
+grep -n -E "evalue|E-value|bitscore|cut|1e-|threshold" /vol/data/repos/COMEBin/auxiliary/test_getmarker_2quarter.pl | head -20
+total 24
+drwxr-xr-x 4 ubuntu ubuntu 4096 Jul  4  2023 .
+drwxr-xr-x 3 ubuntu ubuntu 4096 Jul  4  2023 ..
+-rw-r--r-- 1 ubuntu ubuntu 6148 Jul  4  2023 .DS_Store
+drwxr-xr-x 4 ubuntu ubuntu 4096 Jul  4  2023 comebin_res
+drwxr-xr-x 9 ubuntu ubuntu 4096 Jul  4  2023 data_augmentation
+/vol/data/datasets/comebin_test_data/excepted_output/run_comebin_test/comebin_res/cluster_res/Leiden_markerseed_nodesize_bandwidth_0.05_res_maxedges100respara_5_partgraph_ratio_50.tsv
+/vol/data/datasets/comebin_test_data/excepted_output/run_comebin_test/comebin_res/cluster_res/Leiden_markerseed_nodesize_bandwidth_0.2_res_maxedges100respara_70_partgraph_ratio_50.tsv
+/vol/data/datasets/comebin_test_data/excepted_output/run_comebin_test/comebin_res/cluster_res/Leiden_markerseed_nodesize_bandwidth_0.05_res_maxedges100respara_10_partgraph_ratio_100.tsv
+/vol/data/datasets/comebin_test_data/excepted_output/run_comebin_test/comebin_res/cluster_res/Leiden_markerseed_nodesize_bandwidth_0.3_res_maxedges100respara_10_partgraph_ratio_80.tsv
+/vol/data/datasets/comebin_test_data/excepted_output/run_comebin_test/comebin_res/cluster_res/Leiden_markerseed_nodesize_bandwidth_0.05_res_maxedges100respara_70_partgraph_ratio_80.tsv
+/vol/data/datasets/comebin_test_data/excepted_output/run_comebin_test/comebin_res/cluster_res/Leiden_markerseed_nodesize_bandwidth_0.2_res_maxedges100respara_110_partgraph_ratio_50.tsv
+/vol/data/datasets/comebin_test_data/excepted_output/run_comebin_test/comebin_res/cluster_res/Leiden_markerseed_nodesize_bandwidth_0.1_res_maxedges100respara_110_partgraph_ratio_50.tsv
+/vol/data/datasets/comebin_test_data/excepted_output/run_comebin_test/comebin_res/cluster_res/Leiden_markerseed_nodesize_bandwidth_0.1_res_maxedges100respara_110_partgraph_ratio_100.tsv
+/vol/data/datasets/comebin_test_data/excepted_output/run_comebin_test/comebin_res/cluster_res/Leiden_markerseed_nodesize_bandwidth_0.1_res_maxedges100respara_90_partgraph_ratio_100.tsv
+/vol/data/datasets/comebin_test_data/excepted_output/run_comebin_test/comebin_res/cluster_res/Leiden_markerseed_nodesize_bandwidth_0.15_res_maxedges100respara_50_partgraph_ratio_80.tsv
+=== seed/hmmout in expected ===
+=== perl script thresholds ===
+142:=cut
+> build · mimo-v2.6-flash-free
