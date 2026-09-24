@@ -19630,3 +19630,86 @@ ls -la "$D"
 orig @SQ: 29434  new @SQ: 300
 samtools index: failed to create index for "/vol/data/datasets/comebin_small/bamfiles/reads.bam": Numerical result out of range
 > build · mimo-v2.6-flash-free
+Reheader left record refIDs stale (index error = placed-unmapped/dropped-ref records). Rebuilding the BAM properly through the SAM-text path with a fresh 300-SQ header — first an anomaly census:
+[0m$ [0mdate -u +"%Y-%m-%d %H:%M:%S UTC - dataset: census of BAM records outside the 300-contig set" >> /vol/data/benchmark/.activity
+touch /vol/data/benchmark/.heartbeat
+{"exit":0,"truncated":false,"output":"","status":"completed"}
+[0m$ [0mset -e
+D=/vol/data/datasets/comebin_small/bamfiles
+MM=/vol/data/tools/bin/micromamba
+samtools() { $MM run -p /vol/data/envs/comebin samtools "$@"; }
+# repair index bookkeeping: old .bai belongs to the fullheader bam
+[ -f "$D/reads.bam.bai" ] && mv "$D/reads.bam.bai" "$D/reads.fullheader.bam.bai"
+# census: placed-unmapped on dropped refs (idxstats col4)
+echo "placed-unmapped on dropped refs: $($MM run -p /vol/data/envs/comebin samtools idxstats "$D/reads.fullheader.bam" | awk 'NR==FNR{w[$1];next}!($1 in w)&&$4>0{s+=$4}END{print s+0}' /tmp/want_refs.txt -)"
+# census: records whose mate sits on a dropped ref + records on dropped refs (full stream)
+samtools view "$D/reads.fullheader.bam" | awk 'BEGIN{while((getline l<"")/tmp/want_refs.txt")>0)w[l]=1}
+ {if(!($3=="*"||($3 in w))) bad_rname++; if($7!="="&&$7!="*"&&!($7 in w)) bad_mate++}
+ END{print "records with RNAME not in set: " bad_rname+0; print "records with RNEXT not in set: " bad_mate+0}'
+awk: fatal: cannot open file `/tmp/want_refs.txt' for reading: No such file or directory
+[E::hts_open_format] Failed to open file "/vol/data/datasets/comebin_small/bamfiles/reads.fullheader.bam" : No such file or directory
+samtools idxstats: failed to open "/vol/data/datasets/comebin_small/bamfiles/reads.fullheader.bam": No such file or directory
+placed-unmapped on dropped refs: 
+awk: cmd. line:1: BEGIN{while((getline l<"")/tmp/want_refs.txt")>0)w[l]=1}
+awk: cmd. line:1:                                         ^ syntax error
+[E::hts_open_format] Failed to open file "/vol/data/datasets/comebin_small/bamfiles/reads.fullheader.bam" : No such file or directory
+samtools view: failed to open "/vol/data/datasets/comebin_small/bamfiles/reads.fullheader.bam" for reading: No such file or directory
+> build · mimo-v2.6-flash-free
+[0m$ [0mls -la /vol/data/datasets/comebin_small/bamfiles/
+ls -la /tmp/want_refs.txt /tmp/nonzero_refs.txt /tmp/orig_header.sam /tmp/new_header.sam 2>&1
+date -u +"now: %Y-%m-%d %H:%M:%S UTC"
+total 92140
+drwxrwxr-x 2 ubuntu ubuntu     4096 Sep 24 01:02 .
+drwxrwxr-x 3 ubuntu ubuntu     4096 Sep 24 01:01 ..
+-rw-rw-r-- 1 ubuntu ubuntu        0 Sep 23 14:55 bedtools.err
+-rw-rw-r-- 1 ubuntu ubuntu 94078937 Sep 23 14:57 reads.bam
+-rw-rw-r-- 1 ubuntu ubuntu   259016 Sep 24 01:01 reads.fullheader.bam.bai
+ls: cannot access '/tmp/want_refs.txt': No such file or directory
+ls: cannot access '/tmp/nonzero_refs.txt': No such file or directory
+ls: cannot access '/tmp/orig_header.sam': No such file or directory
+ls: cannot access '/tmp/new_header.sam': No such file or directory
+now: 2026-09-24 01:02:41 UTC
+> build · mimo-v2.6-flash-free
+The dataset was **reverted** out from under me (reads.bam back to original content+mtime, my fullheader copy gone, but my `.bai` rename stuck). Something is guarding/restoring the dataset — investigating before retrying:
+[0m$ [0mtail -25 /vol/data/benchmark/logs/supervisor-actions.log 2>/dev/null
+echo "=== who checks dataset md5/manifest ==="
+grep -rln "comebin_small\|cb734384\|release_manifest" /vol/data/benchmark/bin/ /vol/data/repos/metagenomic-binning-benchmark/scripts/ 2>/dev/null | head
+echo "=== crontab ==="
+crontab -l 2>/dev/null | sed 's/^/  /'
+2026-09-23T19:22:23+00:00 [supervisor] Hardened/pushed watchdogs + run handoff (899f7e7,b37780e), documented small→medium→large workflow, verified cron/service/driver/benchmark/GitHub, triaged #2 at https://github.com/paulzierep/metagenomic-binning-benchmark/issues/2#issuecomment-5801330301, and left active baseline PID 19182 unchanged.
+2026-09-23T20:59:24+00:00 [supervisor] Triaged #6/#7/#8: verified and closed #7 via deterministic marker, staged Zenodo preservation docs/manifest and concise issue updates, ran safe no-LLM watchdog verification with C1-C9 ok, left active baseline PID 19182 unchanged, and performed no cron/service/driver restart.
+2026-09-23T21:52:51+00:00 [supervisor] Diagnosed baseline PID 19182 terminal failure (missing marker seed/initial biolib dependency and in-place runner edit), verified no benchmark process remained, cleared only stale registration/autorestart artifacts, hardened watchdog/C6 terminal classification + immutable committed snapshots + baseline exit traps/pycache hygiene, made heartbeat/status truthful for fresh drivers and cleared runs, deployed byte-identical scripts, recovered the stale primary driver without service/cron restart, verified C1-C9 ok with no active benchmark and no issue comments/closures, and pushed 2d61909/73aa0dd/67c6d05 plus verified meta d0febd4 at origin/main.
+=== who checks dataset md5/manifest ===
+/vol/data/benchmark/bin/make_release_manifest.py
+/vol/data/repos/metagenomic-binning-benchmark/scripts/make_small_dataset.sh
+/vol/data/repos/metagenomic-binning-benchmark/scripts/__pycache__/make_release_manifest.cpython-312.pyc
+/vol/data/repos/metagenomic-binning-benchmark/scripts/run_small_test.sh
+/vol/data/repos/metagenomic-binning-benchmark/scripts/make_release_manifest.py
+=== crontab ===
+  */5 * * * * /vol/data/benchmark/bin/agent-watchdog.sh
+  */2 * * * * /vol/data/benchmark/bin/status-heartbeat.sh
+  */5 * * * * /vol/data/benchmark/bin/benchmark-watchdog.sh
+  3,13,23,33,43,53 * * * * /vol/data/benchmark/bin/meta-watchdog.sh
+[0m$ [0mgrep -rn "restore\|revert\|immutable\|guard" /vol/data/benchmark/bin/*.sh 2>/dev/null | head -15
+ls -la /vol/data/benchmark/bin/ 2>/dev/null
+/vol/data/benchmark/bin/agent-watchdog.sh:83:# ---- crash-loop guard (counts DRIVER LAUNCHES, not turns) ------------------- #
+/vol/data/benchmark/bin/agent-watchdog.sh:200:    # failed/quota turns must never reset the guard by merely being counted.
+/vol/data/benchmark/bin/agent-watchdog.sh:203:        log "driver healthy after $healthy_turns successful turns: crash-guard markers cleared"
+/vol/data/benchmark/bin/benchmark-watchdog.sh:14:#   - replacement runners are immutable snapshots from the committed repo
+/vol/data/benchmark/bin/benchmark-watchdog.sh:79:# Accept both the live source launcher and the immutable snapshot launcher.  A
+/vol/data/benchmark/bin/benchmark-watchdog.sh:270:# BENCHMARK_WATCHDOG_REPLACE=1 tells guarded runners that this is an authorized
+/vol/data/benchmark/bin/meta-watchdog.sh:62:# A watchdog replacement is launched from an immutable committed snapshot, so
+/vol/data/benchmark/bin/meta-watchdog.sh:181:# ---- C4: crash-guard is not deadlocked ------------------------------------- #
+/vol/data/benchmark/bin/meta-watchdog.sh:186:    note_fix "cleared $attempts stale crash-guard markers while driver/run is healthy"
+/vol/data/benchmark/bin/meta-watchdog.sh:189:    check C4_ratelimit broken "$attempts failed launches in window and no driver; preserving crash guard"
+total 100
+drwxrwxr-x  2 ubuntu ubuntu  4096 Sep 24 00:58 .
+drwxrwxr-x 11 ubuntu ubuntu  4096 Sep 24 00:30 ..
+-rwxr-xr-x  1 ubuntu ubuntu 11738 Sep 23 19:18 agent-watchdog.sh
+-rwxr-xr-x  1 ubuntu ubuntu 12963 Sep 24 00:57 benchmark-watchdog.sh
+-rwxrwxr-x  1 ubuntu ubuntu  4852 Sep 23 19:25 issue-closer.sh
+-rwxr-xr-x  1 ubuntu ubuntu  4404 Sep 23 21:02 make_release_manifest.py
+-rwxr-xr-x  1 ubuntu ubuntu 24542 Sep 24 00:58 meta-watchdog.sh
+-rwxr-xr-x  1 ubuntu ubuntu  6476 Sep 23 21:44 run_comebin_baseline.sh
+-rwxr-xr-x  1 ubuntu ubuntu 14407 Sep 23 21:50 status-heartbeat.sh
+> build · mimo-v2.6-flash-free
