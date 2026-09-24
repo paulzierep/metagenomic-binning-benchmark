@@ -36601,3 +36601,60 @@ cp /vol/data/benchmark/PROGRESS.md /vol/data/benchmark/PROGRESS.md.bak 2>/dev/nu
 PROGRESS.md updated
 synced to /vol/data/benchmark/PROGRESS.md
 > build · big-pickle
+I overwrote the edit by copying in the wrong direction. Redoing with the repo copy as source of truth:
+[0m$ [0mpython3 - <<'PY'
+p = "/vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md"
+with open(p) as f:
+    c = f.read()
+
+c = c.replace(
+    "Aggregate evidence: `results/medium_v11_20260924.csv`; per-bin CheckM2\n      supplement: `medium_v11_20260924_checkm2_stats.csv`.",
+    "Aggregate evidence: `results/medium_v11_20260924.csv`; per-bin joined table\n      `runs/medium_v11_20260924/per_bin_results.csv` (CheckM2 x CheckM v1, from\n      `scripts/make_per_bin_csv.py`); CheckM2-only `runs/medium_v11_20260924/checkm2_per_bin.csv`.")
+
+c = c.replace(
+    "- [ ] Fix batch run on v1.1.0 base (`runs/fix_v11`, worktree COMEBin-v11) →\n      full large benchmark + eval (major commit) → README row",
+    "- [ ] **ACTIVE: fix_v11 full-large benchmark** — `runs/fix_v11_20260924`\n      registered in `.active_run` (mode fix) at 2026-09-24T10:37Z; source\n      COMEBin-v11 @ `95f5ea8` (branch comebin-optimizations-v11, clean), full\n      demo dataset (29,434 contigs), 32 threads, seed 42, 200 epochs. Next after\n      terminal status: `scripts/run_eval.sh runs/fix_v11_20260924` (CheckM2 +\n      CheckM v1) → `make_results_csv.py` → per-bin CSV → README/docs-11 row.")
+
+addition = """- [x] **Issues #7/#15/#16 triaged (2026-09-24 10:26–10:44 UTC)**: #7 — the
+      optimization flowchart is now rendered live in the README (colored mermaid,
+      fuller Current/Next text; `docs/09` synced). #15 — per-bin results for ALL
+      evaluated runs stored under `runs/<run>/per_bin_results.csv` (generator
+      `scripts/make_per_bin_csv.py`); root-level `medium_v11_20260924_checkm2_stats.csv`
+      moved to `runs/medium_v11_20260924/checkm2_per_bin.csv`. #16 — watchdog now
+      defaults to `opencode/big-pickle` (`c42fa84`), rotation only on quota.
+      Commits: `869754a` (per-bin + README), `c42fa84` (watchdog big-pickle).
+
+"""
+c = c.replace("\n## Watchdog / restart\n", "\n" + addition + "## Watchdog / restart\n")
+
+with open(p, "w") as f:
+    f.write(c)
+print("edited repo PROGRESS.md")
+PY
+cp /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md /vol/data/benchmark/PROGRESS.md && echo "synced"; grep -n "ACTIVE: fix_v11" /vol/data/benchmark/PROGRESS.md; grep -n "per_bin_results.csv (CheckM2 x CheckM v1" /vol/data/benchmark/PROGRESS.md | head -1
+edited repo PROGRESS.md
+synced
+350:- [ ] **ACTIVE: fix_v11 full-large benchmark** — `runs/fix_v11_20260924`
+> build · big-pickle
+Synced. Wrapping up the turn — activity logs and commit under lock:
+[0m$ [0mR=/vol/data/repos/metagenomic-binning-benchmark; TS=$(date -u +%FT%TZ); echo "$TS fix_v11-launch: runs/fix_v11_20260924 registered (COMBin-v11@95f5ea8, demo 29434 contigs, seed 42, T32); issues #7/#15/#16 handled; PROGRESS synced" >> $R/status/agent-activity.log; echo "$TS fix_v11-launch-7-15-16" >> /vol/data/benchmark/.activity; touch /vol/data/benchmark/.heartbeat; flock /tmp/bench-repo.lock bash -c "cd $R && git add PROGRESS.md status/agent-activity.log && git commit -m 'meta: PROGRESS sync (fix_v11 registered, issues #7/#15/#16 record)' && git push origin main 2>&1 | tail -1 && git log --oneline -1"; echo "=== run progress (single check) ==="; grep -o 'epoch=[0-9]*/200' /vol/data/benchmark/runs/fix_v11_20260924/comebin_run.log 2>/dev/null | tail -1 || tail -1 /vol/data/benchmark/runs/fix_v11_20260924/comebin_run.log | cut -c1-120
+[main f67d94e] meta: PROGRESS sync (fix_v11 registered, issues #7/#15/#16 record)
+ 2 files changed, 19 insertions(+), 4 deletions(-)
+   79c0012..f67d94e  main -> main
+f67d94e meta: PROGRESS sync (fix_v11 registered, issues #7/#15/#16 record)
+=== run progress (single check) ===
+> build · big-pickle
+One progress check to confirm the run is healthy:
+[0m$ [0mL=/vol/data/benchmark/runs/fix_v11_20260924/comebin_run.log; ls -la $L 2>/dev/null; tail -3 $L 2>/dev/null | cut -c1-140; echo "=== proc ==="; ps -o pid,etime,pcpu,rss,args -p 873786 2>/dev/null | cut -c1-140 || echo "main pid gone"; echo "=== resources last ==="; tail -1 /vol/data/benchmark/runs/fix_v11_20260924/logs/resources.tsv 2>/dev/null; date -u +%FT%TZ; touch /vol/data/benchmark/.heartbeat
+-rw-rw-r-- 1 ubuntu ubuntu 1182 Sep 24 10:37 /vol/data/benchmark/runs/fix_v11_20260924/comebin_run.log
+2026-09-24 10:37:43,863 - Generated binary augmentation features: assembly_contigs=29434, assembly_n50=1623, retained_contigs=29434, views=6
+2026-09-24 10:37:43,909 - Coverage requested 32 workers but only 1 BAM files exist; using 1 workers.
+2026-09-24 10:37:43,909 - Coverage inputs: contigs=29434, views=6, BAMs=1, workers=1.
+=== proc ===
+    PID     ELAPSED %CPU   RSS COMMAND
+ 873786       01:11  0.0  3540 bash scripts/run_comebin_fix.sh /vol/data/benchmark/runs/fix_v11_20260924
+=== resources last ===
+2026-09-24T10:38:15+00:00	873819,873822,873841,873946	145.1	0.706	2351
+2026-09-24T10:38:26Z
+> build · big-pickle
+Run is only ~1.5 min in (coverage stage). One more health check after a short gap to confirm it advanced past the augmentation barrier:
