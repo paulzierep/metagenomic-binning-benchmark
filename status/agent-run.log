@@ -18550,3 +18550,59 @@ Exited with code 1
 source commit: 904f649ef5cbb4582a6f0e5ec8b0b1f45778d85b (dirty files: 0; ignored __pycache__ entries: 15)
 ERROR: stale failed active run is registered: pid=262046 dir=/vol/data/benchmark/runs/baseline_rerun
 Run /vol/data/benchmark/bin/benchmark-watchdog.sh to triage it; not starting a second run.
+> build · nemotron-3.5-lightning-free
+The watchdog has a stale active run registration. Let me check and clear it:
+[0m$ [0mcat /vol/data/benchmark/.active_run 2>/dev/null
+267462 267355 /vol/data/benchmark/runs/baseline_rerun_autorestart1/comebin_run.log /vol/data/benchmark/runs/baseline_rerun_autorestart1 1790209801 baseline /vol/data/repos/COMEBin
+[0m$ [0mcat /vol/data/benchmark/bin/benchmark-watchdog.sh 2>/dev/null | head -50
+#!/usr/bin/env bash
+# benchmark-watchdog.sh — keep the ACTIVE benchmark run alive INDEPENDENTLY of the
+# coding agent (cron */5). If the agent is broken or the run hangs forever, this
+# still restarts it.
+#
+# Rules (conservative, safety-first):
+#   - only acts on the run recorded in /vol/data/benchmark/.active_run
+#   - HEALTHY  = process alive AND run log written within the last $HANG_S
+#   - HUNG     = process alive but log silent for > $HANG_S -> kill + restart
+#   - CRASHED  = process gone with no terminal evidence       -> restart
+#   - FAILED   = terminal failure evidence                    -> record + clear
+#   - DONE     = run_meta.txt exit_code:0                    -> clear .active_run
+#   - deterministic failures are never retried in a tight loop
+#   - replacement runners are immutable snapshots from the committed repo
+#   - rate limit: max $MAX_PER_RUN restarts per run per rolling 24 h
+#   - flock-protected; exits immediately on TASK_COMPLETE
+set -u
+export HOME=/home/ubuntu
+BENCH=${BENCH_ROOT:-/vol/data/benchmark}
+ACTIVE="$BENCH/.active_run"        # pid pgid logfile rundir start_ts mode source [contigs bamdir]
+SLOG="$BENCH/logs/benchmark-watchdog.log"
+LOCK=${BENCH_WATCHDOG_LOCK:-/tmp/benchmark-watchdog.lock}
+HANG_S=${BENCH_HANG_S:-2400}       # 40 min without new log output => hung
+MAX_PER_RUN=${BENCH_MAX_RESTARTS:-3}
+REPO=${BENCHMARK_REPO:-/vol/data/repos/metagenomic-binning-benchmark}
+RUNNER_REF=${BENCH_RUNNER_REF:-HEAD}
+SNAPSHOT_ROOT="$BENCH/.runner-snapshots"
+log() { echo "$(date -Is) [bm-watchdog] $*" >>"$SLOG"; }
+
+exec 9>"$LOCK"
+flock -n 9 || exit 0
+[ -f "$BENCH/TASK_COMPLETE" ] && exit 0
+[ -f "$ACTIVE" ] || exit 0
+mkdir -p "$BENCH/logs" "$SNAPSHOT_ROOT"
+
+read -r pid pgid logfile rundir start mode source contigs bamdir < "$ACTIVE"
+name=$(basename "${rundir:-}")
+root_name=${name%%_autorestart*}
+mode=${mode:-baseline}
+source=${source:-/vol/data/repos/COMEBin}
+[[ "$name" =~ ^[A-Za-z0-9._-]+$ ]] || { log "unsafe active-run directory '${rundir:-}'; refusing state change"; exit 0; }
+case "$rundir" in
+  "$BENCH"/runs/*) ;;
+  *) log "active-run directory is outside $BENCH/runs: $rundir; refusing state change"; exit 0 ;;
+esac
+[[ "$mode" =~ ^[A-Za-z0-9._-]+$ ]] || { log "unsafe active-run mode '$mode'; refusing state change"; exit 0; }
+if [ "$mode" != "baseline" ] && [ ! -f "$source/COMEBin/run_comebin.sh" ]; then
+  log "registered $mode source is missing run_comebin.sh: $source; refusing state change"
+  exit 0
+fi
+> build · nemotron-3.5-lightning-free
