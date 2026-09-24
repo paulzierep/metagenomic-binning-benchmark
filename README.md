@@ -1,6 +1,6 @@
 <!--AGENT-STATUS-->
 
-> 🟢 **Agent status:** `running` · ⏱ `2026-09-24T11:26 CEST` · 🏃 no active benchmark · 🧠 `mimo-v2.6-flash-free` · [status.log](status/status.log)
+> 🟢 **Agent status:** `running` · ⏱ `2026-09-24T11:28 CEST` · 🏃 train medium_v11_20260924: epoch 5/200 · loss 6.931028366088867 · top1 0.8723958134651184 · 🧠 `mimo-v2.6-flash-free` · [status.log](status/status.log)
 
 # metagenomic-binning-benchmark
 
@@ -111,12 +111,17 @@ improves quality, with ideas combined after failures.
 
 ## Data preservation and Zenodo
 
-Newly generated benchmark data is staged for preservation with a streaming
-SHA-256 manifest and a provenance/license checklist. The current release plan,
-required owner inputs, and upload verification steps are in
-[`docs/10-data-preservation.md`](docs/10-data-preservation.md). No Zenodo upload
-is performed by the watchdogs; a verified DOI must be recorded before an issue
-is considered fully addressed.
+The verified small release is published as **[10.5281/zenodo.22935025](https://doi.org/10.5281/zenodo.22935025)**
+(version 1, CC BY 4.0). It contains the 95,216,539-byte release archive
+(SHA-256 `0c698d208639f4fadd4ac4477a67074320c975528b23dd61743c83ad1658b6d2`)
+and the 3,650-byte public manifest
+(SHA-256 `84131ae359d07a78db7ae7ca2005758f4f0ec9df67a33ec62f8af50ac1702f1b`).
+The archive was extracted and all 18 manifest entries were checked; the public
+record was independently verified through an unauthenticated Zenodo API
+request. The release checklist, provenance requirements, and future-version
+workflow are in [`docs/10-data-preservation.md`](docs/10-data-preservation.md).
+The watchdogs do not upload data automatically; the token is kept only in the
+mode-0600 local secret file.
 
 ## How to resume (for a human or a restarted agent)
 
