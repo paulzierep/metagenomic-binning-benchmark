@@ -3,10 +3,10 @@
 | | |
 |---|---|
 | Status | 🟢 `running` |
-| ⏱ Updated (Europe/Berlin) | `2026-09-24T07:28 CEST` |
-| 🏃 Live benchmark | `baseline_rerun_autorestart1` — **epoch 128/200** · loss `2.8992080688476562` · top1 acc `98.427734375` (log 79s fresh) |
+| ⏱ Updated (Europe/Berlin) | `2026-09-24T07:30 CEST` |
+| 🏃 Live benchmark | `baseline_rerun_autorestart1` — **epoch 129/200** · loss `2.9205737113952637` · top1 acc `98.1640625` (log 63s fresh) |
 | 🧠 Model (last turn) | `mimo-v2.6-flash-free` (watchdog rotates to free models on quota) |
-| 📌 Agent note · **1 min old** | Baseline training epoch ~109/200 (~2.4 min/epoch, ETA ~22:35 UTC unless early-stop); next: baseline eval (run_eval.sh) → issue #2 small-dataset test → v1.1.0 fix run
+| 📌 Agent note · **0 min old** | Baseline training epoch ~109/200 (~2.4 min/epoch, ETA ~22:35 UTC unless early-stop); next: baseline eval (run_eval.sh) → issue #2 small-dataset test → v1.1.0 fix run
 2026-09-23 20:33:11 UTC - heartbeat
 2026-09-23 20:43:58 UTC - heartbeat
 2026-09-23 20:56:28 UTC - heartbeat
@@ -124,10 +124,13 @@
 2026-09-24 05:24:09 UTC - heartbeat
 2026-09-24 05:24:59 UTC - heartbeat
 2026-09-24 05:26:17 UTC - heartbeat
-2026-09-24 05:27:01 UTC - heartbeat |
-| ⚙️ Load · uptime | `32.23 31.92 31.88` · 15 hours, 52 minutes — 32 cores, 62 GiB, no GPU |
-| 💾 RAM used/total | `6646/64295 MB` |
+2026-09-24 05:27:01 UTC - heartbeat
+2026-09-24 05:28:06 UTC - heartbeat
+2026-09-24 05:29:07 UTC - heartbeat
+2026-09-24 05:29:59 UTC - heartbeat |
+| ⚙️ Load · uptime | `32.06 31.97 31.91` · 15 hours, 54 minutes — 32 cores, 62 GiB, no GPU |
+| 💾 RAM used/total | `6009/64295 MB` |
 | 🔗 Session | `ses_f31799c77ffeTq9gcYgqc4hBhg` |
-| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `30e048e status: yes — baseline_rerun_autorestart1 epoch 127/200 loss 2.8924787` |
-| 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `1656854 B` — every run, command & tool result |
+| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `0f244c4 status: yes — baseline_rerun_autorestart1 epoch 128/200 loss 2.8992080` |
+| 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `1663010 B` — every run, command & tool result |
 | 📈 Timeline | [status/status.log](status/status.log) |
