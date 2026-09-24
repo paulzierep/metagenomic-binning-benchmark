@@ -3,10 +3,10 @@
 | | |
 |---|---|
 | Status | 🟢 `running` |
-| ⏱ Updated (Europe/Berlin) | `2026-09-24T12:42 CEST` |
+| ⏱ Updated (Europe/Berlin) | `2026-09-24T12:43 CEST` |
 | 🏃 Benchmark | no active run |
 | 🧠 Model (last turn) | `big-pickle` (watchdog rotates to free models on quota) |
-| 📌 Agent note · **3 min old** | Baseline training epoch ~109/200 (~2.4 min/epoch, ETA ~22:35 UTC unless early-stop); next: baseline eval (run_eval.sh) → issue #2 small-dataset test → v1.1.0 fix run
+| 📌 Agent note · **4 min old** | Baseline training epoch ~109/200 (~2.4 min/epoch, ETA ~22:35 UTC unless early-stop); next: baseline eval (run_eval.sh) → issue #2 small-dataset test → v1.1.0 fix run
 2026-09-23 20:33:11 UTC - heartbeat
 2026-09-23 20:43:58 UTC - heartbeat
 2026-09-23 20:56:28 UTC - heartbeat
@@ -261,9 +261,9 @@
 2026-09-24T10:34:38Z issue-15
 2026-09-24T10:37:05Z issue-16
 2026-09-24T10:38:20Z fix_v11-launch-7-15-16 |
-| ⚙️ Load · uptime | `1.18 0.86 2.84` · 21 hours, 6 minutes — 32 cores, 62 GiB, no GPU |
-| 💾 RAM used/total | `2243/64295 MB` |
+| ⚙️ Load · uptime | `19.81 6.13 4.52` · 21 hours, 7 minutes — 32 cores, 62 GiB, no GPU |
+| 💾 RAM used/total | `5926/64295 MB` |
 | 🔗 Session | `ses_f31799c77ffeTq9gcYgqc4hBhg` |
-| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `c95c665 status: yes — fix_v11_20260924 epoch —/200 loss — acc — model bi` |
-| 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `3208264 B` — every run, command & tool result |
+| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `3d2a9e2 status: yes — fix_v11_20260924 epoch —/200 loss — acc — model bi` |
+| 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `3213275 B` — every run, command & tool result |
 | 📈 Timeline | [status/status.log](status/status.log) |

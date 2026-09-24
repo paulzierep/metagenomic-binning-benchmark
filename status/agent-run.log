@@ -36764,3 +36764,75 @@ It would be good to add some plots and table that are automatically updated for 
 === comments ===
 [2026-09-24T09:30:22Z] The harness already records one machine-readable CSV per completed run and keeps the living comparison table in `README.md`; raw CheckM2/CheckM tables and run metadata are mirrored under `runs/`. Automatic bar/swarm/heatmap plots are not implemented yet. I’ll treat plot generation and same-dataset c
 > build · big-pickle
+#12 asks for automatic per-bin bar/swarm/heatmap plots, comparable across runs on the same dataset. Writing the plot generator (matplotlib lives in the comebin env):
+[0m← [0mWrite /vol/data/repos/metagenomic-binning-benchmark/scripts/make_per_bin_plots.py
+Created file successfully: /vol/data/repos/metagenomic-binning-benchmark/scripts/make_per_bin_plots.py
+> build · big-pickle
+Running the plot generator (comedbin env's matplotlib) for the three evaluated runs:
+[0m$ [0mB=/vol/data/benchmark/runs; MM=/vol/data/tools/bin/micromamba; cd /vol/data/repos/metagenomic-binning-benchmark && $MM run -p /vol/data/envs/comebin python scripts/make_per_bin_plots.py -k all-runs "$B/baseline_rerun_autorestart1" "$B/small_test_v4" "$B/medium_v11_20260924"; echo "=== outputs ==="; ls -la runs/*/per_bins.png results/figures/ 2>/dev/null; file runs/baseline_rerun_autorestart1/per_bins.png 2>/dev/null | cut -c1-80
+baseline_rerun_autorestart1: per-bin bar chart -> runs/baseline_rerun_autorestart1/per_bins.png
+small_test_v4: per-bin bar chart -> runs/small_test_v4/per_bins.png
+medium_v11_20260924: per-bin bar chart -> runs/medium_v11_20260924/per_bins.png
+comparison scatter (all-runs) -> results/figures/comp_vs_cont_all-runs.png
+=== outputs ===
+-rw-rw-r-- 1 ubuntu ubuntu 46083 Sep 24 10:42 runs/baseline_rerun_autorestart1/per_bins.png
+-rw-rw-r-- 1 ubuntu ubuntu 26116 Sep 24 10:42 runs/medium_v11_20260924/per_bins.png
+-rw-rw-r-- 1 ubuntu ubuntu 23370 Sep 24 10:42 runs/small_test_v4/per_bins.png
+
+results/figures/:
+total 60
+drwxrwxr-x 2 ubuntu ubuntu  4096 Sep 24 10:42 .
+drwxrwxr-x 3 ubuntu ubuntu  4096 Sep 24 10:42 ..
+-rw-rw-r-- 1 ubuntu ubuntu 50547 Sep 24 10:42 comp_vs_cont_all-runs.png
+runs/baseline_rerun_autorestart1/per_bins.png: PNG image data, 3276 x 676, 8-bit
+> build · big-pickle
+Verifying the comparison scatter renders correctly:
+[0m→ [0mRead /vol/data/repos/metagenomic-binning-benchmark/results/figures/comp_vs_cont_all-runs.png 
+> build · big-pickle
+[0m$ [0mMM=/vol/data/tools/bin/micromamba; cd /vol/data/repos/metagenomic-binning-benchmark; $MM run -p /vol/data/envs/comebin python - <<'PY'
+from PIL import Image
+import os, sys
+files = [
+ "runs/baseline_rerun_autorestart1/per_bins.png",
+ "runs/small_test_v4/per_bins.png",
+ "runs/medium_v11_20260924/per_bins.png",
+ "results/figures/comp_vs_cont_all-runs.png",
+]
+for f in files:
+    im = Image.open(f).convert("RGB")
+    px = list(im.resize((min(80, im.width), min(60, im.height))).getdata())
+    distinct = len(set(px))
+    print(f"{f}: {im.size}, distinct-colors-in-downsample={distinct}")
+PY
+<stdin>:11: DeprecationWarning: Image.Image.getdata is deprecated and will be removed in Pillow 14 (2027-10-15). Use get_flattened_data instead.
+runs/baseline_rerun_autorestart1/per_bins.png: (3276, 676), distinct-colors-in-downsample=808
+runs/small_test_v4/per_bins.png: (1040, 676), distinct-colors-in-downsample=306
+runs/medium_v11_20260924/per_bins.png: (1040, 676), distinct-colors-in-downsample=561
+results/figures/comp_vs_cont_all-runs.png: (1040, 780), distinct-colors-in-downsample=269
+> build · big-pickle
+All plots are valid (rich content). Adding figure links to docs/11 and README, then committing:
+[0m$ [0mgrep -n "per_bin\|per-bin\|## " /vol/data/repos/metagenomic-binning-benchmark/docs/11-run-results.md | head -20; echo "=== README Results ==="; sed -n '/## Results/,/## Documentation/p' /vol/data/repos/metagenomic-binning-benchmark/README.md
+14:## Run history — what happened and what's next
+18:### COMEBin-executing attempts
+32:| [`medium_v11_20260924`](../runs/medium_v11_20260924/comebin_run.log) — 2026-09-24 09:25:50 → 10:04:36 | [95f5ea8](https://github.com/paulzierep/COMEBin/commit/95f5ea820f9a4e76f5c2911c0b5ed507ab67b015) | **✅ Complete.** 200/200 epochs, 61.23% Top1, 16 non-empty bins in 2,326 s. CheckM2: 35.93% mean completeness / 4.67% contamination (MQ=2). CheckM v1: 33.83% / 6.03% (MQ=3). | Evaluation completed with `scripts/run_eval.sh`; see the [aggregate CSV](../results/medium_v11_20260924.csv) and [CheckM2 per-bin stats](../medium_v11_20260924_checkm2_stats.csv). |
+34:### Guard-only launches
+49:## Data preservation and Zenodo
+53:## How to resume (for a human or a restarted agent)
+61:## References
+=== README Results ===
+## Results
+
+- Aggregate rows (per run): [`results/`](results/) (`results/<run>.csv`, one
+  machine-readable row per run: wall time, bins, CheckM2 + CheckM v1 means and
+  HQ/MQ counts).
+- Per-bin quality (issue #15): `runs/<run>/per_bin_results.csv` — one row per
+  bin joining CheckM2 and CheckM v1 completeness / contamination.
+- Full comparison table + run history:
+  [`docs/11-run-results.md`](docs/11-run-results.md).
+- Eval harness: [`scripts/run_eval.sh`](scripts/run_eval.sh) (CheckM2 + CheckM v1,
+  py3.10 + `LD_LIBRARY_PATH`), aggregate generator
+  [`scripts/make_results_csv.py`](scripts/make_results_csv.py), per-bin
+  generator [`scripts/make_per_bin_csv.py`](scripts/make_per_bin_csv.py).
+
+## Documentation index
+> build · big-pickle
