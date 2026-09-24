@@ -31030,3 +31030,97 @@ if [[ $? -ne 0 ]] ; then echo "Something went wrong with running generating augm
 folder=${output_dir}/comebin_res
 keyword="embeddings.tsv"
 > build · ling-3.0-flash-fin-free
+[0m$ [0m# Run COMEBin directly from the COMEBin directory (like run_comebin.sh does)
+export MM=/vol/data/tools/bin/micromamba
+export ENV=/vol/data/envs/comebin
+export PATH="/vol/data/envs/comebin/bin:$PATH"
+export DATA=/vol/data/datasets/comebin_test_data
+export RUNDIR="/vol/data/benchmark/runs/baseline_rerun_autorestart1"
+export SEED_FILE="$DATA/BATS_SAMN07137077_METAG.scaffolds.min500.fasta.f1k.fasta.bacar_marker.2quarter_lencutoff_1001.seed"
+export EMB_FILE="$RUNDIR/comebin_out/comebin_res/embeddings.tsv"
+export CONTIG_FILE="$DATA/BATS_SAMN07137077_METAG.scaffolds.min500.fasta.f1k.fasta"
+export OUTPUT_PATH="$RUNDIR/comebin_out"
+
+cd /vol/data/repos/COMEBin/COMEBin
+PYTHONPATH=/vol/data/repos/COMEBin $MM run -p $ENV python main.py bin \
+    --contig_file "$CONTIG_FILE" \
+    --seed_file "$SEED_FILE" \
+    --emb_file "$EMB_FILE" \
+    --output_path "$OUTPUT_PATH" \
+    --num_threads 32 \
+    --contig_len 1001 2>&1 | tail -30
+echo "--- exit code: $? ---"
+echo "---"
+# Check if bins were created
+find "$RUNDIR/comebin_out/comebin_res/cluster_res/" -name "*.fasta" -o -name "*.fa" -o -name "*.fna" 2>/dev/null | head -20
+echo "---"
+ls "$RUNDIR/comebin_out/comebin_res/cluster_res/unitem_profile/binning_methods/" 2>/dev/null
+echo "---"
+find "$RUNDIR/comebin_out/comebin_res/cluster_res/" -type d -name "*bins*" 2>/dev/null
+echo "---"
+ls -la "$RUNDIR/comebin_out/comebin_res/cluster_res/unitem_profile/binning_methods/weight_seed_kmeans_k_0_result.tsv/" 2>/dev/null
+Command exceeded timeout of 120000 ms. Retry with a larger timeout if the command is expected to take longer.
+> build · ling-3.0-flash-fin-free
+[0m$ [0m# Run clustering in background since it may take a while
+export MM=/vol/data/tools/bin/micromamba
+export ENV=/vol/data/envs/comebin
+export PATH="/vol/data/envs/comebin/bin:$PATH"
+export DATA=/vol/data/datasets/comebin_test_data
+export RUNDIR="/vol/data/benchmark/runs/baseline_rerun_autorestart1"
+export SEED_FILE="$DATA/BATS_SAMN07137077_METAG.scaffolds.min500.fasta.f1k.fasta.bacar_marker.2quarter_lencutoff_1001.seed"
+export EMB_FILE="$RUNDIR/comebin_out/comebin_res/embeddings.tsv"
+export CONTIG_FILE="$DATA/BATS_SAMN07137077_METAG.scaffolds.min500.fasta.f1k.fasta"
+export OUTPUT_PATH="$RUNDIR/comebin_out"
+
+cd /vol/data/repos/COMEBin/COMEBin
+nohup bash -c 'PYTHONPATH=/vol/data/repos/COMEBin $MM run -p $ENV python main.py bin \
+    --contig_file "$CONTIG_FILE" \
+    --seed_file "$SEED_FILE" \
+    --emb_file "$EMB_FILE" \
+    --output_path "$OUTPUT_PATH" \
+    --num_threads 32 \
+    --contig_len 1001' > /tmp/comebin_binning.log 2>&1 &
+echo "Started binning in background, PID: $!"
+echo "$!" > /tmp/comebin_binning.pid
+echo "---"
+sleep 5
+tail -5 /tmp/comebin_binning.log 2>/dev/null || echo "No log yet"
+Started binning in background, PID: 490239
+---
+2026-09-24 08:27:47,888 - N50:	1623
+2026-09-24 08:27:47,925 - Run weighted seed k-means for obtaining the SCG information of the contigs within a manageable time during the final step.
+2026-09-24 08:27:47,925 - Bin_numbers:	[25]
+2026-09-24 08:27:47,925 - 25
+2026-09-24 08:27:49,219 - Time cost:	1.2774384021759033s
+> build · ling-3.0-flash-fin-free
+[0m$ [0m# Check if the binning completed
+tail -20 /tmp/comebin_binning.log 2>/dev/null
+echo "---"
+# Check if the process is still running
+cat /tmp/comebin_binning.pid 2>/dev/null && ps $(cat /tmp/comebin_binning.pid) 2>/dev/null && echo "Still running" || echo "Process finished"
+echo "---"
+# Check for bins
+find /vol/data/benchmark/runs/baseline_rerun_autorestart1/comebin_out/comebin_res/cluster_res/ -name "*.fasta" -o -name "*.fa" -o -name "*.fna" 2>/dev/null | head -20
+echo "---"
+ls /vol/data/benchmark/runs/baseline_rerun_autorestart1/comebin_out/comebin_res/cluster_res/unitem_profile/binning_methods/weight_seed_kmeans_k_0_result.tsv/ 2>/dev/null
+echo "---"
+find /vol/data/benchmark/runs/baseline_rerun_autorestart1/comebin_out/comebin_res/cluster_res/ -type d -name "*bins*" 2>/dev/null
+2026-09-24 08:27:47,036 - bin
+2026-09-24 08:27:47,037 - Start clustering.
+2026-09-24 08:27:47,888 - N50:	1623
+2026-09-24 08:27:47,925 - Run weighted seed k-means for obtaining the SCG information of the contigs within a manageable time during the final step.
+2026-09-24 08:27:47,925 - Bin_numbers:	[25]
+2026-09-24 08:27:47,925 - 25
+2026-09-24 08:27:49,219 - Time cost:	1.2774384021759033s
+2026-09-24 08:27:50,430 - knn query time cost:	1.1731898784637451s
+---
+490239
+    PID TTY      STAT   TIME COMMAND
+ 490239 ?        Sl     0:00 /vol/data/tools/bin/micromamba run -p /vol/data/envs/comebin python main.py bin --contig_file /vol/data/datasets/comebin_test_data/BATS_SAMN07137077_METAG.scaffolds.min500.fasta.f1k.fasta --seed_file /vol/data/datasets/comebin_test_data/BATS_SAMN07137077_METAG.scaffolds.min500.fasta.f1k.fasta.bacar_marker.2quarter_lencutoff_1001.seed --emb_file /vol/data/benchmark/runs/baseline_rerun_autorestart1/comebin_out/comebin_res/embeddings.tsv --output_path /vol/data/benchmark/runs/baseline_rerun_autorestart1/comebin_out --num_threads 32 --contig_len 1001
+Still running
+---
+---
+checkm_ar
+checkm_bac
+---
+> build · ling-3.0-flash-fin-free
