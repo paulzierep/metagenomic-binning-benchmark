@@ -30836,3 +30836,197 @@ Index: /vol/data/repos/COMEBin/COMEBin/cluster.py
 
 > build · ling-3.0-flash-fin-free
 Let me verify the fix and re-run the clustering step
+[0m$ [0m# Verify the import fix works
+/vol/data/tools/bin/micromamba run -p /vol/data/envs/comebin python -c "
+import sys
+sys.path.insert(0, '/vol/data/repos/COMEBin')
+import COMEBin.cluster
+print('cluster.py imports work')
+" 2>&1
+echo "---"
+# Also check if n_jobs is used anywhere else in cluster.py
+grep -n "n_jobs" /vol/data/repos/COMEBin/COMEBin/cluster.py
+echo "---"
+# Now re-run the binning step
+export MM=/vol/data/tools/bin/micromamba
+export ENV=/vol/data/envs/comebin
+export PATH="/vol/data/envs/comebin/bin:$PATH"
+export SRC=/vol/data/repos/COMEBin
+export DATA=/vol/data/datasets/comebin_test_data
+export RUNDIR="/vol/data/benchmark/runs/baseline_rerun_autorestart1"
+export SEED_FILE="$DATA/BATS_SAMN07137077_METAG.scaffolds.min500.fasta.f1k.fasta.bacar_marker.2quarter_lencutoff_1001.seed"
+export EMB_FILE="$RUNDIR/comebin_out/comebin_res/embeddings.tsv"
+export CONTIG_FILE="$DATA/BATS_SAMN07137077_METAG.scaffolds.min500.fasta.f1k.fasta"
+export OUTPUT_PATH="$RUNDIR/comebin_out"
+
+cd /vol/data/repos/COMEBin/COMEBin
+$MM run -p $ENV python -c "
+import os, sys, logging
+sys.path.insert(0, '/vol/data/repos/COMEBin')
+os.chdir('/vol/data/repos/COMEBin/COMEBin')
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(message)s')
+from main import main
+sys.argv = ['comebin', 'bin',
+    '--contig_file', '$CONTIG_FILE',
+    '--seed_file', '$SEED_FILE',
+    '--emb_file', '$EMB_FILE',
+    '--output_path', '$OUTPUT_PATH',
+    '--num_threads', '32',
+    '--contig_len', '1001']
+main()
+" 2>&1 | tail -30
+echo "---"
+# Check if bins were created
+find "$RUNDIR/comebin_out/comebin_res/cluster_res/" -name "*.fasta" -o -name "*.fa" -o -name "*.fna" 2>/dev/null | head -20
+echo "---"
+ls "$RUNDIR/comebin_out/comebin_res/cluster_res/unitem_profile/binning_methods/" 2>/dev/null
+echo "---"
+# Check for bins directory
+find "$RUNDIR/comebin_out/comebin_res/cluster_res/" -type d -name "*bins*" 2>/dev/null
+echo "---"
+# Check the weight_seed_kmeans result
+ls -la "$RUNDIR/comebin_out/comebin_res/cluster_res/unitem_profile/binning_methods/weight_seed_kmeans_k_0_result.tsv/" 2>/dev/null
+Traceback (most recent call last):
+  File "<string>", line 4, in <module>
+  File "/vol/data/repos/COMEBin/COMEBin/cluster.py", line 18, in <module>
+    from utils import get_length, calculateN50, save_result
+ModuleNotFoundError: No module named 'utils'
+---
+---
+
+
+Command exceeded timeout of 120000 ms. Retry with a larger timeout if the command is expected to take longer.
+> build · ling-3.0-flash-fin-free
+The relative imports need fixing. Let me check and fix them
+[0m$ [0m# Check all relative imports in COMEBin files
+grep -n "^from utils import\|^from scripts\|^from train_\|^from get_final" /vol/data/repos/COMEBin/COMEBin/cluster.py /vol/data/repos/COMEBin/COMEBin/main.py /vol/data/repos/COMEBin/COMEBin/utils.py 2>/dev/null | head -20
+echo "---"
+# Check if there's an __init__.py
+ls /vol/data/repos/COMEBin/COMEBin/__init__.py 2>/dev/null && echo "has __init__.py" || echo "no __init__.py"
+echo "---"
+# Check the main.py imports
+head -15 /vol/data/repos/COMEBin/COMEBin/main.py
+/vol/data/repos/COMEBin/COMEBin/cluster.py:18:from utils import get_length, calculateN50, save_result
+/vol/data/repos/COMEBin/COMEBin/cluster.py:19:from scripts.gen_bins_from_tsv import gen_bins as gen_bins_from_tsv
+/vol/data/repos/COMEBin/COMEBin/main.py:7:from train_CLmodel import train_CLmodel
+---
+/vol/data/repos/COMEBin/COMEBin/__init__.py
+has __init__.py
+---
+import argparse
+import logging
+import os
+import pandas as pd
+
+from comebin_version import __version__ as ver
+from train_CLmodel import train_CLmodel
+from cluster import cluster
+
+
+def arguments():
+    """
+    COMEBin: A contig binning method based on Contrastive Multi-view representation learning.
+
+    :return: Parsed command-line arguments
+> build · ling-3.0-flash-fin-free
+Let me run COMEBin properly as a module with the correct Python path
+[0m$ [0m# Run COMEBin as a module with proper Python path
+export MM=/vol/data/tools/bin/micromamba
+export ENV=/vol/data/envs/comebin
+export PATH="/vol/data/envs/comebin/bin:$PATH"
+export DATA=/vol/data/datasets/comebin_test_data
+export RUNDIR="/vol/data/benchmark/runs/baseline_rerun_autorestart1"
+export SEED_FILE="$DATA/BATS_SAMN07137077_METAG.scaffolds.min500.fasta.f1k.fasta.bacar_marker.2quarter_lencutoff_1001.seed"
+export EMB_FILE="$RUNDIR/comebin_out/comebin_res/embeddings.tsv"
+export CONTIG_FILE="$DATA/BATS_SAMN07137077_METAG.scaffolds.min500.fasta.f1k.fasta"
+export OUTPUT_PATH="$RUNDIR/comebin_out"
+
+cd /vol/data/repos/COMEBin
+# Use python -m COMEBin.main bin with proper PYTHONPATH
+PYTHONPATH=/vol/data/repos/COMEBin $MM run -p $ENV python -m COMEBin.main bin \
+    --contig_file "$CONTIG_FILE" \
+    --seed_file "$SEED_FILE" \
+    --emb_file "$EMB_FILE" \
+    --output_path "$OUTPUT_PATH" \
+    --num_threads 32 \
+    --contig_len 1001 2>&1 | tail -30
+echo "--- exit code: $? ---"
+Traceback (most recent call last):
+  File "/vol/data/envs/comebin/lib/python3.10/runpy.py", line 196, in _run_module_as_main
+    return _run_code(code, main_globals, None,
+  File "/vol/data/envs/comebin/lib/python3.10/runpy.py", line 86, in _run_code
+    exec(code, run_globals)
+  File "/vol/data/repos/COMEBin/COMEBin/main.py", line 6, in <module>
+    from comebin_version import __version__ as ver
+ModuleNotFoundError: No module named 'comebin_version'
+--- exit code: 0 ---
+> build · ling-3.0-flash-fin-free
+[0m$ [0m# Check the package structure
+ls /vol/data/repos/COMEBin/COMEBin/ | head -20
+echo "---"
+cat /vol/data/repos/COMEBin/COMEBin/comebin_version.py 2>/dev/null | head -5 || echo "no comebin_version.py"
+echo "---"
+ls /vol/data/repos/COMEBin/COMEBin/comebin* 2>/dev/null
+echo "---"
+# Check how run_comebin.sh handles Python path
+grep "python\|PYTHONPATH\|cd\|import" /vol/data/repos/COMEBin/COMEBin/run_comebin.sh | head -20
+echo "---"
+# Check the full run_comebin.sh to see how it calls comebin
+grep -A5 "python\|comebin\|main" /vol/data/repos/COMEBin/COMEBin/run_comebin.sh | head -30
+__init__.py
+__pycache__
+cluster.py
+comebin_version.py
+data_aug
+filter_small_bins.py
+get_augfeature.py
+get_final_result.py
+main.py
+models
+run_comebin.sh
+scripts
+simclr.py
+train_CLmodel.py
+utils.py
+---
+__version__ = '1.0.2'---
+/vol/data/repos/COMEBin/COMEBin/comebin_version.py
+---
+        python main.py generate_aug_data --contig_file ${contig_file} \
+    python main.py generate_aug_data --contig_file ${contig_file} \
+        python main.py train --data ${output_dir}/data_augmentation \
+    python main.py train --data ${output_dir}/data_augmentation \
+python main.py bin --contig_file ${contig_file} \
+python main.py get_result --contig_file ${contig_file} \
+---
+  echo "Usage: bash run_comebin.sh [options] -a contig_file -o output_dir -p bam_file_path"
+	echo "Options:"
+	echo ""
+	echo "  -a STR          metagenomic assembly file"
+	echo "  -o STR          output directory"
+	echo "  -p STR          path to access to the bam files"
+--
+	echo "  -e INT          embedding size for comebin network (default=2048)"
+	echo "  -c INT          embedding size for coverage network (default=2048)"
+	echo "  -b INT          batch size for training process (default=1024)"
+	echo "";}
+
+
+--
+        python main.py generate_aug_data --contig_file ${contig_file} \
+        --out_augdata_path ${output_dir}/data_augmentation \
+        --n_views ${n_views} --bam_file_path ${bam_file_path} --num_threads ${num_threads}
+    else
+        echo "No need to run data augmentation."
+    fi
+--
+    python main.py generate_aug_data --contig_file ${contig_file} \
+    --out_augdata_path ${output_dir}/data_augmentation \
+    --n_views ${n_views} --bam_file_path ${bam_file_path} --num_threads ${num_threads}
+fi
+
+if [[ $? -ne 0 ]] ; then echo "Something went wrong with running generating augmentation data. Exiting.";exit 1; fi
+--
+folder=${output_dir}/comebin_res
+keyword="embeddings.tsv"
+> build · ling-3.0-flash-fin-free
