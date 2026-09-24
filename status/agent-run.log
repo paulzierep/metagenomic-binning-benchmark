@@ -19581,3 +19581,52 @@ drwxrwxr-x 9 ubuntu ubuntu     4096 Sep 23 23:37 ..
 === aug0 cov csv rows ===
 29435 /vol/data/benchmark/runs/small_test_v2/comebin_out/data_augmentation/depth/reads.bam_0_depth.txt_aug0_data_cov.csv
 > build · mimo-v2.6-flash-free
+Root cause fully closed: `bedtools genomecov **-bga**` emits zero-depth rows for **all 29,434 header refs**, and `calculate_coverage` (aug0 path) has no input-contig filter. Since reads exist on only our 300 contigs, a **header-only reheader** fixes the dataset for stock runs. Verifying before touching anything:
+[0m$ [0mdate -u +"%Y-%m-%d %H:%M:%S UTC - dataset: verifying BAM ref set equality before reheader" >> /vol/data/benchmark/.activity
+touch /vol/data/benchmark/.heartbeat
+{"exit":0,"truncated":false,"output":"","status":"completed"}
+[0m$ [0mR=/vol/data/benchmark/runs/small_test_v2
+echo "v2 epochs: $(grep -c '^DEBUG:root:Epoch' $R/comebin_out/comebin_res/training.log 2>/dev/null || echo 0)"
+tail -3 $R/comebin_run.log | tr '\r' '\n' | tail -5
+echo "=== nonzero refs vs contig_names set equality ==="
+MM=/vol/data/tools/bin/micromamba
+D=/vol/data/datasets/comebin_small
+$MM run -p /vol/data/envs/comebin samtools idxstats $D/bamfiles/reads.bam | awk '$3>0{print $1}' | sort > /tmp/nonzero_refs.txt
+sort $D/contig_names.txt > /tmp/want_refs.txt
+comm -3 /tmp/nonzero_refs.txt /tmp/want_refs.txt | head -5
+echo "diff-lines: $(comm -3 /tmp/nonzero_refs.txt /tmp/want_refs.txt | wc -l)"
+v2 epochs: 0
+    length_weight.append(lengths[seq_id])
+KeyError: 'BATS_SAMN07137077_METAG-scaffold_22978'
+Something went wrong with running training network. Exiting.
+=== nonzero refs vs contig_names set equality ===
+diff-lines: 0
+> build · mimo-v2.6-flash-free
+Verified: v2 died at epoch 0 exactly at the KeyError, and reads exist on **exactly** the 300 target contigs. Reheadering the BAM (read set untouched — only the header shrinks):
+[0m$ [0mdate -u +"%Y-%m-%d %H:%M:%S UTC - dataset: reheadering comebin_small BAM to 300-contig header (original preserved as reads.fullheader.bam)" >> /vol/data/benchmark/.activity
+touch /vol/data/benchmark/.heartbeat
+{"exit":0,"truncated":false,"output":"","status":"completed"}
+[0m$ [0mset -e
+D=/vol/data/datasets/comebin_small/bamfiles
+MM=/vol/data/tools/bin/micromamba
+ST=$MM" run -p /vol/data/envs/comebin"
+# 1. original header
+samtools() { $MM run -p /vol/data/envs/comebin samtools "$@"; }
+samtools view -H "$D/reads.bam" > /tmp/orig_header.sam
+# 2. filter @SQ to the 300 contigs, keep all other header lines
+awk 'BEGIN{while((getline l < "/tmp/want_refs.txt")>0) want[l]=1}
+     /^@SQ/{ for(i=2;i<=NF;i++) if($i ~ /^SN:/){ sn=substr($i,4); if(!(sn in want)) next } }
+     {print}' /tmp/orig_header.sam > /tmp/new_header.sam
+echo "orig @SQ: $(grep -c '^@SQ' /tmp/orig_header.sam)  new @SQ: $(grep -c '^@SQ' /tmp/new_header.sam)"
+# 3. preserve original, write reheadered in place
+mv "$D/reads.bam" "$D/reads.fullheader.bam"
+samtools reheader /tmp/new_header.sam "$D/reads.fullheader.bam" > "$D/reads.bam"
+samtools index "$D/reads.bam"
+echo "=== verify ==="
+samtools view -H "$D/reads.bam" | grep -c '^@SQ'
+samtools idxstats "$D/reads.bam" | awk '$3>0' | wc -l
+md5sum "$D/reads.bam" "$D/reads.fullheader.bam" | tee /tmp/bam_md5s.txt
+ls -la "$D"
+orig @SQ: 29434  new @SQ: 300
+samtools index: failed to create index for "/vol/data/datasets/comebin_small/bamfiles/reads.bam": Numerical result out of range
+> build · mimo-v2.6-flash-free

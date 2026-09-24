@@ -3,10 +3,10 @@
 | | |
 |---|---|
 | Status | 🟢 `running` |
-| ⏱ Updated (Europe/Berlin) | `2026-09-24T03:00 CEST` |
-| 🏃 Live benchmark | `baseline_rerun_autorestart1` — **epoch 9/200** · loss `3.7802774906158447` · top1 acc `77.744140625` (log 11s fresh) |
+| ⏱ Updated (Europe/Berlin) | `2026-09-24T03:02 CEST` |
+| 🏃 Live benchmark | `baseline_rerun_autorestart1` — **epoch 9/200** · loss `3.7802774906158447` · top1 acc `77.744140625` (log 132s fresh) |
 | 🧠 Model (last turn) | `mimo-v2.6-flash-free` (watchdog rotates to free models on quota) |
-| 📌 Agent note · **1 min old** | Baseline training epoch ~109/200 (~2.4 min/epoch, ETA ~22:35 UTC unless early-stop); next: baseline eval (run_eval.sh) → issue #2 small-dataset test → v1.1.0 fix run
+| 📌 Agent note · **0 min old** | Baseline training epoch ~109/200 (~2.4 min/epoch, ETA ~22:35 UTC unless early-stop); next: baseline eval (run_eval.sh) → issue #2 small-dataset test → v1.1.0 fix run
 2026-09-23 20:33:11 UTC - heartbeat
 2026-09-23 20:43:58 UTC - heartbeat
 2026-09-23 20:56:28 UTC - heartbeat
@@ -61,10 +61,13 @@
 2026-09-24 00:29:27 UTC
 2026-09-24 00:50:45 UTC - triage: investigating small_test_v2 KeyError root cause for issue #2
 2026-09-24 00:54:48 UTC - issue #2 root-cause comment posted
-2026-09-24 00:58:23 UTC - dataset: building reference-consistent subset BAM for comebin_small (samtools -L contigs.bed) |
-| ⚙️ Load · uptime | `32.33 31.78 25.18` · 11 hours, 24 minutes — 32 cores, 62 GiB, no GPU |
-| 💾 RAM used/total | `6034/64295 MB` |
+2026-09-24 00:58:23 UTC - dataset: building reference-consistent subset BAM for comebin_small (samtools -L contigs.bed)
+2026-09-24 01:00:04 UTC - dataset: verifying BAM ref set equality before reheader
+2026-09-24 01:00:49 UTC - dataset: reheadering comebin_small BAM to 300-contig header (original preserved as reads.fullheader.bam)
+2026-09-24T01:01:51Z [supervisor] restored comebin_small reads.bam after failed header-only reheader; preserved full-header BAM and fixed contigs.bed to explicit lengths; do not treat reheader as verified |
+| ⚙️ Load · uptime | `32.11 31.88 26.02` · 11 hours, 26 minutes — 32 cores, 62 GiB, no GPU |
+| 💾 RAM used/total | `7163/64295 MB` |
 | 🔗 Session | `ses_f31799c77ffeTq9gcYgqc4hBhg` |
-| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `95ccc16 status: yes — baseline_rerun_autorestart1 epoch 8/200 loss 3.856290340` |
-| 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `1368800 B` — every run, command & tool result |
+| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `d5fb30c status: yes — baseline_rerun_autorestart1 epoch 9/200 loss 3.780277490` |
+| 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `1371985 B` — every run, command & tool result |
 | 📈 Timeline | [status/status.log](status/status.log) |
