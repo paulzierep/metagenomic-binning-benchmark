@@ -45806,3 +45806,248 @@ drwxrwxr-x  3 ubuntu ubuntu 4096 Sep 24 10:42 baseline_rerun_autorestart1
 drwxrwxr-x  4 ubuntu ubuntu 4096 Sep 23 15:11 baseline_unmodified
 drwxrwxr-x  4 ubuntu ubuntu 4096 Sep 24 10:43 fix_v11_20260924
 > build · big-pickle
+Let me check the remaining details: deployed bin scripts, generator main() interfaces, how eval was invoked, and whether the browser toolset has a screenshot/evaluate tool to verify mermaid rendering.
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && sed -n '80,140p' scripts/make_per_bin_plots.py; echo "===== per_bin_csv ====="; sed -n '1,50p' scripts/make_per_bin_csv.py
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("rundirs", nargs="+")
+    ap.add_argument("-k", "--key", help="comparison key (dataset) for the scatter")
+    args = ap.parse_args()
+
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    key = args.key or "all-runs"
+    figures = os.path.join(REPO, "results", "figures")
+    os.makedirs(figures, exist_ok=True)
+    groups = []
+    for rd in args.rundirs:
+        name = os.path.basename(rd.rstrip("/"))
+        run_dir = os.path.join(REPO, "runs", name)
+        rows = load_per_bin(run_dir, name)
+        if rows is None:
+            print(f"{name}: no runs/{name}/per_bin_results.csv, skipping")
+            continue
+        os.makedirs(run_dir, exist_ok=True)
+        out = os.path.join(run_dir, "per_bins.png")
+        run_bar_plot(plt, rows, out)
+        print(f"{name}: per-bin bar chart -> runs/{name}/per_bins.png")
+        groups.append((name, rows))
+    if len(groups) >= 1:
+        out = os.path.join(figures, f"comp_vs_cont_{key}.png")
+        comparison_scatter(plt, groups, out, key)
+        print(f"comparison scatter ({key}) -> results/figures/comp_vs_cont_{key}.png")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())===== per_bin_csv =====
+#!/usr/bin/env python3
+"""make_per_bin_csv.py <rundir> [<rundir> ...]
+
+Write one CheckM2 + CheckM v1 record per bin for each run into the
+*repository* runs/<name>/per_bin_results.csv (issue #15: per-bin results for
+all runs, stored under runs/ not the repo root).
+
+Inputs (under <rundir>, on the benchmark volume):
+  eval/checkm2/quality_report.tsv                     -> CheckM2 per-bin table
+  eval/checkm/out/storage/bin_stats_ext.tsv            -> CheckM v1 dict rows
+
+Bins are joined by id; a bin present in only one tool still gets a row with
+empty cells for the missing tool. Writes a single combined CSV per run.
+"""
+import ast
+import csv
+import os
+import sys
+
+
+def read_checkm2(path):
+    """Return {bin_id: dict} from a CheckM2 quality_report.tsv."""
+    out = {}
+    if not os.path.exists(path):
+        return out
+    with open(path, encoding="utf-8") as f:
+        rows = csv.DictReader(f, delimiter="\t")
+        for r in rows:
+            out[r["Name"]] = r
+    return out
+
+
+def read_checkm1(path):
+    """Return {bin_id: {'Completeness': .., 'Contamination': ..}} from CheckM v1
+    bin_stats_ext.tsv ('<bin-id>\\t<dict literal>' per line)."""
+    out = {}
+    if not os.path.exists(path):
+        return out
+    with open(path, encoding="utf-8") as f:
+        for line in f:
+            p = line.rstrip("\n").split("\t", 1)
+            if len(p) != 2:
+                continue
+            try:
+                rec = ast.literal_eval(p[1])
+            except (ValueError, SyntaxError):
+                continue
+            out[p[0]] = {
+                "Completeness": rec.get("Completeness"),
+                "Contamination": rec.get("Contamination"),
+[0m$ [0mls /vol/data/benchmark/bin/ 2>/dev/null; echo "---"; grep -rn "run_eval" /vol/data/benchmark/logs/agent-run.log /vol/data/benchmark/logs/supervisor-run.log 2>/dev/null | tail -5; echo "---gitignore---"; cd /vol/data/repos/metagenomic-binning-benchmark && cat .gitignore 2>/dev/null | head -30
+__pycache__
+agent-watchdog.sh
+benchmark-watchdog.sh
+issue-closer.sh
+make_medium_dataset.sh
+make_release_manifest.py
+make_results_csv.py
+make_small_dataset.sh
+meta-watchdog.sh
+parse_eval.py
+prep_cami2_marine.sh
+run_comebin_baseline.sh
+run_comebin_fix.sh
+run_eval.sh
+run_small_test.sh
+status-heartbeat.sh
+test_batch1.py
+---
+/vol/data/benchmark/logs/supervisor-run.log:45492:[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && cat -n scripts/run_eval.sh
+/vol/data/benchmark/logs/supervisor-run.log:45494:     2	# run_eval.sh <rundir> [threads] — CheckM2 + CheckM v1 bin-quality evaluation for a
+/vol/data/benchmark/logs/supervisor-run.log:45509:    17	RUN=${1:?usage: run_eval.sh <rundir> [threads]}
+/vol/data/benchmark/logs/supervisor-run.log:45749:| [`baseline_rerun_autorestart1`](runs/baseline_rerun_autorestart1/comebin_run.log) — 2026-09-24 00:30:01 → 07:15:28 | [904f649](https://github.com/paulzierep/COMEBin/commit/904f649ef5cbb4582a6f0e5ec8b0b1f45778d85b) | **✅ Complete.** 200/200 epochs, 99.19% Top1. Clustering fixed (hmmer 3.1b2 + sklearn KMeans). CheckM2: 60 bins, 25.01% comp, 2.98% cont. CheckM v1: 60 bins, 21.23% comp, 3.40% cont. | Evaluation done via `scripts/run_eval.sh`. See `eval/checkm2/quality_report.tsv` and `eval/checkm/out/storage/bin_stats_ext.tsv`. |
+/vol/data/benchmark/logs/supervisor-run.log:45752:| [`medium_v11_20260924`](../runs/medium_v11_20260924/comebin_run.log) — 2026-09-24 09:25:50 → 10:04:36 | [95f5ea8](https://github.com/paulzierep/COMEBin/commit/95f5ea820f9a4e76f5c2911c0b5ed507ab67b015) | **✅ Complete.** 200/200 epochs, 61.23% Top1, 16 non-empty bins in 2,326 s. CheckM2: 35.93% mean completeness / 4.67% contamination (MQ=2). CheckM v1: 33.83% / 6.03% (MQ=3). | Evaluation completed with `scripts/run_eval.sh`; see the [aggregate CSV](../results/medium_v11_20260924.csv) and the [per-bin tables](../runs/medium_v11_20260924/per_bin_results.csv) / [CheckM2 per-bin](../runs/medium_v11_20260924/checkm2_per_bin.csv). |
+---gitignore---
+# never commit large/raw benchmark artifacts — only parsed tables go to results/
+*.bam
+*.bai
+*.fasta
+*.fa
+*.fna
+*.zip
+*.pth.tar
+*.hmmout
+*.frag.*
+__pycache__/
+.DS_Store
+
+# local run dirs accidentally created inside the repo
+# NOTE: per-run DETAILED LOGS ARE TRACKED in the repo (runs/<run>/, synced by the
+# status-heartbeat every 10 min + at run end). Only the small log files are
+# committed; raw artifacts (models, augmented data/kmer tables, bins, bams) stay
+# on disk under /vol/data/benchmark/runs/.
+runs/*
+!runs/*/
+!runs/README.md
+!runs/*/run_meta.txt
+!runs/*/comebin_run.log
+!runs/*/logs/
+!runs/*/logs/resources.tsv
+!runs/*/logs/sampler.out
+!runs/*/comebin_res/
+!runs/*/comebin_res/comebin.log
+!runs/*/comebin_res/training.log
+!runs/*/comebin_res/config.yml
+> build · big-pickle
+Now I understand the generator interfaces. Let me verify a few more things: watchdog auto-eval wiring, stale license/DOI references, Zenodo token, and the current comment counts per issue (to avoid duplicates).
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && grep -n "run_eval" scripts/*.sh /vol/data/benchmark/bin/*.sh 2>/dev/null; echo "=== stale refs ==="; grep -rn "CC-BY-4.0\|CC BY 4.0\|new-version decision\|DOI Not Found\|doi_resolver" README.md docs/ 2>/dev/null | grep -v docs/11 | head; echo "=== zenodo token ==="; ls -la /home/ubuntu/.zenodo_token && wc -c /home/ubuntu/.zenodo_token
+scripts/run_eval.sh:2:# run_eval.sh <rundir> [threads] — CheckM2 + CheckM v1 bin-quality evaluation for a
+scripts/run_eval.sh:17:RUN=${1:?usage: run_eval.sh <rundir> [threads]}
+/vol/data/benchmark/bin/run_eval.sh:2:# run_eval.sh <rundir> [threads] — CheckM2 + CheckM v1 bin-quality evaluation for a
+/vol/data/benchmark/bin/run_eval.sh:17:RUN=${1:?usage: run_eval.sh <rundir> [threads]}
+=== stale refs ===
+docs/01-datasets.md:47:(version 1, CC BY 4.0). The record contains the verified
+docs/10-data-preservation.md:34:3. **Licensing:** an explicit data license (for example CC BY 4.0 when
+docs/10-data-preservation.md:97:  version 1, CC BY 4.0. The record was checked through a fresh unauthenticated
+=== zenodo token ===
+-rw------- 1 ubuntu ubuntu 61 Sep 24 07:18 /home/ubuntu/.zenodo_token
+61 /home/ubuntu/.zenodo_token
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && for n in 11 12 13 15 16; do echo "##### #$n #####"; gh issue view $n --json number,title,state,body,updatedAt,comments --template='{{.number}} [{{.state}}] {{.title}} upd={{.updatedAt}} body={{len .body}}c
+BODY: {{.body}}
+{{range .comments}}C: {{.author.login}} {{.createdAt}}: {{.body}}
+{{end}}' | head -40; echo; done
+##### #11 #####
+11 [OPEN] Baseline zero-bins failure chain: hmmer 3.4 vs pinned 3.1b2 poisons marker seed, unguarded cluster.py:368 read, wrapper masks the failure upd=2026-09-24T09:10:20Z body=3129c
+BODY: ## What happened
+
+The original pristine baseline (`987db95`, run `baseline_unmodified`) trained to epoch 175/200 but produced **zero bins and no evaluation**, and the wrapper's exit code did not reflect a failed binning stage. Root cause is a four-link failure chain, each link verified on disk.
+
+## Failure chain (all links verified)
+
+1. **Environment drift vs. the authors' pin.** `comebin_env.yaml` pins `hmmer=3.1b2`, but the live env had **hmmer 3.4**. `hmmsearch --cut_tc` against `auxiliary/bacar_marker.hmm` — a TC-less HMM — **hard-errors on 3.4** (zero hits), while **3.1b2 runs `--cut_tc` leniently and yields 2227 marker hits** (both measured directly).
+2. **Stale empty outputs poison the resume path.** The failed run left 0-byte `.bacar_marker.hmmout`/`.err`/`.out` files (dated 2026-09-23 21:30). `COMEBin/utils.py` `gen_seed` skips hmmsearch when `os.path.exists(hmmout)` — so on any retry the empty file makes the step look done and **no seed is ever regenerated**.
+3. **Unguarded read crashes the run.** `COMEBin/cluster.py:368` reads the marker seed unconditionally → `FileNotFoundError` after hours of training.
+4. **Wrapper masks the failure.** `run_comebin.sh` swallowed the clustering/get_result exit status, so the run could be recorded as successful while bins were missing. Our baseline runner now traps a missing bins dir and forces `rc=1` ([`8bb73dd`](https://github.com/paulzierep/metagenomic-binning-benchmark/commit/8bb73dd)).
+
+A secondary crash on the same path: sklearn ≥1.0 removed `KMeans(n_jobs=...)` and the private `sklearn.cluster._kmeans` import, so clustering died with `TypeError` even once seeds existed — fixed as COMEBin commit [`358ddd8`](https://github.com/paulzierep/COMEBin/commit/358ddd8) (also `c8f22e4` on `comebin-small-fix`).
+
+## Resolution
+
+* Env downgraded to **hmmer 3.1b2** (only package changed; before/after `micromamba list` snapshots in `runs/baseline_rerun_autorestart1/logs/env_list_{before,after}_hmmerfix.txt`).
+* Baseline runner gained `BENCHMARK_RESUME=1` (fresh seed regeneration, phase-1 archiving, bins-missing trap, hmmsearch version stamp) — benchmark-repo commit `8bb73dd`.
+* sklearn KMeans compat fix: COMEBin `358ddd8` / `c8f22e4`.
+* **Verified end-to-end:** rerun `baseline_rerun_autorestart1` completed 200/200 epochs (99.19% Top1), clustering + `get_result` produced **60 bins**, CheckM2 mean 25.01% completeness / 2.98% contamination.
+
+## Upstream status
+
+COMEBin **v1.1.0** already mitigates links 1+2 with `_hmm_models_have_tc_cutoffs()` → falls back to `-E 1e-5` when TC cutoffs are absent (plus empty-cache/seed guards), so `comebin-optimizations-v11` is immune to this chain. The remaining upstream gaps are the unguarded seed read and wrapper exit masking, which is why the fix chain is kept on our branches.
+
+Related eval-side environment issue: the standalone CheckM v1 env (Python 3.14) breaks `lineage_wf` worker pickling (`ERROR: Models must be parsed before identifying HMM hits` / instant failures); eval now uses the CheckM v1 inside the COMEBin env (Python 3.10) plus `LD_LIBRARY_PATH` — see `scripts/run_eval.sh`.
+
+
+##### #12 #####
+12 [OPEN] Improve reporting upd=2026-09-24T10:44:46Z body=264c
+BODY: It would be good to add some plots and table that are automatically updated for each benchmark run to the readme, showing bar / swarm plots or heatmaps that show performance comp. and cont for each bin, it woud be able to compare runs on the same benchmark dataset
+C: paulzierep 2026-09-24T09:30:22Z: The harness already records one machine-readable CSV per completed run and keeps the living comparison table in `README.md`; raw CheckM2/CheckM tables and run metadata are mirrored under `runs/`. Automatic bar/swarm/heatmap plots are not implemented yet. I’ll treat plot generation and same-dataset comparison as a follow-up after the active medium run, rather than claiming that reporting is complete.
+
+C: paulzierep 2026-09-24T10:44:46Z: Implemented — automatic per-bin plots, regenerated after every evaluated run:
+
+- **Per-run bar chart** `runs/<run>/per_bins.png`: one bar group per bin with CheckM2 + CheckM v1 completeness and contamination (e.g. [baseline](https://github.com/paulzierep/metagenomic-binning-benchmark/blob/main/runs/baseline_rerun_autorestart1/per_bins.png), [medium](https://github.com/paulzierep/metagenomic-binning-benchmark/blob/main/runs/medium_v11_20260924/per_bins.png)).
+- **Comparison scatter** [results/figures/comp_vs_cont_all-runs.png](https://github.com/paulzierep/metagenomic-binning-benchmark/blob/main/results/figures/comp_vs_cont_all-runs.png): one point per bin, x = contamination, y = completeness, color = run — directly comparable across runs on the same dataset (baseline vs fix_v11 once the full fix run completes).
+- Generator: `scripts/make_per_bin_plots.py <rundir>...` (matplotlib, comebin env); run automatically right after `make_per_bin_csv.py` in the post-eval workflow. Same-dataset comparison figures are keyed via `-k <dataset>`.
+
+Committed as `7c0d4bd`; README Results section links all figures.
+
+##### #13 #####
+13 [OPEN] CheckM v1: rc=0. upd=2026-09-24T09:35:42Z body=38c
+BODY: CheckM v1: rc=0. what does that mean ?
+C: paulzierep 2026-09-24T09:30:20Z: `rc=0` means the CheckM v1 process completed successfully and produced its output table; it does **not** mean every bin passed a quality threshold. For the verified 60-bin baseline, the table is `eval/checkm/out/storage/bin_stats_ext.tsv` and the parsed means are 21.23% completeness / 3.40% contamination. The small gate's 3-bin result is 29.08% / 0.71%. Quality flags such as HQ/MQ are calculated separately from those means.
+
+C: paulzierep 2026-09-24T09:31:40Z: why is then rc=0 reported in the readme and not eh results ?
+C: paulzierep 2026-09-24T09:35:42Z: You are right — that was a reporting bug, not the intended output. `rc=0` was a process-status field copied into the table before the CheckM v1 metrics had been parsed, so the README showed *how the command exited* instead of *what it measured*.
+
+It is now fixed on `main`:
+
+- **Performance table**: the CheckM column for `baseline_rerun_autorestart1` now reads **21.23% / 3.40%** (mean completeness / mean contamination over the 60 bins), matching the CheckM2 column next to it (25.01% / 2.98%).
+- **Run-history row** below the table: same fix — `CheckM v1: 60 bins, 21.23% comp, 3.40% cont` instead of `rc=0`.
+- **Machine-readable results**: [`results/baseline_rerun_autorestart1.csv`](results/baseline_rerun_autorestart1.csv) carries all four means plus HQ/MQ counts (CheckM2: 0 HQ / 7 MQ; CheckM v1: 0 HQ / 9 MQ).
+- Raw per-bin tables stay at `runs/baseline_rerun_autorestart1/eval/checkm2/quality_report.tsv` and `runs/baseline_rerun_autorestart1/eval/checkm/out/storage/bin_stats_ext.tsv`.
+
+Future rows are generated from the parsed tables by `scripts/make_results_csv.py`, so `rc=` values only ever live in `run_meta.txt` as provenance, never in the README results columns.
+
+
+##### #15 #####
+15 [OPEN] Improve results upd=2026-09-24T10:34:37Z body=41c
+BODY: Results should include stats for each bin
+C: paulzierep 2026-09-24T10:17:33Z: You're right — the README performance table should include per-bin statistics. I'll add a detailed per-bin breakdown in  (which already stores the full run table with all per-bin CheckM2/CheckM metrics). The top-level README will remain slim, linking to that doc. I'll also ensure  extracts HQ/MQ counts per run, so each CSV row is machine-readable and self-contained.
+C: paulzierep 2026-09-24T10:20:47Z: Implementation update (commit `30cc5a8`): the medium aggregate is now recorded in [`results/medium_v11_20260924.csv`](https://github.com/paulzierep/metagenomic-binning-benchmark/blob/main/results/medium_v11_20260924.csv), and a 16-row per-bin CheckM2 supplement is committed at [`medium_v11_20260924_checkm2_stats.csv`](https://github.com/paulzierep/metagenomic-binning-benchmark/blob/main/medium_v11_20260924_checkm2_stats.csv). The full run table remains in [`docs/11-run-results.md`](https://github.com/paulzierep/metagenomic-binning-benchmark/blob/main/docs/11-run-results.md); the top-level README stays slim. The raw CheckM v1 per-bin table is retained under `/vol/data/benchmark/runs/medium_v11_20260924/eval/`. Automatic plots/heatmaps are not implemented yet.
+
+C: paulzierep 2026-09-24T10:26:28Z: I want per bin results for all runs and store it in runs not the main folder
+C: paulzierep 2026-09-24T10:34:37Z: Done — per-bin results are now generated for **every run with evaluation data** and stored under `runs/<run>/`, not the repo root:
+
+- `runs/baseline_rerun_autorestart1/per_bin_results.csv` (60 bins)
+- `runs/small_test_v4/per_bin_results.csv` (3 bins)
+- `runs/medium_v11_20260924/per_bin_results.csv` (16 bins)
+
+Each row joins CheckM2 (completeness, contamination, genome size, contigs, N50) with CheckM v1 (completeness, contamination) by bin id. The means recomputed from these tables match the committed aggregate CSVs exactly (e.g. medium 35.93/4.67 CheckM2 and 33.83/6.03 CheckM v1; baseline 25.01/2.98 and 21.23/3.40).
+
+Generator: `scripts/make_per_bin_csv.py <rundir>` — it is re-run after every future run, so new benchmarks automatically get their per-bin table in `runs/`. The previously committed root-level `medium_v11_20260924_checkm2_stats.csv` was moved to `runs/medium_v11_20260924/checkm2_per_bin.csv` (superseded by the joined per_bin_results.csv but kept for provenance).
+
+For runs without successful checkm2/checkm evals (baseline_unmodified, baseline_rerun, small_test*1-3) there is no per-bin data to report — those produced 0 bins or failed before eval.
+
+##### #16 #####
+16 [OPEN] Model choice upd=2026-09-24T10:37:04Z body=69c
+BODY: Can we prioritize big pickle as the model, unless its token are off ?
+C: paulzierep 2026-09-24T10:17:43Z: Model prioritization is tracked per-run in  (HQ/MQ counts) and the status banner ( etc.). The free-model rotation policy ensures a different model is selected when quota is exhausted; there is no single 'big pickle' — each run records which model produced its results. This is documented in the run metadata and mirrored in the  CSVs.
+C: paulzierep 2026-09-24T10:37:04Z: Update: the watchdog now runs **big-pickle as the default model** whenever its tokens are available (commit `c42fa84`). `DEFAULT_MODEL="opencode/big-pickle"`; the free-model rotation only starts when big-pickle itself is quota-limited, and the rotation index resets to big-pickle after every healthy run. The status banner also now shows the active model (e.g. `model big-pickle`).
+> build · big-pickle
