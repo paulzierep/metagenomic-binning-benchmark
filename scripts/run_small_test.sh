@@ -119,6 +119,13 @@ cleanup() {
     kill "$SAMPLER_PID" 2>/dev/null || true
     wait "$SAMPLER_PID" 2>/dev/null || true
   fi
+  # On normal completion all foreground children are gone. Explicitly release
+  # the launch lock before a short functional test exits; a signal exit does not
+  # proactively declare the launch area free.
+  if [ "$rc" -ne 130 ]; then
+    flock -u 9 2>/dev/null || true
+    exec 9>&-
+  fi
   # A failed run stays registered so benchmark-watchdog can apply its restart
   # budget. Only a successful run clears its own registration.
   if [ "$rc" -eq 0 ] && [ -f "$ACTIVE" ]; then
@@ -150,8 +157,9 @@ SAMPLER_PID=$!
 
 # No other registered benchmark can exist (checked above), so the first training
 # process found is necessarily this run. Failure to capture it is non-fatal.
+# Do not let this late helper inherit the launch-lock FD after a short test exits.
 ( sleep 12; MCMD=$(pgrep -af 'main.py train' 2>/dev/null | head -1 | cut -d' ' -f2-); \
-  [ -n "$MCMD" ] && echo "cmd_train_py: $MCMD" >> "$RUNDIR/run_meta.txt" ) &
+  [ -n "$MCMD" ] && echo "cmd_train_py: $MCMD" >> "$RUNDIR/run_meta.txt" ) 9>&- &
 
 START=$(date +%s)
 set +e
