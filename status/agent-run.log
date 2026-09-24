@@ -27755,3 +27755,184 @@ the 'paulzierep/COMEBin' repository has disabled issues
 {"body":"Received ✅ — the Zenodo API token is verified and working against production Zenodo:\n\n- `GET /api/deposit/depositions` → 200 (account access confirmed)\n- `POST` empty deposition → 201 (write/deposit permissions confirmed), throwaway deposition 22933060 created and immediately deleted → 204, nothing left behind.\n\nThe token is kept only in a local secret file (mode 0600, outside the repository) and ","created":"2026-09-24T07:18:51Z","user":"paulzierep"}
 {"body":"Supervisor verification update (2026-09-24 07:25 UTC): the earlier `cb734384...` manifest predates the 2026-09-24 `contigs.bed` repair and is stale for the current `comebin_small` tree. I regenerated the canonical local and public manifests after that repair; both verify 6 core files / 98,013,522 bytes with every size/SHA-256 check passing, and the public copy contains no local paths. New hashes a","created":"2026-09-24T07:25:32Z","user":"paulzierep"}
 > build · mimo-v2.6-flash-free
+Baseline finished (`exit_code: 0`, 0 bins, no active processes) — PROGRESS CURRENT is stale, and issue #8's 07:25Z update is again the supervisor's own manifest note (no reply needed). Continuing the root-cause thread: upstream v1.1.0's `gen_seed` now uses `DEFAULT_HMM_EVALUE = 1e-5`, and our env pin says `hmmer=3.1b2` while we have 3.4. Testing the pinned version:
+[0m$ [0mcd /vol/data/repos/COMEBin
+echo "=== v1.1.0 gen_seed hmmsearch cmd ==="
+git show ad6ceb3:COMEBin/utils.py | grep -n -B5 -A25 "def gen_seed" | head -60
+echo "=== v1.1.0 hmmsearch invocation lines ==="
+git show ad6ceb3:COMEBin/utils.py | grep -n -B4 -A18 "hmmsearch" | head -60
+=== v1.1.0 gen_seed hmmsearch cmd ===
+217-            elif line.startswith('TC'):
+218-                tc_count += 1
+219-    return model_count > 0 and tc_count == model_count
+220-
+221-
+222:def gen_seed(logger, contig_file: str, threads: int, contig_length_threshold: int,
+223-             marker_name: str = "marker", quarter: str = "3quarter",
+224-             hmm_evalue: float = DEFAULT_HMM_EVALUE):
+225-    """
+226-    Generate seed sequences from contigs using FragGeneScan, HMMsearch, and custom markers.
+227-
+228-    :param contig_file: Path to the input contig file.
+229-    :param threads: The number of threads to use for processing.
+230-    :param contig_length_threshold: The contig length threshold.
+231-    :param marker_name: The marker name (default: "marker").
+232-    :param quarter: The quarter identifier (default: "3quarter").
+233-    :param hmm_evalue: Sequence E-value used when the marker HMM does not define TC cutoffs.
+234-    :return: The number of candidate seeds generated.
+235-    """
+236-    hmm_evalue = float(hmm_evalue)
+237-    if not np.isfinite(hmm_evalue) or hmm_evalue <= 0:
+238-        raise ValueError(f"hmm_evalue must be a finite positive number, got {hmm_evalue}.")
+239-
+240-    seed_result = Path(contig_file + f'.{marker_name}.{quarter}_lencutoff_{contig_length_threshold}.seed')
+241-    if seed_result.is_file() and seed_result.stat().st_size > 0:
+242-        seed_count = _count_seed_lines(seed_result)
+243-        if seed_count == 0:
+244-            raise RuntimeError(f"Existing marker seed file contains no usable seeds: {seed_result}")
+245-        logger.info("Reusing marker seed file %s with %d seeds; --hmm_evalue applies only when HMMsearch runs and cached thresholds are not compared.",
+246-                    seed_result, seed_count)
+247-        return seed_count
+=== v1.1.0 hmmsearch invocation lines ===
+248-
+249-    fragscan_wrapper = _require_executable('run_FragGeneScan.pl')
+250-    # The upstream wrapper rebuilds a shell command, so invoke its sibling binary directly to preserve path arguments.
+251-    fragscan_executable = _require_sibling_executable(fragscan_wrapper, 'FragGeneScan')
+252:    hmmsearch_executable = _require_executable('hmmsearch')
+253-    perl_executable = _require_executable('perl')
+254-    marker_script = _require_file(AUXILIARY_DIR / f'test_getmarker_{quarter}.pl', 'Marker script')
+255-    marker_hmm = _require_file(AUXILIARY_DIR / f'{marker_name}.hmm', 'Marker HMM database')
+256:    logger.info("Marker tools: FragGeneScan=%s, wrapper=%s, hmmsearch=%s, perl=%s, marker_script=%s, marker_hmm=%s.",
+257:                fragscan_executable, fragscan_wrapper, hmmsearch_executable, perl_executable, marker_script, marker_hmm)
+258-
+259-    frag_prefix = contig_file + '.frag'
+260-    frag_result = Path(frag_prefix + '.faa')
+261-    if not frag_result.is_file() or frag_result.stat().st_size == 0:
+262-        _run_external_command(
+263-            logger, 'FragGeneScan',
+264-            [fragscan_executable, '-s', contig_file, '-o', frag_prefix, '-w', '0', '-t', 'complete', '-p', threads],
+265-            contig_file + '.frag.out', contig_file + '.frag.err')
+266-        if not frag_result.is_file() or frag_result.stat().st_size == 0:
+267-            raise RuntimeError(f"FragGeneScan completed but produced no proteins: {frag_result}")
+268-    else:
+269-        logger.info("Reusing FragGeneScan protein file: %s.", frag_result)
+270-
+271-    hmm_result = Path(contig_file + f'.{marker_name}.hmmout')
+272-    if hmm_result.is_file() and hmm_result.stat().st_size > 0:
+273-        hit_count = _count_hmm_hits(hmm_result)
+274-        if hit_count == 0:
+275-            raise RuntimeError(f"Existing HMMsearch result contains zero marker hits: {hmm_result}")
+--
+289-        hmm_temp = _temporary_result_path(hmm_result)
+290-        try:
+291-            _run_external_command(
+292-                logger, 'HMMsearch',
+293:                [hmmsearch_executable, '--domtblout', hmm_temp, *cutoff_arguments, '--cpu', threads,
+294-                 marker_hmm, frag_result],
+295-                str(hmm_result) + '.out', str(hmm_result) + '.err')
+296-            hit_count = _count_hmm_hits(hmm_temp)
+297-            if hit_count == 0:
+298-                raise RuntimeError(f"HMMsearch completed but found zero marker hits: {hmm_temp}")
+299-            os.replace(hmm_temp, hmm_result)
+300-            logger.info("Published HMMsearch result %s with %d hits.", hmm_result, hit_count)
+301-        finally:
+302-            if hmm_temp.exists():
+303-                hmm_temp.unlink()
+304-
+305-    seed_temp = _temporary_result_path(seed_result)
+306-    try:
+307-        _run_external_command(
+308-            logger, 'Marker seed generation',
+309-            [perl_executable, marker_script, hmm_result, contig_file, contig_length_threshold, seed_temp],
+310-            str(seed_result) + '.out', str(seed_result) + '.err')
+311-        seed_count = _count_seed_lines(seed_temp)
+[0m$ [0m/vol/data/tools/bin/micromamba create -y -p /tmp/hmmer31 -c conda-forge -c bioconda hmmer=3.1b2 2>&1 | tail -4
+/tmp/hmmer31/bin/hmmsearch -h 2>&1 | grep -i "HMMER" | head -2
+Or to execute a single command in this environment, use:
+
+    micromamba run -p /tmp/hmmer31 mycommand
+
+# HMMER 3.1b2 (February 2015); http://hmmer.org/
+> build · mimo-v2.6-flash-free
+HMMER 3.1b2 installed (the env pin). The decisive test — does 3.1b2 tolerate the TC-less file like the authors' 2023 run did:
+[0m$ [0mcd /vol/data/repos/COMEBin
+echo "=== v1.1.0 cutoff_arguments logic (TC detection) ==="
+git show ad6ceb3:COMEBin/utils.py | grep -n -B12 -A8 "cutoff_arguments" | head -50
+echo "=== v1.1.0 TC detection helper ==="
+git show ad6ceb3:COMEBin/utils.py | sed -n '195,220p'
+=== v1.1.0 cutoff_arguments logic (TC detection) ===
+268-    else:
+269-        logger.info("Reusing FragGeneScan protein file: %s.", frag_result)
+270-
+271-    hmm_result = Path(contig_file + f'.{marker_name}.hmmout')
+272-    if hmm_result.is_file() and hmm_result.stat().st_size > 0:
+273-        hit_count = _count_hmm_hits(hmm_result)
+274-        if hit_count == 0:
+275-            raise RuntimeError(f"Existing HMMsearch result contains zero marker hits: {hmm_result}")
+276-        logger.info("Reusing HMMsearch result %s with %d hits; --hmm_evalue applies only when HMMsearch runs and cached thresholds are not compared.",
+277-                    hmm_result, hit_count)
+278-    else:
+279-        if _hmm_models_have_tc_cutoffs(marker_hmm):
+280:            cutoff_arguments = ['--cut_tc']
+281-            logger.info("Marker HMM %s defines TC cutoffs for every model; using --cut_tc and ignoring --hmm_evalue=%g.",
+282-                        marker_hmm, hmm_evalue)
+283-        else:
+284-            hmm_evalue_argument = format(hmm_evalue, '.15g')
+285:            cutoff_arguments = ['-E', hmm_evalue_argument]
+286-            logger.warning("Marker HMM %s does not define TC cutoffs for every model; using -E %s.",
+287-                           marker_hmm, hmm_evalue_argument)
+288-
+289-        hmm_temp = _temporary_result_path(hmm_result)
+290-        try:
+291-            _run_external_command(
+292-                logger, 'HMMsearch',
+293:                [hmmsearch_executable, '--domtblout', hmm_temp, *cutoff_arguments, '--cpu', threads,
+294-                 marker_hmm, frag_result],
+295-                str(hmm_result) + '.out', str(hmm_result) + '.err')
+296-            hit_count = _count_hmm_hits(hmm_temp)
+297-            if hit_count == 0:
+298-                raise RuntimeError(f"HMMsearch completed but found zero marker hits: {hmm_temp}")
+299-            os.replace(hmm_temp, hmm_result)
+300-            logger.info("Published HMMsearch result %s with %d hits.", hmm_result, hit_count)
+301-        finally:
+=== v1.1.0 TC detection helper ===
+                                             dir=final_path.parent)
+    os.close(descriptor)
+    return Path(temp_name)
+
+
+def _count_hmm_hits(hmm_path):
+    with open(hmm_path) as handle:
+        return sum(1 for line in handle if line.strip() and not line.startswith('#'))
+
+
+def _count_seed_lines(seed_path):
+    with open(seed_path) as handle:
+        return sum(1 for line in handle if line.strip())
+
+
+def _hmm_models_have_tc_cutoffs(hmm_file):
+    model_count = 0
+    tc_count = 0
+    with open(hmm_file) as handle:
+        for line in handle:
+            if line.startswith('NAME'):
+                model_count += 1
+            elif line.startswith('TC'):
+                tc_count += 1
+    return model_count > 0 and tc_count == model_count
+[0m$ [0mDS=/vol/data/datasets/comebin_test_data
+FAA="$DS/BATS_SAMN07137077_METAG.scaffolds.min500.fasta.f1k.fasta.frag.faa"
+HMM=/vol/data/repos/COMEBin/auxiliary/bacar_marker.hmm
+cd /tmp
+echo "=== hmmer 3.1b2 --cut_tc on TC-less bacar_marker.hmm ==="
+timeout 600 /tmp/hmmer31/bin/hmmsearch --domtblout /tmp/t31.hmmout --cut_tc --cpu 8 "$HMM" "$FAA" 1>/tmp/t31.out 2>/tmp/t31.err
+echo "exit=$?"
+head -5 /tmp/t31.err
+echo "hmmout data lines: $(grep -vc '^#' /tmp/t31.hmmout 2>/dev/null || echo 0)  size: $(stat -c%s /tmp/t31.hmmout 2>/dev/null)"
+date -u +"%Y-%m-%d %H:%M:%S UTC - action: testing hmmer 3.1b2 (env pin) --cut_tc on TC-less bacar_marker.hmm" >> /vol/data/repos/metagenomic-binning-benchmark/status/agent-activity.log
+touch /vol/data/benchmark/.heartbeat
+=== hmmer 3.1b2 --cut_tc on TC-less bacar_marker.hmm ===
+exit=0
+hmmout data lines: 2227  size: 475187
+> build · mimo-v2.6-flash-free
