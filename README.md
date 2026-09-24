@@ -1,6 +1,6 @@
 <!--AGENT-STATUS-->
 
-> 🟢 **Agent status:** `running` · ⏱ `2026-09-24T13:33 CEST` · 🏃 train fix_v11_20260924: epoch 22/200 · loss 3.273468494415283 · top1 91.60481262207031 · 🧠 `big-pickle` · [status.log](status/status.log)
+> 🔴 **Agent status:** `stopped (watchdog will restart)` · ⏱ `2026-09-24T13:34 CEST` · 🏃 train fix_v11_20260924: epoch 22/200 · loss 3.273468494415283 · top1 91.60481262207031 · 🧠 `big-pickle` · [status.log](status/status.log)
 
 # Metagenomic binning benchmark
 
