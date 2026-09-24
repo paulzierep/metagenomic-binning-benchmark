@@ -344,12 +344,26 @@ included; fixes land on branch `comebin-optimizations` in this repo.
       4.67% mean contamination (HQ=0, MQ=2); CheckM v1: 16 bins, 33.83% mean completeness,
       6.03% mean contamination (HQ=0, MQ=3). The detached v1.1.0 run
       `runs/medium_v11_20260924` completed evaluation; terminal status confirmed.
-      Aggregate evidence: `results/medium_v11_20260924.csv`; per-bin CheckM2
-      supplement: `medium_v11_20260924_checkm2_stats.csv`.
-- [ ] Fix batch run on v1.1.0 base (`runs/fix_v11`, worktree COMEBin-v11) →
-      full large benchmark + eval (major commit) → README row
+      Aggregate evidence: `results/medium_v11_20260924.csv`; per-bin joined table
+      `runs/medium_v11_20260924/per_bin_results.csv` (CheckM2 x CheckM v1, from
+      `scripts/make_per_bin_csv.py`); CheckM2-only `runs/medium_v11_20260924/checkm2_per_bin.csv`.
+- [ ] **ACTIVE: fix_v11 full-large benchmark** — `runs/fix_v11_20260924`
+      registered in `.active_run` (mode fix) at 2026-09-24T10:37Z; source
+      COMEBin-v11 @ `95f5ea8` (branch comebin-optimizations-v11, clean), full
+      demo dataset (29,434 contigs), 32 threads, seed 42, 200 epochs. Next after
+      terminal status: `scripts/run_eval.sh runs/fix_v11_20260924` (CheckM2 +
+      CheckM v1) → `make_results_csv.py` → per-bin CSV → README/docs-11 row.
 - [ ] CAMI II marine sample 0 benchmark run → human host-associated sample →
       CAMI III
+
+- [x] **Issues #7/#15/#16 triaged (2026-09-24 10:26–10:44 UTC)**: #7 — the
+      optimization flowchart is now rendered live in the README (colored mermaid,
+      fuller Current/Next text; `docs/09` synced). #15 — per-bin results for ALL
+      evaluated runs stored under `runs/<run>/per_bin_results.csv` (generator
+      `scripts/make_per_bin_csv.py`); root-level `medium_v11_20260924_checkm2_stats.csv`
+      moved to `runs/medium_v11_20260924/checkm2_per_bin.csv`. #16 — watchdog now
+      defaults to `opencode/big-pickle` (`c42fa84`), rotation only on quota.
+      Commits: `869754a` (per-bin + README), `c42fa84` (watchdog big-pickle).
 
 ## Watchdog / restart
 
