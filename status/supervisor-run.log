@@ -46051,3 +46051,472 @@ BODY: Can we prioritize big pickle as the model, unless its token are off ?
 C: paulzierep 2026-09-24T10:17:43Z: Model prioritization is tracked per-run in  (HQ/MQ counts) and the status banner ( etc.). The free-model rotation policy ensures a different model is selected when quota is exhausted; there is no single 'big pickle' — each run records which model produced its results. This is documented in the run metadata and mirrored in the  CSVs.
 C: paulzierep 2026-09-24T10:37:04Z: Update: the watchdog now runs **big-pickle as the default model** whenever its tokens are available (commit `c42fa84`). `DEFAULT_MODEL="opencode/big-pickle"`; the free-model rotation only starts when big-pickle itself is quota-limited, and the rotation index resets to big-pickle after every healthy run. The status banner also now shows the active model (e.g. `model big-pickle`).
 > build · big-pickle
+Let me verify the remaining evidence (rc=0 absence, PNGs, per-bin counts), read `make_results_csv.py`, the stale docs license lines, and search the browser tool namespace for a render-verification tool.
+[0m⚙ [0mexecute {"code":"const r = search({ namespace: \"browser\", limit: 50 });\nreturn r.items.map(i => i.path);"} 
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && echo "--- rc=0 left? ---"; grep -rn "rc=0" README.md docs/ results/ 2>/dev/null | head; echo "(none above = good)"; echo "--- per-bin rows ---"; for r in baseline_rerun_autorestart1 medium_v11_20260924 small_test_v4; do echo -n "$r: "; wc -l < runs/$r/per_bin_results.csv; done; echo "--- pngs ---"; ls -la runs/*/per_bins.png results/figures/ 2>/dev/null; echo "--- csv rows ---"; head -2 results/baseline_rerun_autorestart1.csv; echo "--- make_results_csv ---"; sed -n '1,40p' scripts/make_results_csv.py
+--- rc=0 left? ---
+(none above = good)
+--- per-bin rows ---
+baseline_rerun_autorestart1: 61
+medium_v11_20260924: 17
+small_test_v4: 4
+--- pngs ---
+-rw-rw-r-- 1 ubuntu ubuntu 46083 Sep 24 10:42 runs/baseline_rerun_autorestart1/per_bins.png
+-rw-rw-r-- 1 ubuntu ubuntu 26116 Sep 24 10:42 runs/medium_v11_20260924/per_bins.png
+-rw-rw-r-- 1 ubuntu ubuntu 23370 Sep 24 10:42 runs/small_test_v4/per_bins.png
+
+results/figures/:
+total 60
+drwxrwxr-x 2 ubuntu ubuntu  4096 Sep 24 10:42 .
+drwxrwxr-x 3 ubuntu ubuntu  4096 Sep 24 10:42 ..
+-rw-rw-r-- 1 ubuntu ubuntu 50547 Sep 24 10:42 comp_vs_cont_all-runs.png
+--- csv rows ---
+run,source_commit,dataset,threads,total_time_s,n_bins,checkm2_mean_completeness,checkm2_mean_contamination,checkm2_HQ,checkm2_MQ,checkm_mean_completeness,checkm_mean_contamination,checkm_HQ,checkm_MQ
+baseline_rerun_autorestart1,904f649ef5cbb4582a6f0e5ec8b0b1f45778d85b,"COMEBin demo (29,434 contigs)",32,24327,60,25.01,2.98,0,7,21.23,3.40,0,9
+--- make_results_csv ---
+#!/usr/bin/env python3
+# make_results_csv.py <rundir> [dataset] [threads] — build results/<run>.csv
+# (README "Benchmark runs — performance" + docs/04-evaluation.md contract):
+#   run,source_commit,dataset,threads,total_time_s,n_bins,
+#   checkm2_mean_completeness,checkm2_mean_contamination,checkm2_HQ,checkm2_MQ,
+#   checkm_mean_completeness,checkm_mean_contamination,checkm_HQ,checkm_MQ
+# MIMAG thresholds: HQ = compl>90 & cont<5 ; MQ = compl>=50 & cont<10.
+# Reads meta from <rundir>/run_meta.txt, per-bin scores from
+# <rundir>/eval/checkm2/quality_report.tsv + <rundir>/eval/checkm/out/storage/bin_stats_ext.tsv.
+import ast
+import csv, os, sys
+
+run = os.path.abspath(sys.argv[1])
+name = os.path.basename(run)
+dataset = sys.argv[2] if len(sys.argv) > 2 else ""
+threads = sys.argv[3] if len(sys.argv) > 3 else ""
+meta = os.path.join(run, "run_meta.txt")
+repo = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+out = os.path.join(repo, "results", f"{name}.csv")
+
+def meta_val(key):
+    with open(meta) as f:
+        for line in f:
+            if line.startswith(key + ":"):
+                return line.split(":", 1)[1].strip()
+    return ""
+
+commit = meta_val("commit")
+t_total = meta_val("wall_s")
+n_bins = meta_val("bins").split()[0] if meta_val("bins") else ""
+
+def scores(path, ccol, tcol):
+    """Return completeness/contamination lists from TSV or CheckM dict output."""
+    if not os.path.exists(path):
+        return [], []
+    cs, ts = [], []
+    with open(path, encoding="utf-8") as f:
+        first = f.readline().rstrip("\n")
+        first_parts = first.split("\t", 1)
+        header_parts = first.split("\t")
+> build · big-pickle
+The browser toolset includes `screenshot` and `evaluate` — I can verify mermaid rendering after pushing. Evidence all checks out (#13 rc=0 gone, 60/16/3 per-bin rows, 3 PNGs + scatter). Let me view the stale docs lines before editing.
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && sed -n '40,55p' docs/01-datasets.md; echo "===== docs/10 :30-40 ====="; sed -n '30,40p' docs/10-data-preservation.md; echo "===== docs/10 :90-105 ====="; sed -n '90,105p' docs/10-data-preservation.md
+`docs/08-dataset-space-plan.md`. Before any public release, follow the checksum,
+licensing, and Zenodo verification checklist in
+[`docs/10-data-preservation.md`](10-data-preservation.md).
+
+### Published small release (Zenodo)
+
+The owner-approved small release is published as **[10.5281/zenodo.22935025](https://doi.org/10.5281/zenodo.22935025)**
+(version 1, CC BY 4.0). The record contains the verified
+`comebin_small_release_v1.tar.gz` (95,216,539 bytes,
+SHA-256 `0c698d208639f4fadd4ac4477a67074320c975528b23dd61743c83ad1658b6d2`)
+and `comebin_small.release.public.json` (3,650 bytes,
+SHA-256 `84131ae359d07a78db7ae7ca2005758f4f0ec9df67a33ec62f8af50ac1702f1b`).
+The archive contains 18 payload files totaling 98,078,536 bytes; extraction
+and every public-manifest size/SHA-256 check passed. The public record was
+verified with a fresh unauthenticated API request (HTTP 200), and the safe
+publication record is stored outside the repository at
+===== docs/10 :30-40 =====
+   supplied through a secret environment variable or secret store. Never put a
+   token in this Git repository, a log, a command transcript, or an issue.
+2. **Deposit metadata:** title, authors/creators and ORCIDs where available,
+   abstract, keywords, related DOI/repository URL, and a citation suggestion.
+3. **Licensing:** an explicit data license (for example CC BY 4.0 when
+   appropriate), plus the code license and any third-party restrictions. CAMI
+   terms and any human-host-associated restrictions must be checked before
+   redistribution.
+4. **Release contents and size:** confirm which samples/files are in scope,
+   whether raw reads are included, and the expected compressed size. The current
+   disk plan keeps the small set permanently and caps the derived medium set at
+===== docs/10 :90-105 =====
+report the failure; do not claim that preservation is complete.
+
+## Current status
+
+- The small derived dataset exists locally at `/vol/data/datasets/comebin_small`
+  and its real COMEBin/CheckM2/CheckM gate is complete (`small_test_v4`).
+- **Production Zenodo record:** [10.5281/zenodo.22935025](https://doi.org/10.5281/zenodo.22935025),
+  version 1, CC BY 4.0. The record was checked through a fresh unauthenticated
+  `GET /api/records/22935025` (HTTP 200), and both uploaded file sizes and MD5
+  checksums match the local release. A later owner comment requested MIT and
+  expanded metadata; because that would change a published version's terms,
+  it is being handled as an explicit versioning decision rather than silently
+  changing version 1.
+- Uploaded files: `comebin_small_release_v1.tar.gz` (95,216,539 bytes,
+  SHA-256 `0c698d208639f4fadd4ac4477a67074320c975528b23dd61743c83ad1658b6d2`)
+  and `comebin_small.release.public.json` (3,650 bytes, SHA-256
+> build · big-pickle
+Let me check `run_meta.txt` fields so the wired `make_results_csv.py` call can fill the dataset column automatically.
+[0m$ [0mcat /vol/data/benchmark/runs/baseline_rerun_autorestart1/run_meta.txt 2>/dev/null | head -20; echo "=====medium====="; cat /vol/data/benchmark/runs/medium_v11_20260924/run_meta.txt 2>/dev/null | head -15
+run:        /vol/data/benchmark/runs/baseline_rerun_autorestart1
+date:       2026-09-24T00:30:01+00:00
+source:     /vol/data/repos/COMEBin
+commit:     904f649ef5cbb4582a6f0e5ec8b0b1f45778d85b
+contigs:    /vol/data/datasets/comebin_test_data/BATS_SAMN07137077_METAG.scaffolds.min500.fasta.f1k.fasta
+bamdir:     /vol/data/datasets/comebin_test_data/bamfiles
+threads:    32
+host:       32 cores, 62G RAM, gpu=none
+cmd_wrapper: bash run_comebin.sh -a /vol/data/datasets/comebin_test_data/BATS_SAMN07137077_METAG.scaffolds.min500.fasta.f1k.fasta -p /vol/data/datasets/comebin_test_data/bamfiles -o /vol/data/benchmark/runs/baseline_rerun_autorestart1/comebin_out -n 6 -t 32  # via: micromamba run -p /vol/data/envs/comebin
+exit_code:  0
+wall_s:     24327
+finished:   2026-09-24T07:15:28+00:00
+terminal:   wrapper_exit
+cmd_checkm2: /vol/data/tools/bin/micromamba run -p /vol/data/envs/checkm2 checkm2 predict --threads 32 --database_path /vol/data/benchmark/checkm2db/CheckM2_database/uniref100.KO.1.dmnd --input /vol/data/benchmark/runs/baseline_rerun_autorestart1/comebin_out/comebin_res/comebin_res_bins --output-directory /vol/data/benchmark/runs/baseline_rerun_autorestart1/eval/checkm2 -x fasta
+cmd_checkm2: /vol/data/tools/bin/micromamba run -p /vol/data/envs/checkm2 checkm2 predict --threads 32 --database_path /vol/data/benchmark/checkm2db/CheckM2_database/uniref100.KO.1.dmnd --input /vol/data/benchmark/runs/baseline_rerun_autorestart1/comebin_out/comebin_res/comebin_res_bins --output-directory /vol/data/benchmark/runs/baseline_rerun_autorestart1/eval/checkm2 -x fasta
+cmd_checkm2: /vol/data/tools/bin/micromamba run -p /vol/data/envs/checkm2 checkm2 predict --threads 32 --database_path /vol/data/benchmark/checkm2db/CheckM2_database/uniref100.KO.1.dmnd --input /vol/data/benchmark/runs/baseline_rerun_autorestart1/comebin_out/comebin_res/comebin_res_bins --output-directory /vol/data/benchmark/runs/baseline_rerun_autorestart1/eval/checkm2 -x fasta
+checkm2_rc: 0 checkm2_wall_s: 65
+cmd_checkm: /vol/data/tools/bin/micromamba run -p /vol/data/envs/checkm checkm lineage_wf -x fasta -t 32 --tmpdir /vol/data/benchmark/runs/baseline_rerun_autorestart1/eval/checkm/tmp /vol/data/benchmark/runs/baseline_rerun_autorestart1/comebin_out/comebin_res/comebin_res_bins /vol/data/benchmark/runs/baseline_rerun_autorestart1/eval/checkm/out
+checkm_rc: 0 checkm_wall_s: 2
+eval_checkm2_bins: 60
+=====medium=====
+run:        /vol/data/benchmark/runs/medium_v11_20260924
+source:     /vol/data/repos/COMEBin-v11 (branch comebin-optimizations-v11)
+date:       2026-09-24T09:25:50+00:00
+commit:     95f5ea820f9a4e76f5c2911c0b5ed507ab67b015
+contigs:    /vol/data/datasets/comebin_medium/contigs.fa
+bamdir:     /vol/data/datasets/comebin_medium/bamfiles
+threads:    32
+seed:       42
+host:       32 cores, 62G RAM, gpu=none
+cmd_wrapper: /vol/data/tools/bin/micromamba run -p /vol/data/envs/comebin bash run_comebin.sh -a /vol/data/datasets/comebin_medium/contigs.fa -p /vol/data/datasets/comebin_medium/bamfiles -o /vol/data/benchmark/runs/medium_v11_20260924/comebin_out -n 6 -t 32 -d cpu -s 42 
+exit_code:  0
+wall_s:     2326
+finished:   2026-09-24T10:04:36+00:00
+bins:       16  -> /vol/data/benchmark/runs/medium_v11_20260924/comebin_out/comebin_res/comebin_res_bins
+cmd_from_log: 2026-09-24 10:03:16,766 - Marker tools: FragGeneScan=/vol/data/envs/comebin/bin/FragGeneScan, wrapper=/vol/data/envs/comebin/bin/run_FragGeneScan.pl, hmmsearch=/vol/data/envs/comebin/bin/hmmsearch, perl=/vol/data/envs/comebin/bin/perl, marker_script=/vol/data/repos/COMEBin-v11/auxiliary/test_getmarker_2quarter.pl, marker_hmm=/vol/data/repos/COMEBin-v11/auxiliary/bacar_marker.hmm.
+> build · big-pickle
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && sed -n '40,120p' scripts/make_results_csv.py
+header_parts = first.split("\t")
+        is_dict_row = len(first_parts) == 2 and first_parts[1].lstrip().startswith("{")
+        if not is_dict_row and ccol in header_parts and tcol in header_parts:
+            ci, ti = header_parts.index(ccol), header_parts.index(tcol)
+            for line in [first, *f]:
+                p = line.rstrip("\n").split("\t")
+                try:
+                    cs.append(float(p[ci]))
+                    ts.append(float(p[ti]))
+                except (ValueError, IndexError):
+                    continue
+            return cs, ts
+        # CheckM v1 bin_stats_ext.tsv is '<bin-id>\\t<dict literal>' per line.
+        lines = [first, *f] if is_dict_row else f
+        for line in lines:
+            p = line.rstrip("\n").split("\t", 1)
+            if len(p) != 2:
+                continue
+            try:
+                record = ast.literal_eval(p[1])
+                cs.append(float(record[ccol]))
+                ts.append(float(record[tcol]))
+            except (KeyError, TypeError, ValueError, SyntaxError):
+                continue
+    return cs, ts
+
+def summarize(cs, ts):
+    if not cs:
+        return "", "", "", ""
+    mean_c = sum(cs) / len(cs)
+    mean_t = sum(ts) / len(ts) if ts else 0.0
+    hq = sum(1 for c, t in zip(cs, ts) if c > 90 and t < 5)
+    mq = sum(1 for c, t in zip(cs, ts) if c >= 50 and t < 10)
+    return f"{mean_c:.2f}", f"{mean_t:.2f}", str(hq), str(mq)
+
+mk2c, mk2t = scores(os.path.join(run, "eval", "checkm2", "quality_report.tsv"), "Completeness", "Contamination")
+mkc, mkt = scores(os.path.join(run, "eval", "checkm", "out", "storage", "bin_stats_ext.tsv"), "Completeness", "Contamination")
+# Older baseline wrappers did not emit a `bins:` metadata line. Derive the
+# count from the evaluator rows so the committed result table is complete.
+if not n_bins:
+    n_bins = str(len(mk2c or mk2t or mkc or mkt))
+c2 = summarize(mk2c, mk2t)
+c1 = summarize(mkc, mkt)
+
+os.makedirs(os.path.dirname(out), exist_ok=True)
+header = ["run", "source_commit", "dataset", "threads", "total_time_s", "n_bins",
+          "checkm2_mean_completeness", "checkm2_mean_contamination", "checkm2_HQ", "checkm2_MQ",
+          "checkm_mean_completeness", "checkm_mean_contamination", "checkm_HQ", "checkm_MQ"]
+row = [name, commit, dataset, threads, t_total, n_bins, *c2, *c1]
+with open(out, "w", newline="") as f:
+    w = csv.writer(f, lineterminator="\n")
+    w.writerow(header)
+    w.writerow(row)
+print(f"wrote {out}")
+print(",".join(row))
+> build · big-pickle
+All context gathered. Now implementing. **Chunk 1: wire the reporting generators into `run_eval.sh`** (source + deployed copy).
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/scripts/run_eval.sh
+Index: /vol/data/repos/metagenomic-binning-benchmark/scripts/run_eval.sh
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/scripts/run_eval.sh
++++ /vol/data/repos/metagenomic-binning-benchmark/scripts/run_eval.sh
+@@ -99,8 +99,20 @@
+ 
+ # Summary and final status ----------------------------------------------------
+ echo "=== summary ==="
+ python3 "$(dirname "$0")/parse_eval.py" "$RUN" 9>&-
++if [ "$rc2" -eq 0 ] && [ "$rc1" -eq 0 ]; then
++  # Automatic reporting (issues #12/#15): aggregate CSV + per-bin CSV + plots,
++  # regenerated after every successfully evaluated run. Best-effort: a report
++  # failure must not turn a successful evaluation into a failed one.
++  echo "=== auto-reporting: results/<run>.csv, runs/<run>/per_bin_results.csv, per_bins.png ==="
++  python3 "$(dirname "$0")/make_results_csv.py" "$RUN" 9>&- \
++    || echo "WARNING: make_results_csv.py failed (rc=$?)" >&2
++  python3 "$(dirname "$0")/make_per_bin_csv.py" "$RUN" 9>&- \
++    || echo "WARNING: make_per_bin_csv.py failed (rc=$?)" >&2
++  "$MM" run -p "$CHECKM_ENV" python3 "$(dirname "$0")/make_per_bin_plots.py" "$RUN" 9>&- \
++    || echo "WARNING: make_per_bin_plots.py failed (rc=$?)" >&2
++fi
+ echo "done (checkm2 rc=$rc2, checkm rc=$rc1)"
+ if [ "$rc2" -ne 0 ] || [ "$rc1" -ne 0 ]; then
+   exit 1
+ fi
+
+> build · big-pickle
+**Chunk 2: `make_results_csv.py` auto-detects the dataset label from `run_meta.txt`** when none is passed.
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/scripts/make_results_csv.py
+Index: /vol/data/repos/metagenomic-binning-benchmark/scripts/make_results_csv.py
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/scripts/make_results_csv.py
++++ /vol/data/repos/metagenomic-binning-benchmark/scripts/make_results_csv.py
+@@ -24,8 +24,25 @@
+             if line.startswith(key + ":"):
+                 return line.split(":", 1)[1].strip()
+     return ""
+ 
++def default_dataset(contigs_path):
++    """Human-readable dataset label derived from the run's contigs path, for
++    automatic (no-arg) regeneration after an evaluated run (issues #12/#15)."""
++    if not contigs_path:
++        return ""
++    known = [
++        ("BATS_SAMN07137077_METAG", "COMEBin demo (29,434 contigs)"),
++        ("comebin_medium", "comebin_medium (3,000 contigs)"),
++        ("comebin_small", "comebin_small (300 contigs)"),
++        ("cami2", "CAMI II"),
++        ("cami3", "CAMI III"),
++    ]
++    for key, label in known:
++        if key in contigs_path:
++            return label
++    return os.path.basename(os.path.dirname(contigs_path))
++
+ commit = meta_val("commit")
+ t_total = meta_val("wall_s")
+ n_bins = meta_val("bins").split()[0] if meta_val("bins") else ""
+ 
+
+> build · big-pickle
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/scripts/make_results_csv.py
+Index: /vol/data/repos/metagenomic-binning-benchmark/scripts/make_results_csv.py
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/scripts/make_results_csv.py
++++ /vol/data/repos/metagenomic-binning-benchmark/scripts/make_results_csv.py
+@@ -90,8 +90,10 @@
+     return f"{mean_c:.2f}", f"{mean_t:.2f}", str(hq), str(mq)
+ 
+ mk2c, mk2t = scores(os.path.join(run, "eval", "checkm2", "quality_report.tsv"), "Completeness", "Contamination")
+ mkc, mkt = scores(os.path.join(run, "eval", "checkm", "out", "storage", "bin_stats_ext.tsv"), "Completeness", "Contamination")
++if not dataset:
++    dataset = default_dataset(meta_val("contigs"))
+ # Older baseline wrappers did not emit a `bins:` metadata line. Derive the
+ # count from the evaluator rows so the committed result table is complete.
+ if not n_bins:
+     n_bins = str(len(mk2c or mk2t or mkc or mkt))
+
+> build · big-pickle
+**Chunk 3: deploy generators + updated scripts to `/vol/data/benchmark/bin`** and verify sync.
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && cp scripts/make_per_bin_csv.py scripts/make_per_bin_plots.py scripts/run_eval.sh scripts/make_results_csv.py /vol/data/benchmark/bin/ && for f in run_eval.sh make_results_csv.py make_per_bin_csv.py make_per_bin_plots.py; do echo -n "$f: "; cmp -s scripts/$f /vol/data/benchmark/bin/$f && echo "identical" || echo "DIFFERS"; done; bash -n scripts/run_eval.sh && echo "run_eval.sh syntax OK"; python3 -m py_compile scripts/make_results_csv.py scripts/make_per_bin_csv.py scripts/make_per_bin_plots.py && echo "py compile OK"
+run_eval.sh: identical
+make_results_csv.py: identical
+make_per_bin_csv.py: identical
+make_per_bin_plots.py: identical
+run_eval.sh syntax OK
+py compile OK
+> build · big-pickle
+**Chunk 4: rewrite the README mermaid flowchart** with renderer-safe syntax (no `<br/>`, no emoji-in-edge-labels, explicit chained edges) and add the #17 policy to the gate rules.
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/README.md
+Index: /vol/data/repos/metagenomic-binning-benchmark/README.md
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/README.md
++++ /vol/data/repos/metagenomic-binning-benchmark/README.md
+@@ -34,26 +34,32 @@
+ [`docs/09-optimization-strategy.md`](docs/09-optimization-strategy.md)).
+ 
+ ```mermaid
+ flowchart TD
+-    A["💡 Pick candidate change / param"] --> B["Small functional test<br/>(300-contig dataset)"]
+-    B -->|"❌ fail"| G["Investigate, fix, or drop"] --> A
+-    B -->|"✅ pass"| C["Benchmark small / medium set"]
+-    C --> D{"Better or equal<br/>time AND quality?"}
+-    D -->|"✅ keep"| E["Keep commit<br/>record in results/ + PROGRESS"]
++    A["Pick candidate change or parameter"] --> B["Small functional test on the 300-contig dataset"]
++    B -->|fail| G["Investigate, fix, or drop the change"]
++    G --> A
++    B -->|pass| C["Benchmark on a small or medium set"]
++    C --> D{"Better or equal time AND quality?"}
++    D -->|keep| E["Keep the commit; record in results and PROGRESS"]
+     E --> F["Next batch from this commit"]
+-    D -->|"❌ no"| H["Revert or rework"]
+-    H --> I["Combine with surviving ideas"] --> A
+-    F --> J["After major commits:<br/>full large benchmark<br/>(demo → CAMI II marine → CAMI III)"]
++    D -->|no| H["Revert or rework"]
++    H --> I["Combine with surviving ideas"]
++    I --> A
++    F --> J["Optimize parameters on small sets first"]
++    J --> K["Full large benchmark only after small and medium validation (demo, then CAMI II marine, then CAMI III)"]
+     classDef keep fill:#d9f7be,stroke:#389e0d;
+     classDef drop fill:#ffccc7,stroke:#cf1322;
+-    class A,B,C,E,F,J keep;
++    class A,B,C,E,F,J,K keep;
+     class G,H,I drop;
+ ```
+ 
+ **Gate rules:** never skip the small functional test · baseline compared first ·
+-one timed run at a time (no concurrent COMEBin/CheckM) · keep only with evidence ·
+-a run is kept or reverted/reworked and combined with surviving ideas.
++one timed run at a time (no concurrent COMEBin/CheckM) · keep only with
++evidence · a run is kept or reverted/reworked and combined with surviving
++ideas · **big benchmark runs only after the fix is validated on small AND
++medium — no full-large runs on unvalidated fixes or un-optimized parameters
++(issue #17)**, and parameter optimization happens on small sets first.
+ 
+ ## Results
+ 
+ - Aggregate rows (per run): [`results/`](results/) (`results/<run>.csv`, one
+
+> build · big-pickle
+The same flowchart exists in docs/09 — let me check and apply the same fix there plus the #17 policy.
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && grep -n "mermaid\|flowchart\|Gate rules\|big benchmark\|small sets" docs/09-optimization-strategy.md | head -20
+34:```mermaid
+35:flowchart TD
+51:> The same flowchart is rendered live in the [README](../README.md) (issue #7).
+65:  different idea (per the flowchart) instead of spending more time on a dead end.
+85:  flowchart and this doc current.
+> build · big-pickle
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && sed -n '30,60p' docs/09-optimization-strategy.md
+Optimization work happens on a branch (`comebin-optimizations-v11`), **one commit
+per batch** (see `docs/07-fix-batches.md`). Each batch goes through the gate below.
+
+```mermaid
+flowchart TD
+    A["💡 Pick candidate change / param"] --> B["Small functional test<br/>(300-contig dataset)"]
+    B -->|"❌ fail"| G["Investigate, fix, or drop"] --> A
+    B -->|"✅ pass"| C["Benchmark small / medium set"]
+    C --> D{"Better or equal<br/>time AND quality?"}
+    D -->|"✅ keep"| E["Keep commit<br/>record in results/ + PROGRESS"]
+    E --> F["Next batch from this commit"]
+    D -->|"❌ no"| H["Revert or rework"]
+    H --> I["Combine with surviving ideas"] --> A
+    F --> J["After major commits:<br/>full large benchmark<br/>(demo → CAMI II marine → CAMI III)"]
+    classDef keep fill:#d9f7be,stroke:#389e0d;
+    classDef drop fill:#ffccc7,stroke:#cf1322;
+    class A,B,C,E,F,J keep;
+    class G,H,I drop;
+```
+
+> The same flowchart is rendered live in the [README](../README.md) (issue #7).
+
+Invariants:
+
+- **Never skip the small functional test.** Any change that breaks the small run
+  is not benchmarked further.
+- **Baseline first:** every optimization is compared against the unmodified
+  baseline run (`runs/baseline_unmodified`) and, where applicable, the previous
+  kept commit.
+- **One timed thing at a time:** no concurrent COMEBin/CheckM runs, so timings
+> build · big-pickle
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/docs/09-optimization-strategy.md
+Index: /vol/data/repos/metagenomic-binning-benchmark/docs/09-optimization-strategy.md
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/docs/09-optimization-strategy.md
++++ /vol/data/repos/metagenomic-binning-benchmark/docs/09-optimization-strategy.md
+@@ -32,20 +32,23 @@
+ per batch** (see `docs/07-fix-batches.md`). Each batch goes through the gate below.
+ 
+ ```mermaid
+ flowchart TD
+-    A["💡 Pick candidate change / param"] --> B["Small functional test<br/>(300-contig dataset)"]
+-    B -->|"❌ fail"| G["Investigate, fix, or drop"] --> A
+-    B -->|"✅ pass"| C["Benchmark small / medium set"]
+-    C --> D{"Better or equal<br/>time AND quality?"}
+-    D -->|"✅ keep"| E["Keep commit<br/>record in results/ + PROGRESS"]
++    A["Pick candidate change or parameter"] --> B["Small functional test on the 300-contig dataset"]
++    B -->|fail| G["Investigate, fix, or drop the change"]
++    G --> A
++    B -->|pass| C["Benchmark on a small or medium set"]
++    C --> D{"Better or equal time AND quality?"}
++    D -->|keep| E["Keep the commit; record in results and PROGRESS"]
+     E --> F["Next batch from this commit"]
+-    D -->|"❌ no"| H["Revert or rework"]
+-    H --> I["Combine with surviving ideas"] --> A
+-    F --> J["After major commits:<br/>full large benchmark<br/>(demo → CAMI II marine → CAMI III)"]
++    D -->|no| H["Revert or rework"]
++    H --> I["Combine with surviving ideas"]
++    I --> A
++    F --> J["Optimize parameters on small sets first"]
++    J --> K["Full large benchmark only after small and medium validation (demo, then CAMI II marine, then CAMI III)"]
+     classDef keep fill:#d9f7be,stroke:#389e0d;
+     classDef drop fill:#ffccc7,stroke:#cf1322;
+-    class A,B,C,E,F,J keep;
++    class A,B,C,E,F,J,K keep;
+     class G,H,I drop;
+ ```
+ 
+ > The same flowchart is rendered live in the [README](../README.md) (issue #7).
+
+> build · big-pickle
+[0m✗ [0mEdit /vol/data/repos/metagenomic-binning-benchmark/docs/09-optimization-strategy.md failed
+[91m[1mError: [0mNo changes to apply: oldString and newString are identical.
+> build · big-pickle
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && sed -n '56,90p' docs/09-optimization-strategy.md
+Invariants:
+
+- **Never skip the small functional test.** Any change that breaks the small run
+  is not benchmarked further.
+- **Baseline first:** every optimization is compared against the unmodified
+  baseline run (`runs/baseline_unmodified`) and, where applicable, the previous
+  kept commit.
+- **One timed thing at a time:** no concurrent COMEBin/CheckM runs, so timings
+  stay comparable.
+- **Record or reject:** a commit is kept *only* if the evidence says keep;
+  otherwise it is reverted or reworked and combined with other ideas.
+- Cost guardrail: if we accrue several sequential failures, go back and pick a
+  different idea (per the flowchart) instead of spending more time on a dead end.
+
+## Parameter-tuning ideas (issue #6, live list)
+
+- **Adaptive parameters from input stats:** set `batch_size`, `emb_szs*`,
+  number of views/epochs, or `--emb_szs_forcov` automatically from contig count /
+  total bp / # scaffolds. The demo (29,434 contigs) and the marine sample (~42k
+  contigs) differ by little, but a 1.48 M-contig full set is not COMEBin-feasible
+  at current defaults — an adaptive path may extend that ceiling.
+- **Earlier stopping / faster augmentation** while checking the accuracy curve
+  against baseline's.
+- **Lower-precision coverage path**: batch 1 already made coverage math
+  float64-consistent (correctness, not perf); follow-up batches can look for
+  genuine perf wins (e.g. avoiding redundant dtype conversions).
+- Every idea above is validated on the small dataset → medium → (post-commit)
+  large, per the workflow in `docs/08-dataset-space-plan.md`.
+
+## Responsibilities
+
+- Agent: run the gate, record evidence in `docs/03-fixes.md`/`results/`, keep the
+  flowchart and this doc current.
+- Commit messages: one commit per batch, mention benchmark result summary.
+- Issues: optimization discussions tracked in issue #6 / #7; benchmark-data
