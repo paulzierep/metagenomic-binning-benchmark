@@ -350,7 +350,9 @@ included; fixes land on branch `comebin-optimizations` in this repo.
 - [ ] **ACTIVE: fix_v11 full-large benchmark** — `runs/fix_v11_20260924`
       registered in `.active_run` (mode fix) at 2026-09-24T10:37Z; source
       COMEBin-v11 @ `95f5ea8` (branch comebin-optimizations-v11, clean), full
-      demo dataset (29,434 contigs), 32 threads, seed 42, 200 epochs. Next after
+      demo dataset (29,434 contigs), 32 threads, seed 42, 200 epochs (observed
+      cadence ~2.1–2.5 min/epoch ⇒ ~7.5 h total, ETA ≈ 18:00 UTC, 32-core CPU
+      ~2900%, RAM 9.4 GB). Next after
       terminal status: `scripts/run_eval.sh runs/fix_v11_20260924` (CheckM2 +
       CheckM v1) → `make_results_csv.py` → per-bin CSV → README/docs-11 row.
 - [ ] CAMI II marine sample 0 benchmark run → human host-associated sample →
