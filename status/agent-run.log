@@ -30252,3 +30252,587 @@ ModuleNotFoundError: No module named 'COMEBin'
 ---
 Seed file NOT found
 > build · ling-3.0-flash-fin-free
+[0m$ [0m# Try running from the COMEBin source directory with proper Python path
+export MM=/vol/data/tools/bin/micromamba
+export ENV=/vol/data/envs/comebin
+export SRC=/vol/data/repos/COMEBin
+export DATA=/vol/data/datasets/comebin_test_data
+export CONTIGS="$DATA/BATS_SAMN07137077_METAG.scaffolds.min500.fasta.f1k.fasta"
+export BAMDIR="$DATA/bamfiles"
+export THREADS=32
+export PATH="/vol/data/envs/comebin/bin:$PATH"
+
+# Check if COMEBin is importable from the right directory
+cd /vol/data/repos/COMEBin
+PYTHONPATH=/vol/data/repos/COMEBin $MM run -p $ENV python -c "from COMEBin.utils import gen_seed; print('import works')" 2>&1 || echo "import failed"
+echo "---"
+# Try using the run_comebin.sh script which handles everything
+cd /vol/data/repos/COMEBin/COMEBin
+PYTHONPATH=/vol/data/repos/COMEBin $MM run -p $ENV python -c "
+import os, sys
+sys.path.insert(0, '/vol/data/repos/COMEBin')
+os.chdir('/vol/data/repos/COMEBin/COMEBin')
+from COMEBin.utils import gen_seed
+import logging
+logger = logging.getLogger('comebin')
+logger.setLevel(logging.INFO)
+seed_num = gen_seed(logger=logger, num_threads=32, contig_len=1001, marker_name='bacar_marker', quarter='2quarter')
+print(f'Seed generated: {seed_num}')
+" 2>&1 | tail -20
+import works
+---
+Traceback (most recent call last):
+  File "<string>", line 9, in <module>
+TypeError: gen_seed() got an unexpected keyword argument 'num_threads'
+> build · ling-3.0-flash-fin-free
+Let me check the gen_seed function signature and call it correctly
+[0m$ [0mgrep -A20 "^def gen_seed" /vol/data/repos/COMEBin/COMEBin/utils.py 2>/dev/null
+echo "==="
+# Also check main.py for how gen_seed is called
+grep -B2 -A10 "gen_seed" /vol/data/repos/COMEBin/COMEBin/main.py 2>/dev/null | head -40
+def gen_seed(logger, contig_file: str, threads: int, contig_length_threshold: int,
+             marker_name: str = "marker", quarter: str = "3quarter"):
+    """
+    Generate seed sequences from contigs using FragGeneScan, HMMsearch, and custom markers.
+
+    :param contig_file: Path to the input contig file.
+    :param threads: The number of threads to use for processing.
+    :param contig_length_threshold: The contig length threshold.
+    :param marker_name: The marker name (default: "marker").
+    :param quarter: The quarter identifier (default: "3quarter").
+    :return: The number of candidate seeds generated.
+    """
+    fragScanURL = 'run_FragGeneScan.pl'
+
+    hmmExeURL = 'hmmsearch'
+    markerExeURL = os.path.join(os.getcwd(), '../auxiliary', 'test_getmarker_' + quarter + '.pl')
+    markerURL = os.path.join(os.getcwd(), '../auxiliary', marker_name + '.hmm')
+    seedURL = contig_file + "." + marker_name + "." + quarter + "_lencutoff_" + str(contig_length_threshold) + ".seed"
+    fragResultURL = contig_file + ".frag.faa"
+    hmmResultURL = contig_file + '.' + marker_name + ".hmmout"
+
+===
+    if args.subcmd == 'bin':
+        logger.info('bin')
+        from utils import gen_seed
+
+        num_threads = args.num_threads
+        _ = gen_seed(logger, args.contig_file, num_threads, args.contig_len, marker_name="bacar_marker", quarter="2quarter")
+
+        cluster(logger, args)
+
+
+    ## clustering NoContrast
+    if args.subcmd == 'nocontrast':
+        logger.info('NoContrast mode')
+        from utils import get_kmer_coverage_aug0
+
+        X_t, covMat, compositMat, namelist = get_kmer_coverage_aug0(args.data)
+--
+    if args.subcmd == 'get_result':
+        logger.info('get_result')
+        from utils import gen_seed
+        from get_final_result import run_get_final_result
+
+        num_threads = args.num_threads
+        seed_num = gen_seed(logger, args.contig_file, num_threads, args.contig_len, marker_name="bacar_marker", quarter="2quarter")
+
+        run_get_final_result(logger, args, seed_num, num_threads, ignore_kmeans_res=True)
+
+
+if __name__ == '__main__':
+    main()
+> build · ling-3.0-flash-fin-free
+Now let me run the binning subcommand properly using the existing training
+[0m$ [0m# Generate the seed file manually, then run clustering
+export MM=/vol/data/tools/bin/micromamba
+export ENV=/vol/data/envs/comebin
+export PATH="/vol/data/envs/comebin/bin:$PATH"
+export SRC=/vol/data/repos/COMEBin
+export DATA=/vol/data/datasets/comebin_test_data
+export CONTIGS="$DATA/BATS_SAMN07137077_METAG.scaffolds.min500.fasta.f1k.fasta"
+export BAMDIR="$DATA/bamfiles"
+export RUNDIR="/vol/data/benchmark/runs/baseline_rerun_autorestart1"
+
+cd /vol/data/repos/COMEBin/COMEBin
+
+# Step 1: Generate seed using gen_seed
+PYTHONPATH=/vol/data/repos/COMEBin $MM run -p $ENV python -c "
+import os, sys, logging
+sys.path.insert(0, '/vol/data/repos/COMEBin')
+os.chdir('/vol/data/repos/COMEBin/COMEBin')
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(message)s')
+from utils import gen_seed
+logger = logging.getLogger('comebin')
+seed_num = gen_seed(logger=logger, contig_file='$CONTIGS', threads=32, contig_length_threshold=1001, marker_name='bacar_marker', quarter='2quarter')
+print(f'Seed generated: {seed_num}')
+" 2>&1 | tail -20
+echo "---"
+# Check seed file
+ls -la /vol/data/datasets/comebin_test_data/BATS_SAMN07137077_METAG.scaffolds.min500.fasta.f1k.fasta.bacar_marker.2quarter_lencutoff_1001.seed 2>/dev/null && echo "Seed exists!" || echo "Seed not found"
+2026-09-24 08:22:19,850 - exec cmd: /vol/data/repos/COMEBin/COMEBin/../auxiliary/test_getmarker_2quarter.pl /vol/data/datasets/comebin_test_data/BATS_SAMN07137077_METAG.scaffolds.min500.fasta.f1k.fasta.bacar_marker.hmmout /vol/data/datasets/comebin_test_data/BATS_SAMN07137077_METAG.scaffolds.min500.fasta.f1k.fasta 1001 /vol/data/datasets/comebin_test_data/BATS_SAMN07137077_METAG.scaffolds.min500.fasta.f1k.fasta.bacar_marker.2quarter_lencutoff_1001.seed
+2026-09-24 08:22:19,945 - markerCmd failed! Not exist: /vol/data/repos/COMEBin/COMEBin/../auxiliary/test_getmarker_2quarter.pl /vol/data/datasets/comebin_test_data/BATS_SAMN07137077_METAG.scaffolds.min500.fasta.f1k.fasta.bacar_marker.hmmout /vol/data/datasets/comebin_test_data/BATS_SAMN07137077_METAG.scaffolds.min500.fasta.f1k.fasta 1001 /vol/data/datasets/comebin_test_data/BATS_SAMN07137077_METAG.scaffolds.min500.fasta.f1k.fasta.bacar_marker.2quarter_lencutoff_1001.seed
+Seed generated: 0
+---
+Seed not found
+> build · ling-3.0-flash-fin-free
+[0m$ [0m# Check the hmmout file and run the Perl script manually
+echo "=== hmmout size ==="; ls -la /vol/data/datasets/comebin_test_data/BATS_SAMN07137077_METAG.scaffolds.min500.fasta.f1k.fasta.bacar_marker.hmmout 2>/dev/null
+echo "---"
+# Run the Perl script manually to see the error
+perl /vol/data/repos/COMEBin/auxiliary/test_getmarker_2quarter.pl /vol/data/datasets/comebin_test_data/BATS_SAMN07137077_METAG.scaffolds.min500.fasta.f1k.fasta.bacar_marker.hmmout /vol/data/datasets/comebin_test_data/BATS_SAMN07137077_METAG.scaffolds.min500.fasta.f1k.fasta 1001 /tmp/test.seed 2>&1 | head -20
+echo "---"
+echo "=== exit code: $? ==="
+echo "---"
+# Check the .hmmout output file from the previous hmmsearch run
+head -5 /vol/data/datasets/comebin_test_data/BATS_SAMN07137077_METAG.scaffolds.min500.fasta.f1k.fasta.bacar_marker.hmmout 2>/dev/null
+echo "---"
+echo "=== full hmmout ==="; wc -l /vol/data/datasets/comebin_test_data/BATS_SAMN07137077_METAG.scaffolds.min500.fasta.f1k.fasta.bacar_marker.hmmout 2>/dev/null
+=== hmmout size ===
+-rw-rw-r-- 1 ubuntu ubuntu 0 Sep 23 21:30 /vol/data/datasets/comebin_test_data/BATS_SAMN07137077_METAG.scaffolds.min500.fasta.f1k.fasta.bacar_marker.hmmout
+---
+---
+=== exit code: 0 ===
+---
+---
+=== full hmmout ===
+0 /vol/data/datasets/comebin_test_data/BATS_SAMN07137077_METAG.scaffolds.min500.fasta.f1k.fasta.bacar_marker.hmmout
+> build · ling-3.0-flash-fin-free
+The hmmout file is still empty - the `.out`/`.err` files likely have the real issue. Let me
+[0m$ [0m# Check the .out and .err files, and the frag.faa file
+echo "=== hmmout.out ==="; ls -la /vol/data/datasets/comebin_test_data/BATS_SAMN07137077_METAG.scaffolds.min500.fasta.f1k.fasta.bacar_marker.hmmout.out 2>/dev/null; head -5 /vol/data/datasets/comebin_test_data/BATS_SAMN07137077_METAG.scaffolds.min500.fasta.f1k.fasta.bacar_marker.hmmout.out 2>/dev/null; wc -l /vol/data/datasets/comebin_test_data/BATS_SAMN07137077_METAG.scaffolds.min500.fasta.f1k.fasta.bacar_marker.hmmout.out 2>/dev/null
+echo "---"
+echo "=== hmmout.err ==="; ls -la /vol/data/datasets/comebin_test_data/BATS_SAMN07137077_METAG.scaffolds.min500.fasta.f1k.fasta.bacar_marker.hmmout.err 2>/dev/null; cat /vol/data/datasets/comebin_test_data/BATS_SAMN07137077_METAG.scaffolds.min500.fasta.f1k.fasta.bacar_marker.hmmout.err 2>/dev/null
+echo "---"
+echo "=== frag.faa ==="; ls -la /vol/data/datasets/comebin_test_data/BATS_SAMN07137077_METAG.scaffolds.min500.fasta.f1k.fasta.frag.faa 2>/dev/null || echo "NOT FOUND"
+echo "---"
+echo "=== all related files ==="; ls -la /vol/data/datasets/comebin_test_data/BATS_SAMN07137077_METAG.scaffolds.min500.fasta.f1k.fasta.bacar_marker.* 2>/dev/null
+=== hmmout.out ===
+-rw-rw-r-- 1 ubuntu ubuntu 860 Sep 23 21:30 /vol/data/datasets/comebin_test_data/BATS_SAMN07137077_METAG.scaffolds.min500.fasta.f1k.fasta.bacar_marker.hmmout.out
+# hmmsearch :: search profile(s) against a sequence database
+# HMMER 3.4 (Aug 2023); http://hmmer.org/
+# Copyright (C) 2023 Howard Hughes Medical Institute.
+# Freely distributed under the BSD open source license.
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+13 /vol/data/datasets/comebin_test_data/BATS_SAMN07137077_METAG.scaffolds.min500.fasta.f1k.fasta.bacar_marker.hmmout.out
+---
+=== hmmout.err ===
+-rw-rw-r-- 1 ubuntu ubuntu 56 Sep 23 21:30 /vol/data/datasets/comebin_test_data/BATS_SAMN07137077_METAG.scaffolds.min500.fasta.f1k.fasta.bacar_marker.hmmout.err
+
+Error: TC bit thresholds unavailable on model BA00001
+
+---
+=== frag.faa ===
+-rw-rw-r-- 1 ubuntu ubuntu 19062381 Sep 23 21:30 /vol/data/datasets/comebin_test_data/BATS_SAMN07137077_METAG.scaffolds.min500.fasta.f1k.fasta.frag.faa
+---
+=== all related files ===
+-rw-rw-r-- 1 ubuntu ubuntu   0 Sep 23 21:30 /vol/data/datasets/comebin_test_data/BATS_SAMN07137077_METAG.scaffolds.min500.fasta.f1k.fasta.bacar_marker.hmmout
+-rw-rw-r-- 1 ubuntu ubuntu  56 Sep 23 21:30 /vol/data/datasets/comebin_test_data/BATS_SAMN07137077_METAG.scaffolds.min500.fasta.f1k.fasta.bacar_marker.hmmout.err
+-rw-rw-r-- 1 ubuntu ubuntu 860 Sep 23 21:30 /vol/data/datasets/comebin_test_data/BATS_SAMN07137077_METAG.scaffolds.min500.fasta.f1k.fasta.bacar_marker.hmmout.out
+> build · ling-3.0-flash-fin-free
+Found the bug! `gen_seed` checks `if not os.path.exists(hmmResultURL)` - since the empty `.hmmout` file already exists, it skips hmmsearch entirely. Let me fix this
+[0m$ [0m# The .hmmout file exists (empty), so gen_seed skips hmmsearch. Delete it and re-run.
+echo "=== Current hmmsearch in PATH ==="; which hmmsearch 2>/dev/null || echo "not found"; /vol/data/envs/comebin/bin/hmmsearch --version 2>&1 || true
+echo "---"
+# Check hmmsearch version properly
+/vol/data/envs/comebin/bin/hmmsearch --help 2>&1 | head -1
+echo "---"
+# Remove the stale .hmmout files so hmmsearch gets re-run
+rm -f /vol/data/datasets/comebin_test_data/BATS_SAMN07137077_METAG.scaffolds.min500.fasta.f1k.fasta.bacar_marker.hmmout
+rm -f /vol/data/datasets/comebin_test_data/BATS_SAMN07137077_METAG.scaffolds.min500.fasta.f1k.fasta.bacar_marker.hmmout.out
+rm -f /vol/data/datasets/comebin_test_data/BATS_SAMN07137077_METAG.scaffolds.min500.fasta.f1k.fasta.bacar_marker.hmmout.err
+echo "=== Deleted stale files ==="
+echo "---"
+# Verify the .hmmout is gone
+ls /vol/data/datasets/comebin_test_data/BATS_SAMN07137077_METAG.scaffolds.min500.fasta.f1k.fasta.bacar_marker.hmmout* 2>/dev/null || echo "All stale files removed"
+echo "---"
+# Set PATH properly and run gen_seed
+export PATH="/vol/data/envs/comebin/bin:$PATH"
+cd /vol/data/repos/COMEBin/COMEBin
+PYTHONPATH=/vol/data/repos/COMEBIN:$MM run -p /vol/data/envs/comebin python -c "
+import os, sys, logging
+sys.path.insert(0, '/vol/data/repos/COMEBin')
+os.chdir('/vol/data/repos/COMEBin/COMEBin')
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(message)s')
+from utils import gen_seed
+logger = logging.getLogger('comebin')
+seed_num = gen_seed(logger=logger, contig_file='/vol/data/datasets/comebin_test_data/BATS_SAMN07137077_METAG.scaffolds.min500.fasta.f1k.fasta', threads=32, contig_length_threshold=1001, marker_name='bacar_marker', quarter='2quarter')
+print(f'Seed generated: {seed_num}')
+" 2>&1 | tail -20
+echo "---"
+# Check the new .hmmout
+ls -la /vol/data/datasets/comebin_test_data/BATS_SAMN07137077_METAG.scaffolds.min500.fasta.f1k.fasta.bacar_marker.hmmout* 2>/dev/null
+echo "---"
+wc -l /vol/data/datasets/comebin_test_data/BATS_SAMN07137077_METAG.scaffolds.min500.fasta.f1k.fasta.bacar_marker.hmmout 2>/dev/null || echo "Still 0 or missing"
+=== Current hmmsearch in PATH ===
+not found
+Failed to parse command line: No such option "--version".
+Usage: hmmsearch [options] <hmmfile> <seqdb>
+
+where most common options are:
+  -h : show brief help on version and usage
+
+To see more help on available options, do /vol/data/envs/comebin/bin/hmmsearch -h
+
+---
+Failed to parse command line: No such option "--help".
+---
+=== Deleted stale files ===
+---
+All stale files removed
+---
+/bin/bash: line 19: run: command not found
+---
+---
+Still 0 or missing
+> build · ling-3.0-flash-fin-free
+[0m$ [0m# Fix the approach - use proper micromamba run and set PATH
+# First verify hmmsearch works with full path
+echo "=== hmmsearch path ==="; /vol/data/envs/comebin/bin/hmmsearch --help 2>&1 | head -1
+echo "---"
+echo "=== PATH check ==="; ls /vol/data/envs/comebin/bin/hmmsearch && echo "exists"
+echo "---"
+# Remove stale files and run properly
+rm -f /vol/data/datasets/comebin_test_data/BATS_SAMN07137077_METAG.scaffolds.min500.fasta.f1k.fasta.bacar_marker.hmmout*
+export PATH="/vol/data/envs/comebin/bin:$PATH"
+export MM=/vol/data/tools/bin/micromamba
+export ENV=/vol/data/envs/comebin
+
+# Run gen_seed with micromamba, which will have hmmsearch in PATH
+cd /vol/data/repos/COMEBin
+$MM run -p $ENV env | grep hmmsearch | head -3
+echo "---"
+# Now run the actual Python code
+cd /vol/data/repos/COMEBin/COMEBin
+$MM run -p $ENV python -c "
+import os, sys, logging
+sys.path.insert(0, '/vol/data/repos/COMEBin')
+os.chdir('/vol/data/repos/COMEBin/COMEBin')
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(message)s')
+from utils import gen_seed
+logger = logging.getLogger('comebin')
+seed_num = gen_seed(logger=logger, contig_file='/vol/data/datasets/comebin_test_data/BATS_SAMN07137077_METAG.scaffolds.min500.fasta.f1k.fasta', threads=32, contig_length_threshold=1001, marker_name='bacar_marker', quarter='2quarter')
+print(f'Seed generated: {seed_num}')
+" 2>&1 | tail -30
+echo "---"
+# Check files
+ls -la /vol/data/datasets/comebin_test_data/BATS_SAMN07137077_METAG.scaffolds.min500.fasta.f1k.fasta.bacar_marker.hmmout* 2>/dev/null
+echo "---"
+wc -l /vol/data/datasets/comebin_test_data/BATS_SAMN07137077_METAG.scaffolds.min500.fasta.f1k.fasta.bacar_marker.hmmout 2>/dev/null
+=== hmmsearch path ===
+Failed to parse command line: No such option "--help".
+---
+=== PATH check ===
+/vol/data/envs/comebin/bin/hmmsearch
+exists
+---
+---
+2026-09-24 08:22:41,100 - exec cmd: hmmsearch --domtblout /vol/data/datasets/comebin_test_data/BATS_SAMN07137077_METAG.scaffolds.min500.fasta.f1k.fasta.bacar_marker.hmmout --cut_tc --cpu 32 /vol/data/repos/COMEBin/COMEBin/../auxiliary/bacar_marker.hmm /vol/data/datasets/comebin_test_data/BATS_SAMN07137077_METAG.scaffolds.min500.fasta.f1k.fasta.frag.faa 1>/vol/data/datasets/comebin_test_data/BATS_SAMN07137077_METAG.scaffolds.min500.fasta.f1k.fasta.bacar_marker.hmmout.out 2>/vol/data/datasets/comebin_test_data/BATS_SAMN07137077_METAG.scaffolds.min500.fasta.f1k.fasta.bacar_marker.hmmout.err
+2026-09-24 08:22:47,017 - exec cmd: /vol/data/repos/COMEBin/COMEBin/../auxiliary/test_getmarker_2quarter.pl /vol/data/datasets/comebin_test_data/BATS_SAMN07137077_METAG.scaffolds.min500.fasta.f1k.fasta.bacar_marker.hmmout /vol/data/datasets/comebin_test_data/BATS_SAMN07137077_METAG.scaffolds.min500.fasta.f1k.fasta 1001 /vol/data/datasets/comebin_test_data/BATS_SAMN07137077_METAG.scaffolds.min500.fasta.f1k.fasta.bacar_marker.2quarter_lencutoff_1001.seed
+Seed generated: 25
+---
+-rw-rw-r-- 1 ubuntu ubuntu  475318 Sep 24 08:22 /vol/data/datasets/comebin_test_data/BATS_SAMN07137077_METAG.scaffolds.min500.fasta.f1k.fasta.bacar_marker.hmmout
+-rw-rw-r-- 1 ubuntu ubuntu       0 Sep 24 08:22 /vol/data/datasets/comebin_test_data/BATS_SAMN07137077_METAG.scaffolds.min500.fasta.f1k.fasta.bacar_marker.hmmout.err
+-rw-rw-r-- 1 ubuntu ubuntu 3594141 Sep 24 08:22 /vol/data/datasets/comebin_test_data/BATS_SAMN07137077_METAG.scaffolds.min500.fasta.f1k.fasta.bacar_marker.hmmout.out
+---
+2240 /vol/data/datasets/comebin_test_data/BATS_SAMN07137077_METAG.scaffolds.min500.fasta.f1k.fasta.bacar_marker.hmmout
+> build · ling-3.0-flash-fin-free
+Seed generated: 25 marker hits! Now let me run the clustering step
+[0m$ [0m# Now run the binning/clustering step using existing training artifacts
+# The bin subcommand needs: --contig_file, --seed_file, --emb_file, --output_path, --num_threads, --contig_len
+export MM=/vol/data/tools/bin/micromamba
+export ENV=/vol/data/envs/comebin
+export PATH="/vol/data/envs/comebin/bin:$PATH"
+export SRC=/vol/data/repos/COMEBin
+export DATA=/vol/data/datasets/comebin_test_data
+export RUNDIR="/vol/data/benchmark/runs/baseline_rerun_autorestart1"
+
+# Create the seed file path
+SEED_FILE="$DATA/BATS_SAMN07137077_METAG.scaffolds.min500.fasta.f1k.fasta.bacar_marker.2quarter_lencutoff_1001.seed"
+EMB_FILE="$RUNDIR/comebin_out/comebin_res/embeddings.tsv"
+CONTIG_FILE="$DATA/BATS_SAMN07137077_METAG.scaffolds.min500.fasta.f1k.fasta"
+OUTPUT_PATH="$RUNDIR/comebin_out"
+
+echo "=== Seed file ==="; ls -la "$SEED_FILE" && echo "exists" || echo "MISSING"
+echo "=== Embeddings ==="; ls -la "$EMB_FILE" && echo "exists" || echo "MISSING"
+echo "=== Seed content ==="; head -5 "$SEED_FILE" 2>/dev/null; wc -l "$SEED_FILE" 2>/dev/null
+echo "---"
+# Run the bin subcommand
+cd /vol/data/repos/COMEBin/COMEBin
+$MM run -p $ENV python -c "
+import os, sys, logging
+sys.path.insert(0, '/vol/data/repos/COMEBin')
+os.chdir('/vol/data/repos/COMEBin/COMEBin')
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(message)s')
+from main import main
+import argparse
+
+# Set up args for the bin subcommand
+sys.argv = ['comebin', 'bin',
+    '--contig_file', '$CONTIG_FILE',
+    '--seed_file', '$SEED_FILE',
+    '--emb_file', '$EMB_FILE',
+    '--output_path', '$OUTPUT_PATH',
+    '--num_threads', '32',
+    '--contig_len', '1001']
+main()
+" 2>&1 | tail -30
+echo "---"
+# Check if bins were created
+find "$RUNDIR/comebin_out/comebin_res/cluster_res/" -name "*.fasta" -o -name "*.fa" -o -name "*.fna" -o -name "*bins*" 2>/dev/null | head -20
+echo "---"
+ls "$RUNDIR/comebin_out/comebin_res/cluster_res/unitem_profile/binning_methods/" 2>/dev/null
+=== Seed file ===
+-rw-rw-r-- 1 ubuntu ubuntu 964 Sep 24 08:22 /vol/data/datasets/comebin_test_data/BATS_SAMN07137077_METAG.scaffolds.min500.fasta.f1k.fasta.bacar_marker.2quarter_lencutoff_1001.seed
+exists
+=== Embeddings ===
+-rw-rw-r-- 1 ubuntu ubuntu 40788448 Sep 24 07:15 /vol/data/benchmark/runs/baseline_rerun_autorestart1/comebin_out/comebin_res/embeddings.tsv
+exists
+=== Seed content ===
+BATS_SAMN07137077_METAG-scaffold_23566
+BATS_SAMN07137077_METAG-scaffold_2185
+BATS_SAMN07137077_METAG-scaffold_4955
+BATS_SAMN07137077_METAG-scaffold_1118
+BATS_SAMN07137077_METAG-scaffold_1036
+25 /vol/data/datasets/comebin_test_data/BATS_SAMN07137077_METAG.scaffolds.min500.fasta.f1k.fasta.bacar_marker.2quarter_lencutoff_1001.seed
+---
+2026-09-24 08:22:54,408 - bin
+2026-09-24 08:22:54,408 - bin
+2026-09-24 08:22:54,408 - Start clustering.
+2026-09-24 08:22:54,408 - Start clustering.
+2026-09-24 08:22:55,254 - N50:	1623
+2026-09-24 08:22:55,254 - N50:	1623
+2026-09-24 08:22:55,291 - Run weighted seed k-means for obtaining the SCG information of the contigs within a manageable time during the final step.
+2026-09-24 08:22:55,291 - Run weighted seed k-means for obtaining the SCG information of the contigs within a manageable time during the final step.
+2026-09-24 08:22:55,291 - Bin_numbers:	[25]
+2026-09-24 08:22:55,291 - Bin_numbers:	[25]
+2026-09-24 08:22:55,291 - 25
+2026-09-24 08:22:55,291 - 25
+Traceback (most recent call last):
+  File "<string>", line 17, in <module>
+  File "/vol/data/repos/COMEBin/COMEBin/main.py", line 299, in main
+    cluster(logger, args)
+  File "/vol/data/repos/COMEBin/COMEBin/cluster.py", line 383, in cluster
+    seed_kmeans_full(logger, contig_file, namelist, output_path, norm_embeddings, k, mode, length_weight, seed_file)
+  File "/vol/data/repos/COMEBin/COMEBin/cluster.py", line 103, in seed_kmeans_full
+    km = KMeans(n_clusters=bin_number, n_jobs=-1, random_state=7, algorithm="full",
+TypeError: KMeans.__init__() got an unexpected keyword argument 'n_jobs'
+---
+---
+weight_seed_kmeans_k_0_result.tsv
+> build · ling-3.0-flash-fin-free
+Clustering failed due to sklearn compatibility issue (`KMeans(n_jobs=-1)` removed in sklearn ≥1.0). Let me fix
+[0m$ [0m# Check the sklearn version and the cluster.py issue
+echo "=== sklearn version ==="; /vol/data/tools/bin/micromamba run -p /vol/data/envs/comebin python -c "import sklearn; print(sklearn.__version__)"
+echo "---"
+echo "=== cluster.py line 103 ==="; sed -n '95,115p' /vol/data/repos/COMEBin/COMEBin/cluster.py
+echo "---"
+echo "=== all KMeans references ==="; grep -n "KMeans\|n_jobs" /vol/data/repos/COMEBin/COMEBin/cluster.py
+=== sklearn version ===
+1.1.3
+---
+=== cluster.py line 103 ===
+    """
+    out_path = out_path + prefix
+    seed_bacar_marker_idx = gen_seed_idx(seed_bacar_marker_url, contig_id_list=namelist)
+    time_start = time.time()
+    # run seed-kmeans; length weight
+    output_temp = out_path + '_k_' + str(
+        bin_number) + '_result.tsv'
+    if not (os.path.exists(output_temp)):
+        km = KMeans(n_clusters=bin_number, n_jobs=-1, random_state=7, algorithm="full",
+                    init=functools.partial(partial_seed_init, seed_idx=seed_bacar_marker_idx))
+        km.fit(X_mat, sample_weight=length_weight)
+        idx = km.labels_
+        save_result(idx, output_temp, namelist)
+
+        gen_bins_from_tsv(contig_file, output_temp, output_temp+'_bins')
+
+        time_end = time.time()
+        logger.info("Running weighted seed-kmeans cost:\t"+str(time_end - time_start) + 's.')
+
+
+def gen_seed_idx(seedURL: str, contig_id_list: List[str]) -> List[int]:
+---
+=== all KMeans references ===
+13:from sklearn.cluster._kmeans import euclidean_distances, stable_cumsum, KMeans, check_random_state, row_norms, MiniBatchKMeans
+103:        km = KMeans(n_clusters=bin_number, n_jobs=-1, random_state=7, algorithm="full",
+140:    Partial initialization of KMeans centers with seeds from seed_idx.
+152:    This function initializes a KMeans clustering by partially seeding the centers with provided seeds.
+153:    It is a modification of the KMeans initialization algorithm.
+> build · ling-3.0-flash-fin-free
+[0m$ [0m# Check what's available in sklearn.cluster public API
+/vol/data/tools/bin/micromamba run -p /vol/data/envs/comebin python -c "
+from sklearn.cluster import KMeans
+import inspect
+sig = inspect.signature(KMeans.__init__)
+print('KMeans params:', list(sig.parameters.keys()))
+" 2>&1
+echo "---"
+# Check if euclidean_distances etc are in public API
+/vol/data/tools/bin/micromamba run -p /vol/data/envs/comebin python -c "
+from sklearn.cluster import euclidean_distances, stable_cumsum, check_random_state, row_norms, MiniBatchKMeans
+print('Public API imports work')
+" 2>&1
+echo "---"
+# Also check what the private import currently imports
+/vol/data/tools/bin/micromamba run -p /vol/data/envs/comebin python -c "
+from sklearn.cluster import KMeans as PublicKMeans
+import sklearn.cluster._kmeans as private
+print('Private KMeans:', private.KMeans)
+print('Public KMeans:', PublicKMeans)
+print('Same?', private.KMeans is PublicKMeans)
+" 2>&1
+KMeans params: ['self', 'n_clusters', 'init', 'n_init', 'max_iter', 'tol', 'verbose', 'random_state', 'copy_x', 'algorithm']
+---
+Traceback (most recent call last):
+  File "<string>", line 2, in <module>
+ImportError: cannot import name 'euclidean_distances' from 'sklearn.cluster' (/vol/data/envs/comebin/lib/python3.10/site-packages/sklearn/cluster/__init__.py)
+---
+Private KMeans: <class 'sklearn.cluster._kmeans.KMeans'>
+Public KMeans: <class 'sklearn.cluster._kmeans.KMeans'>
+Same? True
+> build · ling-3.0-flash-fin-free
+[0m$ [0m# Check what imports are needed and fix the cluster.py
+# First, find where euclidean_distances, stable_cumsum, check_random_state, row_norms come from
+/vol/data/tools/bin/micromamba run -p /vol/data/envs/comebin python -c "
+from sklearn.metrics.pairwise import euclidean_distances, row_norms
+from sklearn.utils import check_random_state
+from sklearn.utils.sparsefuncs_fast import stable_cumsum
+print('All imports work from public API')
+" 2>&1
+echo "---"
+# Check if stable_cumsum is in sparsefuncs_fast
+/vol/data/tools/bin/micromamba run -p /vol/data/envs/comebin python -c "
+from sklearn.utils.sparsefuncs_fast import stable_cumsum
+print('stable_cumsum OK')
+" 2>&1
+echo "---"
+# Check the full import section of cluster.py
+head -20 /vol/data/repos/COMEBin/COMEBin/cluster.py
+Traceback (most recent call last):
+  File "<string>", line 4, in <module>
+ImportError: cannot import name 'stable_cumsum' from 'sklearn.utils.sparsefuncs_fast' (/vol/data/envs/comebin/lib/python3.10/site-packages/sklearn/utils/sparsefuncs_fast.cpython-310-x86_64-linux-gnu.so)
+---
+Traceback (most recent call last):
+  File "<string>", line 2, in <module>
+ImportError: cannot import name 'stable_cumsum' from 'sklearn.utils.sparsefuncs_fast' (/vol/data/envs/comebin/lib/python3.10/site-packages/sklearn/utils/sparsefuncs_fast.cpython-310-x86_64-linux-gnu.so)
+---
+import hnswlib
+import leidenalg
+import numpy as np
+import pandas as pd
+import functools
+import time
+import os
+import scipy.sparse as sp
+import logging
+
+from igraph import Graph
+from sklearn.preprocessing import normalize
+from sklearn.cluster._kmeans import euclidean_distances, stable_cumsum, KMeans, check_random_state, row_norms, MiniBatchKMeans
+
+from utils import get_length, calculateN50, save_result
+from scripts.gen_bins_from_tsv import gen_bins as gen_bins_from_tsv
+from typing import List, Optional, Union
+
+
+logger = logging.getLogger('COMEBin')
+> build · ling-3.0-flash-fin-free
+[0m$ [0m# Find where each function is located in sklearn 1.1.3
+/vol/data/tools/bin/micromamba run -p /vol/data/envs/comebin python -c "
+# Check each import
+try:
+    from sklearn.cluster import KMeans
+    print('KMeans: sklearn.cluster')
+except: pass
+try:
+    from sklearn.metrics.pairwise import euclidean_distances
+    print('euclidean_distances: sklearn.metrics.pairwise')
+except: pass
+try:
+    from sklearn.utils import check_random_state
+    print('check_random_state: sklearn.utils')
+except: pass
+try:
+    from sklearn.utils._array_helpers import stable_cumsum
+    print('stable_cumsum: sklearn.utils._array_helpers')
+except: pass
+try:
+    from sklearn.metrics.pairwise import row_norms
+    print('row_norms: sklearn.metrics.pairwise')
+except: pass
+try:
+    from sklearn.cluster import MiniBatchKMeans
+    print('MiniBatchKMeans: sklearn.cluster')
+except: pass
+" 2>&1
+echo "---"
+# Check stable_cumsum more broadly
+/vol/data/tools/bin/micromamba run -p /vol/data/envs/comebin python -c "
+import sklearn.utils
+import inspect
+# Search for stable_cumsum
+for name, obj in inspect.getmembers(sklearn.utils):
+    if 'stable_cumsum' in str(obj) or (hasattr(obj, '__name__') and 'stable_cumsum' in obj.__name__):
+        print(f'Found: {name}')
+" 2>&1
+echo "---"
+# Search sklearn package for stable_cumsum
+find /vol/data/envs/comebin/lib/python3.10/site-packages/sklearn -name "*.py" -exec grep -l "stable_cumsum" {} \; 2>/dev/null | head -5
+KMeans: sklearn.cluster
+euclidean_distances: sklearn.metrics.pairwise
+check_random_state: sklearn.utils
+row_norms: sklearn.metrics.pairwise
+MiniBatchKMeans: sklearn.cluster
+---
+---
+/vol/data/envs/comebin/lib/python3.10/site-packages/sklearn/metrics/_ranking.py
+/vol/data/envs/comebin/lib/python3.10/site-packages/sklearn/manifold/_locally_linear.py
+/vol/data/envs/comebin/lib/python3.10/site-packages/sklearn/cluster/_kmeans.py
+/vol/data/envs/comebin/lib/python3.10/site-packages/sklearn/decomposition/_pca.py
+/vol/data/envs/comebin/lib/python3.10/site-packages/sklearn/utils/extmath.py
+> build · ling-3.0-flash-fin-free
+Now I know the correct import locations. Let me fix cluster
+[0m→ [0mRead /vol/data/repos/COMEBin/COMEBin/cluster.py [90m[limit=15, offset=1][0m
+> build · ling-3.0-flash-fin-free
+Let me fix the import and the KMeans call.
+[0m← [0mEdit /vol/data/repos/COMEBin/COMEBin/cluster.py
+Index: /vol/data/repos/COMEBin/COMEBin/cluster.py
+===================================================================
+--- /vol/data/repos/COMEBin/COMEBin/cluster.py
++++ /vol/data/repos/COMEBin/COMEBin/cluster.py
+@@ -9,9 +9,12 @@
+ import logging
+ 
+ from igraph import Graph
+ from sklearn.preprocessing import normalize
+-from sklearn.cluster._kmeans import euclidean_distances, stable_cumsum, KMeans, check_random_state, row_norms, MiniBatchKMeans
++from sklearn.cluster import KMeans, MiniBatchKMeans
++from sklearn.metrics.pairwise import euclidean_distances, row_norms
++from sklearn.utils import check_random_state
++from sklearn.utils.extmath import stable_cumsum
+ 
+ from utils import get_length, calculateN50, save_result
+ from scripts.gen_bins_from_tsv import gen_bins as gen_bins_from_tsv
+ from typing import List, Optional, Union
+
+[0m← [0mEdit /vol/data/repos/COMEBin/COMEBin/cluster.py
+Index: /vol/data/repos/COMEBin/COMEBin/cluster.py
+===================================================================
+--- /vol/data/repos/COMEBin/COMEBin/cluster.py
++++ /vol/data/repos/COMEBin/COMEBin/cluster.py
+@@ -102,9 +102,9 @@
+     # run seed-kmeans; length weight
+     output_temp = out_path + '_k_' + str(
+         bin_number) + '_result.tsv'
+     if not (os.path.exists(output_temp)):
+-        km = KMeans(n_clusters=bin_number, n_jobs=-1, random_state=7, algorithm="full",
++        km = KMeans(n_clusters=bin_number, random_state=7, algorithm="full",
+                     init=functools.partial(partial_seed_init, seed_idx=seed_bacar_marker_idx))
+         km.fit(X_mat, sample_weight=length_weight)
+         idx = km.labels_
+         save_result(idx, output_temp, namelist)
+
+> build · ling-3.0-flash-fin-free
+Let me verify the fix and re-run the clustering step
