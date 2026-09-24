@@ -3,10 +3,10 @@
 | | |
 |---|---|
 | Status | 🟢 `running` |
-| ⏱ Updated (Europe/Berlin) | `2026-09-24T11:50 CEST` |
-| 🏃 Live benchmark | `medium_v11_20260924` — **epoch 126/200** · loss `4.453676700592041` · top1 acc `50.91796875` (log 5s fresh) |
-| 🧠 Model (last turn) | `mimo-v2.6-flash-free` (watchdog rotates to free models on quota) |
-| 📌 Agent note · **13 min old** | Baseline training epoch ~109/200 (~2.4 min/epoch, ETA ~22:35 UTC unless early-stop); next: baseline eval (run_eval.sh) → issue #2 small-dataset test → v1.1.0 fix run
+| ⏱ Updated (Europe/Berlin) | `2026-09-24T11:52 CEST` |
+| 🏃 Live benchmark | `medium_v11_20260924` — **epoch 137/200** · loss `4.3997297286987305` · top1 acc `52.63020706176758` (log 6s fresh) |
+| 🧠 Model (last turn) | `nemotron-3.5-lightning-free` (watchdog rotates to free models on quota) |
+| 📌 Agent note · **15 min old** | Baseline training epoch ~109/200 (~2.4 min/epoch, ETA ~22:35 UTC unless early-stop); next: baseline eval (run_eval.sh) → issue #2 small-dataset test → v1.1.0 fix run
 2026-09-23 20:33:11 UTC - heartbeat
 2026-09-23 20:43:58 UTC - heartbeat
 2026-09-23 20:56:28 UTC - heartbeat
@@ -255,9 +255,9 @@
 2026-09-24T09:33:26Z triage-new-issues-12-13
 2026-09-24T09:35:29Z readme-progress-checkm1-fix
 2026-09-24T09:36:37Z issue-13-reply-push-7a80d7e |
-| ⚙️ Load · uptime | `32.21 31.26 24.66` · 20 hours, 14 minutes — 32 cores, 62 GiB, no GPU |
-| 💾 RAM used/total | `4520/64295 MB` |
+| ⚙️ Load · uptime | `31.37 31.13 25.41` · 20 hours, 16 minutes — 32 cores, 62 GiB, no GPU |
+| 💾 RAM used/total | `5805/64295 MB` |
 | 🔗 Session | `ses_f31799c77ffeTq9gcYgqc4hBhg` |
-| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `1918c06 status: yes — medium_v11_20260924 epoch 115/200 loss 4.533776760101318` |
-| 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `2870567 B` — every run, command & tool result |
+| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `b169364 status: yes — medium_v11_20260924 epoch 126/200 loss 4.453676700592041` |
+| 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `2870611 B` — every run, command & tool result |
 | 📈 Timeline | [status/status.log](status/status.log) |
