@@ -19027,3 +19027,250 @@ Please let me know if I should prepare a fix batch for this.
 ==== 2026-09-23T23:35:54Z ====
 Small test run update: the small benchmark dataset is ready but the test runner failed with IndexError in get_augfeature.py (k-mer coverage computation). Bug in contig-to-kmer index mapping. Need fix before small end-to-end run can complete per workflow docs/08.
 > build · mimo-v2.6-flash-free
+Root cause chain confirmed so far: sibling commits `47c1449`→`ee2e507`→`904f649` fixed gen_cov/gen_var KeyError + the `np.empty`→`np.zeros` IndexError. Latest failure (`small_test_v2`, exit 1) is now the `KeyError: lengths['...scaffold_22978']` — **not yet reported** on issue #2. Verifying that root cause before replying:
+[0m$ [0mdate -u +"%Y-%m-%d %H:%M:%S UTC - triage: investigating small_test_v2 KeyError root cause for issue #2" >> /vol/data/benchmark/.activity
+touch /vol/data/benchmark/.heartbeat
+{"exit":0,"truncated":false,"output":"","status":"completed"}
+[0m$ [0mgrep -n "lengths" /vol/data/repos/COMEBin/COMEBin/train_CLmodel.py | head -10
+echo "--- how lengths is built ---"
+grep -rn "lengths\s*=" /vol/data/repos/COMEBin/COMEBin/*.py | head -10
+echo "--- scaffold_22978 in small fasta? ---"
+grep -c "scaffold_22978" /vol/data/datasets/comebin_small/*.fasta 2>/dev/null || ls /vol/data/datasets/comebin_small/
+43:    lengths = get_length(contig_file)
+46:        length_weight.append(lengths[seq_id])
+--- how lengths is built ---
+/vol/data/repos/COMEBin/COMEBin/cluster.py:340:    lengths = get_length(contig_file)
+/vol/data/repos/COMEBin/COMEBin/train_CLmodel.py:43:    lengths = get_length(contig_file)
+--- scaffold_22978 in small fasta? ---
+bamfiles
+contig_names.txt
+contigs.bed
+contigs.fa
+contigs.fa.frag.faa
+contigs.fa.frag.ffn
+contigs.fa.frag.gff
+contigs.fa.frag.out
+contigs.fa_lengths.txt
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && git status --short | head -20 && git log --oneline -5 && git fetch origin -q && git rev-parse HEAD origin/main
+M status/agent-activity.log
+b7b1c48 status: yes — baseline_rerun_autorestart1 epoch 4/200 loss 4.548414707183838 acc 54.462890625 model mimo-v2.6-flash-free — Baseline training epoch ~109/200 (~2.4 m 2026-09-23 20:33:11 UTC - heartbeat 2026-09-23 20:43:58 UTC - heartbeat 2026-09-23 20:56:28 UTC - heartbeat 2026-09-23 20:57:36 UTC - heartbeat 2026-09-23 20:58:25 UTC - issue #7 close 2026-09-23 20:59:20 UTC - heartbeat 2026-09-23 20:59:58 UTC - heartbeat 2026-09-23 21:00:37 UTC - heartbeat 2026-09-23 21:01:19 UTC - heartbeat 2026-09-23 21:01:58 UTC - heartbeat 2026-09-23 21:02:37 UTC - heartbeat 2026-09-23 21:03:22 UTC - heartbeat 2026-09-23 21:04:00 UTC - heartbeat 2026-09-23 21:04:40 UTC - heartbeat 2026-09-23 21:05:21 UTC - heartbeat 2026-09-23 21:05:59 UTC - heartbeat 2026-09-23 21:06:39 UTC - heartbeat 2026-09-23 21:07:53 UTC - heartbeat 2026-09-23 21:08:31 UTC - heartbeat 2026-09-23 21:09:10 UTC - heartbeat 2026-09-23 21:09:49 UTC - heartbeat 2026-09-23 21:10:27 UTC - heartbeat 2026-09-23 21:11:06 UTC - heartbeat 2026-09-23 21:11:52 UTC - heartbeat 2026-09-23 21:12:29 UTC - heartbeat 2026-09-23 21:13:08 UTC - heartbeat 2026-09-23 21:13:48 UTC - heartbeat 2026-09-23 21:14:29 UTC - heartbeat 2026-09-23 21:15:07 UTC - heartbeat 2026-09-23 21:15:49 UTC - heartbeat 2026-09-23 21:16:28 UTC - heartbeat 2026-09-23 21:17:09 UTC - heartbeat 2026-09-23 21:17:50 UTC - heartbeat 2026-09-23 21:18:29 UTC - heartbeat 2026-09-23 21:19:08 UTC - heartbeat 2026-09-23 21:19:49 UTC - heartbeat 2026-09-23 21:20:27 UTC - heartbeat 2026-09-23 21:21:08 UTC - heartbeat 2026-09-23 21:21:48 UTC - heartbeat 2026-09-23 21:22:26 UTC - heartbeat 2026-09-23 21:23:09 UTC - heartbeat 2026-09-23 21:23:47 UTC - heartbeat 2026-09-23 21:24:25 UTC - heartbeat 2026-09-23 21:25:05 UTC - heartbeat 2026-09-23 21:25:44 UTC - heartbeat 2026-09-23 21:27:45 UTC - heartbeat 2026-09-23 21:28:29 UTC - heartbeat 2026-09-23 21:29:07 UTC - heartbeat 2026-09-23T22:42Z | small functional tes 2026-09-24 00:15:09 UTC 2026-09-24 00:26:39 UTC 2026-09-24 00:29:27 UTC
+76264b5 status: yes — baseline_rerun_autorestart1 epoch 3/200 loss 4.86178731918335 acc 41.891273498535156 model mimo-v2.6-flash-free — Baseline training epoch ~109/200 (~2.4 m 2026-09-23 20:33:11 UTC - heartbeat 2026-09-23 20:43:58 UTC - heartbeat 2026-09-23 20:56:28 UTC - heartbeat 2026-09-23 20:57:36 UTC - heartbeat 2026-09-23 20:58:25 UTC - issue #7 close 2026-09-23 20:59:20 UTC - heartbeat 2026-09-23 20:59:58 UTC - heartbeat 2026-09-23 21:00:37 UTC - heartbeat 2026-09-23 21:01:19 UTC - heartbeat 2026-09-23 21:01:58 UTC - heartbeat 2026-09-23 21:02:37 UTC - heartbeat 2026-09-23 21:03:22 UTC - heartbeat 2026-09-23 21:04:00 UTC - heartbeat 2026-09-23 21:04:40 UTC - heartbeat 2026-09-23 21:05:21 UTC - heartbeat 2026-09-23 21:05:59 UTC - heartbeat 2026-09-23 21:06:39 UTC - heartbeat 2026-09-23 21:07:53 UTC - heartbeat 2026-09-23 21:08:31 UTC - heartbeat 2026-09-23 21:09:10 UTC - heartbeat 2026-09-23 21:09:49 UTC - heartbeat 2026-09-23 21:10:27 UTC - heartbeat 2026-09-23 21:11:06 UTC - heartbeat 2026-09-23 21:11:52 UTC - heartbeat 2026-09-23 21:12:29 UTC - heartbeat 2026-09-23 21:13:08 UTC - heartbeat 2026-09-23 21:13:48 UTC - heartbeat 2026-09-23 21:14:29 UTC - heartbeat 2026-09-23 21:15:07 UTC - heartbeat 2026-09-23 21:15:49 UTC - heartbeat 2026-09-23 21:16:28 UTC - heartbeat 2026-09-23 21:17:09 UTC - heartbeat 2026-09-23 21:17:50 UTC - heartbeat 2026-09-23 21:18:29 UTC - heartbeat 2026-09-23 21:19:08 UTC - heartbeat 2026-09-23 21:19:49 UTC - heartbeat 2026-09-23 21:20:27 UTC - heartbeat 2026-09-23 21:21:08 UTC - heartbeat 2026-09-23 21:21:48 UTC - heartbeat 2026-09-23 21:22:26 UTC - heartbeat 2026-09-23 21:23:09 UTC - heartbeat 2026-09-23 21:23:47 UTC - heartbeat 2026-09-23 21:24:25 UTC - heartbeat 2026-09-23 21:25:05 UTC - heartbeat 2026-09-23 21:25:44 UTC - heartbeat 2026-09-23 21:27:45 UTC - heartbeat 2026-09-23 21:28:29 UTC - heartbeat 2026-09-23 21:29:07 UTC - heartbeat 2026-09-23T22:42Z | small functional tes 2026-09-24 00:15:09 UTC 2026-09-24 00:26:39 UTC 2026-09-24 00:29:27 UTC
+96ebbe7 status: yes — baseline_rerun_autorestart1 epoch 2/200 loss 5.349753379821777 acc 21.884765625 model mimo-v2.6-flash-free — Baseline training epoch ~109/200 (~2.4 m 2026-09-23 20:33:11 UTC - heartbeat 2026-09-23 20:43:58 UTC - heartbeat 2026-09-23 20:56:28 UTC - heartbeat 2026-09-23 20:57:36 UTC - heartbeat 2026-09-23 20:58:25 UTC - issue #7 close 2026-09-23 20:59:20 UTC - heartbeat 2026-09-23 20:59:58 UTC - heartbeat 2026-09-23 21:00:37 UTC - heartbeat 2026-09-23 21:01:19 UTC - heartbeat 2026-09-23 21:01:58 UTC - heartbeat 2026-09-23 21:02:37 UTC - heartbeat 2026-09-23 21:03:22 UTC - heartbeat 2026-09-23 21:04:00 UTC - heartbeat 2026-09-23 21:04:40 UTC - heartbeat 2026-09-23 21:05:21 UTC - heartbeat 2026-09-23 21:05:59 UTC - heartbeat 2026-09-23 21:06:39 UTC - heartbeat 2026-09-23 21:07:53 UTC - heartbeat 2026-09-23 21:08:31 UTC - heartbeat 2026-09-23 21:09:10 UTC - heartbeat 2026-09-23 21:09:49 UTC - heartbeat 2026-09-23 21:10:27 UTC - heartbeat 2026-09-23 21:11:06 UTC - heartbeat 2026-09-23 21:11:52 UTC - heartbeat 2026-09-23 21:12:29 UTC - heartbeat 2026-09-23 21:13:08 UTC - heartbeat 2026-09-23 21:13:48 UTC - heartbeat 2026-09-23 21:14:29 UTC - heartbeat 2026-09-23 21:15:07 UTC - heartbeat 2026-09-23 21:15:49 UTC - heartbeat 2026-09-23 21:16:28 UTC - heartbeat 2026-09-23 21:17:09 UTC - heartbeat 2026-09-23 21:17:50 UTC - heartbeat 2026-09-23 21:18:29 UTC - heartbeat 2026-09-23 21:19:08 UTC - heartbeat 2026-09-23 21:19:49 UTC - heartbeat 2026-09-23 21:20:27 UTC - heartbeat 2026-09-23 21:21:08 UTC - heartbeat 2026-09-23 21:21:48 UTC - heartbeat 2026-09-23 21:22:26 UTC - heartbeat 2026-09-23 21:23:09 UTC - heartbeat 2026-09-23 21:23:47 UTC - heartbeat 2026-09-23 21:24:25 UTC - heartbeat 2026-09-23 21:25:05 UTC - heartbeat 2026-09-23 21:25:44 UTC - heartbeat 2026-09-23 21:27:45 UTC - heartbeat 2026-09-23 21:28:29 UTC - heartbeat 2026-09-23 21:29:07 UTC - heartbeat 2026-09-23T22:42Z | small functional tes 2026-09-24 00:15:09 UTC 2026-09-24 00:26:39 UTC 2026-09-24 00:29:27 UTC
+b353585 status: yes — baseline_rerun_autorestart1 epoch 1/200 loss 5.825512886047363 acc 6.793619632720947 model mimo-v2.6-flash-free — Baseline training epoch ~109/200 (~2.4 m 2026-09-23 20:33:11 UTC - heartbeat 2026-09-23 20:43:58 UTC - heartbeat 2026-09-23 20:56:28 UTC - heartbeat 2026-09-23 20:57:36 UTC - heartbeat 2026-09-23 20:58:25 UTC - issue #7 close 2026-09-23 20:59:20 UTC - heartbeat 2026-09-23 20:59:58 UTC - heartbeat 2026-09-23 21:00:37 UTC - heartbeat 2026-09-23 21:01:19 UTC - heartbeat 2026-09-23 21:01:58 UTC - heartbeat 2026-09-23 21:02:37 UTC - heartbeat 2026-09-23 21:03:22 UTC - heartbeat 2026-09-23 21:04:00 UTC - heartbeat 2026-09-23 21:04:40 UTC - heartbeat 2026-09-23 21:05:21 UTC - heartbeat 2026-09-23 21:05:59 UTC - heartbeat 2026-09-23 21:06:39 UTC - heartbeat 2026-09-23 21:07:53 UTC - heartbeat 2026-09-23 21:08:31 UTC - heartbeat 2026-09-23 21:09:10 UTC - heartbeat 2026-09-23 21:09:49 UTC - heartbeat 2026-09-23 21:10:27 UTC - heartbeat 2026-09-23 21:11:06 UTC - heartbeat 2026-09-23 21:11:52 UTC - heartbeat 2026-09-23 21:12:29 UTC - heartbeat 2026-09-23 21:13:08 UTC - heartbeat 2026-09-23 21:13:48 UTC - heartbeat 2026-09-23 21:14:29 UTC - heartbeat 2026-09-23 21:15:07 UTC - heartbeat 2026-09-23 21:15:49 UTC - heartbeat 2026-09-23 21:16:28 UTC - heartbeat 2026-09-23 21:17:09 UTC - heartbeat 2026-09-23 21:17:50 UTC - heartbeat 2026-09-23 21:18:29 UTC - heartbeat 2026-09-23 21:19:08 UTC - heartbeat 2026-09-23 21:19:49 UTC - heartbeat 2026-09-23 21:20:27 UTC - heartbeat 2026-09-23 21:21:08 UTC - heartbeat 2026-09-23 21:21:48 UTC - heartbeat 2026-09-23 21:22:26 UTC - heartbeat 2026-09-23 21:23:09 UTC - heartbeat 2026-09-23 21:23:47 UTC - heartbeat 2026-09-23 21:24:25 UTC - heartbeat 2026-09-23 21:25:05 UTC - heartbeat 2026-09-23 21:25:44 UTC - heartbeat 2026-09-23 21:27:45 UTC - heartbeat 2026-09-23 21:28:29 UTC - heartbeat 2026-09-23 21:29:07 UTC - heartbeat 2026-09-23T22:42Z | small functional tes 2026-09-24 00:15:09 UTC 2026-09-24 00:26:39 UTC 2026-09-24 00:29:27 UTC
+fac4860 meta: supervise tick 2026-09-24T00:43:01Z — 0 fix(es)
+b7b1c486722582f582b37c264bca90f477d59165
+b7b1c486722582f582b37c264bca90f477d59165
+> build · mimo-v2.6-flash-free
+Repo tree is clean except the heartbeat's own status append. Now pinning down the `lengths[seq_id]` root cause:
+[0m$ [0msed -n '35,55p' /vol/data/repos/COMEBin/COMEBin/train_CLmodel.py
+echo "--- get_length ---"
+grep -n -A12 "def get_length" /vol/data/repos/COMEBin/COMEBin/utils.py
+echo "--- contig_file arg source ---"
+grep -n "contig_file\|contigs.fa" /vol/data/repos/COMEBin/COMEBin/train_CLmodel.py | head
+grep -rn "train_CLmodel(" /vol/data/repos/COMEBin/COMEBin/main.py | head -3
+logger.info("The embeddings file has been generated before, please check the output commands.")
+        sys.exit()
+
+    dataset, namelist = get_ContrastiveLearningDataset(args.data, args.n_views,
+                                                       args.kmer_model_path, args.device, args.nokmer, args.cov_meannormalize,
+                                                       args.cov_minmaxnormalize, args.cov_standardization,args.addvars,args.vars_sqrt, args.kmer_l2_normalize, args.kmerMetric_notl2normalize)
+
+    contig_file = args.data + '/aug0/sequences_aug0.fasta'
+    lengths = get_length(contig_file)
+    length_weight = []
+    for seq_id in namelist:
+        length_weight.append(lengths[seq_id])
+
+
+    if args.notuseaug0:
+        args.n_views = args.n_views - 1
+        train_dataset = torch.utils.data.TensorDataset(*[dataset[i+1][np.array(length_weight) >= args.contig_len]
+                                                         for i in range(args.n_views)])
+    else:
+        # train_dataset = torch.utils.data.TensorDataset(*dataset)
+        train_dataset = torch.utils.data.TensorDataset(*[dataset[i][np.array(length_weight) >= args.contig_len]
+--- get_length ---
+43:def get_length(fastx_file):
+44-    file_type = mimetypes.guess_type(fastx_file)[1]
+45-    if file_type == 'gzip':
+46-        f = gzip.open(fastx_file, "rt")
+47-    elif not file_type:
+48-        f = open(fastx_file, "rt")
+49-    else:
+50-        raise RuntimeError("Unknown type of file: '{}".format(fastx_file))
+51-    length = {}
+52-    if os.path.getsize(fastx_file) == 0:
+53-        return length
+54-    file_format = None
+55-    line = f.readline()
+--- contig_file arg source ---
+42:    contig_file = args.data + '/aug0/sequences_aug0.fasta'
+43:    lengths = get_length(contig_file)
+289:        train_CLmodel(logger,args)
+[0m$ [0mF=/vol/data/datasets/comebin_small/contigs.fa
+echo "small fasta contigs: $(grep -c '^>' $F)"
+grep -c "scaffold_22978" "$F" || echo "scaffold_22978 NOT in small fasta"
+echo "--- lengths file ---"
+grep -c "" /vol/data/datasets/comebin_small/contigs.fa_lengths.txt
+grep "scaffold_22978" /vol/data/datasets/comebin_small/contigs.fa_lengths.txt || echo "not in lengths file"
+echo "--- which contigs.fa used by small run ---"
+grep -rn "contig_file" /vol/data/benchmark/runs/small_test_v2/run_meta.txt 2>/dev/null
+grep -rn "cmd" /vol/data/benchmark/runs/small_test_v2/run_meta.txt | head -5
+small fasta contigs: 300
+0
+scaffold_22978 NOT in small fasta
+--- lengths file ---
+300
+not in lengths file
+--- which contigs.fa used by small run ---
+13:cmd_wrapper: /vol/data/tools/bin/micromamba run -p /vol/data/envs/comebin bash run_comebin.sh -a /vol/data/datasets/comebin_small/contigs.fa -p /vol/data/datasets/comebin_small/bamfiles -o /vol/data/benchmark/runs/small_test_v2/comebin_out -n 6 -t 8 -b 256 -e 512 -c 512
+> build · mimo-v2.6-flash-free
+Root cause identified — verifying against the v2 run artifacts (the `gen_cov` skip-fix at `47c1449` should have prevented this):
+[0m$ [0mgrep -n -B3 -A20 "def gen_cov\|aug_seq_info_dict" /vol/data/repos/COMEBin/COMEBin/data_aug/gen_cov.py | head -60
+98-
+99-
+100-# modifed from https://github.com/BigDataBiology/SemiBin/blob/3bad22c58e710d8a5455f7411bc8d4202d557c61/SemiBin/generate_coverage.py#L5
+101:def calculate_coverage_samplebyindex(depth_file: str, augpredix: str, aug_seq_info_dict: dict, logger, edge: int = 0,
+102-                                     contig_threshold: int = 1000):
+103-    """
+104-    Calculate coverage from a position depth file for a set of contigs by index.
+105-
+106-    :param depth_file: Input position depth file generated from bedtools genomecov (str).
+107-    :param augpredix: Prefix used for generating output files (str).
+108:    :param aug_seq_info_dict: Dictionary containing information on contigs (dict).
+109-    :param edge: Number of bases to exclude from the edges of contigs (int, default: 0).
+110-    :param contig_threshold: Threshold for contig length, below which contigs are skipped (int, default: 1000).
+111-
+112-    :return: A tuple containing the input depth_file and logger (Tuple[str, logging.Logger).
+113-    """
+114-    contigs = []
+115-    mean_coverage = []
+116-
+117-    for contig_name, lines in groupby(open(depth_file), lambda ell: ell.split('\t', 1)[0]):
+118-        depth_value = []
+119-        for line in lines:
+120-            line_split = line.strip().split('\t')
+121-            length = int(float(line_split[2])) - int(float(line_split[1]))
+122-            value = int(float(line_split[3]))
+123-            depth_value.extend([value] * length)
+124-
+125-        cov_threshold = contig_threshold
+126-
+127:        if contig_name not in aug_seq_info_dict:
+128-            continue
+129-        if len(depth_value) <= cov_threshold:
+130-            continue
+131:        start = aug_seq_info_dict[contig_name][0]
+132:        end = aug_seq_info_dict[contig_name][1]
+133-
+134-        depth_value_ = depth_value[start + edge:end + 1 - edge]
+135-
+136-        mean = np.mean(depth_value_)
+137-        mean_coverage.append(mean)
+138-        contigs.append(contig_name)
+139-
+140-    contig_cov = pd.DataFrame(
+141-        {'{0}_cov'.format(depth_file): mean_coverage,
+142-         }, index=contigs)
+143-
+144-    with atomic_write(depth_file + '_' + augpredix + '_data_cov.csv', overwrite=True) as ofile:
+145-        contig_cov.to_csv(ofile, sep='\t')
+146-
+147-    return (depth_file, logger)
+148-
+149-
+150-def calculate_coverage(depth_file: str, logger, edge: int = 0,
+151-                       contig_threshold: int = 1000, sep: str = None,
+152-                       contig_threshold_dict: dict = None):
+--
+197-    return (depth_file, logger)
+198-
+199-
+200:def gen_cov_from_bedout(logger, out_path: str, depth_file_path: str,
+[0m$ [0mD=/vol/data/benchmark/runs/small_test_v2/comebin_out/data_augmentation
+echo "cov tsv rows: $(wc -l < $D/aug0_datacoverage_mean.tsv 2>/dev/null)"
+echo "aug0 fasta contigs: $(grep -c '^>' $D/aug0/sequences_aug0.fasta 2>/dev/null)"
+grep -c "scaffold_22978" "$D/aug0_datacoverage_mean.tsv" 2>/dev/null || true
+echo "--- head row names vs input ---"
+cut -f1 "$D/aug0_datacoverage_mean.tsv" 2>/dev/null | sed -n '2,4p'
+cov tsv rows: 29435
+aug0 fasta contigs: 300
+1
+--- head row names vs input ---
+BATS_SAMN07137077_METAG-scaffold_71
+BATS_SAMN07137077_METAG-scaffold_137
+BATS_SAMN07137077_METAG-scaffold_211
+> build · mimo-v2.6-flash-free
+v2 cov tsv still has all 29,434 BAM references despite the skip-fix — the final tsv is written elsewhere. Finding the writer:
+[0m$ [0msed -n '199,260p' /vol/data/repos/COMEBin/COMEBin/data_aug/gen_cov.py
+def gen_cov_from_bedout(logger, out_path: str, depth_file_path: str,
+                        num_process: int = 10, num_aug: int = 5, edge: int = 0, contig_len: int = 1000):
+    """
+    Generate coverage data from bedtools output for original and augmented sequences.
+
+    :param out_path: Output directory for storing coverage files (str).
+    :param depth_file_path: Directory containing depth files (str).
+    :param num_process: Number of processes to run in parallel (int, default: 10).
+    :param num_aug: Number of augmented datasets (int, default: 5).
+    :param edge: Number of bases at contig edges to exclude (int, default: 0).
+    :param contig_len: Minimum contig length for inclusion (int, default: 1000).
+
+    :return: None
+    """
+    ########
+    filenames = os.listdir(depth_file_path)
+    namelist = []
+    for filename in filenames:
+        if filename.endswith('_depth.txt'):
+            namelist.append(filename)
+
+    namelist.sort()
+
+    pool = LoggingPool(num_process) if num_process != 0 else LoggingPool()
+    ##generate coverage for original data
+    for i in range(len(namelist)):
+        depth_file = depth_file_path + namelist[i]
+        pool.apply_async(
+            calculate_coverage,
+            args=(depth_file, logger, edge, contig_len),
+            callback=_checkback)
+
+    pool.close()
+    pool.join()
+
+    # merge coverage files
+    for nameid in range(len(namelist)):
+        cov_file = depth_file_path + namelist[
+            nameid] + '_aug0_data_cov.csv'
+        res_mat = pd.read_csv(cov_file, sep='\t', header=0, index_col=0)
+        if nameid == 0:
+            joined = res_mat
+        else:
+            joined = res_mat.join(joined, how="inner")
+
+    outfile = out_path + 'aug0_datacoverage_mean.tsv'
+    joined.to_csv(outfile, sep='\t', header=True)
+
+    for i in range(num_aug):
+        outdir = out_path + 'aug' + str(i + 1)
+        aug_seq_info_out_file = outdir + '/sequences_aug' + str(i + 1) + '.fasta' + '.aug_seq_info.tsv'
+        aug_seq_info_dict = read_aug_seq_info(aug_seq_info_out_file)
+
+        # num_process = 40
+        pool = LoggingPool(num_process) if num_process != 0 else LoggingPool()
+
+        ####generate coverage files
+        for nameid in range(len(namelist)):
+            depth_file = depth_file_path + namelist[nameid]
+            pool.apply_async(
+                calculate_coverage_samplebyindex,
+[0m$ [0mgrep -rn "datacoverage_mean" /vol/data/repos/COMEBin/COMEBin/ /vol/data/repos/COMEBin/*.sh 2>/dev/null | grep -v Binary | head -10
+/vol/data/repos/COMEBin/COMEBin/data_aug/gen_cov.py:245:    outfile = out_path + 'aug0_datacoverage_mean.tsv'
+/vol/data/repos/COMEBin/COMEBin/data_aug/gen_cov.py:279:        outfile = out_path + 'aug' + str(i + 1) + '_datacoverage_mean.tsv'
+/vol/data/repos/COMEBin/COMEBin/data_aug/gen_var.py:174:    # outfile = out_path + 'aug0_datacoverage_mean_edge75.tsv'
+/vol/data/repos/COMEBin/COMEBin/run_comebin.sh:112:keyword="_datacoverage_mean"
+/vol/data/repos/COMEBin/COMEBin/utils.py:99:    namelist = pd.read_csv(data_path + 'aug0_datacoverage_mean.tsv', sep='\t', usecols=range(1)).values[:, 0]
+/vol/data/repos/COMEBin/COMEBin/utils.py:102:    cov_file = data_path + 'aug0_datacoverage_mean.tsv'
+/vol/data/repos/COMEBin/COMEBin/get_augfeature.py:29:    namelist = pd.read_csv(data_path + 'aug0_datacoverage_mean.tsv', sep='\t', usecols=range(1)).values[:, 0]
+/vol/data/repos/COMEBin/COMEBin/get_augfeature.py:33:        cov_file = data_path + 'aug' + str(view) + '_datacoverage_mean.tsv'
+> build · mimo-v2.6-flash-free

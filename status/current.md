@@ -3,10 +3,10 @@
 | | |
 |---|---|
 | Status | 🟢 `running` |
-| ⏱ Updated (Europe/Berlin) | `2026-09-24T02:50 CEST` |
-| 🏃 Live benchmark | `baseline_rerun_autorestart1` — **epoch 4/200** · loss `4.548414707183838` · top1 acc `54.462890625` (log 76s fresh) |
+| ⏱ Updated (Europe/Berlin) | `2026-09-24T02:52 CEST` |
+| 🏃 Live benchmark | `baseline_rerun_autorestart1` — **epoch 5/200** · loss `4.207109451293945` · top1 acc `66.083984375` (log 64s fresh) |
 | 🧠 Model (last turn) | `mimo-v2.6-flash-free` (watchdog rotates to free models on quota) |
-| 📌 Agent note · **20 min old** | Baseline training epoch ~109/200 (~2.4 min/epoch, ETA ~22:35 UTC unless early-stop); next: baseline eval (run_eval.sh) → issue #2 small-dataset test → v1.1.0 fix run
+| 📌 Agent note · **1 min old** | Baseline training epoch ~109/200 (~2.4 min/epoch, ETA ~22:35 UTC unless early-stop); next: baseline eval (run_eval.sh) → issue #2 small-dataset test → v1.1.0 fix run
 2026-09-23 20:33:11 UTC - heartbeat
 2026-09-23 20:43:58 UTC - heartbeat
 2026-09-23 20:56:28 UTC - heartbeat
@@ -58,10 +58,11 @@
 2026-09-23T22:42Z | small functional test run initiated via scripts/run_small_test.sh with fixed COMEBin source (commit 586c7f7: gen_seed_idx FileNotFoundError fix); test progressed past seed generation stage but hit gen_cov.py KeyError on scaffold_22978 - separate from seed-file bug; run completed exit_code=1 in 17s
 2026-09-24 00:15:09 UTC
 2026-09-24 00:26:39 UTC
-2026-09-24 00:29:27 UTC |
-| ⚙️ Load · uptime | `32.03 29.65 18.95` · 11 hours, 14 minutes — 32 cores, 62 GiB, no GPU |
-| 💾 RAM used/total | `6498/64295 MB` |
+2026-09-24 00:29:27 UTC
+2026-09-24 00:50:45 UTC - triage: investigating small_test_v2 KeyError root cause for issue #2 |
+| ⚙️ Load · uptime | `32.08 30.47 20.56` · 11 hours, 16 minutes — 32 cores, 62 GiB, no GPU |
+| 💾 RAM used/total | `7766/64295 MB` |
 | 🔗 Session | `ses_f31799c77ffeTq9gcYgqc4hBhg` |
-| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `76264b5 status: yes — baseline_rerun_autorestart1 epoch 3/200 loss 4.861787319` |
-| 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `1328050 B` — every run, command & tool result |
+| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `b7b1c48 status: yes — baseline_rerun_autorestart1 epoch 4/200 loss 4.548414707` |
+| 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `1348580 B` — every run, command & tool result |
 | 📈 Timeline | [status/status.log](status/status.log) |
