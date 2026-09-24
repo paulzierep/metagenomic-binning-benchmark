@@ -3,10 +3,10 @@
 | | |
 |---|---|
 | Status | 🟢 `running` |
-| ⏱ Updated (Europe/Berlin) | `2026-09-24T10:46 CEST` |
-| 🏃 Live benchmark | `small_test_v3` — **epoch 7/30** · loss `6.181387424468994` · top1 acc `0.7421875` (log 1s fresh) |
+| ⏱ Updated (Europe/Berlin) | `2026-09-24T10:48 CEST` |
+| 🏃 Last benchmark (not active) | `small_test_v3` — last observed **epoch 29/30** (log 93s old) |
 | 🧠 Model (last turn) | `ling-3.0-flash-fin-free` (watchdog rotates to free models on quota) |
-| 📌 Agent note · **6 min old** | Baseline training epoch ~109/200 (~2.4 min/epoch, ETA ~22:35 UTC unless early-stop); next: baseline eval (run_eval.sh) → issue #2 small-dataset test → v1.1.0 fix run
+| 📌 Agent note · **8 min old** | Baseline training epoch ~109/200 (~2.4 min/epoch, ETA ~22:35 UTC unless early-stop); next: baseline eval (run_eval.sh) → issue #2 small-dataset test → v1.1.0 fix run
 2026-09-23 20:33:11 UTC - heartbeat
 2026-09-23 20:43:58 UTC - heartbeat
 2026-09-23 20:56:28 UTC - heartbeat
@@ -244,9 +244,9 @@
 2026-09-24T08:31:15Z - baseline rerun complete; hmmsearch 3.1b2 fixed; cluster.py sklearn fix applied; seed=25; get_result running
 2026-09-24T08:36:12Z - baseline eval: CheckM complete (25 bins, BAC+AR), get_result still finalizing; github comments posted
 2026-09-24T08:39:35Z - baseline rerun complete + eval; github issues #2 and #8 commented; PROGRESS.md update pending |
-| ⚙️ Load · uptime | `1.75 2.47 5.08` · 19 hours, 10 minutes — 32 cores, 62 GiB, no GPU |
-| 💾 RAM used/total | `2908/64295 MB` |
+| ⚙️ Load · uptime | `1.13 2.33 4.74` · 19 hours, 12 minutes — 32 cores, 62 GiB, no GPU |
+| 💾 RAM used/total | `1990/64295 MB` |
 | 🔗 Session | `ses_f31799c77ffeTq9gcYgqc4hBhg` |
-| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `39d40d8 status: yes — baseline_rerun_autorestart1 epoch 176/200 loss 2.8607368` |
+| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `31c8cff status: yes — small_test_v3 epoch 7/30 loss 6.181387424468994 acc 0.74` |
 | 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `2449039 B` — every run, command & tool result |
 | 📈 Timeline | [status/status.log](status/status.log) |
