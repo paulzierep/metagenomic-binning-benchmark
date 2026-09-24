@@ -76,6 +76,29 @@ active_matches() {
   [ "$cur_pid" = "$pid" ] && [ "$cur_dir" = "$rundir" ] && [ "$cur_start" = "$start" ]
 }
 
+# Accept both the live source launcher and the immutable snapshot launcher.  A
+# watchdog restart intentionally executes a committed snapshot, whose argv does
+# not contain the original script basename; requiring only the basename caused
+# healthy replacement runs to be reported as unregistered and repeatedly
+# escalated.  Snapshot acceptance is deliberately narrow: the command must
+# contain an existing snapshot whose name is derived from this registered run
+# and the exact registered run directory as a separate argv token.
+registered_runner_command() {
+  local cmd=$1 token snapshot_ok=0 rundir_ok=0
+  case "$cmd" in
+    *run_comebin_baseline.sh*|*run_comebin_fix.sh*|*run_small_test.sh*) return 0 ;;
+  esac
+  for token in $cmd; do
+    case "$token" in
+      "$SNAPSHOT_ROOT/${name}_"*.sh|"$SNAPSHOT_ROOT/${root_name}_"*.sh)
+        [ -f "$token" ] && snapshot_ok=1
+        ;;
+      "$rundir") rundir_ok=1 ;;
+    esac
+  done
+  [ "$snapshot_ok" -eq 1 ] && [ "$rundir_ok" -eq 1 ]
+}
+
 clear_active() {
   if active_matches; then
     rm -f "$ACTIVE"
@@ -150,10 +173,12 @@ orphaned=0
 pid_stat=$(ps -o stat= -p "$pid" 2>/dev/null | tr -d ' ' || true)
 if [ -n "$pid_stat" ] && kill -0 "$pid" 2>/dev/null && [[ "$pid_stat" != Z* ]]; then
     pid_cmd=$(tr '\0' ' ' < "/proc/$pid/cmdline" 2>/dev/null || true)
-    case "$pid_cmd" in
-      *run_comebin_baseline.sh*|*run_comebin_fix.sh*|*run_small_test.sh*) alive=1 ;;
-      *) log "pid $pid is alive but is not a registered COMEBin runner; refusing kill/restart: $pid_cmd" ; exit 0 ;;
-    esac
+    if registered_runner_command "$pid_cmd"; then
+      alive=1
+    else
+      log "pid $pid is alive but is not a registered COMEBin runner; refusing kill/restart: $pid_cmd"
+      exit 0
+    fi
 elif group_pids=$(pgrep -g "$pgid" 2>/dev/null) && [ -n "$group_pids" ]; then
     # Wrapper gone but descendants remain. Only treat the group as the run when
     # every member is recognizably part of this rundir/runner; otherwise avoid

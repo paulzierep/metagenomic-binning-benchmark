@@ -6,13 +6,14 @@
 #   bash scripts/run_small_test.sh [rundir] [threads]
 # Environment:
 #   SRC_COMEBIN=/path/to/repo-root   COMEBin checkout/worktree to test
+#                                   (default: the verified small-data fix worktree)
 #   SEED=42                          optional reproducible seed (supported CLIs)
 #   BATCH_SIZE=256 EMB_SIZE=512      small-data training defaults
 set -euo pipefail
 
 MM=/vol/data/tools/bin/micromamba
 ENV=/vol/data/envs/comebin
-SRC=${SRC_COMEBIN:-/vol/data/repos/COMEBin}
+SRC=${SRC_COMEBIN:-/vol/data/repos/COMEBin-small-fix}
 DATA=/vol/data/datasets/comebin_small
 CONTIGS="$DATA/contigs.fa"
 BAMDIR="$DATA/bamfiles"

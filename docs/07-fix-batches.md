@@ -47,6 +47,21 @@ flags `-w -m -d cpu -s seed -E -V`. The bin-numbering bug survives, so:
   (CPU policy: no concurrent timed runs). Re-run via
   `scripts/run_comebin_fix.sh runs/fix_batch1` (defaults to the worktree).
 
+## Small-data alignment fix (old 1.0.4 path)
+
+- COMEBin commit `5c77bc8` on branch `comebin-small-fix`
+  (worktree `/vol/data/repos/COMEBin-small-fix`, pushed to the COMEBin fork)
+  fixes the reduced-assembly failure observed in issue #2. `bedtools genomecov
+  -bga` can emit zero-depth rows for every BAM-header reference; producer mean
+  and variance tables now retain only IDs from `aug0/sequences_aug0.fasta`, and
+  feature consumers align coverage/k-mer/variance rows to that FASTA order with
+  explicit missing-row errors.
+- Verification: `py_compile`, producer integration, and the existing
+  `small_test_v2` artifacts all pass with 300 assembly IDs and six views. This
+  is an offline component test, **not** a claimed end-to-end benchmark; the
+  real small run remains gated on the active baseline. The v1.1.0 fork uses a
+  separate count-validated binary bundle and is also a valid small-test source.
+
 ## Planned batches (candidate pool, from the initial source review)
 
 - reproducibility: seed everything (CL random, KMeans/MiniBatch, HNSW init,

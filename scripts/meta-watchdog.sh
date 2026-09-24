@@ -59,6 +59,29 @@ remote_head() {
   timeout 30s git -C "$REPO" ls-remote origin refs/heads/main 2>/dev/null | awk 'NR==1{print $1}'
 }
 
+# A watchdog replacement is launched from an immutable committed snapshot, so
+# its argv does not necessarily contain the original runner basename.  Keep
+# C6 aligned with benchmark-watchdog while accepting only a snapshot belonging
+# to the registered run plus the exact registered run directory.
+SNAPSHOT_ROOT="$BENCH/.runner-snapshots"
+registered_benchmark_command() {
+  local cmd=$1 rundir=$2 name root_name token snapshot_ok=0 rundir_ok=0
+  name=$(basename "${rundir:-}")
+  root_name=${name%%_autorestart*}
+  case "$cmd" in
+    *run_comebin_baseline.sh*|*run_comebin_fix.sh*|*run_small_test.sh*) return 0 ;;
+  esac
+  for token in $cmd; do
+    case "$token" in
+      "$SNAPSHOT_ROOT/${name}_"*.sh|"$SNAPSHOT_ROOT/${root_name}_"*.sh)
+        [ -f "$token" ] && snapshot_ok=1
+        ;;
+      "$rundir") rundir_ok=1 ;;
+    esac
+  done
+  [ "$snapshot_ok" -eq 1 ] && [ "$rundir_ok" -eq 1 ]
+}
+
 # ---- C1: exact cron jobs + executable installed scripts --------------------- #
 cron_bad=""
 if ! cron_text=$(crontab -l 2>/dev/null); then
@@ -72,6 +95,8 @@ while IFS='|' read -r expected job; do
   [ "$count" -eq 1 ] || cron_bad="$cron_bad $job(cron=$count)"
   [ -x "/vol/data/benchmark/bin/$job" ] || cron_bad="$cron_bad $job(not-executable)"
   cmp -s "$REPO/scripts/$job" "/vol/data/benchmark/bin/$job" || cron_bad="$cron_bad $job(source-install-mismatch)"
+  bash -n "$REPO/scripts/$job" >/dev/null 2>&1 || cron_bad="$cron_bad $job(source-syntax)"
+  bash -n "/vol/data/benchmark/bin/$job" >/dev/null 2>&1 || cron_bad="$cron_bad $job(installed-syntax)"
 done <<'EOF'
 */5 * * * * /vol/data/benchmark/bin/agent-watchdog.sh|agent-watchdog.sh
 */2 * * * * /vol/data/benchmark/bin/status-heartbeat.sh|status-heartbeat.sh
@@ -212,7 +237,7 @@ if [ -f "$BENCH/.active_run" ]; then
   fi
   b_age=999999; [ -n "${blog:-}" ] && [ -f "$blog" ] && b_age=$((now - $(stat -c %Y "$blog")))
   runner_ok=0
-  case "$b_cmd" in *run_comebin_baseline.sh*|*run_comebin_fix.sh*|*run_small_test.sh*) runner_ok=1 ;; esac
+  registered_benchmark_command "$b_cmd" "${bdir:-}" && runner_ok=1
   if [ "$b_alive" -eq 1 ] && [ "$runner_ok" -eq 0 ]; then
     check C6_benchmark broken "pid $bid alive but command is not a registered COMEBin runner; refusing kill"
   elif [ "$b_alive" -eq 0 ]; then
@@ -239,14 +264,15 @@ if [ -f "$BENCH/.active_run" ]; then
       # launches asynchronously, so allow its atomic handoff a moment to land.
       sleep 2
       new_bid=0
+      new_bdir=""
       new_b_cmd=""
-      [ -f "$BENCH/.active_run" ] && read -r new_bid _ < "$BENCH/.active_run" || true
+      [ -f "$BENCH/.active_run" ] && read -r new_bid _ _ _ new_bdir _ < "$BENCH/.active_run" || true
       new_b_stat=$(ps -o stat= -p "${new_bid:-0}" 2>/dev/null | tr -d ' ' || true)
       if [ -n "$new_bid" ] && [ "$new_bid" != "${bid:-0}" ] && [ -n "$new_b_stat" ] && kill -0 "$new_bid" 2>/dev/null && [[ "$new_b_stat" != Z* ]]; then
         new_b_cmd=$(tr '\0' ' ' < "/proc/$new_bid/cmdline" 2>/dev/null || true)
       fi
       new_runner_ok=0
-      case "$new_b_cmd" in *run_comebin_baseline.sh*|*run_comebin_fix.sh*|*run_small_test.sh*) new_runner_ok=1 ;; esac
+      registered_benchmark_command "$new_b_cmd" "${new_bdir:-}" && new_runner_ok=1
       if [ "$new_runner_ok" -eq 1 ]; then
         note_fix "benchmark absent -> watchdog registered replacement pid $new_bid"
         check C6_benchmark ok "auto-restarted benchmark as pid $new_bid"
@@ -260,14 +286,15 @@ if [ -f "$BENCH/.active_run" ]; then
     bash "$BENCH/bin/benchmark-watchdog.sh" >/dev/null 2>&1 || true
     sleep 2
     new_bid=0
+    new_bdir=""
     new_b_cmd=""
-    [ -f "$BENCH/.active_run" ] && read -r new_bid _ < "$BENCH/.active_run" || true
+    [ -f "$BENCH/.active_run" ] && read -r new_bid _ _ _ new_bdir _ < "$BENCH/.active_run" || true
     new_b_stat=$(ps -o stat= -p "${new_bid:-0}" 2>/dev/null | tr -d ' ' || true)
     if [ -n "$new_bid" ] && [ "$new_bid" != "${bid:-0}" ] && [ -n "$new_b_stat" ] && kill -0 "$new_bid" 2>/dev/null && [[ "$new_b_stat" != Z* ]]; then
       new_b_cmd=$(tr '\0' ' ' < "/proc/$new_bid/cmdline" 2>/dev/null || true)
     fi
     new_runner_ok=0
-    case "$new_b_cmd" in *run_comebin_baseline.sh*|*run_comebin_fix.sh*|*run_small_test.sh*) new_runner_ok=1 ;; esac
+    registered_benchmark_command "$new_b_cmd" "${new_bdir:-}" && new_runner_ok=1
     if [ "$new_runner_ok" -eq 1 ]; then
       note_fix "benchmark hung -> watchdog registered replacement pid $new_bid"
       check C6_benchmark ok "auto-restarted hung benchmark as pid $new_bid"

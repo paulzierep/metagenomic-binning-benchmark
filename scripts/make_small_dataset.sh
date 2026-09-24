@@ -34,13 +34,18 @@ with open(f"{out}/contigs.fa", "w") as fh:
 with open(f"{out}/contig_names.txt", "w") as fh:
     for r in recs:
         fh.write(f"{r.id}\n")
+with open(f"{out}/contigs.bed", "w") as fh:
+    for r in recs:
+        fh.write(f"{r.id}\t0\t{len(r)}\n")
 print(f"selected {len(recs)} contigs, {sum(len(r) for r in recs):,} bp, "
       f"min {min(len(r) for r in recs):,} max {max(len(r) for r in recs):,}")
 PY
 
 echo "=== 2) extract reads overlapping those contigs (keeps real alignment) ==="
+# samtools -L expects BED/region records, not a one-contig-per-line name file.
+# The BED interval is emitted above and also documents the exact reference span.
 MAMBA_ROOT_PREFIX=/vol/data/envs/.mamba "$MM" run -p "$ENV" \
-  samtools view -h -b -@ 32 -L "$OUT/contig_names.txt" "$SRC_BAM" > "$OUT/bamfiles/reads.bam"
+  samtools view -h -b -@ 32 -L "$OUT/contigs.bed" "$SRC_BAM" > "$OUT/bamfiles/reads.bam"
 MAMBA_ROOT_PREFIX=/vol/data/envs/.mamba "$MM" run -p "$ENV" \
   samtools index -@ 32 "$OUT/bamfiles/reads.bam"
 
