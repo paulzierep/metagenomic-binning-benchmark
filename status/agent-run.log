@@ -36031,3 +36031,148 @@ medium_v11_20260924,95f5ea820f9a4e76f5c2911c0b5ed507ab67b015,"COMEBin medium (3,
 ===COMEBin===
 the 'paulzierep/COMEBin' repository has disabled issues
 > build · mimo-v2.6-flash-free
+No `TASK_COMPLETE`, no registered run (medium finished + evaluated last turn). Issues **#7** (updated 10:25) and **#15** (updated 10:20, after my 10:17 comment) have new activity — checking those first.
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && git diff scripts/agent-watchdog.sh | head -60; echo "===PROGRESS next steps tail==="; sed -n '330,360p' PROGRESS.md
+diff --git a/scripts/agent-watchdog.sh b/scripts/agent-watchdog.sh
+index 62e4e07..590532e 100755
+--- a/scripts/agent-watchdog.sh
++++ b/scripts/agent-watchdog.sh
+@@ -45,7 +45,11 @@ IDLE_GAP_S=600         # longer pause when the agent says it is waiting/idle
+ QUOTA_RETRIES=3        # consecutive quota-limited runs before giving up to cron
+ 
+ # Free models, tried in order when the default model is quota-limited.
++# big-pickle is prioritized: tried first whenever a fallback cycle starts,
++# and the rotation index resets to it after every healthy run, so Big Pickle
++# is used whenever its tokens are available.
+ FREE_MODELS=(
++  "opencode/big-pickle"
+   "opencode/mimo-v2.6-flash-free"
+   "opencode/muse-spark-1.3-contributor-free"
+   "opencode/ling-3.0-flash-fin-free"
+@@ -111,6 +115,7 @@ if [ "$quota" = "1" ]; then
+     log "forcing free model: $pick"
+ elif [ "$last" = "0" ]; then
+     rm -f "$FORCE_MODEL"   # healthy run -> default model
++    echo 0 >"$MODELIX"     # restart fallback cycle at big-pickle (prioritized)
+ elif [ -f "$FORCE_MODEL" ]; then
+     ix=0
+     [ -f "$MODELIX" ] && ix=$(cat "$MODELIX" 2>/dev/null || echo 0)
+@@ -161,6 +166,7 @@ run_driver() {
+ 
+         # a successful turn cleared the forced-model flag so the default model resumes
+         [ "$rc" = "0" ] && rm -f "$FORCE_MODEL"
++        [ "$rc" = "0" ] && echo 0 >"$MODELIX"  # restart fallback cycle at big-pickle
+ 
+         if [ "$rc" = "0" ]; then
+             if [ "$after" -gt "$before" ]; then
+===PROGRESS next steps tail===
+      `#issuecomment-5807975873`.
+- [x] **← COMPLETE: baseline rerun + eval** (2026-09-24) — registered watchdog run `baseline_rerun_autorestart1`, exit_code: 0, wall_s: 24327 (~6.75h), 200/200 epochs, 99.19% Top1 accuracy. Evaluation: CheckM2 60 bins, 25.01% mean completeness, 2.98% mean contamination (65s); CheckM v1: 60 bins, 21.23% mean completeness, 3.40% mean contamination (rerun in
+      the COMEBin env py3.10 + `LD_LIBRARY_PATH` workaround after the standalone
+      checkm env errored: `Models must be parsed before identifying HMM hits`).
+      Fixes applied: hmmer 3.1b2 (replaced 3.4, resolves `--cut_tc` on TC-less bacar_marker.hmm), sklearn KMeans `n_jobs=-1` removed (358ddd8), `run_comebin_baseline.sh` BENCHMARK_RESUME (8bb73dd). Commit `904f649`. Evidence: `runs/baseline_rerun_autorestart1/eval/checkm2/quality_report.tsv`
+      and `runs/baseline_rerun_autorestart1/eval/checkm/out/storage/bin_stats_ext.tsv`;
+      parsed row in `results/baseline_rerun_autorestart1.csv` (60 bins). Pushed.
+- [x] **Small end-to-end gate** — `small_test_v4` completed via
+      `scripts/run_small_test.sh` with 3 non-empty bins; CheckM2 and CheckM v1
+      outputs are verified and mirrored in the repository.
+- [x] **Medium 3,000-contig derivative (≤5 GB)**: built and verified at
+      `/vol/data/datasets/comebin_medium` (3,000 contigs, 421,631,278 bytes;
+      `PROVENANCE.txt` and MD5s recorded). CheckM2: 16 bins, 35.93% mean completeness,
+      4.67% mean contamination (HQ=0, MQ=2); CheckM v1: 16 bins, 33.83% mean completeness,
+      6.03% mean contamination (HQ=0, MQ=3). The detached v1.1.0 run
+      `runs/medium_v11_20260924` completed evaluation; terminal status confirmed.
+      Aggregate evidence: `results/medium_v11_20260924.csv`; per-bin CheckM2
+      supplement: `medium_v11_20260924_checkm2_stats.csv`.
+- [ ] Fix batch run on v1.1.0 base (`runs/fix_v11`, worktree COMEBin-v11) →
+      full large benchmark + eval (major commit) → README row
+- [ ] CAMI II marine sample 0 benchmark run → human host-associated sample →
+      CAMI III
+
+## Watchdog / restart
+
+`scripts/agent-watchdog.sh` (installed at `/vol/data/benchmark/bin/`, cron `*/5 * * * *`):
+stale heartbeat (>15 min) → `opencode run` continues session
+`ses_f31799c77ffeTq9gcYgqc4hBhg`; if that failed → fresh session with resume prompt.
+Both prompts first check GitHub issues for user instructions. On quota/token/context
+errors it forces `--model` rotation through the free model list; a successful run
+clears the flag (back to default). Rate limit 6 restarts / 6 h; stops when
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && for n in 7 15 16; do echo "=== issue #$n ==="; gh api repos/paulzierep/metagenomic-binning-benchmark/issues/$n/comments --jq '.[] | "[\(.created_at)] \(.user.login): \(.body[0:600])"'; done
+=== issue #7 ===
+[2026-09-23T20:56:22Z] paulzierep: Delivered: optimization strategy + decision flowchart committed to `main` (f8dd2e4) in docs/09-optimization-strategy.md and linked from the README. Flow: candidate change → small functional test → benchmark on small/medium → gate on time AND quality (keep commit and continue, or revert/rework and combine with other surviving ideas) → large benchmark only after major commits. Metrics table includes runtime, peak RAM, bins, CheckM2/CheckM v1 means, CAMI-style F1. I'll keep the doc current per batch and mirror results in docs/03-fixes.md + results/.
+[2026-09-23T20:57:42Z] paulzierep: Closed by automation — addressed: Verified complete — optimization decision flowchart, commit-selection gates, metrics, and README link are committed in f8dd2e4; issue comment 5802797931 records delivery.
+[2026-09-24T10:25:09Z] paulzierep: Add the flowchart to the readme and make it nicer, some text is not full
+=== issue #15 ===
+[2026-09-24T10:17:33Z] paulzierep: You're right — the README performance table should include per-bin statistics. I'll add a detailed per-bin breakdown in  (which already stores the full run table with all per-bin CheckM2/CheckM metrics). The top-level README will remain slim, linking to that doc. I'll also ensure  extracts HQ/MQ counts per run, so each CSV row is machine-readable and self-contained.
+[2026-09-24T10:20:47Z] paulzierep: Implementation update (commit `30cc5a8`): the medium aggregate is now recorded in [`results/medium_v11_20260924.csv`](https://github.com/paulzierep/metagenomic-binning-benchmark/blob/main/results/medium_v11_20260924.csv), and a 16-row per-bin CheckM2 supplement is committed at [`medium_v11_20260924_checkm2_stats.csv`](https://github.com/paulzierep/metagenomic-binning-benchmark/blob/main/medium_v11_20260924_checkm2_stats.csv). The full run table remains in [`docs/11-run-results.md`](https://github.com/paulzierep/metagenomic-binning-benchmark/blob/main/docs/11-run-results.md); the top-level READ
+[2026-09-24T10:26:28Z] paulzierep: I want per bin results for all runs and store it in runs not the main folder
+=== issue #16 ===
+[2026-09-24T10:17:43Z] paulzierep: Model prioritization is tracked per-run in  (HQ/MQ counts) and the status banner ( etc.). The free-model rotation policy ensures a different model is selected when quota is exhausted; there is no single 'big pickle' — each run records which model produced its results. This is documented in the run metadata and mirrored in the  CSVs.
+> build · mimo-v2.6-flash-free
+New instructions found: **#7** (add flowchart to README, nicer, "some text is not full") and **#15** (per-bin results for *all* runs, stored under `runs/` not repo root). Also an uncommitted `agent-watchdog.sh` change prioritizing `big-pickle` — that's the implementation for **#16**. Logging this turn's start:
+[0m$ [0mR=/vol/data/repos/metagenomic-binning-benchmark; echo "=== docs/09 flowchart area ==="; grep -n "flowchart\|graph TD\|graph LR\|```" $R/docs/09-optimization-strategy.md | head -20; echo "=== README links ==="; grep -n "09-optimization\|flowchart" $R/README.md; echo "=== README size ==="; wc -l $R/README.md
+/bin/bash: -c: line 1: unexpected EOF while looking for matching ``'
+[0m$ [0mR=/vol/data/repos/metagenomic-binning-benchmark; TS=$(date -u +%FT%TZ); echo "$TS triage: issues #7 (flowchart->readme) #15 (per-bin all runs -> runs/) #16 (big-pickle watchdog edit pending commit)" >> $R/status/agent-activity.log; echo "$TS triage-7-15-16" >> /vol/data/benchmark/.activity; touch /vol/data/benchmark/.heartbeat; echo "=== repo runs/ ==="; ls $R/runs/; echo "=== repo runs subdirs ==="; find $R/runs -maxdepth 2 -type d | head -30; echo "=== per-bin sources ==="; for d in baseline_rerun_autorestart1 small_test_v4 medium_v11_20260924; do echo "-- $d"; ls /vol/data/benchmark/runs/$d/eval/checkm2/quality_report.tsv /vol/data/benchmark/runs/$d/eval/checkm/out/storage/bin_stats_ext.tsv 2>&1; done; echo "=== scripts ==="; ls $R/scripts/
+=== repo runs/ ===
+README.md
+baseline_rerun
+baseline_rerun_autorestart1
+baseline_unmodified
+medium_v11_20260924
+small_test
+small_test_v2
+small_test_v3
+small_test_v4
+=== repo runs subdirs ===
+/vol/data/repos/metagenomic-binning-benchmark/runs
+/vol/data/repos/metagenomic-binning-benchmark/runs/baseline_rerun_autorestart1
+/vol/data/repos/metagenomic-binning-benchmark/runs/baseline_rerun_autorestart1/comebin_res
+/vol/data/repos/metagenomic-binning-benchmark/runs/small_test_v4
+/vol/data/repos/metagenomic-binning-benchmark/runs/small_test_v4/comebin_res
+/vol/data/repos/metagenomic-binning-benchmark/runs/small_test_v4/logs
+/vol/data/repos/metagenomic-binning-benchmark/runs/baseline_unmodified
+/vol/data/repos/metagenomic-binning-benchmark/runs/baseline_unmodified/comebin_res
+/vol/data/repos/metagenomic-binning-benchmark/runs/baseline_unmodified/logs
+/vol/data/repos/metagenomic-binning-benchmark/runs/medium_v11_20260924
+/vol/data/repos/metagenomic-binning-benchmark/runs/medium_v11_20260924/comebin_res
+/vol/data/repos/metagenomic-binning-benchmark/runs/medium_v11_20260924/logs
+/vol/data/repos/metagenomic-binning-benchmark/runs/small_test_v2
+/vol/data/repos/metagenomic-binning-benchmark/runs/small_test_v2/comebin_res
+/vol/data/repos/metagenomic-binning-benchmark/runs/small_test_v2/logs
+/vol/data/repos/metagenomic-binning-benchmark/runs/small_test
+/vol/data/repos/metagenomic-binning-benchmark/runs/small_test/comebin_res
+/vol/data/repos/metagenomic-binning-benchmark/runs/small_test/logs
+/vol/data/repos/metagenomic-binning-benchmark/runs/small_test_v3
+/vol/data/repos/metagenomic-binning-benchmark/runs/small_test_v3/comebin_res
+/vol/data/repos/metagenomic-binning-benchmark/runs/small_test_v3/logs
+/vol/data/repos/metagenomic-binning-benchmark/runs/baseline_rerun
+/vol/data/repos/metagenomic-binning-benchmark/runs/baseline_rerun/comebin_res
+=== per-bin sources ===
+-- baseline_rerun_autorestart1
+/vol/data/benchmark/runs/baseline_rerun_autorestart1/eval/checkm/out/storage/bin_stats_ext.tsv
+/vol/data/benchmark/runs/baseline_rerun_autorestart1/eval/checkm2/quality_report.tsv
+-- small_test_v4
+/vol/data/benchmark/runs/small_test_v4/eval/checkm/out/storage/bin_stats_ext.tsv
+/vol/data/benchmark/runs/small_test_v4/eval/checkm2/quality_report.tsv
+-- medium_v11_20260924
+/vol/data/benchmark/runs/medium_v11_20260924/eval/checkm/out/storage/bin_stats_ext.tsv
+/vol/data/benchmark/runs/medium_v11_20260924/eval/checkm2/quality_report.tsv
+=== scripts ===
+__pycache__
+agent-watchdog.sh
+benchmark-watchdog.sh
+issue-closer.sh
+make_medium_dataset.sh
+make_release_manifest.py
+make_results_csv.py
+make_small_dataset.sh
+meta-watchdog.sh
+parse_eval.py
+prep_cami2_marine.sh
+run_comebin_baseline.sh
+run_comebin_fix.sh
+run_eval.sh
+run_small_test.sh
+status-heartbeat.sh
+test_batch1.py
+> build · mimo-v2.6-flash-free
