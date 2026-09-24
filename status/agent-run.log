@@ -19450,3 +19450,50 @@ grep -n "contig_ids\|def load_binary_feature_bundle\|def load_augmentation_bundl
 210:def load_binary_feature_bundle(data_path, n_views=None):
 214:    contig_count = len(augmentation.contig_ids)
 > build · mimo-v2.6-flash-free
+v1.1.0 restructured the pipeline entirely — `datacoverage_mean`/`namelist`/`lengths[seq_id]` are gone, replaced by count-validated `contig_ids.txt` + `CoverageContext`. So the root-caused bug is **old-code-only**. Checking the small dataset layout to unblock the stock run via a consistent subset BAM:
+[0m$ [0mls -la /vol/data/datasets/comebin_small/bamfiles/
+echo "--- names available ---"
+head -3 /vol/data/datasets/comebin_small/contig_names.txt; wc -l /vol/data/datasets/comebin_small/contig_names.txt
+echo "--- runner bam usage ---"
+grep -n "bam\|\-p " /vol/data/datasets/comebin_small/../..//repos/COMEBin/COMEBin/run_comebin.sh 2>/dev/null | head -10 || grep -n "bam" /vol/data/repos/metagenomic-binning-benchmark/scripts/run_small_test.sh | head
+total 92140
+drwxrwxr-x 2 ubuntu ubuntu     4096 Sep 23 14:57 .
+drwxrwxr-x 3 ubuntu ubuntu     4096 Sep 23 22:39 ..
+-rw-rw-r-- 1 ubuntu ubuntu        0 Sep 23 14:55 bedtools.err
+-rw-rw-r-- 1 ubuntu ubuntu 94078937 Sep 23 14:57 reads.bam
+-rw-rw-r-- 1 ubuntu ubuntu   259016 Sep 23 14:57 reads.bam.bai
+--- names available ---
+BATS_SAMN07137077_METAG-scaffold_1
+BATS_SAMN07137077_METAG-scaffold_2
+BATS_SAMN07137077_METAG-scaffold_3
+300 /vol/data/datasets/comebin_small/contig_names.txt
+--- runner bam usage ---
+4:# This script is meant to be run COMEBin after obtaining the bam files.
+13:  echo "Usage: bash run_comebin.sh [options] -a contig_file -o output_dir -p bam_file_path"
+18:	echo "  -p STR          path to access to the bam files"
+45:  p) bam_file_path=$(realpath ${OPTARG})
+67:if [ -z "${contig_file}" -o -z "${output_dir}" -o -z "${bam_file_path}" ]; then
+122:        --n_views ${n_views} --bam_file_path ${bam_file_path} --num_threads ${num_threads}
+131:    --n_views ${n_views} --bam_file_path ${bam_file_path} --num_threads ${num_threads}
+[0m$ [0mgrep -n "bam\|SRC\|CONTIGS\|-a \|-p " /vol/data/repos/metagenomic-binning-benchmark/scripts/run_small_test.sh | head -20
+8:#   SRC_COMEBIN=/path/to/repo-root   COMEBin checkout/worktree to test
+15:SRC=${SRC_COMEBIN:-/vol/data/repos/COMEBin}
+17:CONTIGS="$DATA/contigs.fa"
+18:BAMDIR="$DATA/bamfiles"
+27:[ -f "$CONTIGS" ] || { echo "ERROR: missing small contigs: $CONTIGS"; exit 1; }
+28:[ -f "$BAMDIR/reads.bam" ] || { echo "ERROR: missing small BAM: $BAMDIR/reads.bam"; exit 1; }
+29:[ -f "$SRC/COMEBin/run_comebin.sh" ] || { echo "ERROR: SRC_COMEBIN is not a COMEBin repo root: $SRC"; exit 1; }
+37:  active_state=$(ps -o stat= -p "${active_pid:-0}" 2>/dev/null | tr -d ' ' || true)
+59:mkdir -p "$RUNDIR/logs"
+60:COMMIT=$(git -C "$SRC" rev-parse HEAD)
+61:BRANCH=$(git -C "$SRC" branch --show-current)
+63:DIRTY=$(git -C "$SRC" status --porcelain --untracked-files=no | wc -l)
+67:  -a "$CONTIGS" -p "$BAMDIR" -o "$RUNDIR/comebin_out"
+71:if grep -q -- '-d STR.*device' "$SRC/COMEBin/run_comebin.sh"; then
+74:if [ -n "$SEED" ] && grep -q -- '-s INT.*seed' "$SRC/COMEBin/run_comebin.sh"; then
+77:CMD_TEXT=$(printf '%q ' "$MM" run -p "$ENV" bash run_comebin.sh "${COMEBIN_ARGS[@]}")
+82:  echo "source:     $SRC"
+85:  echo "contigs:    $CONTIGS  ($(grep -c '^>' "$CONTIGS") contigs, $(du -h "$CONTIGS" | cut -f1))"
+86:  echo "bamdir:     $BAMDIR"
+96:cd "$SRC/COMEBin"
+> build · mimo-v2.6-flash-free
