@@ -21608,3 +21608,93 @@ passes, build a medium derived set (target 3,000 contigs, hard cap 5 GB);
       or overlap this run. The prior
       baseline terminal failure (missing marker seed at epoch 175) remains
 > build · mimo-v2.6-flash-free
+The repo copy's CURRENT text was reworded (delegates live epoch to the status banner) — no stale-epoch edit needed. Syncing back and committing:
+[0m$ [0mcp /vol/data/benchmark/PROGRESS.md /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md
+date -u +"%Y-%m-%d %H:%M:%S UTC - progress: PROGRESS updated with issue #10 triage, copies synced" >> /vol/data/repos/metagenomic-binning-benchmark/status/agent-activity.log
+flock -w 120 /tmp/bench-repo.lock bash -c '
+set -e
+cd /vol/data/repos/metagenomic-binning-benchmark
+git fetch origin --quiet
+git add PROGRESS.md scripts/run_small_test.sh status/agent-activity.log
+git -c user.name="benchmark-agent" -c user.email="agent@localhost" commit -q -m "feat: EPOCHS passthrough in run_small_test.sh (issue #10) + PROGRESS sync
+
+- run_small_test.sh: EPOCHS env (default 30), recorded in run_meta,
+  passed as -E only when the COMEBin CLI supports it
+- pairs with COMEBin-small-fix a0be243 (-E epochs flag, default 200)
+- PROGRESS: issue #10 triage entry; guard block re-synced from repo copy
+- status/agent-activity.log: #10 triage + implementation trail"
+git push origin HEAD 2>&1 | tail -2
+git log --oneline -1
+'
+date -u +"%Y-%m-%d %H:%M:%S UTC - pushed run_small_test.sh EPOCHS + PROGRESS (issue #10)" >> /vol/data/repos/metagenomic-binning-benchmark/status/agent-activity.log
+date -u +"%Y-%m-%d %H:%M:%S UTC - heartbeat" >> /vol/data/benchmark/.activity
+touch /vol/data/benchmark/.heartbeat
+diff -q /vol/data/benchmark/PROGRESS.md /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md && echo "copies synced"
+ps -eo pid,etime,args | grep -E '[m]ain.py train' | head -1 | cut -c1-80
+echo "epoch: $(grep -c '^DEBUG:root:Epoch' /vol/data/benchmark/runs/baseline_rerun_autorestart1/comebin_out/comebin_res/training.log)/200"
+To https://github.com/paulzierep/metagenomic-binning-benchmark
+   126f062..8e7064c  HEAD -> main
+8e7064c feat: EPOCHS passthrough in run_small_test.sh (issue #10) + PROGRESS sync
+copies synced
+ 270796    04:22:41 python main.py train --data /vol/data/benchmark/runs/baselin
+epoch: 117/200
+> build · mimo-v2.6-flash-free
+**Turn complete — issue #10 implemented and pushed.**
+
+- **Baseline**: epoch **117/200** @ ~04:59 UTC, PID 270796 unchanged, healthy.
+- **New issue #10 "Try less epoches"** (04:54Z) — actionable, fully handled:
+  - **COMEBin `comebin-small-fix` @ `a0be243`** (pushed): `run_comebin.sh` gains optional `-E INT` → `--epochs`; default 200 = unchanged upstream behavior, so benchmark comparability is untouched.
+  - **Benchmark `8e7064c`** (pushed): `run_small_test.sh` gains `EPOCHS` env (**default 30**), recorded in `run_meta.txt`, passed as `-E` only when the CLI supports it (same defensive pattern as `-d`/`-s`); `--earlystop` still armed. Both scripts pass `bash -n`.
+  - Comment posted: `#issuecomment-5807975873`.
+- **PROGRESS**: re-synced (repo copy had the supervisor's launch-guard block + reworded CURRENT delegating live epoch to the status banner); added #10 triage entry; copies identical.
+- All actions logged to `agent-activity.log` + `.activity`, heartbeat touched; both pushes under `/tmp/bench-repo.lock`.
+
+Downstream steps remain gated on the registered baseline run. Standing by.
+[0m
+> build · mimo-v2.6-flash-free
+[0m$ [0mgrep -n "CURRENT" /vol/data/benchmark/PROGRESS.md | head -3
+diff -q /vol/data/benchmark/PROGRESS.md /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md && echo "copies synced"
+262:- [ ] **← CURRENT: baseline rerun active (started 2026-09-24 00:30 UTC)** — registered
+copies synced
+[0m$ [0mtest -f /vol/data/benchmark/TASK_COMPLETE && echo "TASK_COMPLETE exists - EXIT" || echo "no TASK_COMPLETE"
+RUN=/vol/data/benchmark/runs/baseline_rerun_autorestart1
+ps -eo pid,etime,args | grep -E '[m]ain.py train' | head -1 || echo "no train proc"
+echo "epoch: $(grep -c '^DEBUG:root:Epoch' "$RUN/comebin_out/comebin_res/training.log" 2>/dev/null)/200"
+grep -E 'exit_code' "$RUN/run_meta.txt" 2>/dev/null || echo "no exit_code yet"
+date -u +"now UTC: %Y-%m-%d %H:%M"
+touch /vol/data/benchmark/.heartbeat
+no TASK_COMPLETE
+ 270796    04:23:32 python main.py train --data /vol/data/benchmark/runs/baseline_rerun_autorestart1/comebin_out/data_augmentation --temperature 0.15 --emb_szs_forcov 2048 --batch_size 1024 --emb_szs 2048 --n_views 6 --add_model_for_coverage --output_path /vol/data/benchmark/runs/baseline_rerun_autorestart1/comebin_out/comebin_res --earlystop --addvars --vars_sqrt --num_threads 32
+epoch: 117/200
+no exit_code yet
+now UTC: 2026-09-24 05:01
+[0m$ [0mgh issue list -R paulzierep/metagenomic-binning-benchmark --state open --json number,title,updatedAt 2>&1 | head -60
+gh issue list -R paulzierep/COMEBin --state open --json number,title,updatedAt 2>&1 | head -40
+[{"number":10,"title":"Try less epoches","updatedAt":"2026-09-24T04:59:09Z"},{"number":8,"title":"Add benchmark data to zenodo","updatedAt":"2026-09-23T20:58:44Z"},{"number":6,"title":"Optimization","updatedAt":"2026-09-23T20:56:21Z"},{"number":2,"title":"Can you try to create a small benchmark dataset for comebin ?","updatedAt":"2026-09-24T01:05:04Z"},{"number":1,"title":"Idea inbox: benchmark ideas, COMEBin fixes, dataset requests","updatedAt":"2026-09-23T14:53:13Z"}]
+the 'paulzierep/COMEBin' repository has disabled issues
+> build · mimo-v2.6-flash-free
+[0m$ [0mgh issue view 10 -R paulzierep/metagenomic-binning-benchmark --json comments --jq '.comments[] | {created:.createdAt, first:(.body|split("\n")[0])}'
+date -u +"%Y-%m-%d %H:%M:%S UTC - turn: baseline healthy epoch 117/200; #10 update check" >> /vol/data/repos/metagenomic-binning-benchmark/status/agent-activity.log
+date -u +"%Y-%m-%d %H:%M:%S UTC - heartbeat" >> /vol/data/benchmark/.activity
+touch /vol/data/benchmark/.heartbeat
+{"created":"2026-09-24T04:59:09Z","first":"Implemented — functional tests can now run with fewer epochs."}
+> build · mimo-v2.6-flash-free
+**Verified & logged.** The #10 `updatedAt` is my own reply (04:59:09Z, "Implemented — functional tests can now run with fewer epochs"), no user replies or new issues. Baseline rerun healthy at **epoch 117/200** @ 05:01 UTC; PROGRESS `CURRENT` matches disk, copies synced. Downstream steps remain gated on the registered run. Standing by.
+[0m
+> build · mimo-v2.6-flash-free
+[0m$ [0mgrep -n "CURRENT" /vol/data/benchmark/PROGRESS.md | head -3
+diff -q /vol/data/benchmark/PROGRESS.md /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md && echo "copies synced"
+262:- [ ] **← CURRENT: baseline rerun active (started 2026-09-24 00:30 UTC)** — registered
+copies synced
+[0m$ [0mtest -f /vol/data/benchmark/TASK_COMPLETE && echo "TASK_COMPLETE exists - EXIT" || echo "no TASK_COMPLETE"
+RUN=/vol/data/benchmark/runs/baseline_rerun_autorestart1
+ps -eo pid,etime,args | grep -E '[m]ain.py train' | head -1 || echo "no train proc"
+echo "epoch: $(grep -c '^DEBUG:root:Epoch' "$RUN/comebin_out/comebin_res/training.log" 2>/dev/null)/200"
+grep -E 'exit_code' "$RUN/run_meta.txt" 2>/dev/null || echo "no exit_code yet"
+date -u +"now UTC: %Y-%m-%d %H:%M"
+touch /vol/data/benchmark/.heartbeat
+no TASK_COMPLETE
+ 270796    04:24:29 python main.py train --data /vol/data/benchmark/runs/baseline_rerun_autorestart1/comebin_out/data_augmentation --temperature 0.15 --emb_szs_forcov 2048 --batch_size 1024 --emb_szs 2048 --n_views 6 --add_model_for_coverage --output_path /vol/data/benchmark/runs/baseline_rerun_autorestart1/comebin_out/comebin_res --earlystop --addvars --vars_sqrt --num_threads 32
+epoch: 118/200
+no exit_code yet
+now UTC: 2026-09-24 05:02

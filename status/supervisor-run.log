@@ -32969,3 +32969,628 @@ a0be243187c674b4e62b980ef100f8f2e8b83f54	refs/heads/comebin-small-fix
 [0m$ [0mset -o pipefail
 bash /vol/data/repos/COMEBin-small-fix/COMEBin/run_comebin.sh -E 30 2>&1 | grep -F -- '-E INT' | head -1
 -E INT          number of training epochs (default=200; lower this for fast functional tests)
+> build · space-bunny-free
+[0m$ [0mset -euo pipefail
+fixture=$(mktemp -d /tmp/opencode/small-epochs-fixture.XXXXXX)
+trap 'rm -rf "$fixture"' EXIT
+mkdir -p "$fixture/data/bamfiles" "$fixture/src/COMEBin" "$fixture/bin" "$fixture/runs"
+printf '>c1\nACGT\n>c2\nTGCA\n' > "$fixture/data/contigs.fa"
+printf 'bam\n' > "$fixture/data/bamfiles/reads.bam"
+cat > "$fixture/bin/mm" <<'EOF'
+#!/usr/bin/env bash
+printf '%s\n' "$*" >> /tmp/opencode/small-epochs-args.current
+exit 0
+EOF
+chmod +x "$fixture/bin/mm"
+cat > "$fixture/src/COMEBin/run_comebin.sh" <<'EOF'
+#!/usr/bin/env bash
+# -d STR device
+# -s INT seed
+# -E INT epochs
+exit 0
+EOF
+git -C "$fixture/src" init -q
+git -C "$fixture/src" config user.email test@example.invalid
+git -C "$fixture/src" config user.name test
+git -C "$fixture/src" add .
+git -C "$fixture/src" commit -qm init
+runner="$fixture/run_small_test.sh"
+sed \
+  -e "s|^MM=.*|MM=$fixture/bin/mm|" \
+  -e "s|^ENV=.*|ENV=test-env|" \
+  -e "s|^DATA=.*|DATA=$fixture/data|" \
+  -e "s|^START_LOCK=.*|START_LOCK=$fixture/start.lock|" \
+  -e "s|^ACTIVE=.*|ACTIVE=$fixture/active_run|" \
+  scripts/run_small_test.sh > "$runner"
+chmod +x "$runner"
+export EPOCHS=7
+SMALL_EPOCHS_ARGS=/tmp/opencode/small-epochs-args.current "$runner" "$fixture/runs/custom" 1 >/dev/null
+cp /tmp/opencode/small-epochs-args.current "$fixture/custom.args"
+grep -Fq -- '-E 7' "$fixture/custom.args"
+grep -Fq 'epochs:     7 ' "$fixture/runs/custom/run_meta.txt"
+[ ! -e "$fixture/active_run" ]
+unset EPOCHS
+SMALL_EPOCHS_ARGS=/tmp/opencode/small-epochs-args.current "$runner" "$fixture/runs/default" 1 >/dev/null
+cp /tmp/opencode/small-epochs-args.current "$fixture/default.args"
+grep -Fq -- '-E 30' "$fixture/default.args"
+grep -Fq 'epochs:     30 ' "$fixture/runs/default/run_meta.txt"
+# Backward compatibility: a CLI without -E must not receive the option.
+cat > "$fixture/src/COMEBin/run_comebin.sh" <<'EOF'
+#!/usr/bin/env bash
+# -d STR device
+# -s INT seed
+exit 0
+EOF
+git -C "$fixture/src" add COMEBin/run_comebin.sh
+git -C "$fixture/src" commit -qm 'drop -E'
+SMALL_EPOCHS_ARGS=/tmp/opencode/small-epochs-args.current "$runner" "$fixture/runs/legacy" 1 >/dev/null
+cp /tmp/opencode/small-epochs-args.current "$fixture/legacy.args"
+if grep -Fq -- '-E' "$fixture/legacy.args"; then exit 1; fi
+grep -Fq 'epochs:     30 ' "$fixture/runs/legacy/run_meta.txt"
+rm -f /tmp/opencode/small-epochs-args.current
+printf 'run_small_test EPOCHS fixture: custom/default/legacy ok\n'
+Exited with code 1
+> build · space-bunny-free
+[0m$ [0mset -u
+fixture=$(mktemp -d /tmp/opencode/small-epochs-debug.XXXXXX)
+mkdir -p "$fixture/data/bamfiles" "$fixture/src/COMEBin" "$fixture/bin" "$fixture/runs"
+printf '>c1\nACGT\n>c2\nTGCA\n' > "$fixture/data/contigs.fa"
+printf 'bam\n' > "$fixture/data/bamfiles/reads.bam"
+cat > "$fixture/bin/mm" <<EOF
+#!/usr/bin/env bash
+printf '%s\\n' "\$*" >> $fixture/args
+exit 0
+EOF
+chmod +x "$fixture/bin/mm"
+cat > "$fixture/src/COMEBin/run_comebin.sh" <<'EOF'
+#!/usr/bin/env bash
+# -d STR device
+# -s INT seed
+# -E INT epochs
+exit 0
+EOF
+git -C "$fixture/src" init -q; git -C "$fixture/src" config user.email x@y; git -C "$fixture/src" config user.name x; git -C "$fixture/src" add .; git -C "$fixture/src" commit -qm init
+runner="$fixture/run_small_test.sh"
+sed -e "s|^MM=.*|MM=$fixture/bin/mm|" -e "s|^ENV=.*|ENV=test-env|" -e "s|^DATA=.*|DATA=$fixture/data|" -e "s|^START_LOCK=.*|START_LOCK=$fixture/start.lock|" -e "s|^ACTIVE=.*|ACTIVE=$fixture/active_run|" scripts/run_small_test.sh > "$runner"
+chmod +x "$runner"
+EPOCHS=7 bash -x "$runner" "$fixture/runs/custom" 1 > "$fixture/out" 2> "$fixture/trace"; rc=$?
+echo rc=$rc; echo '--- out'; cat "$fixture/out"; echo '--- args'; cat "$fixture/args" 2>/dev/null || true; echo '--- trace tail'; tail -80 "$fixture/trace"; echo fixture=$fixture
+rc=0
+--- out
+source commit: a0be243187c674b4e62b980ef100f8f2e8b83f54 branch=comebin-small-fix (tracked dirty files: 0) — small-dataset test run
+run:        /tmp/opencode/small-epochs-debug.Jd16Ah/runs/custom
+date:       2026-09-24T05:00:21+00:00
+source:     /vol/data/repos/COMEBin-small-fix
+branch:     comebin-small-fix
+commit:     a0be243187c674b4e62b980ef100f8f2e8b83f54
+contigs:    /tmp/opencode/small-epochs-debug.Jd16Ah/data/contigs.fa  (2 contigs, 4.0K)
+bamdir:     /tmp/opencode/small-epochs-debug.Jd16Ah/data/bamfiles
+threads:    1
+batch_size: 256
+emb_size:   512
+epochs:     7 (passed as -E when the CLI supports it)
+seed:       unset
+host:       32 cores, 62G RAM
+cmd_wrapper: /tmp/opencode/small-epochs-debug.Jd16Ah/bin/mm run -p test-env bash run_comebin.sh -a /tmp/opencode/small-epochs-debug.Jd16Ah/data/contigs.fa -p /tmp/opencode/small-epochs-debug.Jd16Ah/data/bamfiles -o /tmp/opencode/small-epochs-debug.Jd16Ah/runs/custom/comebin_out -n 6 -t 1 -b 256 -e 512 -c 512 -E 7 
+exit_code:  0
+wall_s:     0
+finished:   2026-09-24T05:00:21+00:00
+--- args
+run -p test-env bash run_comebin.sh -a /tmp/opencode/small-epochs-debug.Jd16Ah/data/contigs.fa -p /tmp/opencode/small-epochs-debug.Jd16Ah/data/bamfiles -o /tmp/opencode/small-epochs-debug.Jd16Ah/runs/custom/comebin_out -n 6 -t 1 -b 256 -e 512 -c 512 -E 7
+--- trace tail
++ grep -q -- '-d STR.*device' /vol/data/repos/COMEBin-small-fix/COMEBin/run_comebin.sh
++ '[' -n '' ']'
++ grep -q -- '-E INT.*epochs' /vol/data/repos/COMEBin-small-fix/COMEBin/run_comebin.sh
++ COMEBIN_ARGS+=(-E "$EPOCHS")
+++ printf '%q ' /tmp/opencode/small-epochs-debug.Jd16Ah/bin/mm run -p test-env bash run_comebin.sh -a /tmp/opencode/small-epochs-debug.Jd16Ah/data/contigs.fa -p /tmp/opencode/small-epochs-debug.Jd16Ah/data/bamfiles -o /tmp/opencode/small-epochs-debug.Jd16Ah/runs/custom/comebin_out -n 6 -t 1 -b 256 -e 512 -c 512 -E 7
++ CMD_TEXT='/tmp/opencode/small-epochs-debug.Jd16Ah/bin/mm run -p test-env bash run_comebin.sh -a /tmp/opencode/small-epochs-debug.Jd16Ah/data/contigs.fa -p /tmp/opencode/small-epochs-debug.Jd16Ah/data/bamfiles -o /tmp/opencode/small-epochs-debug.Jd16Ah/runs/custom/comebin_out -n 6 -t 1 -b 256 -e 512 -c 512 -E 7 '
++ echo 'run:        /tmp/opencode/small-epochs-debug.Jd16Ah/runs/custom'
+++ date -Is
++ tee /tmp/opencode/small-epochs-debug.Jd16Ah/runs/custom/run_meta.txt
++ echo 'date:       2026-09-24T05:00:21+00:00'
++ echo 'source:     /vol/data/repos/COMEBin-small-fix'
++ echo 'branch:     comebin-small-fix'
++ echo 'commit:     a0be243187c674b4e62b980ef100f8f2e8b83f54'
+++ grep -c '^>' /tmp/opencode/small-epochs-debug.Jd16Ah/data/contigs.fa
+++ du -h /tmp/opencode/small-epochs-debug.Jd16Ah/data/contigs.fa
+++ cut -f1
++ echo 'contigs:    /tmp/opencode/small-epochs-debug.Jd16Ah/data/contigs.fa  (2 contigs, 4.0K)'
++ echo 'bamdir:     /tmp/opencode/small-epochs-debug.Jd16Ah/data/bamfiles'
++ echo 'threads:    1'
++ echo 'batch_size: 256'
++ echo 'emb_size:   512'
++ echo 'epochs:     7 (passed as -E when the CLI supports it)'
++ echo 'seed:       unset'
+++ nproc
+++ free -g
+++ awk '/Mem:/{print $2}'
++ echo 'host:       32 cores, 62G RAM'
++ echo 'cmd_wrapper: /tmp/opencode/small-epochs-debug.Jd16Ah/bin/mm run -p test-env bash run_comebin.sh -a /tmp/opencode/small-epochs-debug.Jd16Ah/data/contigs.fa -p /tmp/opencode/small-epochs-debug.Jd16Ah/data/bamfiles -o /tmp/opencode/small-epochs-debug.Jd16Ah/runs/custom/comebin_out -n 6 -t 1 -b 256 -e 512 -c 512 -E 7 '
++ export MAMBA_ROOT_PREFIX=/vol/data/envs/.mamba
++ MAMBA_ROOT_PREFIX=/vol/data/envs/.mamba
++ cd /vol/data/repos/COMEBin-small-fix/COMEBin
+++ ps -o pgid= -p 387635
+++ tr -d ' '
+++ date +%s
++ printf '%s %s %s %s %s %s %s\n' 387635 387621 /tmp/opencode/small-epochs-debug.Jd16Ah/runs/custom/comebin_run.log /tmp/opencode/small-epochs-debug.Jd16Ah/runs/custom 1790226021 small /vol/data/repos/COMEBin-small-fix
++ mv /tmp/opencode/small-epochs-debug.Jd16Ah/active_run.tmp.387635 /tmp/opencode/small-epochs-debug.Jd16Ah/active_run
++ SAMPLER_PID=
++ trap cleanup EXIT
++ trap 'exit 130' INT TERM
++ SAMPLER_PID=387663
++ sample_resources
++ sleep 12
+++ date +%s
++ START=1790226021
++ set +e
++ CUDA_VISIBLE_DEVICES=
++ /tmp/opencode/small-epochs-debug.Jd16Ah/bin/mm run -p test-env bash run_comebin.sh -a /tmp/opencode/small-epochs-debug.Jd16Ah/data/contigs.fa -p /tmp/opencode/small-epochs-debug.Jd16Ah/data/bamfiles -o /tmp/opencode/small-epochs-debug.Jd16Ah/runs/custom/comebin_out -n 6 -t 1 -b 256 -e 512 -c 512 -E 7
++ tee /tmp/opencode/small-epochs-debug.Jd16Ah/runs/custom/comebin_run.log
++ RC=0
++ set -e
+++ date +%s
++ END=1790226021
++ echo 'exit_code:  0'
++ echo 'wall_s:     0'
++ tee -a /tmp/opencode/small-epochs-debug.Jd16Ah/runs/custom/run_meta.txt
+++ date -Is
++ echo 'finished:   2026-09-24T05:00:21+00:00'
++ '[' 0 -eq 0 ']'
++ BINS=/tmp/opencode/small-epochs-debug.Jd16Ah/runs/custom/comebin_out/comebin_res/comebin_res_bins
++ '[' -d /tmp/opencode/small-epochs-debug.Jd16Ah/runs/custom/comebin_out/comebin_res/comebin_res_bins ']'
++ grep -aE 'run_FragGeneScan|hmmsearch' /tmp/opencode/small-epochs-debug.Jd16Ah/runs/custom/comebin_run.log
++ head -2
++ sed 's/^/cmd_from_log: /'
++ tee -a /tmp/opencode/small-epochs-debug.Jd16Ah/runs/custom/run_meta.txt
++ true
++ exit 0
++ cleanup
++ rc=0
++ trap - EXIT
++ '[' -n 387663 ']'
++ kill -0 387663
++ kill 387663
++ wait 387663
++ true
++ '[' 0 -eq 0 ']'
++ '[' -f /tmp/opencode/small-epochs-debug.Jd16Ah/active_run ']'
++ read -r current_pid _
++ '[' 387635 = 387635 ']'
++ rm -f /tmp/opencode/small-epochs-debug.Jd16Ah/active_run
++ exit 0
+fixture=/tmp/opencode/small-epochs-debug.Jd16Ah
+> build · space-bunny-free
+[0m$ [0mset -euo pipefail
+rm -rf /tmp/opencode/small-epochs-debug.*
+fixture=$(mktemp -d /tmp/opencode/small-epochs-fixture.XXXXXX)
+trap 'rm -rf "$fixture"' EXIT
+mkdir -p "$fixture/data/bamfiles" "$fixture/src/COMEBin" "$fixture/bin" "$fixture/runs"
+printf '>c1\nACGT\n>c2\nTGCA\n' > "$fixture/data/contigs.fa"
+printf 'bam\n' > "$fixture/data/bamfiles/reads.bam"
+cat > "$fixture/bin/mm" <<EOF
+#!/usr/bin/env bash
+printf '%s\\n' "\$*" >> $fixture/args.current
+exit 0
+EOF
+chmod +x "$fixture/bin/mm"
+cat > "$fixture/src/COMEBin/run_comebin.sh" <<'EOF'
+#!/usr/bin/env bash
+# -d STR device
+# -s INT seed
+# -E INT epochs
+exit 0
+EOF
+git -C "$fixture/src" init -q
+git -C "$fixture/src" config user.email test@example.invalid
+git -C "$fixture/src" config user.name test
+git -C "$fixture/src" add . && git -C "$fixture/src" commit -qm init
+runner="$fixture/run_small_test.sh"
+sed \
+  -e "s|^MM=.*|MM=$fixture/bin/mm|" \
+  -e "s|^ENV=.*|ENV=test-env|" \
+  -e "s|^SRC=.*|SRC=$fixture/src|" \
+  -e "s|^DATA=.*|DATA=$fixture/data|" \
+  -e "s|^START_LOCK=.*|START_LOCK=$fixture/start.lock|" \
+  -e "s|^ACTIVE=.*|ACTIVE=$fixture/active_run|" \
+  scripts/run_small_test.sh > "$runner"
+chmod +x "$runner"
+: > "$fixture/args.current"
+EPOCHS=7 "$runner" "$fixture/runs/custom" 1 >/dev/null
+cp "$fixture/args.current" "$fixture/custom.args"; : > "$fixture/args.current"
+grep -Fq -- '-E 7' "$fixture/custom.args"
+grep -Fq 'epochs:     7 ' "$fixture/runs/custom/run_meta.txt"
+[ ! -e "$fixture/active_run" ]
+"$runner" "$fixture/runs/default" 1 >/dev/null
+cp "$fixture/args.current" "$fixture/default.args"; : > "$fixture/args.current"
+grep -Fq -- '-E 30' "$fixture/default.args"
+grep -Fq 'epochs:     30 ' "$fixture/runs/default/run_meta.txt"
+cat > "$fixture/src/COMEBin/run_comebin.sh" <<'EOF'
+#!/usr/bin/env bash
+# -d STR device
+# -s INT seed
+exit 0
+EOF
+git -C "$fixture/src" add COMEBin/run_comebin.sh && git -C "$fixture/src" commit -qm 'drop -E'
+"$runner" "$fixture/runs/legacy" 1 >/dev/null
+cp "$fixture/args.current" "$fixture/legacy.args"
+! grep -Fq -- '-E' "$fixture/legacy.args"
+grep -Fq 'epochs:     30 ' "$fixture/runs/legacy/run_meta.txt"
+printf 'run_small_test EPOCHS fixture: custom/default/legacy ok\n'
+Exited with code 1
+> build · space-bunny-free
+[0m$ [0mset -u
+fixture=$(mktemp -d /tmp/opencode/small-epochs-debug2.XXXXXX)
+mkdir -p "$fixture/data/bamfiles" "$fixture/src/COMEBin" "$fixture/bin" "$fixture/runs"
+printf '>c1\nACGT\n>c2\nTGCA\n' > "$fixture/data/contigs.fa"; printf bam > "$fixture/data/bamfiles/reads.bam"
+cat > "$fixture/bin/mm" <<EOF
+#!/usr/bin/env bash
+printf '%s\\n' "\$*" >> $fixture/args.current
+exit 0
+EOF
+chmod +x "$fixture/bin/mm"
+cat > "$fixture/src/COMEBin/run_comebin.sh" <<'EOF'
+#!/usr/bin/env bash
+# -d STR device
+# -s INT seed
+# -E INT epochs
+exit 0
+EOF
+git -C "$fixture/src" init -q; git -C "$fixture/src" config user.email x@y; git -C "$fixture/src" config user.name x; git -C "$fixture/src" add .; git -C "$fixture/src" commit -qm init
+runner="$fixture/run_small_test.sh"
+sed -e "s|^MM=.*|MM=$fixture/bin/mm|" -e "s|^ENV=.*|ENV=test-env|" -e "s|^SRC=.*|SRC=$fixture/src|" -e "s|^DATA=.*|DATA=$fixture/data|" -e "s|^START_LOCK=.*|START_LOCK=$fixture/start.lock|" -e "s|^ACTIVE=.*|ACTIVE=$fixture/active_run|" scripts/run_small_test.sh > "$runner"; chmod +x "$runner"
+: > "$fixture/args.current"
+EPOCHS=7 "$runner" "$fixture/runs/custom" 1 > "$fixture/custom.out" 2>&1; echo custom_rc=$?; cp "$fixture/args.current" "$fixture/custom.args"; : > "$fixture/args.current"
+"$runner" "$fixture/runs/default" 1 > "$fixture/default.out" 2>&1; echo default_rc=$?; cp "$fixture/args.current" "$fixture/default.args"; : > "$fixture/args.current"
+cat > "$fixture/src/COMEBin/run_comebin.sh" <<'EOF'
+#!/usr/bin/env bash
+# -d STR device
+# -s INT seed
+exit 0
+EOF
+git -C "$fixture/src" add COMEBin/run_comebin.sh; git -C "$fixture/src" commit -qm 'drop -E'
+"$runner" "$fixture/runs/legacy" 1 > "$fixture/legacy.out" 2>&1; echo legacy_rc=$?; cp "$fixture/args.current" "$fixture/legacy.args"
+for x in custom default legacy; do echo "---$x out"; cat "$fixture/$x.out"; echo "---$x args"; cat "$fixture/$x.args"; echo "---meta"; grep epochs "$fixture/runs/$x/run_meta.txt" || true; done
+echo fixture=$fixture
+custom_rc=0
+default_rc=1
+legacy_rc=1
+---custom out
+source commit: 13c7e9e65fa216d7c2b6f061dfc0258a01e25eac branch=master (tracked dirty files: 0) — small-dataset test run
+run:        /tmp/opencode/small-epochs-debug2.eJDZDd/runs/custom
+date:       2026-09-24T05:00:37+00:00
+source:     /tmp/opencode/small-epochs-debug2.eJDZDd/src
+branch:     master
+commit:     13c7e9e65fa216d7c2b6f061dfc0258a01e25eac
+contigs:    /tmp/opencode/small-epochs-debug2.eJDZDd/data/contigs.fa  (2 contigs, 4.0K)
+bamdir:     /tmp/opencode/small-epochs-debug2.eJDZDd/data/bamfiles
+threads:    1
+batch_size: 256
+emb_size:   512
+epochs:     7 (passed as -E when the CLI supports it)
+seed:       unset
+host:       32 cores, 62G RAM
+cmd_wrapper: /tmp/opencode/small-epochs-debug2.eJDZDd/bin/mm run -p test-env bash run_comebin.sh -a /tmp/opencode/small-epochs-debug2.eJDZDd/data/contigs.fa -p /tmp/opencode/small-epochs-debug2.eJDZDd/data/bamfiles -o /tmp/opencode/small-epochs-debug2.eJDZDd/runs/custom/comebin_out -n 6 -t 1 -b 256 -e 512 -c 512 -d cpu -E 7 
+exit_code:  0
+wall_s:     0
+finished:   2026-09-24T05:00:37+00:00
+---custom args
+run -p test-env bash run_comebin.sh -a /tmp/opencode/small-epochs-debug2.eJDZDd/data/contigs.fa -p /tmp/opencode/small-epochs-debug2.eJDZDd/data/bamfiles -o /tmp/opencode/small-epochs-debug2.eJDZDd/runs/custom/comebin_out -n 6 -t 1 -b 256 -e 512 -c 512 -d cpu -E 7
+---meta
+run:        /tmp/opencode/small-epochs-debug2.eJDZDd/runs/custom
+source:     /tmp/opencode/small-epochs-debug2.eJDZDd/src
+contigs:    /tmp/opencode/small-epochs-debug2.eJDZDd/data/contigs.fa  (2 contigs, 4.0K)
+bamdir:     /tmp/opencode/small-epochs-debug2.eJDZDd/data/bamfiles
+epochs:     7 (passed as -E when the CLI supports it)
+cmd_wrapper: /tmp/opencode/small-epochs-debug2.eJDZDd/bin/mm run -p test-env bash run_comebin.sh -a /tmp/opencode/small-epochs-debug2.eJDZDd/data/contigs.fa -p /tmp/opencode/small-epochs-debug2.eJDZDd/data/bamfiles -o /tmp/opencode/small-epochs-debug2.eJDZDd/runs/custom/comebin_out -n 6 -t 1 -b 256 -e 512 -c 512 -d cpu -E 7 
+---default out
+ERROR: another benchmark launch holds /tmp/opencode/small-epochs-debug2.eJDZDd/start.lock
+---default args
+---meta
+grep: /tmp/opencode/small-epochs-debug2.eJDZDd/runs/default/run_meta.txt: No such file or directory
+---legacy out
+ERROR: another benchmark launch holds /tmp/opencode/small-epochs-debug2.eJDZDd/start.lock
+---legacy args
+---meta
+grep: /tmp/opencode/small-epochs-debug2.eJDZDd/runs/legacy/run_meta.txt: No such file or directory
+fixture=/tmp/opencode/small-epochs-debug2.eJDZDd
+> build · space-bunny-free
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/scripts/run_small_test.sh
+Index: /vol/data/repos/metagenomic-binning-benchmark/scripts/run_small_test.sh
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/scripts/run_small_test.sh
++++ /vol/data/repos/metagenomic-binning-benchmark/scripts/run_small_test.sh
+@@ -149,10 +149,11 @@
+ SAMPLER_PID=$!
+ 
+ # No other registered benchmark can exist (checked above), so the first training
+ # process found is necessarily this run. Failure to capture it is non-fatal.
++# Do not let this late helper inherit the launch-lock FD after a short test exits.
+ ( sleep 12; MCMD=$(pgrep -af 'main.py train' 2>/dev/null | head -1 | cut -d' ' -f2-); \
+-  [ -n "$MCMD" ] && echo "cmd_train_py: $MCMD" >> "$RUNDIR/run_meta.txt" ) &
++  [ -n "$MCMD" ] && echo "cmd_train_py: $MCMD" >> "$RUNDIR/run_meta.txt" ) 9>&- &
+ 
+ START=$(date +%s)
+ set +e
+ CUDA_VISIBLE_DEVICES= "$MM" run -p "$ENV" bash run_comebin.sh \
+
+> build · space-bunny-free
+[0m$ [0mset -euo pipefail
+rm -rf /tmp/opencode/small-epochs-debug2.*
+fixture=$(mktemp -d /tmp/opencode/small-epochs-fixture.XXXXXX)
+trap 'rm -rf "$fixture"' EXIT
+mkdir -p "$fixture/data/bamfiles" "$fixture/src/COMEBin" "$fixture/bin" "$fixture/runs"
+printf '>c1\nACGT\n>c2\nTGCA\n' > "$fixture/data/contigs.fa"
+printf 'bam\n' > "$fixture/data/bamfiles/reads.bam"
+cat > "$fixture/bin/mm" <<EOF
+#!/usr/bin/env bash
+printf '%s\\n' "\$*" >> $fixture/args.current
+exit 0
+EOF
+chmod +x "$fixture/bin/mm"
+cat > "$fixture/src/COMEBin/run_comebin.sh" <<'EOF'
+#!/usr/bin/env bash
+# -d STR device
+# -s INT seed
+# -E INT epochs
+exit 0
+EOF
+git -C "$fixture/src" init -q
+git -C "$fixture/src" config user.email test@example.invalid
+git -C "$fixture/src" config user.name test
+git -C "$fixture/src" add . && git -C "$fixture/src" commit -qm init
+runner="$fixture/run_small_test.sh"
+sed \
+  -e "s|^MM=.*|MM=$fixture/bin/mm|" \
+  -e "s|^ENV=.*|ENV=test-env|" \
+  -e "s|^SRC=.*|SRC=$fixture/src|" \
+  -e "s|^DATA=.*|DATA=$fixture/data|" \
+  -e "s|^START_LOCK=.*|START_LOCK=$fixture/start.lock|" \
+  -e "s|^ACTIVE=.*|ACTIVE=$fixture/active_run|" \
+  scripts/run_small_test.sh > "$runner"
+chmod +x "$runner"
+: > "$fixture/args.current"
+EPOCHS=7 "$runner" "$fixture/runs/custom" 1 >/dev/null
+cp "$fixture/args.current" "$fixture/custom.args"; : > "$fixture/args.current"
+grep -Fq -- '-E 7' "$fixture/custom.args"
+grep -Fq 'epochs:     7 ' "$fixture/runs/custom/run_meta.txt"
+[ ! -e "$fixture/active_run" ]
+"$runner" "$fixture/runs/default" 1 >/dev/null
+cp "$fixture/args.current" "$fixture/default.args"; : > "$fixture/args.current"
+grep -Fq -- '-E 30' "$fixture/default.args"
+grep -Fq 'epochs:     30 ' "$fixture/runs/default/run_meta.txt"
+cat > "$fixture/src/COMEBin/run_comebin.sh" <<'EOF'
+#!/usr/bin/env bash
+# -d STR device
+# -s INT seed
+exit 0
+EOF
+git -C "$fixture/src" add COMEBin/run_comebin.sh && git -C "$fixture/src" commit -qm 'drop -E'
+"$runner" "$fixture/runs/legacy" 1 >/dev/null
+cp "$fixture/args.current" "$fixture/legacy.args"
+! grep -Fq -- '-E' "$fixture/legacy.args"
+grep -Fq 'epochs:     30 ' "$fixture/runs/legacy/run_meta.txt"
+printf 'run_small_test EPOCHS fixture: custom/default/legacy and lock-release ok\n'
+Exited with code 1
+> build · space-bunny-free
+[0m$ [0mset -u
+rm -rf /tmp/opencode/small-epochs-debug3.*
+fixture=$(mktemp -d /tmp/opencode/small-epochs-debug3.XXXXXX)
+mkdir -p "$fixture/data/bamfiles" "$fixture/src/COMEBin" "$fixture/bin" "$fixture/runs"
+printf '>c1\nACGT\n>c2\nTGCA\n' > "$fixture/data/contigs.fa"; printf bam > "$fixture/data/bamfiles/reads.bam"
+cat > "$fixture/bin/mm" <<EOF
+#!/usr/bin/env bash
+printf '%s\\n' "\$*" >> $fixture/args.current
+exit 0
+EOF
+chmod +x "$fixture/bin/mm"
+cat > "$fixture/src/COMEBin/run_comebin.sh" <<'EOF'
+#!/usr/bin/env bash
+# -d STR device
+# -s INT seed
+# -E INT epochs
+exit 0
+EOF
+git -C "$fixture/src" init -q; git -C "$fixture/src" config user.email x@y; git -C "$fixture/src" config user.name x; git -C "$fixture/src" add .; git -C "$fixture/src" commit -qm init
+runner="$fixture/run_small_test.sh"
+sed -e "s|^MM=.*|MM=$fixture/bin/mm|" -e "s|^ENV=.*|ENV=test-env|" -e "s|^SRC=.*|SRC=$fixture/src|" -e "s|^DATA=.*|DATA=$fixture/data|" -e "s|^START_LOCK=.*|START_LOCK=$fixture/start.lock|" -e "s|^ACTIVE=.*|ACTIVE=$fixture/active_run|" scripts/run_small_test.sh > "$runner"; chmod +x "$runner"
+for x in custom default legacy; do : > "$fixture/args.current"; if [ "$x" != custom ]; then git -C "$fixture/src" checkout -q -b legacy 2>/dev/null || true; sed -i '/-E INT/d' "$fixture/src/COMEBin/run_comebin.sh"; git -C "$fixture/src" add .; git -C "$fixture/src" commit -qm "no E $x"; fi; if [ "$x" = custom ]; then EPOCHS=7 "$runner" "$fixture/runs/$x" 1 > "$fixture/$x.out" 2>&1; else "$runner" "$fixture/runs/$x" 1 > "$fixture/$x.out" 2>&1; fi; rc=$?; echo "$x rc=$rc"; cat "$fixture/$x.out"; cat "$fixture/args.current"; done
+echo fixture=$fixture
+custom rc=0
+source commit: 20759e102e6ce399c4b907587abe00f1976e891b branch=master (tracked dirty files: 0) — small-dataset test run
+run:        /tmp/opencode/small-epochs-debug3.qFkCtg/runs/custom
+date:       2026-09-24T05:01:05+00:00
+source:     /tmp/opencode/small-epochs-debug3.qFkCtg/src
+branch:     master
+commit:     20759e102e6ce399c4b907587abe00f1976e891b
+contigs:    /tmp/opencode/small-epochs-debug3.qFkCtg/data/contigs.fa  (2 contigs, 4.0K)
+bamdir:     /tmp/opencode/small-epochs-debug3.qFkCtg/data/bamfiles
+threads:    1
+batch_size: 256
+emb_size:   512
+epochs:     7 (passed as -E when the CLI supports it)
+seed:       unset
+host:       32 cores, 62G RAM
+cmd_wrapper: /tmp/opencode/small-epochs-debug3.qFkCtg/bin/mm run -p test-env bash run_comebin.sh -a /tmp/opencode/small-epochs-debug3.qFkCtg/data/contigs.fa -p /tmp/opencode/small-epochs-debug3.qFkCtg/data/bamfiles -o /tmp/opencode/small-epochs-debug3.qFkCtg/runs/custom/comebin_out -n 6 -t 1 -b 256 -e 512 -c 512 -d cpu -E 7 
+exit_code:  0
+wall_s:     0
+finished:   2026-09-24T05:01:05+00:00
+run -p test-env bash run_comebin.sh -a /tmp/opencode/small-epochs-debug3.qFkCtg/data/contigs.fa -p /tmp/opencode/small-epochs-debug3.qFkCtg/data/bamfiles -o /tmp/opencode/small-epochs-debug3.qFkCtg/runs/custom/comebin_out -n 6 -t 1 -b 256 -e 512 -c 512 -d cpu -E 7
+default rc=0
+source commit: 7a3a2462d0ee36493dd81962366648d2e1148743 branch=legacy (tracked dirty files: 0) — small-dataset test run
+run:        /tmp/opencode/small-epochs-debug3.qFkCtg/runs/default
+date:       2026-09-24T05:01:05+00:00
+source:     /tmp/opencode/small-epochs-debug3.qFkCtg/src
+branch:     legacy
+commit:     7a3a2462d0ee36493dd81962366648d2e1148743
+contigs:    /tmp/opencode/small-epochs-debug3.qFkCtg/data/contigs.fa  (2 contigs, 4.0K)
+bamdir:     /tmp/opencode/small-epochs-debug3.qFkCtg/data/bamfiles
+threads:    1
+batch_size: 256
+emb_size:   512
+epochs:     30 (passed as -E when the CLI supports it)
+seed:       unset
+host:       32 cores, 62G RAM
+cmd_wrapper: /tmp/opencode/small-epochs-debug3.qFkCtg/bin/mm run -p test-env bash run_comebin.sh -a /tmp/opencode/small-epochs-debug3.qFkCtg/data/contigs.fa -p /tmp/opencode/small-epochs-debug3.qFkCtg/data/bamfiles -o /tmp/opencode/small-epochs-debug3.qFkCtg/runs/default/comebin_out -n 6 -t 1 -b 256 -e 512 -c 512 -d cpu 
+exit_code:  0
+wall_s:     0
+finished:   2026-09-24T05:01:05+00:00
+run -p test-env bash run_comebin.sh -a /tmp/opencode/small-epochs-debug3.qFkCtg/data/contigs.fa -p /tmp/opencode/small-epochs-debug3.qFkCtg/data/bamfiles -o /tmp/opencode/small-epochs-debug3.qFkCtg/runs/default/comebin_out -n 6 -t 1 -b 256 -e 512 -c 512 -d cpu
+On branch legacy
+nothing to commit, working tree clean
+legacy rc=1
+ERROR: another benchmark launch holds /tmp/opencode/small-epochs-debug3.qFkCtg/start.lock
+fixture=/tmp/opencode/small-epochs-debug3.qFkCtg
+> build · space-bunny-free
+[0m$ [0mfuser -v /tmp/opencode/small-epochs-debug3.qFkCtg/start.lock 2>&1 || true; ls -l /proc/*/fd/* 2>/dev/null | grep '/tmp/opencode/small-epochs-debug3.qFkCtg/start.lock' | head -20 || true; ps -eo pid,ppid,pgid,stat,etime,args | grep 'sleep 12' | grep -v grep || true
+388127  388124  388076 S          00:07 sleep 12
+ 388183  388180  388076 S          00:07 sleep 12
+> build · space-bunny-free
+[0m$ [0mfor pid in 388127 388183; do echo PID=$pid; readlink -f /proc/$pid/fd/9 2>/dev/null || true; for fd in /proc/$pid/fd/*; do target=$(readlink "$fd" 2>/dev/null || true); case "$target" in *small-epochs-debug3*start.lock*) echo "$fd -> $target";; esac; done; done
+flock -n /tmp/opencode/small-epochs-debug3.qFkCtg/start.lock -c 'echo lock-free' || echo lock-held
+PID=388127
+PID=388183
+lock-free
+> build · space-bunny-free
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/scripts/run_small_test.sh
+Index: /vol/data/repos/metagenomic-binning-benchmark/scripts/run_small_test.sh
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/scripts/run_small_test.sh
++++ /vol/data/repos/metagenomic-binning-benchmark/scripts/run_small_test.sh
+@@ -118,8 +118,15 @@
+   if [ -n "$SAMPLER_PID" ] && kill -0 "$SAMPLER_PID" 2>/dev/null; then
+     kill "$SAMPLER_PID" 2>/dev/null || true
+     wait "$SAMPLER_PID" 2>/dev/null || true
+   fi
++  # On normal completion all foreground children are gone. Explicitly release
++  # the launch lock before a short functional test exits; a signal exit keeps it
++  # closed only when its process tree has actually gone away.
++  if [ "$rc" -ne 130 ]; then
++    flock -u 9 2>/dev/null || true
++    exec 9>&-
++  fi
+   # A failed run stays registered so benchmark-watchdog can apply its restart
+   # budget. Only a successful run clears its own registration.
+   if [ "$rc" -eq 0 ] && [ -f "$ACTIVE" ]; then
+     read -r current_pid _ < "$ACTIVE" || true
+
+> build · space-bunny-free
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/scripts/run_small_test.sh
+Index: /vol/data/repos/metagenomic-binning-benchmark/scripts/run_small_test.sh
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/scripts/run_small_test.sh
++++ /vol/data/repos/metagenomic-binning-benchmark/scripts/run_small_test.sh
+@@ -119,10 +119,10 @@
+     kill "$SAMPLER_PID" 2>/dev/null || true
+     wait "$SAMPLER_PID" 2>/dev/null || true
+   fi
+   # On normal completion all foreground children are gone. Explicitly release
+-  # the launch lock before a short functional test exits; a signal exit keeps it
+-  # closed only when its process tree has actually gone away.
++  # the launch lock before a short functional test exits; a signal exit does not
++  # proactively declare the launch area free.
+   if [ "$rc" -ne 130 ]; then
+     flock -u 9 2>/dev/null || true
+     exec 9>&-
+   fi
+
+> build · space-bunny-free
+[0m$ [0mset -euo pipefail
+rm -rf /tmp/opencode/small-epochs-debug3.*
+fixture=$(mktemp -d /tmp/opencode/small-epochs-fixture.XXXXXX)
+trap 'rm -rf "$fixture"' EXIT
+mkdir -p "$fixture/data/bamfiles" "$fixture/src/COMEBin" "$fixture/bin" "$fixture/runs"
+printf '>c1\nACGT\n>c2\nTGCA\n' > "$fixture/data/contigs.fa"
+printf 'bam\n' > "$fixture/data/bamfiles/reads.bam"
+cat > "$fixture/bin/mm" <<EOF
+#!/usr/bin/env bash
+printf '%s\\n' "\$*" >> $fixture/args.current
+exit 0
+EOF
+chmod +x "$fixture/bin/mm"
+cat > "$fixture/src/COMEBin/run_comebin.sh" <<'EOF'
+#!/usr/bin/env bash
+# -d STR device
+# -s INT seed
+# -E INT epochs
+exit 0
+EOF
+git -C "$fixture/src" init -q
+git -C "$fixture/src" config user.email test@example.invalid
+git -C "$fixture/src" config user.name test
+git -C "$fixture/src" add . && git -C "$fixture/src" commit -qm init
+runner="$fixture/run_small_test.sh"
+sed \
+  -e "s|^MM=.*|MM=$fixture/bin/mm|" \
+  -e "s|^ENV=.*|ENV=test-env|" \
+  -e "s|^SRC=.*|SRC=$fixture/src|" \
+  -e "s|^DATA=.*|DATA=$fixture/data|" \
+  -e "s|^START_LOCK=.*|START_LOCK=$fixture/start.lock|" \
+  -e "s|^ACTIVE=.*|ACTIVE=$fixture/active_run|" \
+  scripts/run_small_test.sh > "$runner"
+chmod +x "$runner"
+: > "$fixture/args.current"
+EPOCHS=7 "$runner" "$fixture/runs/custom" 1 >/dev/null
+cp "$fixture/args.current" "$fixture/custom.args"; : > "$fixture/args.current"
+grep -Fq -- '-E 7' "$fixture/custom.args"
+grep -Fq 'epochs:     7 ' "$fixture/runs/custom/run_meta.txt"
+[ ! -e "$fixture/active_run" ]
+"$runner" "$fixture/runs/default" 1 >/dev/null
+cp "$fixture/args.current" "$fixture/default.args"; : > "$fixture/args.current"
+grep -Fq -- '-E 30' "$fixture/default.args"
+grep -Fq 'epochs:     30 ' "$fixture/runs/default/run_meta.txt"
+cat > "$fixture/src/COMEBin/run_comebin.sh" <<'EOF'
+#!/usr/bin/env bash
+# -d STR device
+# -s INT seed
+exit 0
+EOF
+git -C "$fixture/src" add COMEBin/run_comebin.sh && git -C "$fixture/src" commit -qm 'drop -E'
+"$runner" "$fixture/runs/legacy" 1 >/dev/null
+cp "$fixture/args.current" "$fixture/legacy.args"
+! grep -Fq -- '-E' "$fixture/legacy.args"
+grep -Fq 'epochs:     30 ' "$fixture/runs/legacy/run_meta.txt"
+printf 'run_small_test EPOCHS fixture: custom/default/legacy and immediate lock release ok\n'
+run_small_test EPOCHS fixture: custom/default/legacy and immediate lock release ok
+> build · space-bunny-free
+[0m$ [0mset -euo pipefail
+bash -n scripts/run_small_test.sh
+if command -v shellcheck >/dev/null 2>&1; then shellcheck -S error scripts/run_small_test.sh; fi
+git diff --check -- scripts/run_small_test.sh
+git diff -- scripts/run_small_test.sh | sed -n '1,260p'
+diff --git a/scripts/run_small_test.sh b/scripts/run_small_test.sh
+index f5d4e30..d364c8f 100755
+--- a/scripts/run_small_test.sh
++++ b/scripts/run_small_test.sh
+@@ -119,6 +119,13 @@ cleanup() {
+     kill "$SAMPLER_PID" 2>/dev/null || true
+     wait "$SAMPLER_PID" 2>/dev/null || true
+   fi
++  # On normal completion all foreground children are gone. Explicitly release
++  # the launch lock before a short functional test exits; a signal exit does not
++  # proactively declare the launch area free.
++  if [ "$rc" -ne 130 ]; then
++    flock -u 9 2>/dev/null || true
++    exec 9>&-
++  fi
+   # A failed run stays registered so benchmark-watchdog can apply its restart
+   # budget. Only a successful run clears its own registration.
+   if [ "$rc" -eq 0 ] && [ -f "$ACTIVE" ]; then
+@@ -150,8 +157,9 @@ SAMPLER_PID=$!
+ 
+ # No other registered benchmark can exist (checked above), so the first training
+ # process found is necessarily this run. Failure to capture it is non-fatal.
++# Do not let this late helper inherit the launch-lock FD after a short test exits.
+ ( sleep 12; MCMD=$(pgrep -af 'main.py train' 2>/dev/null | head -1 | cut -d' ' -f2-); \
+-  [ -n "$MCMD" ] && echo "cmd_train_py: $MCMD" >> "$RUNDIR/run_meta.txt" ) &
++  [ -n "$MCMD" ] && echo "cmd_train_py: $MCMD" >> "$RUNDIR/run_meta.txt" ) 9>&- &
+ 
+ START=$(date +%s)
+ set +e
+[0m$ [0mset -euo pipefail
+[ "$(git rev-parse HEAD)" = "$(git rev-parse origin/comebin-small-fix)" ]
+[ "$(git rev-parse a0be243^)" = "$(git rev-parse 5c77bc8)" ]
+bash -n COMEBin/run_comebin.sh
+[ "$(grep -c -- '--epochs ${epochs}' COMEBin/run_comebin.sh)" -eq 2 ]
+grep -q 'E) epochs=${OPTARG}' COMEBin/run_comebin.sh
+printf 'COMEBin issue #10 commit/push/plumbing: ok\n'
+COMEBin issue #10 commit/push/plumbing: ok
