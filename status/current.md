@@ -3,10 +3,10 @@
 | | |
 |---|---|
 | Status | 🟢 `running` |
-| ⏱ Updated (Europe/Berlin) | `2026-09-24T06:59 CEST` |
-| 🏃 Live benchmark | `baseline_rerun_autorestart1` — **epoch 115/200** · loss `2.9265148639678955` · top1 acc `97.63020324707031` (log 112s fresh) |
+| ⏱ Updated (Europe/Berlin) | `2026-09-24T07:00 CEST` |
+| 🏃 Live benchmark | `baseline_rerun_autorestart1` — **epoch 116/200** · loss `2.9396936893463135` · top1 acc `98.115234375` (log 24s fresh) |
 | 🧠 Model (last turn) | `mimo-v2.6-flash-free` (watchdog rotates to free models on quota) |
-| 📌 Agent note · **13 min old** | Baseline training epoch ~109/200 (~2.4 min/epoch, ETA ~22:35 UTC unless early-stop); next: baseline eval (run_eval.sh) → issue #2 small-dataset test → v1.1.0 fix run
+| 📌 Agent note · **14 min old** | Baseline training epoch ~109/200 (~2.4 min/epoch, ETA ~22:35 UTC unless early-stop); next: baseline eval (run_eval.sh) → issue #2 small-dataset test → v1.1.0 fix run
 2026-09-23 20:33:11 UTC - heartbeat
 2026-09-23 20:43:58 UTC - heartbeat
 2026-09-23 20:56:28 UTC - heartbeat
@@ -94,9 +94,9 @@
 2026-09-24 04:30:21 UTC - heartbeat
 2026-09-24 04:44:40 UTC - heartbeat
 2026-09-24 04:45:34 UTC - heartbeat |
-| ⚙️ Load · uptime | `32.25 31.95 31.96` · 15 hours, 23 minutes — 32 cores, 62 GiB, no GPU |
-| 💾 RAM used/total | `7633/64295 MB` |
+| ⚙️ Load · uptime | `32.65 32.13 32.02` · 15 hours, 24 minutes — 32 cores, 62 GiB, no GPU |
+| 💾 RAM used/total | `8928/64295 MB` |
 | 🔗 Session | `ses_f31799c77ffeTq9gcYgqc4hBhg` |
-| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `69563a5 status: yes — baseline_rerun_autorestart1 epoch 115/200 loss 2.9265148` |
-| 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `1563970 B` — every run, command & tool result |
+| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `5df9295 meta: supervise tick 2026-09-24T04:59:13Z — 1 fix(es)` |
+| 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `1566982 B` — every run, command & tool result |
 | 📈 Timeline | [status/status.log](status/status.log) |

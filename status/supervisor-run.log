@@ -32799,3 +32799,173 @@ status-heartbeat rerun: ok
 2026-09-24T04:58:05+00:00 pushed (or nothing to push): alive=yes epoch=115 model=mimo-v2.6-flash-free
 2026-09-24T04:59:06+00:00 pushed (or nothing to push): alive=yes epoch=115 model=mimo-v2.6-flash-free
 > build · space-bunny-free
+[0m$ [0mset -euo pipefail
+META_WATCHDOG_NO_LLM=1 META_WATCHDOG_LOCK=/tmp/meta-supervisor-verify.lock timeout 180s bash /vol/data/benchmark/bin/meta-watchdog.sh
+cat /vol/data/benchmark/meta/checks.tsv
+if grep -Eq $'\t(broken|degraded)\t' /vol/data/benchmark/meta/checks.tsv; then
+  echo 'meta verification found unresolved checks' >&2
+  exit 1
+fi
+printf 'meta-watchdog no-LLM verification: all checks healthy\n'
+C1_cron	ok	4 exact jobs; cron active; installed/source scripts identical + executable
+C2_service	ok	pid 5551; service status + /api/info healthy
+C3_agent	ok	run_alive=1 driver=1 hb=3s transcript=3s
+C4_ratelimit	ok	failed-launch markers=0 in 360min window
+C5_github	ok	HEAD=remote after concurrent publisher; worktree edits=1
+C6_benchmark	ok	pid 267462 mode=baseline alive, log -4s fresh
+C7_disk	ok	379 GiB free
+C8_issues	broken	new/updated: #10 (Try less epoches) updated=2026-09-24T04:59:09Z
+C8b_issue_close	ok	no issues marked addressed
+C9_repo_publish	ok	meta artifacts committed and HEAD=remote main
+meta verification found unresolved checks
+> build · space-bunny-free
+[0m$ [0mgh issue view 10 -R paulzierep/metagenomic-binning-benchmark --json number,title,state,updatedAt,body,comments,url --jq '{number,title,state,updatedAt,body,comments:[.comments[]|{id,author:.author.login,createdAt,body,url}],url}'
+{"body":"To speed up functuonal tests maybe use less epoches ?","comments":[{"author":"paulzierep","body":"Implemented — functional tests can now run with fewer epochs.\n\n- **Why the tests looked slow:** COMEBin's `train` defaults to `--epochs 200` and `run_comebin.sh` never exposed it, so every invocation inherited the full budget. The two small runs so far (41 s / 43 s) actually died on bugs long before epoch count mattered — but once fixed, a full 200-epoch budget would apply, so the flag is worth adding now.\n\n- **What changed:**\n  - `COMEBin/run_comebin.sh` (branch `comebin-small-fix`): new optional **`-E INT`** → passes `--epochs` to `main.py train`; default stays `200` (upstream behavior, so benchmark comparability is untouched).\n  - `scripts/run_small_test.sh`: new **`EPOCHS`** env var, **default 30**, recorded in `run_meta.txt` as `epochs: …`, and only passed when the CLI supports `-E` (same defensive pattern as the existing `-d`/`-s` checks). `--earlystop` still arms and can stop even earlier.\n\n- **Usage:** `EPOCHS=10 bash scripts/run_small_test.sh runs/small_test 8` — or rely on the new default of 30.\n\nFull benchmark runs (`run_comebin_fix.sh`, baseline rerun) intentionally keep the full 200-epoch budget so results stay comparable to the baseline row.\n","createdAt":"2026-09-24T04:59:09Z","id":"IC_kwDOUndL2c8AAAABWi6twQ","url":"https://github.com/paulzierep/metagenomic-binning-benchmark/issues/10#issuecomment-5807975873"}],"number":10,"state":"OPEN","title":"Try less epoches","updatedAt":"2026-09-24T04:59:09Z","url":"https://github.com/paulzierep/metagenomic-binning-benchmark/issues/10"}
+> build · space-bunny-free
+[0m→ [0mRead /vol/data/repos/metagenomic-binning-benchmark/scripts/run_small_test.sh [90m[offset=1, limit=180][0m
+[0m$ [0mgit diff -- scripts/run_small_test.sh && bash -n scripts/run_small_test.sh && git status --short --branch
+diff --git a/scripts/run_small_test.sh b/scripts/run_small_test.sh
+index 4ba2caf..f5d4e30 100755
+--- a/scripts/run_small_test.sh
++++ b/scripts/run_small_test.sh
+@@ -9,6 +9,9 @@
+ #                                   (default: the verified small-data fix worktree)
+ #   SEED=42                          optional reproducible seed (supported CLIs)
+ #   BATCH_SIZE=256 EMB_SIZE=512      small-data training defaults
++#   EPOCHS=30                         training epochs (issue #10; default 30 for
++#                                     fast functional tests; passed as -E only
++#                                     when the CLI supports it)
+ set -euo pipefail
+ 
+ MM=/vol/data/tools/bin/micromamba
+@@ -21,6 +24,7 @@ RUNDIR=$(realpath -m "${1:-/vol/data/benchmark/runs/small_test}")
+ THREADS=${2:-8}
+ BATCH_SIZE=${BATCH_SIZE:-256}
+ EMB_SIZE=${EMB_SIZE:-512}
++EPOCHS=${EPOCHS:-30}
+ SEED=${SEED:-}
+ START_LOCK=/tmp/benchmark-start.lock
+ ACTIVE=/vol/data/benchmark/.active_run
+@@ -75,6 +79,10 @@ fi
+ if [ -n "$SEED" ] && grep -q -- '-s INT.*seed' "$SRC/COMEBin/run_comebin.sh"; then
+   COMEBIN_ARGS+=(-s "$SEED")
+ fi
++# Issue #10: cap epochs for fast functional tests (upstream CLI has no -E).
++if grep -q -- '-E INT.*epochs' "$SRC/COMEBin/run_comebin.sh"; then
++  COMEBIN_ARGS+=(-E "$EPOCHS")
++fi
+ CMD_TEXT=$(printf '%q ' "$MM" run -p "$ENV" bash run_comebin.sh "${COMEBIN_ARGS[@]}")
+ 
+ {
+@@ -88,6 +96,7 @@ CMD_TEXT=$(printf '%q ' "$MM" run -p "$ENV" bash run_comebin.sh "${COMEBIN_ARGS[
+   echo "threads:    $THREADS"
+   echo "batch_size: $BATCH_SIZE"
+   echo "emb_size:   $EMB_SIZE"
++  echo "epochs:     $EPOCHS (passed as -E when the CLI supports it)"
+   echo "seed:       ${SEED:-unset}"
+   echo "host:       $(nproc) cores, $(free -g | awk '/Mem:/{print $2}')G RAM"
+   echo "cmd_wrapper: $CMD_TEXT"
+## main...origin/main
+ M scripts/run_small_test.sh
+[0m$ [0mcmp -s scripts/run_small_test.sh /vol/data/benchmark/bin/run_small_test.sh; rc=$?; echo cmp_rc=$rc; stat -c '%n %s %y' scripts/run_small_test.sh /vol/data/benchmark/bin/run_small_test.sh; git log --all --oneline -- scripts/run_small_test.sh | head -10
+cmp_rc=1
+scripts/run_small_test.sh 7685 2026-09-24 04:58:37.555000000 +0000
+/vol/data/benchmark/bin/run_small_test.sh 7194 2026-09-24 01:06:15.477000000 +0000
+9f276fb ops: recognize snapshot runners and harden small-data prep
+899f7e7 ops: harden watchdogs, issue triage, and benchmark handoff
+2f4f22b run_small_test.sh (issue #2 test runner) + cmd template in docs/06; PROGRESS epoch ~71
+[0m$ [0mgit status --short --branch; git log -6 --oneline --decorate --all; git show --stat --oneline comebin-small-fix; git diff 5c77bc8..comebin-small-fix -- COMEBin/run_comebin.sh; git ls-remote origin refs/heads/comebin-small-fix
+## master...origin/master [ahead 4, behind 3]
+?? COMEBin/__pycache__/
+?? COMEBin/data_aug/__pycache__/
+?? COMEBin/models/__pycache__/
+?? COMEBin/scripts/__pycache__/
+a0be243 (origin/comebin-small-fix, comebin-small-fix) run_comebin.sh: optional -E epochs flag (issue #10, functional-test speed)
+5c77bc8 Fix feature alignment for reduced assemblies with extra BAM references
+904f649 (HEAD -> master) Fix: initialize covIdxArr with np.zeros instead of np.empty to prevent IndexError from uninitialized garbage values in get_kmer_coverage
+ee2e507 Fix KeyError in gen_var.py: skip contigs not present in aug_seq_info_dict
+47c1449 Fix KeyError in gen_cov.py: skip contigs not present in aug_seq_info_dict
+586c7f7 fix: gen_seed_idx handles FileNotFoundError when seed file missing (hmmsearch --cut_tc produces no marker hits)
+a0be243 run_comebin.sh: optional -E epochs flag (issue #10, functional-test speed)
+ COMEBin/run_comebin.sh | 8 +++++++-
+ 1 file changed, 7 insertions(+), 1 deletion(-)
+diff --git a/COMEBin/run_comebin.sh b/COMEBin/run_comebin.sh
+index 2252227..356aba5 100644
+--- a/COMEBin/run_comebin.sh
++++ b/COMEBin/run_comebin.sh
+@@ -22,6 +22,7 @@ help_message () {
+ 	echo "  -e INT          embedding size for comebin network (default=2048)"
+ 	echo "  -c INT          embedding size for coverage network (default=2048)"
+ 	echo "  -b INT          batch size for training process (default=1024)"
++	echo "  -E INT          number of training epochs (default=200; lower this for fast functional tests)"
+ 	echo "";}
+ 
+ 
+@@ -35,8 +36,9 @@ n_views=6
+ emb_szs_forcov=2048
+ emb_szs=2048
+ batch_size=1024
++epochs=200
+ 
+-while getopts a:o:p:n:t:l:e:c:b: OPT; do
++while getopts a:o:p:n:t:l:e:c:b:E: OPT; do
+  case ${OPT} in
+   a) contig_file=$(realpath ${OPTARG})
+     ;;
+@@ -56,6 +58,8 @@ while getopts a:o:p:n:t:l:e:c:b: OPT; do
+     ;;
+   b) batch_size=${OPTARG}
+     ;;
++  E) epochs=${OPTARG}
++    ;;
+   \?)
+ #    printf "[Usage] `date '+%F %T'` -i <INPUT_FILE> -o <OUTPUT_DIR> -o <P
+ #RODUCT_CODE> -s <SOFTWARE_VERSION> -t <TYPE>\n" >&2
+@@ -148,6 +152,7 @@ if [ -d "$folder" ]; then
+         python main.py train --data ${output_dir}/data_augmentation \
+         --temperature ${temperature} --emb_szs_forcov ${emb_szs_forcov} \
+         --batch_size ${batch_size} --emb_szs ${emb_szs} --n_views ${n_views} \
++        --epochs ${epochs} \
+         --add_model_for_coverage \
+         --output_path ${output_dir}/comebin_res --earlystop --addvars --vars_sqrt --num_threads ${num_threads}
+     else
+@@ -159,6 +164,7 @@ else
+     python main.py train --data ${output_dir}/data_augmentation \
+     --temperature ${temperature} --emb_szs_forcov ${emb_szs_forcov} \
+     --batch_size ${batch_size} --emb_szs ${emb_szs} --n_views ${n_views} \
++    --epochs ${epochs} \
+     --add_model_for_coverage \
+     --output_path ${output_dir}/comebin_res --earlystop --addvars --vars_sqrt --num_threads ${num_threads}
+ fi
+a0be243187c674b4e62b980ef100f8f2e8b83f54	refs/heads/comebin-small-fix
+> build · space-bunny-free
+[0m$ [0mbash -n /vol/data/repos/COMEBin-small-fix/COMEBin/run_comebin.sh
+bash /vol/data/repos/COMEBin-small-fix/COMEBin/run_comebin.sh -h 2>&1 | grep -F -- '-E INT' | head -1
+# Verify the train command receives -E without launching a run by replacing python in a temp copy.
+fixture=$(mktemp -d /tmp/opencode/epochs-fixture.XXXXXX)
+trap 'rm -rf "$fixture"' EXIT
+cp /vol/data/repos/COMEBin-small-fix/COMEBin/run_comebin.sh "$fixture/run.sh"
+mkdir -p "$fixture/COMEBin" "$fixture/out"
+printf '#!/usr/bin/env bash\nprintf "%%s\\n" "$*" > /tmp/opencode/epochs-args.%s\n' "$$" > "$fixture/fakemm"
+# Instead inspect statically both train branches include --epochs.
+[ "$(grep -c -- '--epochs ${epochs}' "$fixture/run.sh")" -eq 2 ]
+grep -q 'E) epochs=${OPTARG}' "$fixture/run.sh"
+printf 'COMEBin -E plumbing static verification: ok\n'
+COMEBin -E plumbing static verification: ok
+[0m$ [0mgit show a0be243^:COMEBin/run_comebin.sh | grep -c -- '--epochs' || true; git show a0be243:COMEBin/run_comebin.sh | grep -c -- '--epochs'
+0
+2
+[0m$ [0mgit status --short --branch; git rev-parse HEAD; git branch --show-current; grep -n -- '-E INT\|epochs=' COMEBin/run_comebin.sh | head -20; git ls-remote origin refs/heads/comebin-small-fix
+## comebin-small-fix...origin/comebin-small-fix
+a0be243187c674b4e62b980ef100f8f2e8b83f54
+comebin-small-fix
+25:	echo "  -E INT          number of training epochs (default=200; lower this for fast functional tests)"
+39:epochs=200
+61:  E) epochs=${OPTARG}
+a0be243187c674b4e62b980ef100f8f2e8b83f54	refs/heads/comebin-small-fix
+> build · space-bunny-free
+[0m→ [0mRead /vol/data/repos/COMEBin-small-fix/COMEBin/run_comebin.sh [90m[offset=1, limit=90][0m
+> build · space-bunny-free
+[0m$ [0mset -o pipefail
+bash /vol/data/repos/COMEBin-small-fix/COMEBin/run_comebin.sh -E 30 2>&1 | grep -F -- '-E INT' | head -1
+-E INT          number of training epochs (default=200; lower this for fast functional tests)
