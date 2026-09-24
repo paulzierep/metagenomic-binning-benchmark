@@ -26680,3 +26680,197 @@ drwxr-xr-x 9 ubuntu ubuntu 4096 Jul  4  2023 data_augmentation
 === perl script thresholds ===
 142:=cut
 > build · mimo-v2.6-flash-free
+Training finished, but this run **produced no bins** — I have the full failure chain now. Gathering the remaining facts (issue check for this turn, authors' expected log, upstream HMM file, wrapper script) before deciding the fix:
+[0m$ [0msed -n '1,140p' /vol/data/repos/COMEBin/auxiliary/test_getmarker_2quarter.pl
+#!/usr/bin/env perl
+use strict;
+
+my $COV_CUTOFF = 0.4;
+
+gethmmmarker($ARGV[0], $ARGV[1], $ARGV[2], $ARGV[3]);
+#countmarker($ARGV[0], $ARGV[1], $ARGV[2], $ARGV[3], $ARGV[4]);
+
+# void gethmmmarker(input hmm output, fasta file, min seq length, output, is_harder);
+sub gethmmmarker
+{
+
+	my $hmm = $_[0];
+	my $fasta_f = $_[1];
+	my $min_seq_len = $_[2];
+	my $out = $_[3];
+	my $max_effort = 0;
+	if (defined($_[4]))
+	{
+		$max_effort = $_[4];
+	}
+	my $localine;
+	my @arr;
+	my $i;
+	my $j;
+	my $inlinehmm;
+	my $current = "";
+	my %lenhash;
+	my %tmphash;
+	my %queryhash;
+	my $querycount = 0;
+	my @queryseq;
+	my @queryseqnum;
+	my @querylen;
+	my $tmp1;
+
+	# Read fasta file
+	open(LOCALFILE, "<$fasta_f");
+	while(defined($localine = <LOCALFILE>))
+	{
+		chomp($localine);
+		if ($localine =~ /^>/)
+		{
+			$current = trim(substr($localine, 1));
+			$lenhash{$current} = 0;
+		}
+		elsif ($localine ne "")
+		{
+			$lenhash{$current} = $lenhash{$current} + length($localine);
+		}
+	}
+	close(LOCALFILE);
+
+	# Read HMM output
+	$current = "";
+	open(LOCALFILE, "<$hmm") || die "Cannot open hmm output file $hmm\n";
+	while(defined($localine = <LOCALFILE>))
+	{
+		chomp($localine);
+		if (index($localine, "#") == 0)
+		{
+			next;
+		}
+		@arr = split(/[ ]+/, $localine);
+		#$inlinehmm = checkMarker($arr[4]);
+		$inlinehmm = checkMarker($arr[3]);
+		#print "$arr[0], $inlinehmm, $arr[5], $arr[15], $arr[16]\n";
+		#if ($arr[0] =~ /([A-Za-z0-9._:;'"`=~\:\!\@\#\$\%\^\&\*\(\)\{\}\[\]\\\/\?\<\>\-\|]+)_[0-9]+$/)
+		if ($arr[0] =~ /([A-Za-z0-9._:;'"`=~\:\!\@\#\$\%\^\&\*\(\)\{\}\[\]\\\/\?\<\>\-\|]+)_[0-9]+_[0-9]+_[+\-]$/)
+		{
+			if (exists $lenhash{$1} && $lenhash{$1} >= $min_seq_len)
+			{
+				if ($current ne $inlinehmm)
+				{
+					if ($current ne "")
+					{
+						if ((scalar(keys %tmphash)) > 0)
+						{
+							# Flush tmphash content to queryhash
+							$queryhash{$current} = $querycount;
+							$queryseqnum[$querycount] = 0;
+							foreach $tmp1 (keys %tmphash)
+							{
+								$queryseq[$querycount][$queryseqnum[$querycount]] = $tmp1;
+								$queryseqnum[$querycount]++;
+							}
+							$querycount++;
+						}
+					}
+					$current = $inlinehmm;
+					$querylen[$querycount] = $arr[5];
+					%tmphash = ();
+				}
+				$i = $arr[16] - $arr[15];
+				if ($i / $arr[5] >= $COV_CUTOFF)
+				{
+					if (!(exists $tmphash{$1}))
+					{
+						$tmphash{$1} = 1;
+					}
+				}
+			}
+		}
+	}
+	if ((scalar(keys %tmphash)) > 0)
+	{
+		# Flush tmphash content to queryhash
+		$queryhash{$current} = $querycount;
+		$queryseqnum[$querycount] = 0;
+		foreach $tmp1 (keys %tmphash)
+		{
+			$queryseq[$querycount][$queryseqnum[$querycount]] = $tmp1;
+			$queryseqnum[$querycount]++;
+		}
+		$querycount++;
+	}
+	close(LOCALFILE);
+
+	if ((scalar keys %queryhash) == 0)
+	{
+		return(-1);
+	}
+
+=print marker gene information
+	%tmphash = ();
+	foreach $tmp1 (keys %queryhash)
+	{
+		print "$tmp1 -> $queryseqnum[$queryhash{$tmp1}]\n";
+		if (!(exists $tmphash{$queryseqnum[$queryhash{$tmp1}]}))
+		{
+			$tmphash{$queryseqnum[$queryhash{$tmp1}]} = 1;
+		}
+		else
+		{
+			$tmphash{$queryseqnum[$queryhash{$tmp1}]}++;
+		}
+	}
+	foreach $tmp1 (sort {$a <=> $b} keys %tmphash)
+	{
+		print "$tmp1, $tmphash{$tmp1}\n";
+[0m$ [0mEXP=/vol/data/datasets/comebin_test_data/excepted_output/run_comebin_test
+echo "=== authors' comebin.log: hmmsearch cmd + Seed_num ==="
+grep -n -E "hmmsearch|Seed_num|getmarker|markerCmd" "$EXP/comebin_res/comebin.log" | head -20
+echo "=== authors' training log tail ==="
+tail -3 "$EXP/comebin_res/training.log"
+echo "=== authors' bins ==="
+ls "$EXP/comebin_res/comebin_res_bins" 2>/dev/null | head -5; ls "$EXP/comebin_res/comebin_res_bins" 2>/dev/null | wc -l
+echo "=== run_comebin.sh location ==="
+ls -la /vol/data/repos/COMEBin/run_comebin.sh 2>/dev/null; find /vol/data/repos/COMEBin -maxdepth 2 -name "run_comebin*.sh"
+=== authors' comebin.log: hmmsearch cmd + Seed_num ===
+15:2023-07-04 19:40:20,186 - Seed_num:	25
+=== authors' training log tail ===
+INFO:root:Training has finished.
+INFO:root:Model checkpoint and metadata has been saved at /public/home2/ZhuLab/wangzy/binning/BATS_10samples/SRR5720343/run_comebin_test2/comebin_res.
+INFO:COMEBin	1.0.0:Finish training.
+=== authors' bins ===
+0.fa
+10116.fa
+10487.fa
+1083.fa
+11084.fa
+80
+=== run_comebin.sh location ===
+/vol/data/repos/COMEBin/COMEBin/run_comebin.sh
+/vol/data/repos/COMEBin/bin/run_comebin.sh
+[0m$ [0mecho "=== upstream Wang-CS/COMEBin bacar_marker.hmm TC count ==="
+curl -sL --max-time 60 https://raw.githubusercontent.com/Wang-CS/COMEBin/main/auxiliary/bacar_marker.hmm -o /tmp/upstream_bacar.hmm && echo "size: $(stat -c%s /tmp/upstream_bacar.hmm)" && echo "TC: $(grep -c '^TC' /tmp/upstream_bacar.hmm)" && echo "GA: $(grep -c '^GA' /tmp/upstream_bacar.hmm)" && echo "NC: $(grep -c '^NC' /tmp/upstream_bacar.hmm)" || echo "fetch failed"
+echo "=== local GA/NC ==="
+grep -c '^GA' /vol/data/repos/COMEBin/auxiliary/bacar_marker.hmm || true
+grep -c '^NC' /vol/data/repos/COMEBin/auxiliary/bacar_marker.hmm || true
+echo "=== marker.hmm TC sample ==="
+grep -m3 '^TC' /vol/data/repos/COMEBin/auxiliary/marker.hmm
+=== upstream Wang-CS/COMEBin bacar_marker.hmm TC count ===
+size: 14
+TC: 0
+GA: 0
+NC: 0
+=== local GA/NC ===
+0
+0
+=== marker.hmm TC sample ===
+TC    21.80 21.70;
+TC    21.20 21.10;
+TC    20.90 20.90;
+[0m$ [0mgh issue list -R paulzierep/metagenomic-binning-benchmark --state open --json number,title,updatedAt 2>&1 | head -40
+gh issue list -R paulzierep/COMEBin --state open --json number,title,updatedAt 2>&1 | head -20
+date -u +"now UTC: %Y-%m-%d %H:%M"
+touch /vol/data/benchmark/.heartbeat
+[{"number":8,"title":"Add benchmark data to zenodo","updatedAt":"2026-09-24T07:18:51Z"},{"number":6,"title":"Optimization","updatedAt":"2026-09-23T20:56:21Z"},{"number":2,"title":"Can you try to create a small benchmark dataset for comebin ?","updatedAt":"2026-09-24T01:05:04Z"},{"number":1,"title":"Idea inbox: benchmark ideas, COMEBin fixes, dataset requests","updatedAt":"2026-09-23T14:53:13Z"}]
+the 'paulzierep/COMEBin' repository has disabled issues
+now UTC: 2026-09-24 07:20
+> build · mimo-v2.6-flash-free
