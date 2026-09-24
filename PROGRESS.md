@@ -129,7 +129,8 @@ Watch progress: `tail -f runs/<run>/comebin_run.log` (epoch bars update in place
 - `MAMBA_ROOT_PREFIX=/vol/data/envs/.mamba`
 - Run in env: `/vol/data/tools/bin/micromamba run -p /vol/data/envs/comebin <cmd>`
 - Host: 32 cores, 62 GB RAM, **no GPU** (CPU-only PyTorch), ~460 GB free on `/vol/data`.
-- OpenCode binary `/home/ubuntu/.opencode/bin/opencode`; free models for fallback:
+- OpenCode binary `/home/ubuntu/.opencode/bin/opencode`; primary/default model
+  `opencode/big-pickle`; free models for fallback (only when big-pickle is quota-limited):
   `opencode/mimo-v2.6-flash-free`, `opencode/muse-spark-1.3-contributor-free`,
   `opencode/ling-3.0-flash-fin-free`, `opencode/nemotron-3.5-lightning-free`.
 - Session ID of the primary agent session: `ses_f31799c77ffeTq9gcYgqc4hBhg` (cwd `/home/ubuntu`).

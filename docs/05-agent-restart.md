@@ -72,6 +72,11 @@ The primary session runs on the default model. The agent **cannot swap its own m
 mid-conversation**; switching happens only at watchdog **restart** time via
 `opencode run --model <provider/model>`:
 
+The prioritized primary model is `opencode/big-pickle` (set via `DEFAULT_MODEL` in
+`agent-watchdog.sh`): healthy turns run it directly. The fallback rotation below only
+engages while big-pickle itself is quota-limited, and the rotation index resets to 0
+after every healthy run so big-pickle is used again as soon as its tokens are available.
+
 | Order | Model |
 |---|---|
 | 1 | `opencode/mimo-v2.6-flash-free` |
@@ -83,7 +88,8 @@ mid-conversation**; switching happens only at watchdog **restart** time via
   whole list instead of hammering one model.
 - **Token refresh**: there is no timer for "when tokens come back" — cron simply retries
   every 5 min; the first attempt that is allowed to run succeeds, its exit code 0 clears
-  `.watchdog_force_model`, and subsequent restarts return to the default model.
+  `.watchdog_force_model`, and subsequent restarts return to the default model
+  (`opencode/big-pickle`).
 - Free-model choice is recorded in `watchdog.log` for each restart, so every resumed
   turn's model is auditable.
 

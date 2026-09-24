@@ -44,7 +44,12 @@ TURN_GAP_S=30          # pause between turns
 IDLE_GAP_S=600         # longer pause when the agent says it is waiting/idle
 QUOTA_RETRIES=3        # consecutive quota-limited runs before giving up to cron
 
-# Free models, tried in order when the default model is quota-limited.
+# Free models, tried in order when the DEFAULT model (big-pickle) is quota-limited.
+# big-pickle is the prioritized primary model: healthy turns run it directly
+# (DEFAULT_MODEL), and the fallback rotation only starts when big-pickle itself
+# is quota-limited. The rotation index resets after every healthy run so the
+# cycle always begins again from the first fallback.
+DEFAULT_MODEL="opencode/big-pickle"
 FREE_MODELS=(
   "opencode/mimo-v2.6-flash-free"
   "opencode/muse-spark-1.3-contributor-free"
@@ -110,7 +115,9 @@ if [ "$quota" = "1" ]; then
     touch "$FORCE_MODEL"
     log "forcing free model: $pick"
 elif [ "$last" = "0" ]; then
-    rm -f "$FORCE_MODEL"   # healthy run -> default model
+    rm -f "$FORCE_MODEL"   # healthy run -> default model (big-pickle)
+    MODEL_ARGS=(--model "$DEFAULT_MODEL")
+    echo 0 >"$MODELIX"     # restart fallback cycle at big-pickle (prioritized)
 elif [ -f "$FORCE_MODEL" ]; then
     ix=0
     [ -f "$MODELIX" ] && ix=$(cat "$MODELIX" 2>/dev/null || echo 0)
@@ -147,7 +154,8 @@ run_driver() {
         else
             prompt="$CONT_PPT"; sargs=(--session "$SESSION_ID")
         fi
-        [ -f "$FORCE_MODEL" ] || MODEL_ARGS=()
+        # no forced free model -> the prioritized default (big-pickle) is used
+        [ -f "$FORCE_MODEL" ] || MODEL_ARGS=(--model "$DEFAULT_MODEL")
 
         before=$(wc -c < "$AGENT_LOG" 2>/dev/null || echo 0)
         log "driver turn #$((turns+1)): model=${MODEL_ARGS[*]:-default} | opencode run ${sargs[*]:-fresh}"
@@ -161,6 +169,7 @@ run_driver() {
 
         # a successful turn cleared the forced-model flag so the default model resumes
         [ "$rc" = "0" ] && rm -f "$FORCE_MODEL"
+        [ "$rc" = "0" ] && echo 0 >"$MODELIX"  # restart fallback cycle at big-pickle
 
         if [ "$rc" = "0" ]; then
             if [ "$after" -gt "$before" ]; then

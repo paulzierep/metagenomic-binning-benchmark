@@ -104,7 +104,11 @@ Mechanism — `scripts/agent-watchdog.sh`, installed at
    `--model` rotating through the free models
    (`mimo-v2.6-flash-free → muse-spark-1.3-contributor-free → ling-3.0-flash-fin-free →
    nemotron-3.5-lightning-free`). When tokens refresh, the retried run succeeds and the
-   flag is cleared (back to the default model).
+   flag is cleared (back to the default model). The prioritized primary model is
+   `opencode/big-pickle` (`DEFAULT_MODEL`): healthy turns run it directly, the
+   free-model rotation only engages while big-pickle itself is quota-limited, and the
+   rotation index resets after every healthy run so big-pickle is used again as soon
+   as its tokens are available.
 4. **Safety**: max 6 restarts / 6 h (crash-loop guard); exits permanently when
    `/vol/data/benchmark/TASK_COMPLETE` exists.
 
