@@ -35790,3 +35790,99 @@ Both issues commented. Now let me update the activity logs and heartbeat:
 heartbeat touched
 2026-09-24T10:17:55Z
 > build · nemotron-3.5-lightning-free
+Now let me commit the changes under lock:
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && git status --porcelain
+M PROGRESS.md
+ M docs/01-datasets.md
+ M docs/04-evaluation.md
+ M docs/10-data-preservation.md
+ M docs/11-run-results.md
+ M results/README.md
+?? medium_v11_20260924_checkm2_stats.csv
+?? results/medium_v11_20260924.csv
+> build · nemotron-3.5-lightning-free
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && git diff --stat
+PROGRESS.md                  | 12 +++++++-----
+ docs/01-datasets.md          | 16 ++++++++++++++++
+ docs/04-evaluation.md        |  3 +++
+ docs/10-data-preservation.md | 11 ++++++++---
+ docs/11-run-results.md       |  6 ++++--
+ results/README.md            | 21 +++++++++++++++------
+ status/agent-activity.log    |  1 +
+ 7 files changed, 54 insertions(+), 16 deletions(-)
+> build · nemotron-3.5-lightning-free
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && git diff docs/01-datasets.md | head -20; echo "==="; git diff docs/04-evaluation.md | head -20; echo "==="; git diff docs/10-data-preservation.md | head -20; echo "==="; git diff results/README.md | head -20
+diff --git a/docs/01-datasets.md b/docs/01-datasets.md
+index 6565289..6ef673b 100644
+--- a/docs/01-datasets.md
++++ b/docs/01-datasets.md
+@@ -55,6 +55,22 @@ verified with a fresh unauthenticated API request (HTTP 200), and the safe
+ publication record is stored outside the repository at
+ `/vol/data/benchmark/meta/zenodo_comebin_small.json`.
+ 
++### Medium derived test set (local benchmark input)
++
++`/vol/data/datasets/comebin_medium/` contains the top 3,000 contigs by length
++from the same BATS demo assembly plus all reads overlapping those contigs. The
++verified derivative is **421,631,278 bytes**; `PROVENANCE.txt` records the source
++paths, 3,000-contig count, and MD5 checksums:
++
++- `contigs.fa`: `8e6174913ed7db4eb6f05259bae833cc`
++- `bamfiles/reads.bam`: `fe31efbae1d07037a54cbe907f47bc1b`
++
++The v1.1.0 benchmark `medium_v11_20260924` completed 200/200 epochs and produced
++16 non-empty bins. CheckM2/CheckM v1 results are in
+===
+diff --git a/docs/04-evaluation.md b/docs/04-evaluation.md
+index bf5fea1..a6dbd0d 100644
+--- a/docs/04-evaluation.md
++++ b/docs/04-evaluation.md
+@@ -62,3 +62,6 @@ Per-run CSV: `scripts/make_results_csv.py <rundir> [dataset] [threads]` writes t
+ committed `results/<run>.csv` row (means + HQ/MQ counts, MIMAG thresholds above)
+ from `run_meta.txt` + the two eval tables. `scripts/run_eval.sh` calls
+ `parse_eval.py` (appends means to run_meta); then run `make_results_csv.py`.
++For the medium gate, `medium_v11_20260924_checkm2_stats.csv` supplements the
++aggregate row with one CheckM2 record per bin; raw per-bin tables remain under
++`/vol/data/benchmark/runs/medium_v11_20260924/eval/`.
+===
+diff --git a/docs/10-data-preservation.md b/docs/10-data-preservation.md
+index c9c212a..673db3c 100644
+--- a/docs/10-data-preservation.md
++++ b/docs/10-data-preservation.md
+@@ -106,6 +106,11 @@ report the failure; do not claim that preservation is complete.
+   `84131ae359d07a78db7ae7ca2005758f4f0ec9df67a33ec62f8af50ac1702f1b`).
+   The archive extraction and all 18 public-manifest entries were independently
+   verified; the token remains only in the mode-0600 local secret file.
+-- The medium derivative is built and verified locally; its timed COMEBin run is
+-  registered separately and must not overlap another benchmark. Future releases
+-  repeat this manifest, license, provenance, and DOI-verification checklist.
++- The medium derivative is built and verified locally (3,000 contigs,
++  421,631,278 bytes; `PROVENANCE.txt` and MD5s recorded). Its timed v1.1.0 run
++  `medium_v11_20260924` completed with 16 bins and verified CheckM2/CheckM
++  results; the parsed row is
++  [`results/medium_v11_20260924.csv`](../results/medium_v11_20260924.csv).
++  It is not deposited separately until the owner confirms the release license
++  and metadata. Future releases repeat this manifest, license, provenance, and
++  DOI-verification checklist.
+===
+diff --git a/results/README.md b/results/README.md
+index dec44b4..0d41657 100644
+--- a/results/README.md
++++ b/results/README.md
+@@ -1,16 +1,25 @@
+ # results/
+ 
+-Committed benchmark result tables — **one CSV(+MD) per benchmark run**.
+-Raw tool outputs stay in `/vol/data/benchmark/runs/<run>/` (not committed).
++Committed benchmark result tables — **one aggregate CSV per benchmark run**, plus
++small per-bin CSVs where available. Raw tool outputs stay in
++`/vol/data/benchmark/runs/<run>/` (not committed).
+ 
+-Column contract is defined in `docs/04-evaluation.md`. Every row must state:
++The aggregate column contract is defined in `docs/04-evaluation.md`. Every row
++states:
+ 
+ - `run` id, `source_commit` (of the COMEBin code used), `dataset`, `threads`,
+   wall-clock time, `n_bins`,
+ - CheckM2 mean completeness/contamination + HQ/MQ counts,
+> build · nemotron-3.5-lightning-free
