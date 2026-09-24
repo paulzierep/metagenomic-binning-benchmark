@@ -19783,3 +19783,168 @@ drwxrwxr-x 3 ubuntu ubuntu     4096 Sep 24 01:01 ..
 2026-09-24T00:54:48Z [paulzierep] ## Small test v2 (post-fix run) — next blocker root-caused
 2026-09-24T01:05:04Z [paulzierep] Update: Small benchmark dataset test (comebin_small) has been attempted twice (small_test exit_code=1 IndexError, small_test_v2 exit_code=1 KeyError), but the current COMEBin master (commit 904f649) includes fixes for gen_cov.py/gen_var.py KeyError and get_kmer_coverage IndexError. The baseline rerun is now in progress (watchdog-managed, epoch 12/200, no errors so far). Once baseline completes, small end-to-end test can proceed via scripts/run_small_test.sh.
 > build · mimo-v2.6-flash-free
+Dataset fully restored to original layout, my root-cause comment is live (00:54:48), and the supervisor added a status comment at 01:05 — no duplication, no further reply needed. Now syncing PROGRESS with the full chain of events:
+[0m$ [0mdiff /vol/data/benchmark/PROGRESS.md /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md >/dev/null && echo "PROGRESS copies identical" || echo "PROGRESS copies DIFFER"
+grep -n "CURRENT" /vol/data/benchmark/PROGRESS.md | head -5
+sed -n '266,300p' /vol/data/benchmark/PROGRESS.md
+PROGRESS copies DIFFER
+266:- [ ] **← CURRENT: baseline demo run terminal failure (21:30 UTC)** (started 14:36 UTC,
+- [ ] **← CURRENT: baseline demo run terminal failure (21:30 UTC)** (started 14:36 UTC,
+      commit `987db95d8d399f30b7c82a5f5f40ed6bfdc906c7`, `-t 32`): training reached
+      epoch 175/200, then clustering stopped because the upstream marker HMM run
+      produced no seed file (`TC bit thresholds unavailable` / missing seed);
+      `biolib` was also missing at failure (now installed). No active benchmark
+      remains; the watchdog recorded the terminal reason and stopped automatic
+      retries. Do not claim evaluation results; first validate the small
+      functional path/fix branch, then deliberately rerun the baseline if needed.
+- [x] **Supervisor C6 remediation (2026-09-23 21:42 UTC)**: deterministic terminal
+      failures are recorded and cleared instead of retried; replacement runners
+      use committed immutable snapshots; baseline wrapper failures now persist
+      `exit_code`; status labels cleared runs as not active. Fix commit: `2d61909`
+      (status truthfulness follow-up: `73aa0dd`).
+- [x] **Issues #6/#7/#8 triaged (20:55 UTC)**: #6 optimization → strategy doc;
+      #7 optimization plan → `docs/09-optimization-strategy.md` + README link
+      (flowchart, decision gate, adaptive-param ideas); #8 zenodo data archiving →
+      reply posted with proposed package/prep + what I need (token or manual upload)
+- [x] **docs/09-optimization-strategy.md written and linked from README** (with
+      benchmark-repo commit)
+- [x] **Release preservation staged (issue #8)**: `docs/10-data-preservation.md`
+      and `scripts/make_release_manifest.py` document owner prerequisites,
+      provenance/checksum packaging, and DOI verification; no upload claimed
+      without an approved Zenodo token/manual deposit.
+- [ ] Baseline rerun in progress (watchdog-managed, watchdog-wrapped run_comebin_baseline.sh
+      via HEAD commit 904f649, 32 threads, 200 epochs) — started 2026-09-24T00:30:01 UTC.
+      Key: biolib installed, gen_seed_idx FileNotFoundError fix present, np.zeros fix for
+      get_kmer_coverage present, gen_cov.py/gen_var.py KeyError fixes present.
+      Current epoch ~8/200, loss decreasing, Top1 accuracy improving.
+- [ ] After a successful baseline rerun: CheckM2 + CheckM v1 eval (`scripts/run_eval.sh`) → README
+      performance row (wall time per stage, peak RAM from resources.tsv, bins,
+      CheckM2/CheckM means) with linked commit → push
+- [ ] After baseline: small end-to-end COMEBin + CheckM2/CheckM run via
+      `scripts/run_small_test.sh` (runner now overlap-guarded and resource-logged)
+- [ ] After the small run passes: build/run the medium 3,000-contig derivative
+      (≤5 GB) via `scripts/make_medium_dataset.sh` (provenance+size in
+[0m$ [0mRUN=/vol/data/benchmark/runs/baseline_rerun_autorestart1
+echo "epoch: $(grep -c '^DEBUG:root:Epoch' "$RUN/comebin_out/comebin_res/training.log" 2>/dev/null)"
+date -u +"%Y-%m-%d %H:%M:%S UTC - progress sync: writing root-cause + reheader-restore state into PROGRESS.md" >> /vol/data/benchmark/.activity
+touch /vol/data/benchmark/.heartbeat
+epoch: 12
+> build · mimo-v2.6-flash-free
+[0m$ [0mdiff /vol/data/benchmark/PROGRESS.md /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md | head -60
+echo "=== repo copy last-modified ==="
+stat -c '%y' /vol/data/benchmark/PROGRESS.md /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md
+cd /vol/data/repos/metagenomic-binning-benchmark && git log --oneline -3 -- PROGRESS.md
+242,245d241
+< - [x] **Fixed gen_seed_idx FileNotFoundError in cluster.py** (issue from baseline
+<       run failure: hmmsearch with --cut_tc produces no seed file when no marker
+<       hits found; gen_seed_idx now handles FileNotFoundError gracefully, returning
+<       empty seed_idx list so Leiden clustering proceeds without seed initialization)
+289,293d284
+< - [ ] Baseline rerun in progress (watchdog-managed, watchdog-wrapped run_comebin_baseline.sh
+<       via HEAD commit 904f649, 32 threads, 200 epochs) — started 2026-09-24T00:30:01 UTC.
+<       Key: biolib installed, gen_seed_idx FileNotFoundError fix present, np.zeros fix for
+<       get_kmer_coverage present, gen_cov.py/gen_var.py KeyError fixes present.
+<       Current epoch ~8/200, loss decreasing, Top1 accuracy improving.
+=== repo copy last-modified ===
+2026-09-24 00:57:27.540000000 +0000
+2026-09-23 21:52:00.529000000 +0000
+67c6d05 docs: record terminal baseline failure
+c65969a docs: stage reproducible dataset preservation workflow
+f8dd2e4 docs: optimization strategy + decision flowchart (issues #6/#7); README link; PROGRESS sync
+> build · mimo-v2.6-flash-free
+Authoritative copy = `/vol/data/benchmark/PROGRESS.md` (newer). Adding my entries and the epoch update:
+[0m$ [0mdate -u +"%Y-%m-%d %H:%M:%S UTC - progress: PROGRESS.md updated with issue-#2 root cause, v1.1.0 immunity, reheader-restore state" >> /vol/data/benchmark/.activity
+touch /vol/data/benchmark/.heartbeat
+{"exit":0,"truncated":false,"output":"","status":"completed"}
+[0m← [0mEdit /vol/data/benchmark/PROGRESS.md
+Index: /vol/data/benchmark/PROGRESS.md
+===================================================================
+--- /vol/data/benchmark/PROGRESS.md
++++ /vol/data/benchmark/PROGRESS.md
+@@ -285,13 +285,35 @@
+ - [x] **Release preservation staged (issue #8)**: `docs/10-data-preservation.md`
+       and `scripts/make_release_manifest.py` document owner prerequisites,
+       provenance/checksum packaging, and DOI verification; no upload claimed
+       without an approved Zenodo token/manual deposit.
+-- [ ] Baseline rerun in progress (watchdog-managed, watchdog-wrapped run_comebin_baseline.sh
+-      via HEAD commit 904f649, 32 threads, 200 epochs) — started 2026-09-24T00:30:01 UTC.
+-      Key: biolib installed, gen_seed_idx FileNotFoundError fix present, np.zeros fix for
+-      get_kmer_coverage present, gen_cov.py/gen_var.py KeyError fixes present.
+-      Current epoch ~8/200, loss decreasing, Top1 accuracy improving.
++- [~] **← CURRENT: Baseline rerun in progress** (watchdog-managed, watchdog-wrapped
++      run_comebin_baseline.sh via HEAD commit 904f649, 32 threads, 200 epochs) — started
++      2026-09-24T00:30:01 UTC. Key: biolib installed, gen_seed_idx FileNotFoundError fix
++      present, np.zeros fix for get_kmer_coverage present, gen_cov.py/gen_var.py KeyError
++      fixes present. Epoch 12/200 @ 01:05 UTC, loss decreasing, Top1 improving; worst-case
++      ETA ~10:15 UTC (--earlystop may cut short).
++- [x] **Issue #2 root-caused + commented (00:54 UTC, comment 5805494130)**: `small_test_v2`
++      KeyError `lengths['BATS…scaffold_22978']` at `train_CLmodel.py:46` —
++      `aug0_datacoverage_mean.tsv` holds **29,434 rows = every BAM header ref** because
++      `bedtools genomecov -bga` emits zero-depth rows for all @SQ lines and the aug0 path
++      (`calculate_coverage` via `gen_cov_from_bedout`) has **no input-contig membership
++      filter** (only `calculate_coverage_samplebyindex` got the `47c1449` skip), while the
++      small input/augmented fasta has 300 contigs → namelist (from cov tsv) vs lengths
++      (from aug0 fasta) mismatch; reads exist on exactly the 300 target contigs (verified).
++- [x] **v1.1.0 shown structurally immune to that bug** (source review of COMEBin-v11 @
++      95f5ea8): `datacoverage_mean`/`namelist`/`lengths[seq_id]` are gone — binary feature
++      bundle with count-validated `contig_ids.txt` (`feature_bundle.py`) + `CoverageContext`
++      keyed to bundle contigs (`gen_cov.py`). Empirical confirmation = `runs/small_fix_v11`
++      functional run after the baseline rerun.
++- [x] **Subset-BAM repair attempt (01:00 UTC) reverted by supervisor**: header-only
++      reheader (300 @SQ) failed at `samtools index` (stale record refIDs — needs a SAM-text
++      rebuild, not header swap); supervisor restored original `reads.bam` (md5
++      `76a7aea5f864fde21ffe6b1ccc8a664c`) + fixed `contigs.bed` lengths; `reads.bam.bai`
++      name restored 01:05. **Supervisor owns the BAM repair** ("do not treat reheader as
++      verified") — do NOT modify `comebin_small/bamfiles` until its verified result lands;
++      fallback = producer/consumer contig-set filter as fix batch 2 (branch
++      `comebin-optimizations-v11`).
+ - [ ] After a successful baseline rerun: CheckM2 + CheckM v1 eval (`scripts/run_eval.sh`) → README
+       performance row (wall time per stage, peak RAM from resources.tsv, bins,
+       CheckM2/CheckM means) with linked commit → push
+ - [ ] After baseline: small end-to-end COMEBin + CheckM2/CheckM run via
+
+> build · mimo-v2.6-flash-free
+[0m$ [0mdate -u +"%Y-%m-%d %H:%M:%S UTC - heartbeat" >> /vol/data/benchmark/.activity
+touch /vol/data/benchmark/.heartbeat
+{"exit":0,"truncated":false,"output":"","status":"completed"}
+[0m$ [0mset -e
+exec 9>/tmp/bench-repo.lock
+flock -w 60 9 || { echo "LOCK TIMEOUT"; exit 1; }
+cd /vol/data/repos/metagenomic-binning-benchmark
+{
+  echo "2026-09-24T00:54Z - issues: #2 root-cause comment posted (5805494130): aug0 cov tsv = 29,434 BAM-header refs (-bga + unfiltered calculate_coverage) vs 300-contig fasta -> lengths[seq_id] KeyError"
+  echo "2026-09-24T01:00Z - dataset: attempted 300-@SQ header reheader of comebin_small reads.bam; samtools index failed (stale record refIDs)"
+  echo "2026-09-24T01:05Z - dataset: supervisor reverted reheader (original reads.bam preserved, contigs.bed lengths fixed); I restored reads.bam.bai name; supervisor owns BAM repair"
+  echo "2026-09-24T01:06Z - docs: PROGRESS.md synced (issue #2 root cause, v1.1.0 structural immunity, baseline rerun epoch 12/200)"
+} >> status/agent-activity.log
+cp /vol/data/benchmark/PROGRESS.md PROGRESS.md
+git fetch origin -q
+git add PROGRESS.md status/agent-activity.log
+git status --short | head
+git commit -q -m "docs: issue #2 root cause (aug0 coverage vs input contig-set mismatch), v1.1.0 immunity, reheader attempt/restore, baseline rerun state"
+git push -q origin main
+git log --oneline -1
+echo "--- pushed OK ---"
+M  PROGRESS.md
+ M scripts/benchmark-watchdog.sh
+ M scripts/make_medium_dataset.sh
+ M scripts/make_small_dataset.sh
+ M scripts/meta-watchdog.sh
+ M scripts/run_small_test.sh
+M  status/agent-activity.log
+19fe611 docs: issue #2 root cause (aug0 coverage vs input contig-set mismatch), v1.1.0 immunity, reheader attempt/restore, baseline rerun state
+--- pushed OK ---
+> build · mimo-v2.6-flash-free
+Committed and pushed **`19fe611`** — only my two intended paths (`PROGRESS.md`, `status/agent-activity.log`); the supervisor's in-flight script edits were correctly left unstaged for its own commit. Final health check:
+[0m$ [0mRUN=/vol/data/benchmark/runs/baseline_rerun_autorestart1
+ps -eo pid,etime,args | grep -E '[m]ain.py train' | head -1 || echo "no train proc"
+echo "epoch: $(grep -c '^DEBUG:root:Epoch' "$RUN/comebin_out/comebin_res/training.log" 2>/dev/null)/200"
+cd /vol/data/repos/metagenomic-binning-benchmark && git status -sb | head -3
+date -u +"now UTC: %H:%M"
+touch /vol/data/benchmark/.heartbeat
+270796       30:26 python main.py train --data /vol/data/benchmark/runs/baseline_rerun_autorestart1/comebin_out/data_augmentation --temperature 0.15 --emb_szs_forcov 2048 --batch_size 1024 --emb_szs 2048 --n_views 6 --add_model_for_coverage --output_path /vol/data/benchmark/runs/baseline_rerun_autorestart1/comebin_out/comebin_res --earlystop --addvars --vars_sqrt --num_threads 32
+epoch: 13/200
+## main...origin/main
+ M scripts/benchmark-watchdog.sh
+ M scripts/make_medium_dataset.sh
+now UTC: 01:07
