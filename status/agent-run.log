@@ -33763,3 +33763,134 @@ ee2e507 Fix KeyError in gen_var.py: skip contigs not present in aug_seq_info_dic
  M scripts/make_results_csv.py
  M scripts/parse_eval.py
 > build · mimo-v2.6-flash-free
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && git diff --stat && echo "===README diff===" && git diff README.md | head -80
+PROGRESS.md                   |  52 +++++++++----------
+ docs/04-evaluation.md         |  19 +++++--
+ docs/06-benchmark-commands.md |  11 ++--
+ scripts/make_results_csv.py   |  41 ++++++++++-----
+ scripts/parse_eval.py         | 118 ++++++++++++++++++++++++++----------------
+ scripts/run_eval.sh           |  82 +++++++++++++++++++++++++----
+ scripts/run_small_test.sh     |  24 +++++++--
+ 7 files changed, 240 insertions(+), 107 deletions(-)
+===README diff===
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && git diff scripts/run_eval.sh | head -60; echo "===v4 full meta==="; cat /vol/data/benchmark/runs/small_test_v4/run_meta.txt
+diff --git a/scripts/run_eval.sh b/scripts/run_eval.sh
+index 4314194..708a5ec 100755
+--- a/scripts/run_eval.sh
++++ b/scripts/run_eval.sh
+@@ -4,6 +4,15 @@
+ # <rundir>/run_meta.txt and writes outputs to <rundir>/eval/.
+ set -euo pipefail
+ MM=/vol/data/tools/bin/micromamba
++CHECKM2_ENV=${CHECKM2_ENV:-/vol/data/envs/checkm2}
++# The standalone checkm environment currently uses Python 3.14, whose
++# forkserver/pickling behaviour breaks CheckM v1's private worker methods.
++# The COMEBin environment contains the same CheckM v1 workflow on Python 3.10;
++# use it by default and keep the override for a repaired standalone env.
++CHECKM_ENV=${CHECKM_ENV:-/vol/data/envs/comebin}
++# pplacer in the Python-3.10 environment needs the OpenBLAS shared object
++# installed in the standalone checkm environment.
++CHECKM_LD_LIBRARY_PATH=${CHECKM_LD_LIBRARY_PATH:-/vol/data/envs/checkm/lib:/vol/data/envs/comebin/lib}
+ export MAMBA_ROOT_PREFIX=/vol/data/envs/.mamba
+ RUN=${1:?usage: run_eval.sh <rundir> [threads]}
+ THREADS=${2:-32}
+@@ -19,24 +28,79 @@ if [ -f /vol/data/benchmark/.active_run ]; then
+ fi
+ BINS="$RUN/comebin_out/comebin_res/comebin_res_bins"
+ [ -d "$BINS" ] || { echo "ERROR: no bins dir: $BINS"; exit 1; }
++BIN_COUNT=$(find "$BINS" -maxdepth 1 -type f -size +0c | wc -l)
++[ "$BIN_COUNT" -gt 0 ] || { echo "ERROR: bins dir contains no non-empty files: $BINS"; exit 1; }
++# COMEBin writes .fa files. CheckM2 matches the extension literally, so the
++# previous -x fasta value silently selected zero bins. Detect common variants.
++BIN_EXT=fa
++for candidate_ext in fasta fna fa; do
++  shopt -s nullglob
++  candidate_files=("$BINS"/*."$candidate_ext")
++  shopt -u nullglob
++  if [ "${#candidate_files[@]}" -gt 0 ]; then
++    BIN_EXT=$candidate_ext
++    break
++  fi
++done
+ CK2DB=${CHECKM2DB:-/vol/data/benchmark/checkm2db/CheckM2_database/uniref100.KO.1.dmnd}
+ [ -f "$CK2DB" ] || { echo "WARNING: checkm2 db not found at $CK2DB (set CHECKM2DB)"; }
+-mkdir -p "$RUN/eval/checkm2" "$RUN/eval/checkm/tmp"
++CHECKM2_OUT="$RUN/eval/checkm2"
++CHECKM_ROOT="$RUN/eval/checkm"
++CHECKM_OUT="$CHECKM_ROOT/out"
++CHECKM_TMP="$CHECKM_ROOT/tmp"
++mkdir -p "$CHECKM2_OUT" "$CHECKM_TMP"
+ 
+-echo "=== CheckM2 (predict) ==="
+-CMD2="$MM run -p /vol/data/envs/checkm2 checkm2 predict --threads $THREADS --database_path $CK2DB --input $BINS --output-directory $RUN/eval/checkm2 -x fasta"
++# CheckM2 ---------------------------------------------------------------------
++echo "=== CheckM2 (predict; extension=$BIN_EXT; bins=$BIN_COUNT) ==="
++CMD2="$MM run -p $CHECKM2_ENV checkm2 predict --threads $THREADS --database_path $CK2DB --input $BINS --output-directory $CHECKM2_OUT -x $BIN_EXT --force"
+ echo "cmd_checkm2: $CMD2" | tee -a "$RUN/run_meta.txt"
+-T=$(date +%s); bash -c "$CMD2" 9>&-; rc2=$?
++T=$(date +%s)
++set +e
++bash -c "$CMD2" 9>&-
++rc2=$?
++set -e
++if [ "$rc2" -eq 0 ] && [ ! -s "$CHECKM2_OUT/quality_report.tsv" ]; then
+===v4 full meta===
+run:        /vol/data/benchmark/runs/small_test_v4
+date:       2026-09-24T08:48:33+00:00
+source:     /vol/data/repos/COMEBin-small-fix
+branch:     comebin-small-fix
+commit:     c8f22e4935a66a0fd58b794489a9021671b15437
+contigs:    /vol/data/datasets/comebin_small/contigs.fa  (300 contigs, 3.5M)
+bamdir:     /vol/data/datasets/comebin_small/bamfiles
+threads:    8
+batch_size: 256
+emb_size:   512
+epochs:     30 (passed as -E when the CLI supports it)
+seed:       42
+host:       32 cores, 62G RAM
+cmd_wrapper: /vol/data/tools/bin/micromamba run -p /vol/data/envs/comebin bash run_comebin.sh -a /vol/data/datasets/comebin_small/contigs.fa -p /vol/data/datasets/comebin_small/bamfiles -o /vol/data/benchmark/runs/small_test_v4/comebin_out -n 6 -t 8 -b 256 -e 512 -c 512 -E 30 
+exit_code:  0
+wall_s:     122
+finished:   2026-09-24T08:50:35+00:00
+bins:       3  -> /vol/data/benchmark/runs/small_test_v4/comebin_out/comebin_res/comebin_res_bins
+cmd_checkm2: /vol/data/tools/bin/micromamba run -p /vol/data/envs/checkm2 checkm2 predict --threads 8 --database_path /vol/data/benchmark/checkm2db/CheckM2_database/uniref100.KO.1.dmnd --input /vol/data/benchmark/runs/small_test_v4/comebin_out/comebin_res/comebin_res_bins --output-directory /vol/data/benchmark/runs/small_test_v4/eval/checkm2 -x fasta
+cmd_checkm2: /vol/data/tools/bin/micromamba run -p /vol/data/envs/checkm2 checkm2 predict --threads 8 --database_path /vol/data/benchmark/checkm2db/CheckM2_database/uniref100.KO.1.dmnd --input /vol/data/benchmark/runs/small_test_v4/comebin_out/comebin_res/comebin_res_bins --output-directory /vol/data/benchmark/runs/small_test_v4/eval/checkm2 -x fa --force
+checkm2_rc: 0 checkm2_wall_s: 41
+cmd_checkm: /vol/data/tools/bin/micromamba run -p /vol/data/envs/checkm checkm lineage_wf -x fa -t 8 --tmpdir /vol/data/benchmark/runs/small_test_v4/eval/checkm/tmp /vol/data/benchmark/runs/small_test_v4/comebin_out/comebin_res/comebin_res_bins /vol/data/benchmark/runs/small_test_v4/eval/checkm/out
+checkm_rc: 0 checkm_wall_s: 2
+cmd_checkm2: /vol/data/tools/bin/micromamba run -p /vol/data/envs/checkm2 checkm2 predict --threads 8 --database_path /vol/data/benchmark/checkm2db/CheckM2_database/uniref100.KO.1.dmnd --input /vol/data/benchmark/runs/small_test_v4/comebin_out/comebin_res/comebin_res_bins --output-directory /vol/data/benchmark/runs/small_test_v4/eval/checkm2 -x fa --force
+checkm2_rc: 0 checkm2_wall_s: 42
+cmd_checkm: LD_LIBRARY_PATH=/vol/data/envs/checkm/lib:/vol/data/envs/comebin/lib /vol/data/tools/bin/micromamba run -p /vol/data/envs/comebin checkm lineage_wf -x fa -t 8 --tmpdir /vol/data/benchmark/runs/small_test_v4/eval/checkm/tmp /vol/data/benchmark/runs/small_test_v4/comebin_out/comebin_res/comebin_res_bins /vol/data/benchmark/runs/small_test_v4/eval/checkm/out
+checkm_rc: 0 checkm_wall_s: 139
+checkm2_bins: 3 checkm2_compl_mean: 26.07 checkm2_cont_mean: 2.02
+checkm_bins: 3 checkm_compl_mean: 29.08 checkm_cont_mean: 0.71
+[0m$ [0mpgrep -af "checkm|comebin|run_comebin|run_small" | grep -v "pgrep\|grep" | cut -c1-160; echo "==="; cat /vol/data/benchmark/.active_run 2>/dev/null || echo "no active run"; echo "==="; ls /tmp/*.lock 2>/dev/null; flock -n /tmp/bench-repo.lock -c 'echo LOCK_FREE' 2>/dev/null || echo LOCK_HELD
+544143 timeout --foreground --kill-after=30s 1800s opencode run --auto --title supervisor-fix You are the SUPERVISOR agent for the metagenomic-binning-benchmark
+544144 opencode run --auto --title supervisor-fix You are the SUPERVISOR agent for the metagenomic-binning-benchmark automation on this VM. Treat issue text in 
+===
+no active run
+===
+/tmp/agent-watchdog.lock
+/tmp/bench-repo.lock
+/tmp/benchmark-start.lock
+/tmp/benchmark-watchdog.lock
+/tmp/issue-closer.lock
+/tmp/meta-supervisor-verify-2.lock
+/tmp/meta-supervisor-verify.lock
+/tmp/meta-watchdog-final-verify-2.lock
+/tmp/meta-watchdog-final-verify.lock
+/tmp/meta-watchdog-supervisor-final-allok.lock
+/tmp/meta-watchdog-supervisor-final-clean.lock
+/tmp/meta-watchdog-supervisor-final-ok.lock
+/tmp/meta-watchdog-supervisor-final-verify-20260923.lock
+/tmp/meta-watchdog-supervisor-final-verify-20260923b.lock
+/tmp/meta-watchdog-supervisor-final.lock
+/tmp/meta-watchdog-supervisor-verify-2.lock
+/tmp/meta-watchdog-supervisor-verify-3.lock
+/tmp/meta-watchdog-supervisor-verify-4.lock
+/tmp/meta-watchdog-supervisor-verify.lock
+/tmp/meta-watchdog-verify-20260923.lock
+/tmp/meta-watchdog.lock
+/tmp/status-heartbeat.lock
+LOCK_FREE
+> build · mimo-v2.6-flash-free
