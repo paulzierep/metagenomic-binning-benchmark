@@ -46520,3 +46520,222 @@ Invariants:
   flowchart and this doc current.
 - Commit messages: one commit per batch, mention benchmark result summary.
 - Issues: optimization discussions tracked in issue #6 / #7; benchmark-data
+> build · big-pickle
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/docs/09-optimization-strategy.md
+Index: /vol/data/repos/metagenomic-binning-benchmark/docs/09-optimization-strategy.md
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/docs/09-optimization-strategy.md
++++ /vol/data/repos/metagenomic-binning-benchmark/docs/09-optimization-strategy.md
+@@ -63,8 +63,11 @@
+ - **One timed thing at a time:** no concurrent COMEBin/CheckM runs, so timings
+   stay comparable.
+ - **Record or reject:** a commit is kept *only* if the evidence says keep;
+   otherwise it is reverted or reworked and combined with other ideas.
++- **Big runs only after small + medium (issue #17):** a full-large benchmark is
++  launched only after the fix is validated on both the small functional set and
++  a medium set, and parameter tuning is done on small sets before big benchmarks.
+ - Cost guardrail: if we accrue several sequential failures, go back and pick a
+   different idea (per the flowchart) instead of spending more time on a dead end.
+ 
+ ## Parameter-tuning ideas (issue #6, live list)
+
+> build · big-pickle
+**Chunk 5 deferred — first update the Zenodo record, then write the docs to match reality.** Let me inspect the current record via the API and confirm the token works.
+[0m$ [0mcurl -s -o /dev/null -w "api depositions GET: %{http_code}\n" -H "Authorization: Bearer $(cat /home/ubuntu/.zenodo_token)" "https://zenodo.org/api/deposit/depositions/22935025"
+api depositions GET: 200
+[0m$ [0mTOKEN=$(cat /home/ubuntu/.zenodo_token); echo "token len: ${#TOKEN}"; curl -s -o /tmp/zenodo_record.json -w "GET record: %{http_code}\n" "https://zenodo.org/api/records/22935025"; python3 -c "
+import json
+d=json.load(open('/tmp/zenodo_record.json'))
+md=d.get('metadata',{})
+print('title:', md.get('title'))
+print('license:', md.get('license'))
+print('desc len:', len(md.get('description','')))
+print('creators:', md.get('creators'))
+print('doi:', d.get('doi'))
+print('version:', d.get('metadata',{}).get('version'))
+"
+token len: 60
+GET record: 200
+title: COMEBin metagenomic binning benchmark dataset — small test set (300 contigs, 94 MB)
+license: {'id': 'cc-by-4.0'}
+desc len: 519
+creators: [{'name': 'Paul Zierep', 'affiliation': None}]
+doi: 10.5281/zenodo.22935025
+version: 1.0
+> build · big-pickle
+Record confirmed: license cc-by-4.0, desc 519 chars. Let me fetch the current deposition metadata fully so the PUT preserves all existing fields.
+[0m$ [0mcurl -s -H "Authorization: Bearer $(cat /home/ubuntu/.zenodo_token)" "https://zenodo.org/api/deposit/depositions/22935025" -o /tmp/zenodo_dep.json -w "GET dep: %{http_code}\n"; python3 -c "
+import json
+d=json.load(open('/tmp/zenodo_dep.json'))
+md=d['metadata']
+print(json.dumps(md, indent=1, ensure_ascii=False)[:2000])
+print('---keys---', list(md.keys()))
+"
+GET dep: 200
+{
+ "title": "COMEBin metagenomic binning benchmark dataset — small test set (300 contigs, 94 MB)",
+ "doi": "10.5281/zenodo.22935025",
+ "publication_date": "2026-09-24",
+ "description": "This dataset supports functional testing of COMEBin on a reduced, real BATS metagenome sample (BATS_SAMN07137077_METAG). It contains the 300 longest contigs (at least 1001 bp), reads overlapping those contigs, the COMEBin small_test_v4 outputs (3 non-empty bins), CheckM2 and CheckM v1 quality reports, run metadata, provenance, and a SHA-256 public manifest. The release was produced with the COMEBin source commit c8f22e4935a66a0fd58b794489a9021671b15437 and records the benchmark workflow. This is release version 1.",
+ "access_right": "open",
+ "creators": [
+  {
+   "name": "Paul Zierep",
+   "affiliation": null
+  }
+ ],
+ "keywords": [
+  "COMEBin",
+  "metagenomics",
+  "metagenome-assembled genomes",
+  "benchmark",
+  "BATS",
+  "binning",
+  "CheckM",
+  "CheckM2"
+ ],
+ "related_identifiers": [
+  {
+   "identifier": "https://github.com/paulzierep/COMEBin/tree/c8f22e4935a66a0fd58b794489a9021671b15437",
+   "relation": "isSupplementTo",
+   "resource_type": "dataset",
+   "scheme": "url"
+  },
+  {
+   "identifier": "https://github.com/paulzierep/metagenomic-binning-benchmark",
+   "relation": "isSupplementTo",
+   "resource_type": "dataset",
+   "scheme": "url"
+  }
+ ],
+ "version": "1.0",
+ "license": "cc-by-4.0",
+ "imprint_publisher": "Zenodo",
+ "notes": "Archive and public manifest checksums are recorded in the accompanying release metadata and in the repository documentation.",
+ "upload_type": "dataset",
+ "prereserve_doi": {
+  "doi": "10.5281/zenodo.22935025",
+  "recid": 22935025
+ }
+}
+---keys--- ['title', 'doi', 'publication_date', 'description', 'access_right', 'creators', 'keywords', 'related_identifiers', 'version', 'license', 'imprint_publisher', 'notes', 'upload_type', 'prereserve_doi']
+> build · big-pickle
+Now I'll build the metadata PUT (license → MIT, rich description, keep all other fields).
+[0m← [0mWrite /tmp/zenodo_put.json
+Created file successfully: /tmp/zenodo_put.json
+> build · big-pickle
+[0m$ [0mcurl -s -X PUT -H "Authorization: Bearer $(cat /home/ubuntu/.zenodo_token)" -H "Content-Type: application/json" --data @/tmp/zenodo_put.json "https://zenodo.org/api/deposit/depositions/22935025" -o /tmp/zenodo_put_resp.json -w "PUT: %{http_code}\n"; python3 -c "
+import json
+d=json.load(open('/tmp/zenodo_put_resp.json'))
+md=d.get('metadata',{})
+if 'metadata' not in d:
+    print('ERROR payload:', json.dumps(d)[:500])
+else:
+    print('license:', md.get('license'))
+    print('desc len:', len(md.get('description','')))
+    print('title:', md.get('title'))
+    print('state:', d.get('state'))
+"
+PUT: 404
+ERROR payload: {"status": 404, "message": "Not found."}
+> build · big-pickle
+The PUT 404s — published deposits need the `edit` action first (InvenioRDM flow). Let me edit → PUT → verify.
+[0m$ [0mcurl -s -X POST -H "Authorization: Bearer $(cat /home/ubuntu/.zenodo_token)" "https://zenodo.org/api/deposit/depositions/22935025/actions/edit" -o /tmp/zenodo_edit.json -w "edit action: %{http_code}\n"; python3 -c "
+import json
+d=json.load(open('/tmp/zenodo_edit.json'))
+print('state:', d.get('state'))
+print('license now:', d.get('metadata',{}).get('license'))
+"
+edit action: 201
+state: inprogress
+license now: cc-by-4.0
+> build · big-pickle
+[0m$ [0mcurl -s -X PUT -H "Authorization: Bearer $(cat /home/ubuntu/.zenodo_token)" -H "Content-Type: application/json" --data @/tmp/zenodo_put.json "https://zenodo.org/api/deposit/depositions/22935025" -o /tmp/zenodo_put_resp.json -w "PUT: %{http_code}\n"; python3 -c "
+import json
+d=json.load(open('/tmp/zenodo_put_resp.json'))
+md=d.get('metadata',{})
+print('state:', d.get('state'))
+print('license:', md.get('license'))
+print('desc len:', len(md.get('description','')))
+print('desc head:', md.get('description','')[:120].replace(chr(10),' '))
+"
+PUT: 200
+state: inprogress
+license: mit-license
+desc len: 1953
+desc head: This dataset is the small functional-test set of the metagenomic-binning-benchmark project (https://github.com/paulziere
+> build · big-pickle
+Metadata edit accepted (license `mit-license`, desc 1953 chars). Now publish the edit to make it live.
+[0m$ [0mcurl -s -X POST -H "Authorization: Bearer $(cat /home/ubuntu/.zenodo_token)" "https://zenodo.org/api/deposit/depositions/22935025/actions/publish" -o /tmp/zenodo_pub.json -w "publish: %{http_code}\n"; python3 -c "
+import json
+d=json.load(open('/tmp/zenodo_pub.json'))
+print('state:', d.get('state'))
+print('license:', d.get('metadata',{}).get('license'))
+print('version:', d.get('metadata',{}).get('version'))
+print('doi:', d.get('metadata',{}).get('doi') or d.get('doi'))
+"
+publish: 202
+state: done
+license: mit-license
+version: 1.0
+doi: 10.5281/zenodo.22935025
+> build · big-pickle
+Published, still version 1.0 (no new version). Now verify the public record and DOI resolution.
+[0m$ [0msleep 5; echo "--- public record API ---"; curl -s -o /tmp/zenodo_record2.json -w "GET /api/records/22935025: %{http_code}\n" "https://zenodo.org/api/records/22935025"; python3 -c "
+import json
+d=json.load(open('/tmp/zenodo_record2.json'))
+md=d.get('metadata',{})
+print('license:', md.get('license'))
+print('desc len:', len(md.get('description','')))
+print('version:', d.get('metadata',{}).get('version'))
+print('doi:', d.get('doi'))
+"; echo "--- DOI resolution ---"; curl -s -o /dev/null -w "doi.org final: %{http_code}\n" -L "https://doi.org/10.5281/zenodo.22935025"; curl -s -o /dev/null -w "zenodo record page: %{http_code}\n" -L "https://zenodo.org/records/22935025"
+--- public record API ---
+GET /api/records/22935025: 200
+license: {'id': 'mit-license'}
+desc len: 1953
+version: 1.0
+doi: 10.5281/zenodo.22935025
+--- DOI resolution ---
+doi.org final: 200
+zenodo record page: 200
+> build · big-pickle
+Zenodo is done and fully verified (MIT, v1.0, DOI 200). Now update the local meta JSON and the stale docs.
+[0m$ [0mpython3 - <<'EOF'
+import json, datetime
+p = "/vol/data/benchmark/meta/zenodo_comebin_small.json"
+d = json.load(open(p))
+d["license"] = "MIT"
+d["doi_resolver_check"] = {
+    "final_url": "https://doi.org/10.5281/zenodo.22935025",
+    "http_status": 200,
+    "checked_at_utc": datetime.datetime.utcnow().isoformat() + "Z",
+}
+d["unauthenticated_record_http_status"] = 200
+d["state"] = "published_verified"
+d["verified_at_utc"] = datetime.datetime.utcnow().isoformat() + "Z"
+d["schema_version"] = 2
+d["description"] = ("Small functional-test gate of the metagenomic-binning-benchmark harness "
+                    "(https://github.com/paulzierep/metagenomic-binning-benchmark): 300 longest contigs (>=1001 bp) "
+                    "of BATS_SAMN07137077_METAG plus overlapping reads, COMEBin v1.1.0 outputs (3 bins), CheckM2 and "
+                    "CheckM v1 quality metrics, provenance, and SHA-256 public manifest. Used to validate COMEBin "
+                    "fixes/parameter changes before medium and large benchmarks. How to run and full metadata: "
+                    "docs/01-datasets.md, docs/10-data-preservation.md, docs/11-run-results.md in the repo.")
+d["description_updated_utc"] = datetime.datetime.utcnow().isoformat() + "Z"
+d["license_changed_via"] = "in-place metadata edit on published record (no new version, per owner request)"
+json.dump(d, open(p, "w"), indent=2, ensure_ascii=False)
+print("updated:", json.dumps({k: d[k] for k in ("license","state","doi_resolver_check","schema_version")}, indent=1))
+EOF
+<stdin>:8: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+<stdin>:12: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+<stdin>:20: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+updated: {
+ "license": "MIT",
+ "state": "published_verified",
+ "doi_resolver_check": {
+  "final_url": "https://doi.org/10.5281/zenodo.22935025",
+  "http_status": 200,
+  "checked_at_utc": "2026-09-24T11:04:00.968678Z"
+ },
+ "schema_version": 2
+}
