@@ -22,9 +22,43 @@ START_LOCK=${BENCHMARK_START_LOCK:-/tmp/benchmark-start.lock}
 [ "$RUNDIR" != "/" ] || { echo "ERROR: refusing rundir=/"; exit 1; }
 
 mkdir -p "$RUNDIR"
-if [ -f "$RUNDIR/run_meta.txt" ] || [ -d "$RUNDIR/comebin_out" ]; then
+RESUME=${BENCHMARK_RESUME:-0}
+PH1_WALL=0
+if [ "$RESUME" = "1" ]; then
+  # Binning-only continuation of a phase-1 run whose wrapper exited 0 but whose
+  # clustering produced no bins (upstream run_comebin.sh masks clustering
+  # errors; root cause: hmmer 3.4 rejects --cut_tc on the TC-less marker HMM,
+  # see PROGRESS.md / issue). Training artifacts are reused as-is; every
+  # phase-1 record is archived under logs/phase1/ before the rerun starts.
+  [ -f "$RUNDIR/run_meta.txt" ] || { echo "ERROR: BENCHMARK_RESUME=1 but no run_meta.txt in $RUNDIR"; exit 1; }
+  grep -q '^exit_code:' "$RUNDIR/run_meta.txt" || { echo "ERROR: BENCHMARK_RESUME=1 but phase 1 recorded no exit_code"; exit 1; }
+  n_emb=$(find "$RUNDIR/comebin_out/comebin_res" -maxdepth 1 -type f -name '*embeddings.tsv' 2>/dev/null | wc -l)
+  n_aug=$(find "$RUNDIR/comebin_out/data_augmentation" -maxdepth 1 -type f -name '*_datacoverage_mean*' 2>/dev/null | wc -l)
+  [ "$n_emb" -eq 2 ] || { echo "ERROR: resume needs exactly 2 embeddings.tsv (found $n_emb); refusing"; exit 1; }
+  [ "$n_aug" -eq 6 ] || { echo "ERROR: resume needs 6 augmented views (found $n_aug); refusing"; exit 1; }
+  PH1_WALL=$(grep -m1 '^wall_s:' "$RUNDIR/run_meta.txt" | awk '{print $2}')
+  case "$PH1_WALL" in ''|*[!0-9]*) PH1_WALL=0 ;; esac
+  mkdir -p "$RUNDIR/logs/phase1"
+  mv "$RUNDIR/run_meta.txt" "$RUNDIR/logs/phase1/run_meta.txt"
+  if [ -f "$RUNDIR/comebin_run.log" ]; then
+    mv "$RUNDIR/comebin_run.log" "$RUNDIR/logs/phase1/comebin_run.log"
+  fi
+  # cluster_res only holds debris from the failed get_result (profile.run dirs
+  # for a seed count of 0).  Left in place it would make run_get_final_result
+  # skip profiling entirely because it only checks os.path.exists(output_dir).
+  if [ -d "$RUNDIR/comebin_out/comebin_res/cluster_res" ]; then
+    mv "$RUNDIR/comebin_out/comebin_res/cluster_res" "$RUNDIR/logs/phase1/cluster_res_debris"
+  fi
+  # A zero-byte hmmsearch output makes upstream gen_seed() skip hmmsearch (it
+  # only checks os.path.exists) and the marker script then yields no seed.
+  for f in "$CONTIGS.bacar_marker.hmmout" "$CONTIGS.bacar_marker.hmmout.out" "$CONTIGS.bacar_marker.hmmout.err"; do
+    if [ -f "$f" ]; then mv "$f" "$RUNDIR/logs/phase1/"; fi
+  done
+  echo "resume: phase 1 archived to $RUNDIR/logs/phase1/ (phase1_wall_s=$PH1_WALL, embeddings=$n_emb, views=$n_aug)"
+elif [ -f "$RUNDIR/run_meta.txt" ] || [ -d "$RUNDIR/comebin_out" ]; then
   echo "ERROR: refusing to overwrite existing run directory: $RUNDIR"
   echo "Choose a fresh rundir (autorestart directories are created by benchmark-watchdog)."
+  echo "For a binning-only continuation of a finished phase-1 run: BENCHMARK_RESUME=1 bash run_comebin_baseline.sh $RUNDIR"
   exit 1
 fi
 
@@ -75,6 +109,10 @@ fi
   echo "threads:    $THREADS"
   echo "host:       $(nproc) cores, $(free -g | awk '/Mem:/{print $2}')G RAM, gpu=$(nvidia-smi -L 2>/dev/null || echo none)"
   echo "cmd_wrapper: bash run_comebin.sh -a $CONTIGS -p $BAMDIR -o $RUNDIR/comebin_out -n 6 -t $THREADS  # via: micromamba run -p $ENV"
+  echo "hmmsearch:  $("$ENV/bin/hmmsearch" -h 2>&1 | grep -m1 HMMER || echo unknown)"
+  if [ "$RESUME" = "1" ]; then
+    echo "resume:     binning-only continuation; phase-1 records archived under logs/phase1/ (phase1_wall_s=$PH1_WALL)"
+  fi
 } | tee "$RUNDIR/run_meta.txt"
 
 export MAMBA_ROOT_PREFIX=/vol/data/envs/.mamba
@@ -97,7 +135,12 @@ write_terminal() {
   [ "$TERMINAL" -eq 1 ] && return 0
   {
     echo "exit_code:  $rc"
-    echo "wall_s:     $((end-START))"
+    # For a resumed run wall_s is the end-to-end cost: archived phase 1 + this
+    # phase. phase2_wall_s keeps the continuation's own duration visible.
+    echo "wall_s:     $((end-START+PH1_WALL))"
+    if [ "$PH1_WALL" -gt 0 ] 2>/dev/null; then
+      echo "phase2_wall_s: $((end-START))"
+    fi
     echo "finished:   $(date -Is)"
     echo "terminal:   wrapper_exit"
   } | tee -a "$RUNDIR/run_meta.txt" || true
@@ -135,13 +178,23 @@ CUDA_VISIBLE_DEVICES= "$MM" run -p "$ENV" bash run_comebin.sh \
 RC=${PIPESTATUS[0]}
 set -e
 END=$(date +%s)
-write_terminal "$RC" "$END"
 
-if [ "$RC" -eq 0 ]; then
-  BINS="$RUNDIR/comebin_out/comebin_res/comebin_res_bins"
-  if [ -d "$BINS" ]; then
-    echo "bins: $(find "$BINS" -maxdepth 1 -type f | wc -l)  -> $BINS" | tee -a "$RUNDIR/run_meta.txt"
-  fi
+# The upstream wrapper only checks get_result's exit code, and get_result can
+# fail without propagating it (phase 1 recorded exit_code 0 with zero bins).
+# Never let run_meta claim success when no bins were produced.
+BINS="$RUNDIR/comebin_out/comebin_res/comebin_res_bins"
+BIN_COUNT=0
+if [ -d "$BINS" ]; then
+  BIN_COUNT=$(find "$BINS" -maxdepth 1 -type f | wc -l)
+fi
+if [ "$RC" -eq 0 ] && [ "$BIN_COUNT" -eq 0 ]; then
+  echo "bins_missing: wrapper exited 0 but $BINS holds no bin files; recording failure" \
+    | tee -a "$RUNDIR/run_meta.txt"
+  RC=1
+fi
+write_terminal "$RC" "$END"
+if [ "$BIN_COUNT" -gt 0 ]; then
+  echo "bins: $BIN_COUNT  -> $BINS" | tee -a "$RUNDIR/run_meta.txt"
 fi
 # Record helper-tool commands visible in the log (FragGeneScan/hmmsearch seed genes).
 grep -aE 'run_FragGeneScan|hmmsearch' "$RUNDIR/comebin_run.log" 2>/dev/null | head -2 \
