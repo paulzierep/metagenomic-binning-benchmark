@@ -314,9 +314,7 @@ included; fixes land on branch `comebin-optimizations` in this repo.
       **`EPOCHS`** env, default 30, recorded in `run_meta.txt`, passed only when
       the CLI supports `-E`; benchmark runs keep the full 200 epochs. Comment:
       `#issuecomment-5807975873`.
-- [ ] After a successful baseline rerun: CheckM2 + CheckM v1 eval (`scripts/run_eval.sh`) → README
-      performance row (wall time per stage, peak RAM from resources.tsv, bins,
-      CheckM2/CheckM means) with linked commit → push
+- [x] **← COMPLETE: baseline rerun + eval** (2026-09-24) — registered watchdog run `baseline_rerun_autorestart1`, exit_code: 0, wall_s: 24327 (~6.75h), 200/200 epochs, 99.19% Top1 accuracy. Evaluation: CheckM2 60 bins, 25.01% mean completeness, 2.98% mean contamination (65s); CheckM v1 lineage_wf rc=0 (multiprocessing warnings). Fixes applied: hmmer 3.1b2 (replaced 3.4, resolves `--cut_tc` on TC-less bacar_marker.hmm), sklearn KMeans `n_jobs=-1` removed (358ddd8), `run_comebin_baseline.sh` BENCHMARK_RESUME (8bb73dd). Commit `904f649`. See `runs/baseline_rerun_autorestart1/eval/checkm2/quality_report.tsv`. → push
 - [ ] After baseline: small end-to-end COMEBin + CheckM2/CheckM run via
       `scripts/run_small_test.sh` (defaults to the verified `comebin-small-fix`
       worktree; overlap-guarded and resource-logged)
