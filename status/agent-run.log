@@ -34073,3 +34073,29 @@ tree
 STILL_RUNNING
 supervisor exited
 > build · mimo-v2.6-flash-free
+[0m$ [0mfor i in $(seq 1 10); do pgrep -f "checkm lineage_wf.*baseline" >/dev/null || break; sleep 20; touch /vol/data/benchmark/.heartbeat; done; pgrep -f "checkm lineage_wf" >/dev/null && echo STILL_RUNNING || echo FINISHED; RUN=/vol/data/benchmark/runs/baseline_rerun_autorestart1; ls $RUN/eval/checkm/out/storage/bin_stats_ext.tsv 2>/dev/null && wc -l $RUN/eval/checkm/out/storage/bin_stats_ext.tsv; python3 - <<'EOF'
+import ast
+p="/vol/data/benchmark/runs/baseline_rerun_autorestart1/eval/checkm/out/storage/bin_stats_ext.tsv"
+cs,ts,hq,mq,n=[],[],0,0,0
+for line in open(p):
+    line=line.rstrip("\n")
+    if not line: continue
+    parts=line.split("\t",1)
+    if len(parts)!=2: continue
+    try: rec=ast.literal_eval(parts[1])
+    except Exception: continue
+    c=rec.get("Completeness"); t=rec.get("Contamination")
+    if c is None: continue
+    n+=1; cs.append(float(c)); ts.append(float(t))
+    if float(c)>90 and float(t)<5: hq+=1
+    elif float(c)>=50 and float(t)<10: mq+=1
+print(f"checkm_v1 n={n} mean_comp={sum(cs)/n:.2f} mean_cont={sum(ts)/n:.2f} HQ={hq} MQ={mq}")
+EOF
+date -u +%FT%TZ
+STILL_RUNNING
+/vol/data/benchmark/runs/baseline_rerun_autorestart1/eval/checkm/out/storage/bin_stats_ext.tsv
+60 /vol/data/benchmark/runs/baseline_rerun_autorestart1/eval/checkm/out/storage/bin_stats_ext.tsv
+checkm_v1 n=60 mean_comp=21.23 mean_cont=3.40 HQ=0 MQ=9
+2026-09-24T09:20:16Z
+> build · mimo-v2.6-flash-free
+CheckM v1 baseline stats are complete (60 bins: 21.23% / 3.40%, MQ=9). Recording results and consolidating.
