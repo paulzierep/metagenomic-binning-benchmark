@@ -2,14 +2,14 @@
 
 | | |
 |---|---|
-| Status | 🔴 `stopped (watchdog will restart)` |
-| ⏱ Updated (Europe/Berlin) | `2026-09-24T21:08 CEST` |
-| 🏃 Last benchmark (not active) | `fix_v11_20260924` — last observed **epoch 183/200** (log 6191s old) |
+| Status | 🟢 `running` |
+| ⏱ Updated (Europe/Berlin) | `2026-09-24T21:10 CEST` |
+| 🏃 Last benchmark (not active) | `fix_v11_20260924` — last observed **epoch 183/200** (log 6311s old) |
 | 🧠 Model (last turn) | `mimo-v2.6-flash-free` (watchdog rotates to free models on quota) |
-| 📌 Agent note · **454 min old** | heartbeat stale 27258s — agent dead/idle, watchdog should restart within ~5 min |
-| ⚙️ Load · uptime | `0.00 0.01 0.03` · 1 day, 5 hours, 32 minutes — 32 cores, 62 GiB, no GPU |
-| 💾 RAM used/total | `1742/64295 MB` |
+| 📌 Agent note · **456 min old** | agent driver alive; transcript fresh (299s) while heartbeat is stale (27378s) |
+| ⚙️ Load · uptime | `0.08 0.02 0.02` · 1 day, 5 hours, 34 minutes — 32 cores, 62 GiB, no GPU |
+| 💾 RAM used/total | `1768/64295 MB` |
 | 🔗 Session | `ses_f31799c77ffeTq9gcYgqc4hBhg` |
-| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `e784591 status: no — fix_v11_20260924 epoch 183/200 loss 2.835580348968506 acc` |
+| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `1ba1422 status: no — fix_v11_20260924 epoch 183/200 loss 2.835580348968506 acc` |
 | 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `3326353 B` — every run, command & tool result |
 | 📈 Timeline | [status/status.log](status/status.log) |
