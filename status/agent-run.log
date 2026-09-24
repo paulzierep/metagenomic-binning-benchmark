@@ -20845,3 +20845,75 @@ Index: /vol/data/repos/metagenomic-binning-benchmark/README.md
 touch /vol/data/benchmark/.heartbeat
 {"exit":0,"truncated":false,"output":"","status":"completed"}
 > build · mimo-v2.6-flash-free
+[0m$ [0mgrep -o "[0-9a-f]\{39,\}d85b" /vol/data/repos/metagenomic-binning-benchmark/README.md | sort -u | awk '{print $0, length($0)}'
+echo "--- anchor sanity: section header present ---"
+grep -n "^## Run history" /vol/data/repos/metagenomic-binning-benchmark/README.md
+--- anchor sanity: section header present ---
+58:## Run history — what happened and what's next
+[0m$ [0mcat > /tmp/issue9-comment.md <<'EOF'
+Done — added a **“Run history — what happened and what’s next”** table to the README (right under the performance table), one row per run attempt with the exact failure cause and the concrete next step:
+
+| Run | Result | Cause | Next step |
+|---|---|---|---|
+| `baseline_unmodified` | failed @ epoch 175/200 | clustering crash: no hmmsearch `.seed` file (`FileNotFoundError` in `gen_seed_idx`) + missing `biolib` | biolib installed + graceful-missing-seed fix → baseline rerun |
+| `baseline_rerun` | refused launch (0 CPU) | overlap guard blocked a duplicate run over a stale registration | superseded by `baseline_rerun_autorestart1`; stale registration cleared |
+| `baseline_rerun_autorestart1` | **running** (epoch 108/200 @ 04:40 UTC) | — | on clean exit → `run_eval.sh` (CheckM2 + CheckM v1) → performance row |
+| `small_test` | failed (41 s) | `gen_cov` KeyError on a BAM-header-only contig (`47c1449`), then `IndexError` from `np.empty` in `get_kmer_coverage` (`904f649`) | rerun as `small_test_v2` |
+| `small_test_v2` | failed (43 s) | `lengths[seq_id]` KeyError — `aug0_datacoverage_mean.tsv` had all **29,434 BAM header refs** vs the 300-contig assembly (`-bga` zero-depth rows + unfiltered aug0 `calculate_coverage`) | producer filter + defensive alignment on branch `comebin-small-fix` (`5c77bc8`, offline test ✅) → end-to-end small run right after the baseline finishes (no overlapping timed runs) |
+
+Every row links its source commit and points at the per-run evidence (`run_meta.txt`, `comebin_run.log`). The performance table’s baseline row now links to this history instead of the bare “not active” status.
+EOF
+gh issue comment 9 -R paulzierep/metagenomic-binning-benchmark --body-file /tmp/issue9-comment.md
+date -u +"%Y-%m-%d %H:%M:%S UTC - issues: #9 replied with run-history table summary" >> /vol/data/repos/metagenomic-binning-benchmark/status/agent-activity.log
+touch /vol/data/benchmark/.heartbeat
+https://github.com/paulzierep/metagenomic-binning-benchmark/issues/9#issuecomment-5807827932
+> build · mimo-v2.6-flash-free
+Comment posted (`#issuecomment-5807827932`). Re-verifying no bad hash remains (my grep pattern above was wrong):
+[0m$ [0mgrep -o "904f649[0-9a-f]*" /vol/data/repos/metagenomic-binning-benchmark/README.md | sort -u | awk '{print $0, length($0)}'
+grep -o "5c77bc8[0-9a-f]*" /vol/data/repos/metagenomic-binning-benchmark/README.md | sort -u | awk '{print $0, length($0)}'
+git -C /vol/data/repos/COMEBin log --format=%H -1 5c77bc8
+904f649 7
+904f649ef5cbb4582a6f0e5ec8b0b1f45778d85b 40
+5c77bc8 7
+5c77bc87ce2c8a83be20016c8f62eb2d6b3feb88
+> build · mimo-v2.6-flash-free
+All hashes clean. Updating PROGRESS (issue #9 entry + epoch), then committing under lock:
+[0m← [0mEdit /vol/data/benchmark/PROGRESS.md
+Index: /vol/data/benchmark/PROGRESS.md
+===================================================================
+--- /vol/data/benchmark/PROGRESS.md
++++ /vol/data/benchmark/PROGRESS.md
+@@ -295,8 +295,13 @@
+ - [x] **Release preservation staged (issue #8)**: `docs/10-data-preservation.md`
+       and `scripts/make_release_manifest.py` document owner prerequisites,
+       provenance/checksum packaging, and DOI verification; no upload claimed
+       without an approved Zenodo token/manual deposit.
++- [x] **Issue #9 triaged (2026-09-24 04:39 → 04:45 UTC)**: per-run failure/next-step
++      explanation requested → new README section **“Run history — what happened and
++      what’s next”** (one row per run attempt: result, root cause, next step, commit
++      links; performance-table baseline row now links to it); summary comment posted
++      (`#issuecomment-5807827932`).
+ - [ ] After a successful baseline rerun: CheckM2 + CheckM v1 eval (`scripts/run_eval.sh`) → README
+       performance row (wall time per stage, peak RAM from resources.tsv, bins,
+       CheckM2/CheckM means) with linked commit → push
+ - [ ] After baseline: small end-to-end COMEBin + CheckM2/CheckM run via
+
+[0m← [0mEdit /vol/data/benchmark/PROGRESS.md
+Index: /vol/data/benchmark/PROGRESS.md
+===================================================================
+--- /vol/data/benchmark/PROGRESS.md
++++ /vol/data/benchmark/PROGRESS.md
+@@ -261,10 +261,10 @@
+       Microbiome), 391 GB free, planned data ≤ ~105 GB. Replies posted.
+ - [ ] **← CURRENT: baseline rerun active (started 2026-09-24 00:30 UTC)** — registered
+       watchdog run `baseline_rerun_autorestart1`, immutable snapshot
+       `baseline_rerun_1790209801802838194.sh`, PID 267462, source commit
+-      `904f649` (`-t 32`). Training is advancing normally (epoch 12/200 at the
+-      last verification); do not signal, edit, or overlap this run. The prior
++      `904f649` (`-t 32`). Training is advancing normally (epoch 108/200 @ 04:40 UTC,
++      loss 3.58 ↓, Top1 84 %); do not signal, edit, or overlap this run. The prior
+       baseline terminal failure (missing marker seed at epoch 175) remains
+       historical; no evaluation result is claimed yet.
+ - [x] **C6 snapshot identity remediation (2026-09-24)** — benchmark-watchdog and
+       meta-watchdog now accept only an existing immutable snapshot tied to the
+

@@ -1,0 +1,41 @@
+META-SUPERVISOR ESCALATION — 2026-09-24T04:43:01Z
+Automatic fixes applied this tick: 1
+
+--- health checks ---
+C1_cron          ok      4 exact jobs; cron active; installed/source scripts identical + executable
+C2_service       ok      pid 5551; service status + /api/info healthy
+C3_agent         ok      run_alive=1 driver=1 hb=9s transcript=4s
+C4_ratelimit     ok      failed-launch markers=0 in 360min window
+C5_github        ok      HEAD=remote after concurrent publisher; worktree edits=1
+C6_benchmark     ok      pid 267462 mode=baseline alive, log -3s fresh
+C7_disk          ok      379 GiB free
+C8_issues        broken  new/updated: #9 (No idea whag happened to the runs) updated=2026-09-24T04:39:33Z
+C8b_issue_close  ok      no issues marked addressed
+C9_repo_publish  ok      meta artifacts committed and HEAD=remote main
+
+--- recent watchdog log ---
+2026-09-24T04:09:38+00:00 [watchdog] driver turn #22 healthy; next turn in 600s
+2026-09-24T04:10:01+00:00 [watchdog] skipped: another driver holds the lock
+2026-09-24T04:15:01+00:00 [watchdog] skipped: another driver holds the lock
+2026-09-24T04:19:38+00:00 [watchdog] driver turn #22: model=default | opencode run --session ses_f31799c77ffeTq9gcYgqc4hBhg
+2026-09-24T04:20:00+00:00 [watchdog] driver turn #22 exited rc=0 (transcript 1483273->1485968B)
+2026-09-24T04:20:00+00:00 [watchdog] driver turn #23 healthy; next turn in 600s
+2026-09-24T04:20:01+00:00 [watchdog] skipped: another driver holds the lock
+2026-09-24T04:25:01+00:00 [watchdog] skipped: another driver holds the lock
+2026-09-24T04:30:00+00:00 [watchdog] driver turn #23: model=default | opencode run --session ses_f31799c77ffeTq9gcYgqc4hBhg
+2026-09-24T04:30:01+00:00 [watchdog] skipped: another driver holds the lock
+2026-09-24T04:30:28+00:00 [watchdog] driver turn #23 exited rc=0 (transcript 1485968->1488684B)
+2026-09-24T04:30:28+00:00 [watchdog] driver turn #24 healthy; next turn in 600s
+2026-09-24T04:35:01+00:00 [watchdog] skipped: another driver holds the lock
+2026-09-24T04:40:01+00:00 [watchdog] skipped: another driver holds the lock
+2026-09-24T04:40:28+00:00 [watchdog] driver turn #24: model=default | opencode run --session ses_f31799c77ffeTq9gcYgqc4hBhg
+
+--- open issues ---
+9	No idea whag happened to the runs	2026-09-24T04:39:33Z
+8	Add benchmark data to zenodo	2026-09-23T20:58:44Z
+6	Optimization	2026-09-23T20:56:21Z
+2	Can you try to create a small benchmark dataset for comebin ?	2026-09-24T01:05:04Z
+1	Idea inbox: benchmark ideas, COMEBin fixes, dataset requests	2026-09-23T14:53:13Z
+
+--- issue #9 details ---
+{"body":"It would be good to add a short explanation to each run why it failed and what you did as next step add it to a table in the readme as well","comments":[{"id":"IC_kwDOUndL2c8AAAABWixr3A","author":{"login":"paulzierep"},"authorAssociation":"OWNER","body":"Done — added a **“Run history — what happened and what’s next”** table to the README (right under the performance table), one row per run attempt with the exact failure cause and the concrete next step:\n\n| Run | Result | Cause | Next step |\n|---|---|---|---|\n| `baseline_unmodified` | failed @ epoch 175/200 | clustering crash: no hmmsearch `.seed` file (`FileNotFoundError` in `gen_seed_idx`) + missing `biolib` | biolib installed + graceful-missing-seed fix → baseline rerun |\n| `baseline_rerun` | refused launch (0 CPU) | overlap guard blocked a duplicate run over a stale registration | superseded by `baseline_rerun_autorestart1`; stale registration cleared |\n| `baseline_rerun_autorestart1` | **running** (epoch 108/200 @ 04:40 UTC) | — | on clean exit → `run_eval.sh` (CheckM2 + CheckM v1) → performance row |\n| `small_test` | failed (41 s) | `gen_cov` KeyError on a BAM-header-only contig (`47c1449`), then `IndexError` from `np.empty` in `get_kmer_coverage` (`904f649`) | rerun as `small_test_v2` |\n| `small_test_v2` | failed (43 s) | `lengths[seq_id]` KeyError — `aug0_datacoverage_mean.tsv` had all **29,434 BAM header refs** vs the 300-contig assembly (`-bga` zero-depth rows + unfiltered aug0 `calculate_coverage`) | producer filter + defensive alignment on branch `comebin-small-fix` (`5c77bc8`, offline test ✅) → end-to-end small run right after the baseline finishes (no overlapping timed runs) |\n\nEvery row links its source commit and points at the per-run evidence (`run_meta.txt`, `comebin_run.log`). The performance table’s baseline row now links to this history instead of the bare “not active” status.\n","createdAt":"2026-09-24T04:43:07Z","includesCreatedEdit":false,"isMinimized":false,"minimizedReason":"","reactionGroups":[],"url":"https://github.com/paulzierep/metagenomic-binning-benchmark/issues/9#issuecomment-5807827932","viewerDidAuthor":true}],"number":9,"title":"No idea whag happened to the runs","updatedAt":"2026-09-24T04:43:07Z","url":"https://github.com/paulzierep/metagenomic-binning-benchmark/issues/9"}
