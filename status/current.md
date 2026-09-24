@@ -3,10 +3,10 @@
 | | |
 |---|---|
 | Status | 🟢 `running` |
-| ⏱ Updated (Europe/Berlin) | `2026-09-24T13:30 CEST` |
-| 🏃 Live benchmark | `fix_v11_20260924` — **epoch 20/200** · loss `3.3221182823181152` · top1 acc `90.60871887207031` (log 117s fresh) |
+| ⏱ Updated (Europe/Berlin) | `2026-09-24T13:32 CEST` |
+| 🏃 Live benchmark | `fix_v11_20260924` — **epoch 21/200** · loss `3.3078572750091553` · top1 acc `90.45246887207031` (log 106s fresh) |
 | 🧠 Model (last turn) | `big-pickle` (watchdog rotates to free models on quota) |
-| 📌 Agent note · **10 min old** | Baseline training epoch ~109/200 (~2.4 min/epoch, ETA ~22:35 UTC unless early-stop); next: baseline eval (run_eval.sh) → issue #2 small-dataset test → v1.1.0 fix run
+| 📌 Agent note · **12 min old** | Baseline training epoch ~109/200 (~2.4 min/epoch, ETA ~22:35 UTC unless early-stop); next: baseline eval (run_eval.sh) → issue #2 small-dataset test → v1.1.0 fix run
 2026-09-23 20:33:11 UTC - heartbeat
 2026-09-23 20:43:58 UTC - heartbeat
 2026-09-23 20:56:28 UTC - heartbeat
@@ -268,9 +268,9 @@
 2026-09-24T10:57:38Z fix_v11-epoch7
 2026-09-24T11:07:59Z fix_v11-epoch11
 2026-09-24T11:19:52Z monitor-turn |
-| ⚙️ Load · uptime | `30.92 30.93 29.32` · 21 hours, 54 minutes — 32 cores, 62 GiB, no GPU |
-| 💾 RAM used/total | `4954/64295 MB` |
+| ⚙️ Load · uptime | `29.92 30.45 29.34` · 21 hours, 56 minutes — 32 cores, 62 GiB, no GPU |
+| 💾 RAM used/total | `4891/64295 MB` |
 | 🔗 Session | `ses_f31799c77ffeTq9gcYgqc4hBhg` |
-| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `206dc13 status: yes — fix_v11_20260924 epoch 19/200 loss 3.367016077041626 acc` |
-| 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `3291316 B` — every run, command & tool result |
+| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `d14de51 status: yes — fix_v11_20260924 epoch 20/200 loss 3.3221182823181152 ac` |
+| 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `3301935 B` — every run, command & tool result |
 | 📈 Timeline | [status/status.log](status/status.log) |

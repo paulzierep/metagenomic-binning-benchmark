@@ -37432,3 +37432,164 @@ epoch=17/200, batches=28, loss=3.3996408, top1=88.6198
 **Committed under lock:** PROGRESS note recording that triage (`…`, pushed; both PROGRESS copies in sync). `.activity` + `status/agent-activity.log` appended; `.heartbeat` touched.
 
 **Next turn:** on `fix_v11_20260924` terminal status → `scripts/run_eval.sh runs/fix_v11_20260924` (which now auto-produces CSV + per-bin + plots) → README / docs-11 row with baseline-vs-fix comparison → CAMI II marine sample 0 (`prep_cami2_marine.sh` → baseline + fix runs).
+[0m
+> build · big-pickle
+[0m$ [0mtest -f /vol/data/benchmark/TASK_COMPLETE && echo "TASK_COMPLETE EXISTS" || echo "no TASK_COMPLETE"; echo "===active_run==="; cat /vol/data/benchmark/.active_run 2>/dev/null || echo "none"; echo "===fix_v11==="; L=/vol/data/benchmark/runs/fix_v11_20260924/comebin_run.log; grep -o 'epoch=[0-9]*/200, batches=[0-9]*, loss=[0-9.]*, top1=[0-9.]*' $L 2>/dev/null | tail -2; grep -E '^exit_code|^wall_s|^bins:' /vol/data/benchmark/runs/fix_v11_20260924/run_meta.txt 2>/dev/null || echo "not finished"; date -u +%FT%TZ; touch /vol/data/benchmark/.heartbeat
+no TASK_COMPLETE
+===active_run===
+873786 873784 /vol/data/benchmark/runs/fix_v11_20260924/comebin_run.log /vol/data/benchmark/runs/fix_v11_20260924 1790246235 fix /vol/data/repos/COMEBin-v11 /vol/data/datasets/comebin_test_data/BATS_SAMN07137077_METAG.scaffolds.min500.fasta.f1k.fasta /vol/data/datasets/comebin_test_data/bamfiles
+===fix_v11===
+epoch=21/200, batches=28, loss=3.3221183, top1=90.6087
+epoch=22/200, batches=28, loss=3.3078573, top1=90.4525
+not finished
+2026-09-24T11:30:23Z
+> build · big-pickle
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && gh issue list -R paulzierep/metagenomic-binning-benchmark --state open --json number,title,updatedAt --jq '.[] | "\(.number) \(.title) \(.updatedAt)"' | sort -k3 | tail -8; echo "===COMEBin==="; gh issue list -R paulzierep/COMEBin --state open --json number,title,updatedAt 2>&1 | head -3
+6 Optimization 2026-09-23T20:56:21Z
+1 Idea inbox: benchmark ideas, COMEBin fixes, dataset requests 2026-09-23T14:53:13Z
+17 Only perform big benchmark runs when fixes wored on the small datasets 2026-09-24T11:09:53Z
+7 Optimization plan 2026-09-24T11:21:20Z
+12 Improve reporting 2026-09-24T11:22:42Z
+14 Improve the readme 2026-09-24T11:09:52Z
+2 Can you try to create a small benchmark dataset for comebin ? 2026-09-24T10:02:55Z
+===COMEBin===
+the 'paulzierep/COMEBin' repository has disabled issues
+> build · big-pickle
+**#7** and **#12** have new updates (11:21Z, 11:22Z) since last turn. Checking what changed:
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && for n in 7 12; do echo "=== issue #$n ==="; gh api repos/paulzierep/metagenomic-binning-benchmark/issues/$n/comments --jq '.[] | "[" + .created_at + "] " + (.body[0:350] | gsub("\n"; " "))' | tail -3; done
+=== issue #7 ===
+[2026-09-24T10:50:28Z] flowchart text is broken
+[2026-09-24T11:10:02Z] Fixed — the flowchart was rewritten with renderer-safe mermaid syntax (commit 2524e12) in both the README and docs/09: no `<br/>` inside labels and no emoji in edge labels (those are the usual GitHub-renderer breakers), explicit chains instead of chained labeled edges, all labels quoted, same keep/drop colors. The gate rules below it now also state
+[2026-09-24T11:21:20Z] still e.g. the text shows: "Full large benchmark only af" stop there
+=== issue #12 ===
+[2026-09-24T10:44:46Z] Implemented — automatic per-bin plots, regenerated after every evaluated run:  - **Per-run bar chart** `runs/<run>/per_bins.png`: one bar group per bin with CheckM2 + CheckM v1 completeness and contamination (e.g. [baseline](https://github.com/paulzierep/metagenomic-binning-benchmark/blob/main/runs/baseline_rerun_autorestart1/per_bins.png), [medium
+[2026-09-24T11:12:43Z] Closed by automation — addressed: Plots auto-generated (per-bin bar runs/<run>/per_bins.png + all-runs scatter results/figures/comp_vs_cont_all-runs.png, 3 PNGs committed 7c0d4bd); make_per_bin_plots.py --all wired into run_eval.sh (2524e12) to regenerate after every evaluated run. 
+[2026-09-24T11:22:42Z] Comparison scatter should be subplots for each dataset and shown in the readme
+> build · big-pickle
+Two new actionable owner requests:
+- **#7**: flowchart text still truncates ("Full large benchmark only af" → cuts off) — the renderer is clipping a long label.
+- **#12**: comparison scatter should be **subplots per dataset** and shown in the README.
+
+Both are non-overlapping with the running benchmark. Investigating the current flowchart + how `run_eval.sh` calls the plot script:
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && echo "=== README mermaid block ==="; sed -n '/```mermaid/,/```/p' README.md; echo "=== run_eval plot wiring ==="; grep -n -A6 "make_per_bin_plots" scripts/run_eval.sh | head -20
+=== README mermaid block ===
+```mermaid
+flowchart TD
+    A["Pick candidate change or parameter"] --> B["Small functional test on the 300-contig dataset"]
+    B -->|fail| G["Investigate, fix, or drop the change"]
+    G --> A
+    B -->|pass| C["Benchmark on a small or medium set"]
+    C --> D{"Better or equal time AND quality?"}
+    D -->|keep| E["Keep the commit; record in results and PROGRESS"]
+    E --> F["Next batch from this commit"]
+    D -->|no| H["Revert or rework"]
+    H --> I["Combine with surviving ideas"]
+    I --> A
+    F --> J["Optimize parameters on small sets first"]
+    J --> K["Full large benchmark only after small and medium validation (demo, then CAMI II marine, then CAMI III)"]
+    classDef keep fill:#d9f7be,stroke:#389e0d;
+    classDef drop fill:#ffccc7,stroke:#cf1322;
+    class A,B,C,E,F,J,K keep;
+    class G,H,I drop;
+```
+=== run_eval plot wiring ===
+112:  "$MM" run -p "$CHECKM_ENV" python3 "$(dirname "$0")/make_per_bin_plots.py" --all "$RUN" 9>&- \
+113:    || echo "WARNING: make_per_bin_plots.py failed (rc=$?)" >&2
+114-fi
+115-echo "done (checkm2 rc=$rc2, checkm rc=$rc1)"
+116-if [ "$rc2" -ne 0 ] || [ "$rc1" -ne 0 ]; then
+117-  exit 1
+118-fi
+> build · big-pickle
+Two clear fixes needed. First, the #7 truncation: the `K` node label is very long (GitHub's mermaid renderer clips it). I'll shorten all labels and move the detailed gate text to a markdown list under the flowchart. Reading the current plot script before editing it for #12:
+[0m→ [0mRead /vol/data/repos/metagenomic-binning-benchmark/scripts/make_per_bin_plots.py 
+> build · big-pickle
+Implementing both. First check `run_meta.txt` format (for dataset detection in #12) and whether docs/09 has the same mermaid block:
+[0m$ [0mhead -12 /vol/data/repos/metagenomic-binning-benchmark/runs/medium_v11_20260924/run_meta.txt; echo "=== docs/09 mermaid? ==="; grep -n "mermaid" /vol/data/repos/metagenomic-binning-benchmark/docs/09-optimization-strategy.md | head -3; echo "=== README gate bullets ==="; sed -n '/## Optimization workflow/,/## Results/p' /vol/data/repos/metagenomic-binning-benchmark/README.md | head -30
+run:        /vol/data/benchmark/runs/medium_v11_20260924
+source:     /vol/data/repos/COMEBin-v11 (branch comebin-optimizations-v11)
+date:       2026-09-24T09:25:50+00:00
+commit:     95f5ea820f9a4e76f5c2911c0b5ed507ab67b015
+contigs:    /vol/data/datasets/comebin_medium/contigs.fa
+bamdir:     /vol/data/datasets/comebin_medium/bamfiles
+threads:    32
+seed:       42
+host:       32 cores, 62G RAM, gpu=none
+cmd_wrapper: /vol/data/tools/bin/micromamba run -p /vol/data/envs/comebin bash run_comebin.sh -a /vol/data/datasets/comebin_medium/contigs.fa -p /vol/data/datasets/comebin_medium/bamfiles -o /vol/data/benchmark/runs/medium_v11_20260924/comebin_out -n 6 -t 32 -d cpu -s 42 
+exit_code:  0
+wall_s:     2326
+=== docs/09 mermaid? ===
+34:```mermaid
+=== README gate bullets ===
+## Optimization workflow (issue #7)
+
+Optimizations live on branch `comebin-optimizations-v11`, **one commit per
+batch**, each batch passing the gate below (details:
+[`docs/09-optimization-strategy.md`](docs/09-optimization-strategy.md)).
+
+```mermaid
+flowchart TD
+    A["Pick candidate change or parameter"] --> B["Small functional test on the 300-contig dataset"]
+    B -->|fail| G["Investigate, fix, or drop the change"]
+    G --> A
+    B -->|pass| C["Benchmark on a small or medium set"]
+    C --> D{"Better or equal time AND quality?"}
+    D -->|keep| E["Keep the commit; record in results and PROGRESS"]
+    E --> F["Next batch from this commit"]
+    D -->|no| H["Revert or rework"]
+    H --> I["Combine with surviving ideas"]
+    I --> A
+    F --> J["Optimize parameters on small sets first"]
+    J --> K["Full large benchmark only after small and medium validation (demo, then CAMI II marine, then CAMI III)"]
+    classDef keep fill:#d9f7be,stroke:#389e0d;
+    classDef drop fill:#ffccc7,stroke:#cf1322;
+    class A,B,C,E,F,J,K keep;
+    class G,H,I drop;
+```
+
+**Gate rules:** never skip the small functional test · baseline compared first ·
+one timed run at a time (no concurrent COMEBin/CheckM) · keep only with
+evidence · a run is kept or reverted/reworked and combined with surviving
+ideas · **big benchmark runs only after the fix is validated on small AND
+> build · big-pickle
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && sed -n '30,60p' docs/09-optimization-strategy.md; echo "=== README gate bullets full ==="; sed -n '/\*\*Gate rules:/,/^## /p' README.md | head -12
+Optimization work happens on a branch (`comebin-optimizations-v11`), **one commit
+per batch** (see `docs/07-fix-batches.md`). Each batch goes through the gate below.
+
+```mermaid
+flowchart TD
+    A["Pick candidate change or parameter"] --> B["Small functional test on the 300-contig dataset"]
+    B -->|fail| G["Investigate, fix, or drop the change"]
+    G --> A
+    B -->|pass| C["Benchmark on a small or medium set"]
+    C --> D{"Better or equal time AND quality?"}
+    D -->|keep| E["Keep the commit; record in results and PROGRESS"]
+    E --> F["Next batch from this commit"]
+    D -->|no| H["Revert or rework"]
+    H --> I["Combine with surviving ideas"]
+    I --> A
+    F --> J["Optimize parameters on small sets first"]
+    J --> K["Full large benchmark only after small and medium validation (demo, then CAMI II marine, then CAMI III)"]
+    classDef keep fill:#d9f7be,stroke:#389e0d;
+    classDef drop fill:#ffccc7,stroke:#cf1322;
+    class A,B,C,E,F,J,K keep;
+    class G,H,I drop;
+```
+
+> The same flowchart is rendered live in the [README](../README.md) (issue #7).
+
+Invariants:
+
+- **Never skip the small functional test.** Any change that breaks the small run
+  is not benchmarked further.
+- **Baseline first:** every optimization is compared against the unmodified
+=== README gate bullets full ===
+**Gate rules:** never skip the small functional test · baseline compared first ·
+one timed run at a time (no concurrent COMEBin/CheckM) · keep only with
+evidence · a run is kept or reverted/reworked and combined with surviving
+ideas · **big benchmark runs only after the fix is validated on small AND
+medium — no full-large runs on unvalidated fixes or un-optimized parameters
+(issue #17)**, and parameter optimization happens on small sets first.
+
+## Results
+> build · big-pickle
