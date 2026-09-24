@@ -28107,3 +28107,194 @@ fi
 
 export MAMBA_ROOT_PREFIX=/vol/data/envs/.mamba
 > build · mimo-v2.6-flash-free
+Root cause is confirmed and the env pin (`hmmer=3.1b2`) matches the authors' working setup. Before touching anything, I need the runner's registration mechanics (rest of `run_comebin_baseline.sh`, watchdog's `registered_runner_command`), the augmentation skip-keyword, and a pre-change env snapshot:
+[0m$ [0msed -n '86,130p' /vol/data/repos/metagenomic-binning-benchmark/scripts/benchmark-watchdog.sh
+echo "=== aug keyword in run_comebin.sh ==="
+sed -n '105,140p' /vol/data/repos/COMEBin/COMEBin/run_comebin.sh
+echo "=== original run echoes ==="
+grep -n -E "No need|Number of files|exists" /vol/data/benchmark/runs/baseline_rerun_autorestart1/comebin_run.log | head -12
+registered_runner_command() {
+  local cmd=$1 token snapshot_ok=0 rundir_ok=0
+  case "$cmd" in
+    *run_comebin_baseline.sh*|*run_comebin_fix.sh*|*run_small_test.sh*) return 0 ;;
+  esac
+  for token in $cmd; do
+    case "$token" in
+      "$SNAPSHOT_ROOT/${name}_"*.sh|"$SNAPSHOT_ROOT/${root_name}_"*.sh)
+        [ -f "$token" ] && snapshot_ok=1
+        ;;
+      "$rundir") rundir_ok=1 ;;
+    esac
+  done
+  [ "$snapshot_ok" -eq 1 ] && [ "$rundir_ok" -eq 1 ]
+}
+
+clear_active() {
+  if active_matches; then
+    rm -f "$ACTIVE"
+    return 0
+  fi
+  log "$name registration changed while watchdog was inspecting it; leaving current state untouched"
+  return 1
+}
+
+# A terminal failure is deliberately not treated as a transient crash.  This is
+# important for deterministic COMEBin/data/dependency errors: retrying them
+# wastes hours and can overwrite the only useful diagnostics.
+record_terminal_failure() {
+  local reason=$1 stamp
+  stamp=$(date -Is)
+  reason=$(printf '%s' "$reason" | tr '\r\n\t' '   ' | cut -c1-400)
+  if [ -f "$rundir/run_meta.txt" ]; then
+    printf 'watchdog_terminal: %s\n' "$stamp $reason" >> "$rundir/run_meta.txt" 2>/dev/null || true
+  fi
+  printf '%s\n' "$stamp $reason" > "$rundir/.watchdog_terminal" 2>/dev/null || true
+  printf '%s\t%s\t%s\n' "$stamp" "$rundir" "$reason" > "$BENCH/.last_benchmark_failure" 2>/dev/null || true
+  if clear_active; then
+    # A terminal failure consumes no retry budget.  Remove only markers for
+    # this stable run family, and only after the registered process is gone.
+    if [[ "$root_name" =~ ^[A-Za-z0-9._-]+$ ]]; then
+      find "$BENCH" -maxdepth 1 -name ".hang_restarts.$root_name.*" -mmin -1440 -delete 2>/dev/null || true
+    fi
+    log "$name terminal failure: $reason — active-run cleared; no automatic retry"
+  else
+=== aug keyword in run_comebin.sh ===
+current_path=$(pwd)
+chmod +x ${current_path}/../auxiliary/test_getmarker_2quarter.pl
+
+########################################################################################################
+###### Get augmentation data
+########################################################################################################
+folder=${output_dir}/data_augmentation
+keyword="_datacoverage_mean"
+
+if [ -d "$folder" ]; then
+    echo "${output_dir}/data_augmentation exists."
+    count=$(find "$folder" -maxdepth 1 -type f -name "*$keyword*" | wc -l)
+    echo "Number of files containing '$keyword' in the folder: $count"
+    if [ "$count" -ne ${n_views} ]; then
+        echo "Running data augmentation."
+        python main.py generate_aug_data --contig_file ${contig_file} \
+        --out_augdata_path ${output_dir}/data_augmentation \
+        --n_views ${n_views} --bam_file_path ${bam_file_path} --num_threads ${num_threads}
+    else
+        echo "No need to run data augmentation."
+    fi
+else
+    echo "${output_dir}/data_augmentation does not exist."
+    echo "Running data augmentation."
+    python main.py generate_aug_data --contig_file ${contig_file} \
+    --out_augdata_path ${output_dir}/data_augmentation \
+    --n_views ${n_views} --bam_file_path ${bam_file_path} --num_threads ${num_threads}
+fi
+
+if [[ $? -ne 0 ]] ; then echo "Something went wrong with running generating augmentation data. Exiting.";exit 1; fi
+
+########################################################################################################
+###### Get representation (training process)
+########################################################################################################
+folder=${output_dir}/comebin_res
+keyword="embeddings.tsv"
+=== original run echoes ===
+[0m$ [0msed -n '80,175p' /vol/data/repos/metagenomic-binning-benchmark/scripts/run_comebin_baseline.sh
+export MAMBA_ROOT_PREFIX=/vol/data/envs/.mamba
+# Do not leave new bytecode caches in the pristine source tree.  The source
+# check above also tolerates old caches from historical runs.
+export PYTHONDONTWRITEBYTECODE=1
+export PYTHONUNBUFFERED=1
+cd "$SRC/COMEBin"   # upstream resolves ../auxiliary relative to CWD
+
+# Register this run for the benchmark watchdog (scripts/benchmark-watchdog.sh).
+# Fields: pid pgid logfile rundir start_epoch mode source_repo.
+printf '%s %s %s %s %s %s %s\n' "$$" "$(ps -o pgid= -p $$ | tr -d ' ')" \
+  "$RUNDIR/comebin_run.log" "$RUNDIR" "$(date +%s)" baseline "$SRC" > "$ACTIVE.tmp.$$"
+mv "$ACTIVE.tmp.$$" "$ACTIVE"
+
+START=$(date +%s)
+TERMINAL=0
+write_terminal() {
+  local rc=$1 end=$2
+  [ "$TERMINAL" -eq 1 ] && return 0
+  {
+    echo "exit_code:  $rc"
+    echo "wall_s:     $((end-START))"
+    echo "finished:   $(date -Is)"
+    echo "terminal:   wrapper_exit"
+  } | tee -a "$RUNDIR/run_meta.txt" || true
+  TERMINAL=1
+}
+
+cleanup() {
+  local rc=$?
+  trap - EXIT
+  if [ "$TERMINAL" -eq 0 ]; then
+    set +e
+    write_terminal "$rc" "$(date +%s)"
+    set -e
+  fi
+  # A failed run remains registered so benchmark-watchdog can classify it.  Only
+  # a successful run clears its own registration.
+  if [ "$rc" -eq 0 ] && [ -f "$ACTIVE" ]; then
+    read -r current_pid _ < "$ACTIVE" || true
+    [ "${current_pid:-}" = "$$" ] && rm -f "$ACTIVE"
+  fi
+  exit "$rc"
+}
+trap cleanup EXIT
+trap 'exit 143' TERM
+trap 'exit 130' INT
+
+# Capture the real main.py train command once training starts (non-blocking).
+( sleep 12; MCMD=$(pgrep -af 'main.py train' 2>/dev/null | head -1 | cut -d' ' -f2-); \
+  [ -n "$MCMD" ] && echo "cmd_train_py: $MCMD" >> "$RUNDIR/run_meta.txt" ) &
+
+set +e
+CUDA_VISIBLE_DEVICES= "$MM" run -p "$ENV" bash run_comebin.sh \
+  -a "$CONTIGS" -p "$BAMDIR" -o "$RUNDIR/comebin_out" \
+  -n 6 -t "$THREADS" 2>&1 | tee "$RUNDIR/comebin_run.log"
+RC=${PIPESTATUS[0]}
+set -e
+END=$(date +%s)
+write_terminal "$RC" "$END"
+
+if [ "$RC" -eq 0 ]; then
+  BINS="$RUNDIR/comebin_out/comebin_res/comebin_res_bins"
+  if [ -d "$BINS" ]; then
+    echo "bins: $(find "$BINS" -maxdepth 1 -type f | wc -l)  -> $BINS" | tee -a "$RUNDIR/run_meta.txt"
+  fi
+fi
+# Record helper-tool commands visible in the log (FragGeneScan/hmmsearch seed genes).
+grep -aE 'run_FragGeneScan|hmmsearch' "$RUNDIR/comebin_run.log" 2>/dev/null | head -2 \
+  | sed 's/^/cmd_from_log: /' | tee -a "$RUNDIR/run_meta.txt" >/dev/null || true
+exit "$RC"
+[0m$ [0mtail -4 /vol/data/benchmark/logs/supervisor-actions.log
+echo "=== mirrored scripts ==="
+ls -la /vol/data/benchmark/bin/ 2>/dev/null | head -20
+echo "=== env snapshot BEFORE hmmer change ==="
+mkdir -p /vol/data/benchmark/runs/baseline_rerun_autorestart1/logs
+MAMBA_ROOT_PREFIX=/vol/data/envs/.mamba /vol/data/tools/bin/micromamba list -p /vol/data/envs/comebin > /vol/data/benchmark/runs/baseline_rerun_autorestart1/logs/env_list_before_hmmerfix.txt 2>&1
+grep -E "^(hmmer|numpy|scikit|torch|python)\s" /vol/data/benchmark/runs/baseline_rerun_autorestart1/logs/env_list_before_hmmerfix.txt
+echo "=== hmmsearch version now ==="
+/vol/data/envs/comebin/bin/hmmsearch -h 2>&1 | grep -m1 HMMER
+2026-09-23T21:52:51+00:00 [supervisor] Diagnosed baseline PID 19182 terminal failure (missing marker seed/initial biolib dependency and in-place runner edit), verified no benchmark process remained, cleared only stale registration/autorestart artifacts, hardened watchdog/C6 terminal classification + immutable committed snapshots + baseline exit traps/pycache hygiene, made heartbeat/status truthful for fresh drivers and cleared runs, deployed byte-identical scripts, recovered the stale primary driver without service/cron restart, verified C1-C9 ok with no active benchmark and no issue comments/closures, and pushed 2d61909/73aa0dd/67c6d05 plus verified meta d0febd4 at origin/main.
+2026-09-24T01:10:52Z [supervisor] Fixed/deployed snapshot-aware C6 identity + shell syntax checks and corrected small/medium BED selectors; restored/validated the small BAM after the failed reheader, verified positive/negative watchdog cases and COMEBin branch 5c77bc8 offline producer/consumer tests, pushed benchmark commit 9f276fb, left active baseline PID 267462/epoch 13 untouched, performed no cron/service/driver restart, and kept issue #2 open pending end-to-end validation.
+2026-09-24T05:04:34Z [supervisor] Final closeout: corrected and verified #9 run history (7 COMEBin-executing attempts plus 12 grouped guard-only launches) in 433e480/72b5e35; verified #10 EPOCHS passthrough/default 30 and prompt launch-lock release in a0be243/8e7064c/b1f9875, with deployed scripts byte-identical; C1-C9 no-LLM checks ok and #9/#10 closed via deterministic issue-closer; active baseline PID 267462 remains alive/advancing and was left untouched, with no cron/service/driver restart.
+2026-09-24T07:26:39+00:00 [supervisor] Triaged updated #8 without closing: regenerated and verified current comebin_small local/public manifests after the BED repair (6 files, 98,013,522 bytes; new hashes recorded in issue comment 5809720013), marked the issue seen, and left Zenodo metadata/approval pending; C1-C9 direct checks passed with no active benchmark, no cron/service/driver restart, safe watchdog reruns, and repo HEAD=origin/main.
+=== mirrored scripts ===
+total 120
+drwxrwxr-x  2 ubuntu ubuntu  4096 Sep 24 05:02 .
+drwxrwxr-x 11 ubuntu ubuntu  4096 Sep 24 07:15 ..
+-rwxr-xr-x  1 ubuntu ubuntu 12463 Sep 24 04:51 agent-watchdog.sh
+-rwxr-xr-x  1 ubuntu ubuntu 12963 Sep 24 00:57 benchmark-watchdog.sh
+-rwxrwxr-x  1 ubuntu ubuntu  4852 Sep 23 19:25 issue-closer.sh
+-rwxr-xr-x  1 ubuntu ubuntu  2979 Sep 24 01:06 make_medium_dataset.sh
+-rwxr-xr-x  1 ubuntu ubuntu  4404 Sep 23 21:02 make_release_manifest.py
+-rwxr-xr-x  1 ubuntu ubuntu  2499 Sep 24 01:06 make_small_dataset.sh
+-rwxr-xr-x  1 ubuntu ubuntu 24542 Sep 24 00:58 meta-watchdog.sh
+-rwxr-xr-x  1 ubuntu ubuntu  6476 Sep 23 21:44 run_comebin_baseline.sh
+-rwxr-xr-x  1 ubuntu ubuntu  8061 Sep 24 05:02 run_small_test.sh
+-rwxr-xr-x  1 ubuntu ubuntu 14795 Sep 24 04:54 status-heartbeat.sh
+=== env snapshot BEFORE hmmer change ===
+=== hmmsearch version now ===
+# HMMER 3.4 (Aug 2023); http://hmmer.org/
+> build · mimo-v2.6-flash-free

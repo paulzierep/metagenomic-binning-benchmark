@@ -3,10 +3,10 @@
 | | |
 |---|---|
 | Status | 🟢 `running` |
-| ⏱ Updated (Europe/Berlin) | `2026-09-24T09:40 CEST` |
-| 🏃 Last benchmark (not active) | `baseline_rerun_autorestart1` — last observed **epoch 176/200** (log 1486s old) |
+| ⏱ Updated (Europe/Berlin) | `2026-09-24T09:44 CEST` |
+| 🏃 Last benchmark (not active) | `baseline_rerun_autorestart1` — last observed **epoch 176/200** (log 1726s old) |
 | 🧠 Model (last turn) | `mimo-v2.6-flash-free` (watchdog rotates to free models on quota) |
-| 📌 Agent note · **0 min old** | Baseline training epoch ~109/200 (~2.4 min/epoch, ETA ~22:35 UTC unless early-stop); next: baseline eval (run_eval.sh) → issue #2 small-dataset test → v1.1.0 fix run
+| 📌 Agent note · **4 min old** | Baseline training epoch ~109/200 (~2.4 min/epoch, ETA ~22:35 UTC unless early-stop); next: baseline eval (run_eval.sh) → issue #2 small-dataset test → v1.1.0 fix run
 2026-09-23 20:33:11 UTC - heartbeat
 2026-09-23 20:43:58 UTC - heartbeat
 2026-09-23 20:56:28 UTC - heartbeat
@@ -241,9 +241,9 @@
 2026-09-24 07:14:23 UTC - heartbeat
 2026-09-24 07:15:09 UTC - heartbeat
 2026-09-24T07:39:23Z [agent] root cause: hmmsearch 3.4 vs pinned 3.1b2; 3.1b2 yields 2227 marker hits on TC-less bacar_marker.hmm |
-| ⚙️ Load · uptime | `0.11 0.39 6.46` · 18 hours, 4 minutes — 32 cores, 62 GiB, no GPU |
-| 💾 RAM used/total | `1938/64295 MB` |
+| ⚙️ Load · uptime | `0.19 0.24 5.01` · 18 hours, 8 minutes — 32 cores, 62 GiB, no GPU |
+| 💾 RAM used/total | `1934/64295 MB` |
 | 🔗 Session | `ses_f31799c77ffeTq9gcYgqc4hBhg` |
-| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `6b0ac7f status: yes — baseline_rerun_autorestart1 epoch 176/200 loss 2.8607368` |
-| 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `2101518 B` — every run, command & tool result |
+| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `6598923 meta: supervise tick 2026-09-24T07:43:01Z — 0 fix(es)` |
+| 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `2112089 B` — every run, command & tool result |
 | 📈 Timeline | [status/status.log](status/status.log) |
