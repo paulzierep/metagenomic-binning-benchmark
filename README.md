@@ -1,6 +1,6 @@
 <!--AGENT-STATUS-->
 
-> 🟢 **Agent status:** `running` · ⏱ `2026-09-24T11:30 CEST` · 🏃 train medium_v11_20260924: epoch 16/200 · loss 6.33291482925415 · top1 2.6139321327209473 · 🧠 `mimo-v2.6-flash-free` · [status.log](status/status.log)
+> 🟢 **Agent status:** `running` · ⏱ `2026-09-24T11:32 CEST` · 🏃 train medium_v11_20260924: epoch 27/200 · loss 5.985631465911865 · top1 6.158854007720947 · 🧠 `mimo-v2.6-flash-free` · [status.log](status/status.log)
 
 # metagenomic-binning-benchmark
 
@@ -47,7 +47,7 @@ Raw per-run outputs stay in `/vol/data/benchmark/runs/`, parsed CSVs in `results
 | Run | Date | Source commit | Dataset | Threads | Wall time | Peak RAM | Bins | CheckM2 comp/cont % | CheckM comp/cont % | Status |
 |---|---|---|---|---|---|---|---|---|---|---|
 | `baseline_unmodified` | 2026-09-23 | [987db95](https://github.com/paulzierep/COMEBin/commit/987db95d8d399f30b7c82a5f5f40ed6bfdc906c7) (upstream) | COMEBin demo (29,434 contigs) | 32 | – | – | – | – | – | ⏹ failed at epoch 175/200 — see [Run history](#run-history--what-happened-and-whats-next) |
-| `baseline_rerun_autorestart1` | 2026-09-24 | [904f649](https://github.com/paulzierep/COMEBin/commit/904f649ef5cbb4582a6f0e5ec8b0b1f45778d85b) | COMEBin demo (29,434 contigs) | 32 | 24,327 s | 5.42 GB | 60 | 25.01% / 2.98% | rc=0 | ✅ complete; 200/200 epochs, 99.19% Top1; [evidence](runs/baseline_rerun_autorestart1/comebin_run.log) |
+| `baseline_rerun_autorestart1` | 2026-09-24 | [904f649](https://github.com/paulzierep/COMEBin/commit/904f649ef5cbb4582a6f0e5ec8b0b1f45778d85b) | COMEBin demo (29,434 contigs) | 32 | 24,327 s | 5.42 GB | 60 | 25.01% / 2.98% | 21.23% / 3.40% | ✅ complete; 200/200 epochs, 99.19% Top1; [evidence](runs/baseline_rerun_autorestart1/comebin_run.log) |
 | `small_test_v4` | 2026-09-24 | [c8f22e4](https://github.com/paulzierep/COMEBin/commit/c8f22e4935a66a0fd58b794489a9021671b15437) | `comebin_small` (300 contigs) | 8 | 122 s | 0.75 GB | 3 | 26.07% / 2.02% | 29.08% / 0.71% | ⏹ not active · last observed epoch 29/30 |
 
 Column contract: **Wall time** = total seconds (plus per-stage breakdown in

@@ -3,10 +3,10 @@
 | | |
 |---|---|
 | Status | 🟢 `running` |
-| ⏱ Updated (Europe/Berlin) | `2026-09-24T11:30 CEST` |
-| 🏃 Live benchmark | `medium_v11_20260924` — **epoch 16/200** · loss `6.33291482925415` · top1 acc `2.6139321327209473` (log 3s fresh) |
+| ⏱ Updated (Europe/Berlin) | `2026-09-24T11:32 CEST` |
+| 🏃 Live benchmark | `medium_v11_20260924` — **epoch 27/200** · loss `5.985631465911865` · top1 acc `6.158854007720947` (log 2s fresh) |
 | 🧠 Model (last turn) | `mimo-v2.6-flash-free` (watchdog rotates to free models on quota) |
-| 📌 Agent note · **4 min old** | Baseline training epoch ~109/200 (~2.4 min/epoch, ETA ~22:35 UTC unless early-stop); next: baseline eval (run_eval.sh) → issue #2 small-dataset test → v1.1.0 fix run
+| 📌 Agent note · **6 min old** | Baseline training epoch ~109/200 (~2.4 min/epoch, ETA ~22:35 UTC unless early-stop); next: baseline eval (run_eval.sh) → issue #2 small-dataset test → v1.1.0 fix run
 2026-09-23 20:33:11 UTC - heartbeat
 2026-09-23 20:43:58 UTC - heartbeat
 2026-09-23 20:56:28 UTC - heartbeat
@@ -252,9 +252,9 @@
 2026-09-24T09:25:05Z medium-build: started guarded 3000-contig derivative (711696)
 2026-09-24T09:25:50Z medium-run: launched detached v1.1.0 3000-contig benchmark (712004, /vol/data/benchmark/runs/medium_v11_20260924)
 2026-09-24T09:25:52Z checkm-v1-baseline-done |
-| ⚙️ Load · uptime | `27.71 15.75 7.95` · 19 hours, 54 minutes — 32 cores, 62 GiB, no GPU |
-| 💾 RAM used/total | `6334/64295 MB` |
+| ⚙️ Load · uptime | `27.01 19.49 10.27` · 19 hours, 56 minutes — 32 cores, 62 GiB, no GPU |
+| 💾 RAM used/total | `4847/64295 MB` |
 | 🔗 Session | `ses_f31799c77ffeTq9gcYgqc4hBhg` |
-| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `8203f22 meta: supervise tick 2026-09-24T09:29:43Z — 1 fix(es)` |
-| 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `2750741 B` — every run, command & tool result |
+| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `015450c fix: preserve benchmark release and harden run artifacts` |
+| 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `2760102 B` — every run, command & tool result |
 | 📈 Timeline | [status/status.log](status/status.log) |
