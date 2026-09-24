@@ -20637,3 +20637,134 @@ touch /vol/data/benchmark/.heartbeat
 {"exit":0,"truncated":false,"output":"","status":"completed"}
 > build · mimo-v2.6-flash-free
 **Verified & logged.** Baseline rerun healthy at epoch 103/200, no new issues. Downstream steps remain gated on the registered run. Standing by.
+[0m
+> build · mimo-v2.6-flash-free
+[0m$ [0mgrep -n "CURRENT" /vol/data/benchmark/PROGRESS.md | head -3
+diff -q /vol/data/benchmark/PROGRESS.md /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md && echo "copies synced"
+262:- [ ] **← CURRENT: baseline rerun active (started 2026-09-24 00:30 UTC)** — registered
+copies synced
+[0m$ [0mtest -f /vol/data/benchmark/TASK_COMPLETE && echo "TASK_COMPLETE exists - EXIT" || echo "no TASK_COMPLETE"
+RUN=/vol/data/benchmark/runs/baseline_rerun_autorestart1
+ps -eo pid,etime,args | grep -E '[m]ain.py train' | head -1 || echo "no train proc"
+echo "epoch: $(grep -c '^DEBUG:root:Epoch' "$RUN/comebin_out/comebin_res/training.log" 2>/dev/null)/200"
+grep -E 'exit_code' "$RUN/run_meta.txt" 2>/dev/null || echo "no exit_code yet"
+date -u +"now UTC: %Y-%m-%d %H:%M"
+touch /vol/data/benchmark/.heartbeat
+no TASK_COMPLETE
+ 270796    04:03:08 python main.py train --data /vol/data/benchmark/runs/baseline_rerun_autorestart1/comebin_out/data_augmentation --temperature 0.15 --emb_szs_forcov 2048 --batch_size 1024 --emb_szs 2048 --n_views 6 --add_model_for_coverage --output_path /vol/data/benchmark/runs/baseline_rerun_autorestart1/comebin_out/comebin_res --earlystop --addvars --vars_sqrt --num_threads 32
+epoch: 108/200
+no exit_code yet
+now UTC: 2026-09-24 04:40
+[0m$ [0mgh issue list -R paulzierep/metagenomic-binning-benchmark --state open --json number,title,updatedAt 2>&1 | head -60
+gh issue list -R paulzierep/COMEBin --state open --json number,title,updatedAt 2>&1 | head -40
+[{"number":9,"title":"No idea whag happened to the runs","updatedAt":"2026-09-24T04:39:33Z"},{"number":8,"title":"Add benchmark data to zenodo","updatedAt":"2026-09-23T20:58:44Z"},{"number":6,"title":"Optimization","updatedAt":"2026-09-23T20:56:21Z"},{"number":2,"title":"Can you try to create a small benchmark dataset for comebin ?","updatedAt":"2026-09-24T01:05:04Z"},{"number":1,"title":"Idea inbox: benchmark ideas, COMEBin fixes, dataset requests","updatedAt":"2026-09-23T14:53:13Z"}]
+the 'paulzierep/COMEBin' repository has disabled issues
+> build · mimo-v2.6-flash-free
+**New issue #9** "No idea whag happened to the runs" (04:39Z) — reading it now. **Baseline**: epoch 108/200, healthy.
+[0m$ [0mdate -u +"%Y-%m-%d %H:%M:%S UTC - triage: new issue #9 received, reading" >> /vol/data/repos/metagenomic-binning-benchmark/status/agent-activity.log
+touch /vol/data/benchmark/.heartbeat
+{"exit":0,"truncated":false,"output":"","status":"completed"}
+[0m$ [0mgh issue view 9 -R paulzierep/metagenomic-binning-benchmark --json title,body,comments --jq '{title:.title, body:.body, comments:[.comments[]|{author:.author.login,created:.createdAt,body:.body}]}' 2>&1 | head -80
+{"body":"It would be good to add a short explanation to each run why it failed and what you did as next step add it to a table in the readme as well","comments":[],"title":"No idea whag happened to the runs"}
+> build · mimo-v2.6-flash-free
+Issue #9 asks for a per-run failure-explanation + next-step **table in the README**. Gathering exact facts from each run before writing:
+[0m$ [0mecho "=== small_test final error ==="
+tail -20 /vol/data/benchmark/runs/small_test/comebin_run.log | tr '\r' '\n' | grep -E "Error|error|Exiting" | tail -5
+echo "=== baseline_unmodified final error ==="
+tail -30 /vol/data/benchmark/runs/baseline_unmodified/comebin_run.log | tr '\r' '\n' | grep -E "Error|error|Exiting|seed" | tail -8
+echo "=== README structure ==="
+grep -n "^#\|^##\|performance\|Performance\|runs" /vol/data/repos/metagenomic-binning-benchmark/README.md | head -30
+=== small_test final error ===
+IndexError: index 135282741276336 is out of bounds for axis 0 with size 300
+Something went wrong with running training network. Exiting.
+=== baseline_unmodified final error ===
+    seed_namelist = pd.read_csv(seed_file, header=None, sep='\t', usecols=range(1)).values[:, 0]
+FileNotFoundError: [Errno 2] No such file or directory: '/vol/data/datasets/comebin_test_data/BATS_SAMN07137077_METAG.scaffolds.min500.fasta.f1k.fasta.bacar_marker.2quarter_lencutoff_1001.seed'
+ModuleNotFoundError: No module named 'biolib'
+Something went wrong with running clustering. Exiting.
+=== README structure ===
+5:# metagenomic-binning-benchmark
+11:## Goal
+14:2. **Modify COMEBin** (bug fixes + performance improvements) on a branch, in batches —
+19:## Repository layout
+40:## Benchmark runs — performance
+43:each run (timings from `runs/<run>/run_meta.txt` + stage timings in the run log;
+45:Raw per-run outputs stay in `/vol/data/benchmark/runs/`, parsed CSVs in `results/`.
+56:performance deltas vs. baseline are visible directly in this table.
+58:## Branch strategy
+64:## Optimization strategy
+71:## Data preservation and Zenodo
+80:## How to resume (for a human or a restarted agent)
+90:## References
+[0m$ [0mfor R in baseline_unmodified baseline_rerun baseline_rerun_autorestart1 small_test small_test_v2; do
+  D=/vol/data/benchmark/runs/$R
+  echo "=== $R ==="
+  grep -E 'exit_code|wall_s|commit|started|watchdog_terminal' "$D/run_meta.txt" 2>/dev/null | head -8
+done
+=== baseline_unmodified ===
+commit:     987db95d8d399f30b7c82a5f5f40ed6bfdc906c7
+watchdog_terminal: 2026-09-23T21:42:31+00:00 terminal log evidence: Something went wrong with running clustering. Exiting.
+=== baseline_rerun ===
+=== baseline_rerun_autorestart1 ===
+commit:     904f649ef5cbb4582a6f0e5ec8b0b1f45778d85b
+=== small_test ===
+commit:     ee2e5079ae8fd04caa381486a4bba8c2d2a34a14
+exit_code:  1
+wall_s:     41
+watchdog_terminal: 2026-09-23T23:13:03+00:00 run_meta exit_code=1
+=== small_test_v2 ===
+commit:     904f649ef5cbb4582a6f0e5ec8b0b1f45778d85b
+exit_code:  1
+wall_s:     43
+watchdog_terminal: 2026-09-23T23:40:01+00:00 run_meta exit_code=1
+> build · mimo-v2.6-flash-free
+[0m$ [0mdate -u +"%Y-%m-%d %H:%M:%S UTC - triage: gathering per-run failure facts for issue #9 README table" >> /vol/data/repos/metagenomic-binning-benchmark/status/agent-activity.log
+touch /vol/data/benchmark/.heartbeat
+{"exit":0,"truncated":false,"output":"","status":"completed"}
+[0m$ [0mls -la /vol/data/benchmark/runs/baseline_rerun/ 2>/dev/null | head -5
+cat /vol/data/benchmark/runs/baseline_rerun/run_meta.txt 2>/dev/null || echo "(no run_meta)"
+total 12
+drwxrwxrwx 2 ubuntu ubuntu 4096 Sep 24 00:29 .
+drwxrwxr-x 7 ubuntu ubuntu 4096 Sep 24 00:30 ..
+-rw-rw-r-- 1 ubuntu ubuntu  298 Sep 24 00:29 out.txt
+(no run_meta)
+[0m$ [0msed -n '40,58p' /vol/data/repos/metagenomic-binning-benchmark/README.md
+## Benchmark runs — performance
+
+Living table: **one row per benchmark run**, updated by the agent immediately after
+each run (timings from `runs/<run>/run_meta.txt` + stage timings in the run log;
+quality from the CheckM2/CheckM evaluation — see `docs/04-evaluation.md`).
+Raw per-run outputs stay in `/vol/data/benchmark/runs/`, parsed CSVs in `results/`.
+
+| Run | Date | Source commit | Dataset | Threads | Wall time | Peak RAM | Bins | CheckM2 comp/cont % | CheckM comp/cont % | Status |
+|---|---|---|---|---|---|---|---|---|---|---|
+| `baseline_unmodified` | – | [987db95](https://github.com/paulzierep/COMEBin/commit/987db95d8d399f30b7c82a5f5f40ed6bfdc906c7) (upstream) | COMEBin demo (29,434 contigs) | 32 | – | – | – | – | – | ⏹ not active · last observed epoch 175/200 |
+
+Column contract: **Wall time** = total seconds (plus per-stage breakdown in
+`docs/02-comebin-baseline.md`), **Bins** = bins exported (≥200 kb filter noted),
+**comp/cont** = mean completeness / mean contamination, **HQ/MQ counts** live in
+`results/<run>.csv`. **Source commit** is always a clickable link to that exact
+commit on GitHub. Fix batches on `comebin-optimizations` get one row each, so
+performance deltas vs. baseline are visible directly in this table.
+
+## Branch strategy
+> build · mimo-v2.6-flash-free
+[0m$ [0mdate -u +"%Y-%m-%d %H:%M:%S UTC - triage: issue #9 = README run-history table requested; writing it" >> /vol/data/repos/metagenomic-binning-benchmark/status/agent-activity.log
+touch /vol/data/benchmark/.heartbeat
+{"exit":0,"truncated":false,"output":"","status":"completed"}
+[0m$ [0mcat /vol/data/benchmark/runs/baseline_rerun/out.txt
+echo "---"
+grep -n "epoch 175\|started 14:36\|14:36" /vol/data/benchmark/runs/baseline_unmodified/run_meta.txt | head -3
+head -6 /vol/data/benchmark/runs/baseline_unmodified/run_meta.txt
+source commit: 904f649ef5cbb4582a6f0e5ec8b0b1f45778d85b (dirty files: 0; ignored __pycache__ entries: 15)
+ERROR: stale failed active run is registered: pid=262046 dir=/vol/data/benchmark/runs/baseline_rerun
+Run /vol/data/benchmark/bin/benchmark-watchdog.sh to triage it; not starting a second run.
+---
+2:date:       2026-09-23T14:36:06+00:00
+run:        /vol/data/benchmark/runs/baseline_unmodified
+date:       2026-09-23T14:36:06+00:00
+commit:     987db95d8d399f30b7c82a5f5f40ed6bfdc906c7
+contigs:    /vol/data/datasets/comebin_test_data/BATS_SAMN07137077_METAG.scaffolds.min500.fasta.f1k.fasta
+bamdir:     /vol/data/datasets/comebin_test_data/bamfiles
+threads:    32
+> build · mimo-v2.6-flash-free

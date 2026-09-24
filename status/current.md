@@ -3,10 +3,10 @@
 | | |
 |---|---|
 | Status | 🟢 `running` |
-| ⏱ Updated (Europe/Berlin) | `2026-09-24T06:40 CEST` |
-| 🏃 Live benchmark | `baseline_rerun_autorestart1` — **epoch 107/200** · loss `2.9712157249450684` · top1 acc `97.62043762207031` (log 47s fresh) |
+| ⏱ Updated (Europe/Berlin) | `2026-09-24T06:42 CEST` |
+| 🏃 Live benchmark | `baseline_rerun_autorestart1` — **epoch 108/200** · loss `2.972137451171875` · top1 acc `97.77668762207031` (log 29s fresh) |
 | 🧠 Model (last turn) | `mimo-v2.6-flash-free` (watchdog rotates to free models on quota) |
-| 📌 Agent note · **9 min old** | Baseline training epoch ~109/200 (~2.4 min/epoch, ETA ~22:35 UTC unless early-stop); next: baseline eval (run_eval.sh) → issue #2 small-dataset test → v1.1.0 fix run
+| 📌 Agent note · **11 min old** | Baseline training epoch ~109/200 (~2.4 min/epoch, ETA ~22:35 UTC unless early-stop); next: baseline eval (run_eval.sh) → issue #2 small-dataset test → v1.1.0 fix run
 2026-09-23 20:33:11 UTC - heartbeat
 2026-09-23 20:43:58 UTC - heartbeat
 2026-09-23 20:56:28 UTC - heartbeat
@@ -92,9 +92,9 @@
 2026-09-24 04:09:34 UTC - heartbeat
 2026-09-24 04:19:55 UTC - heartbeat
 2026-09-24 04:30:21 UTC - heartbeat |
-| ⚙️ Load · uptime | `32.14 32.01 31.80` · 15 hours, 4 minutes — 32 cores, 62 GiB, no GPU |
-| 💾 RAM used/total | `7149/64295 MB` |
+| ⚙️ Load · uptime | `32.04 32.01 31.83` · 15 hours, 6 minutes — 32 cores, 62 GiB, no GPU |
+| 💾 RAM used/total | `8343/64295 MB` |
 | 🔗 Session | `ses_f31799c77ffeTq9gcYgqc4hBhg` |
-| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `cd3dd98 status: yes — baseline_rerun_autorestart1 epoch 106/200 loss 2.9545936` |
-| 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `1488684 B` — every run, command & tool result |
+| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `d46a4a0 status: yes — baseline_rerun_autorestart1 epoch 107/200 loss 2.9712157` |
+| 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `1497710 B` — every run, command & tool result |
 | 📈 Timeline | [status/status.log](status/status.log) |
