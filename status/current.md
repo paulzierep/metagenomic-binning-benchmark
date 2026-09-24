@@ -3,10 +3,10 @@
 | | |
 |---|---|
 | Status | 🟢 `running` |
-| ⏱ Updated (Europe/Berlin) | `2026-09-24T11:18 CEST` |
-| 🏃 Last benchmark (not active) | `small_test_v4` — last observed **epoch 29/30** (log 1699s old) |
+| ⏱ Updated (Europe/Berlin) | `2026-09-24T11:20 CEST` |
+| 🏃 Last benchmark (not active) | `small_test_v4` — last observed **epoch 29/30** (log 1819s old) |
 | 🧠 Model (last turn) | `mimo-v2.6-flash-free` (watchdog rotates to free models on quota) |
-| 📌 Agent note · **0 min old** | Baseline training epoch ~109/200 (~2.4 min/epoch, ETA ~22:35 UTC unless early-stop); next: baseline eval (run_eval.sh) → issue #2 small-dataset test → v1.1.0 fix run
+| 📌 Agent note · **2 min old** | Baseline training epoch ~109/200 (~2.4 min/epoch, ETA ~22:35 UTC unless early-stop); next: baseline eval (run_eval.sh) → issue #2 small-dataset test → v1.1.0 fix run
 2026-09-23 20:33:11 UTC - heartbeat
 2026-09-23 20:43:58 UTC - heartbeat
 2026-09-23 20:56:28 UTC - heartbeat
@@ -249,9 +249,9 @@
 2026-09-24T09:07:17Z eval-rerun-refused-bins-check
 2026-09-24T09:10:11Z checkm-v1-baseline-retry
 2026-09-24T09:17:45Z eval-verify: deployed symlink-safe run_eval.sh on baseline (644828) |
-| ⚙️ Load · uptime | `3.52 2.69 2.24` · 19 hours, 42 minutes — 32 cores, 62 GiB, no GPU |
-| 💾 RAM used/total | `2840/64295 MB` |
+| ⚙️ Load · uptime | `4.63 4.13 2.87` · 19 hours, 44 minutes — 32 cores, 62 GiB, no GPU |
+| 💾 RAM used/total | `21085/64295 MB` |
 | 🔗 Session | `ses_f31799c77ffeTq9gcYgqc4hBhg` |
-| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `816140e status: yes — small_test_v4 epoch 29/30 loss 5.521730899810791 acc 2.8` |
+| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `2c91ead status: yes — small_test_v4 epoch 29/30 loss 5.521730899810791 acc 2.8` |
 | 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `2700665 B` — every run, command & tool result |
 | 📈 Timeline | [status/status.log](status/status.log) |
