@@ -3,10 +3,10 @@
 | | |
 |---|---|
 | Status | 🟢 `running` |
-| ⏱ Updated (Europe/Berlin) | `2026-09-24T10:48 CEST` |
-| 🏃 Last benchmark (not active) | `small_test_v3` — last observed **epoch 29/30** (log 93s old) |
-| 🧠 Model (last turn) | `ling-3.0-flash-fin-free` (watchdog rotates to free models on quota) |
-| 📌 Agent note · **8 min old** | Baseline training epoch ~109/200 (~2.4 min/epoch, ETA ~22:35 UTC unless early-stop); next: baseline eval (run_eval.sh) → issue #2 small-dataset test → v1.1.0 fix run
+| ⏱ Updated (Europe/Berlin) | `2026-09-24T10:50 CEST` |
+| 🏃 Live benchmark | `small_test_v4` — **epoch 29/30** · loss `5.521730899810791` · top1 acc `2.8125` (log 19s fresh) |
+| 🧠 Model (last turn) | `mimo-v2.6-flash-free` (watchdog rotates to free models on quota) |
+| 📌 Agent note · **0 min old** | Baseline training epoch ~109/200 (~2.4 min/epoch, ETA ~22:35 UTC unless early-stop); next: baseline eval (run_eval.sh) → issue #2 small-dataset test → v1.1.0 fix run
 2026-09-23 20:33:11 UTC - heartbeat
 2026-09-23 20:43:58 UTC - heartbeat
 2026-09-23 20:56:28 UTC - heartbeat
@@ -243,10 +243,11 @@
 2026-09-24T07:39:23Z [agent] root cause: hmmsearch 3.4 vs pinned 3.1b2; 3.1b2 yields 2227 marker hits on TC-less bacar_marker.hmm
 2026-09-24T08:31:15Z - baseline rerun complete; hmmsearch 3.1b2 fixed; cluster.py sklearn fix applied; seed=25; get_result running
 2026-09-24T08:36:12Z - baseline eval: CheckM complete (25 bins, BAC+AR), get_result still finalizing; github comments posted
-2026-09-24T08:39:35Z - baseline rerun complete + eval; github issues #2 and #8 commented; PROGRESS.md update pending |
-| ⚙️ Load · uptime | `1.13 2.33 4.74` · 19 hours, 12 minutes — 32 cores, 62 GiB, no GPU |
-| 💾 RAM used/total | `1990/64295 MB` |
+2026-09-24T08:39:35Z - baseline rerun complete + eval; github issues #2 and #8 commented; PROGRESS.md update pending
+2026-09-24T08:49:28Z verify-eval-consolidate |
+| ⚙️ Load · uptime | `3.93 2.73 4.57` · 19 hours, 14 minutes — 32 cores, 62 GiB, no GPU |
+| 💾 RAM used/total | `2492/64295 MB` |
 | 🔗 Session | `ses_f31799c77ffeTq9gcYgqc4hBhg` |
-| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `31c8cff status: yes — small_test_v3 epoch 7/30 loss 6.181387424468994 acc 0.74` |
-| 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `2449039 B` — every run, command & tool result |
+| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `98e925b status: yes — small_test_v3 epoch 29/30 loss 5.572983741760254 acc 2.6` |
+| 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `2471638 B` — every run, command & tool result |
 | 📈 Timeline | [status/status.log](status/status.log) |
