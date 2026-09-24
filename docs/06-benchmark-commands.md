@@ -72,7 +72,7 @@ MAMBA_ROOT_PREFIX=/vol/data/envs/.mamba /vol/data/tools/bin/micromamba run \
   --threads 32 \
   --input <run>/comebin_out/comebin_res/comebin_res_bins \
   --output-directory <run>/checkm2 \
-  -x fasta
+  -x fa
 ```
 
 Reference DB installed once via `checkm2 download` (see `docs/00-setup.md`).
@@ -80,9 +80,10 @@ Reference DB installed once via `checkm2 download` (see `docs/00-setup.md`).
 ## CheckM v1 (completeness/purity — lineage workflow, every run)
 
 ```bash
-MAMBA_ROOT_PREFIX=/vol/data/envs/.mamba /vol/data/tools/bin/micromamba run \
-  -p /vol/data/envs/checkm checkm lineage_wf \
-  -x fasta -t 32 --tmpdir <run>/checkm/tmp \
+LD_LIBRARY_PATH=/vol/data/envs/checkm/lib:/vol/data/envs/comebin/lib \
+  MAMBA_ROOT_PREFIX=/vol/data/envs/.mamba /vol/data/tools/bin/micromamba run \
+  -p /vol/data/envs/comebin checkm lineage_wf \
+  -x fa -t 32 --tmpdir <run>/checkm/tmp \
   <run>/comebin_out/comebin_res/comebin_res_bins <run>/checkm/
 ```
 
@@ -138,7 +139,7 @@ micromamba run -p /vol/data/envs/comebin bash run_comebin.sh \
 ```
 
 Once this end-to-end run passes, build the medium 3,000-contig derivative
-(`bash scripts/make_small_dataset.sh /vol/data/datasets/comebin_medium 3000`),
+(`bash scripts/make_medium_dataset.sh /vol/data/datasets/comebin_medium 3000`),
 record its measured size/provenance and run the medium benchmark. Large data is
 reserved for post-major-commit runs. See `docs/08-dataset-space-plan.md`.
 

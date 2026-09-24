@@ -7,6 +7,7 @@
 # MIMAG thresholds: HQ = compl>90 & cont<5 ; MQ = compl>=50 & cont<10.
 # Reads meta from <rundir>/run_meta.txt, per-bin scores from
 # <rundir>/eval/checkm2/quality_report.tsv + <rundir>/eval/checkm/out/storage/bin_stats_ext.tsv.
+import ast
 import csv, os, sys
 
 run = os.path.abspath(sys.argv[1])
@@ -29,25 +30,37 @@ t_total = meta_val("wall_s")
 n_bins = meta_val("bins").split()[0] if meta_val("bins") else ""
 
 def scores(path, ccol, tcol):
-    """Return (compl list, cont list) with values as floats; tolerate missing files."""
+    """Return completeness/contamination lists from TSV or CheckM dict output."""
     if not os.path.exists(path):
         return [], []
     cs, ts = [], []
-    with open(path, newline="") as f:
-        hdr = f.readline().rstrip("\n").split("\t")
-        ci = hdr.index(ccol) if ccol in hdr else -1
-        ti = hdr.index(tcol) if tcol in hdr else -1
-        for line in f:
-            p = line.rstrip("\n").split("\t")
-            try:
-                c = float(p[ci]) if ci >= 0 else None
-                t = float(p[ti]) if ti >= 0 else None
-            except (ValueError, IndexError):
+    with open(path, encoding="utf-8") as f:
+        first = f.readline().rstrip("\n")
+        first_parts = first.split("\t", 1)
+        header_parts = first.split("\t")
+        is_dict_row = len(first_parts) == 2 and first_parts[1].lstrip().startswith("{")
+        if not is_dict_row and ccol in header_parts and tcol in header_parts:
+            ci, ti = header_parts.index(ccol), header_parts.index(tcol)
+            for line in [first, *f]:
+                p = line.rstrip("\n").split("\t")
+                try:
+                    cs.append(float(p[ci]))
+                    ts.append(float(p[ti]))
+                except (ValueError, IndexError):
+                    continue
+            return cs, ts
+        # CheckM v1 bin_stats_ext.tsv is '<bin-id>\\t<dict literal>' per line.
+        lines = [first, *f] if is_dict_row else f
+        for line in lines:
+            p = line.rstrip("\n").split("\t", 1)
+            if len(p) != 2:
                 continue
-            if c is not None:
-                cs.append(c)
-            if t is not None:
-                ts.append(t)
+            try:
+                record = ast.literal_eval(p[1])
+                cs.append(float(record[ccol]))
+                ts.append(float(record[tcol]))
+            except (KeyError, TypeError, ValueError, SyntaxError):
+                continue
     return cs, ts
 
 def summarize(cs, ts):
@@ -70,7 +83,7 @@ header = ["run", "source_commit", "dataset", "threads", "total_time_s", "n_bins"
           "checkm_mean_completeness", "checkm_mean_contamination", "checkm_HQ", "checkm_MQ"]
 row = [name, commit, dataset, threads, t_total, n_bins, *c2, *c1]
 with open(out, "w", newline="") as f:
-    w = csv.writer(f)
+    w = csv.writer(f, lineterminator="\n")
     w.writerow(header)
     w.writerow(row)
 print(f"wrote {out}")

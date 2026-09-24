@@ -168,16 +168,32 @@ CUDA_VISIBLE_DEVICES= "$MM" run -p "$ENV" bash run_comebin.sh \
 RC=${PIPESTATUS[0]}
 set -e
 END=$(date +%s)
+
+# The upstream COMEBin wrapper can mask a clustering/get_result failure and
+# return 0 even when it produced no bins.  A functional gate is not successful
+# without at least one non-empty bin, so validate the artifact before recording
+# the terminal status consumed by the watchdog and GitHub triage.
+BINS="$RUNDIR/comebin_out/comebin_res/comebin_res_bins"
+BIN_COUNT=0
+if [ -d "$BINS" ]; then
+  BIN_COUNT=$(find "$BINS" -maxdepth 1 -type f -size +0c | wc -l)
+fi
+if [ "$RC" -eq 0 ] && [ "$BIN_COUNT" -eq 0 ]; then
+  echo "ERROR: COMEBin returned 0 but no non-empty bins were produced at $BINS; recording failure" \
+    | tee -a "$RUNDIR/run_meta.txt"
+  RC=1
+fi
 {
   echo "exit_code:  $RC"
   echo "wall_s:     $((END-START))"
   echo "finished:   $(date -Is)"
+  if [ "$BIN_COUNT" -gt 0 ]; then
+    echo "bins:       $BIN_COUNT  -> $BINS"
+  else
+    echo "bins:       0  -> $BINS (missing or empty)"
+  fi
 } | tee -a "$RUNDIR/run_meta.txt"
 
-if [ "$RC" -eq 0 ]; then
-  BINS="$RUNDIR/comebin_out/comebin_res/comebin_res_bins"
-  [ -d "$BINS" ] && echo "bins: $(find "$BINS" -maxdepth 1 -type f | wc -l)  -> $BINS" | tee -a "$RUNDIR/run_meta.txt"
-fi
 grep -aE 'run_FragGeneScan|hmmsearch' "$RUNDIR/comebin_run.log" 2>/dev/null | head -2 \
   | sed 's/^/cmd_from_log: /' | tee -a "$RUNDIR/run_meta.txt" >/dev/null || true
 exit "$RC"

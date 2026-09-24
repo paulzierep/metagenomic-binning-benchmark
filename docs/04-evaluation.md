@@ -15,21 +15,30 @@ counts of medium/high-quality bins (MIMAG):
 export MAMBA_ROOT_PREFIX=/vol/data/envs/.mamba
 # CheckM2
 /vol/data/tools/bin/micromamba create -y -p /vol/data/envs/checkm2 -c conda-forge -c bioconda checkm2
-# CheckM v1
-/vol/data/tools/bin/micromamba create -y -p /vol/data/envs/checkm -c conda-forge -c bioconda checkm-genome=1.1.3 pplacer
+# CheckM v1 (the runner defaults to the Python-3.10 COMEBin environment; the
+# standalone checkm environment currently has a Python-3.14/forkserver incompatibility)
+CHECKM_ENV=/vol/data/envs/comebin
+CHECKM_LD_LIBRARY_PATH=/vol/data/envs/checkm/lib:/vol/data/envs/comebin/lib
 ```
+
+`run_eval.sh` uses the CheckM v1 installation in `/vol/data/envs/comebin` by
+ default because it runs on Python 3.10; it adds the standalone environment's
+`libopenblas` directory for `pplacer`. Set `CHECKM_ENV` and
+`CHECKM_LD_LIBRARY_PATH` to override this.
 
 First run downloads reference data (`checkm2 download`, CheckM data dir) — record
 versions + data hashes here when fetched.
 
-## Commands (run via `scripts/run_eval.sh <bins_dir> <out_prefix>`)
+## Commands (run via `scripts/run_eval.sh <rundir> [threads]`)
 
 ```bash
 # CheckM2
-checkm2 predict --threads 32 --input <bins_dir> --output-directory <out>/checkm2
+checkm2 predict --threads 32 --input <bins_dir> --output-directory <out>/checkm2 -x fa
 
 # CheckM v1 (needs prodigal+hmm+pplacer in env; bins as .fa/.fna)
-checkm lineage_wf -t 32 -f <out>/checkm.tsv --tab_table <bins_dir> <out>/checkm_out
+LD_LIBRARY_PATH=/vol/data/envs/checkm/lib:/vol/data/envs/comebin/lib \
+  micromamba run -p /vol/data/envs/comebin checkm lineage_wf -x fa -t 32 \
+  <bins_dir> <out>/checkm_out
 ```
 
 ## Output tables

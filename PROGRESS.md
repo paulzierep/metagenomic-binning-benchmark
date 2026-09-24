@@ -211,9 +211,11 @@ included; fixes land on branch `comebin-optimizations` in this repo.
 - [x] Binaries verified: run_FragGeneScan.pl, hmmsearch, bedtools, bwa, samtools, checkm
 - [x] BAM indexed (`SRR5720343.bam.bai`)
 - [x] Small benchmark dataset (issue #2): 300 top-length contigs + real overlapping reads
-      → `/vol/data/datasets/comebin_small` (94 MB); test-runner ready
-      (`scripts/run_small_test.sh`); TEST-RUN + GitHub comment **pending baseline
-      finish** (CPU policy: no concurrent timed runs)
+      → `/vol/data/datasets/comebin_small` (94 MB); functional test runner ready
+      (`scripts/run_small_test.sh`). `small_test_v4` passed end-to-end on 2026-09-24
+      (30 epochs, 3 non-empty bins, wall 122 s); CheckM2 mean 26.07% completeness /
+      2.02% contamination and CheckM v1 mean 29.08% / 0.71%. Results:
+      `results/small_test_v4.csv`.
 - [x] CAMI II marine assemblies downloaded + **md5 verified** (`1c054a45…`), 9.42 GB;
       extraction running; marine short-reads URL recorded (docs/01)
 - [x] CAMI II marine sample 0 (short-read): reads archive downloaded (5.2 G, 2026-09-23)
@@ -259,14 +261,12 @@ included; fixes land on branch `comebin-optimizations` in this repo.
       (c) large benchmarks only after major commits; (d) dataset/space plan
       includes human host-associated CAMI II (Multisample HMP / Toy Human
       Microbiome), 391 GB free, planned data ≤ ~105 GB. Replies posted.
-- [ ] **← CURRENT: baseline rerun active (started 2026-09-24 00:30 UTC)** — registered
-      watchdog run `baseline_rerun_autorestart1`, immutable snapshot
-      `baseline_rerun_1790209801802838194.sh`, PID 267462, source commit
-      `904f649` (`-t 32`). Training is advancing normally; live epoch/loss/Top1
-      are in the README status banner and `status/status.log`. Do not signal, edit,
-      or overlap this run. The prior
-      baseline terminal failure (missing marker seed at epoch 175) remains
-      historical; no evaluation result is claimed yet.
+- [x] **COMPLETE: baseline rerun + evaluation (2026-09-24)** — registered watchdog run
+      `baseline_rerun_autorestart1`, exit_code 0, wall_s 24,327 (~6.75 h), 200/200
+      epochs, 99.19% Top1. CheckM2: 60 bins, 25.01% mean completeness, 2.98%
+      mean contamination; CheckM v1 lineage workflow completed with the Python
+      3.10-compatible environment. Evidence: `runs/baseline_rerun_autorestart1/`
+      and `eval/checkm2/quality_report.tsv`. No benchmark is active now.
 - [x] **Long-run launch safety guard (2026-09-24)** — multi-hour baseline/fix
       runs must be launched detached in a fresh run directory, then verified via
       `.active_run` and handed off to `benchmark-watchdog.sh`; never run them in
@@ -277,16 +277,15 @@ included; fixes land on branch `comebin-optimizations` in this repo.
       registered run family plus the exact registered run directory; unrelated
       live PIDs still fail closed. Source and installed copies were syntax-checked
       and the active snapshot was verified without a restart.
-- [x] **Issue #2 small-data fix prepared and tested offline** — the observed
+- [x] **Issue #2 small-data fix validated end-to-end** — the observed
       `aug0_datacoverage_mean.tsv` contained 29,434 BAM-header references while
-      the reduced assembly had 300. COMEBin branch `comebin-small-fix` commit
-      `5c77bc8` (pushed to `paulzierep/COMEBin`) filters producer mean/variance
-      rows to the assembly and defensively aligns all feature matrices to the
-      FASTA order. Existing failed-run artifacts pass the 300-contig/6-view
-      feature test; a real end-to-end run is still pending and must wait for the
-      active baseline. Dataset builders now emit explicit BED intervals and use
-      `samtools -L` correctly; the full-header BAM was restored after an
-      unindexable header-only reheader experiment.
+      the reduced assembly had 300. COMEBin branch `comebin-small-fix` commits
+      `5c77bc8` (producer/consumer alignment), `a0be243` (30-epoch functional-test
+      option), and `c8f22e4` (sklearn KMeans compatibility) are pushed. Dataset
+      builders emit explicit BED intervals and use `samtools -L`; the full-header
+      BAM was preserved after the reheader experiment. `small_test_v4` is the
+      verified passing gate. `run_small_test.sh` now rejects a masked zero-bin
+      success, and `run_eval.sh` validates both evaluation artifacts.
 - [x] **Supervisor C6 remediation (2026-09-23 21:42 UTC)**: deterministic terminal
       failures are recorded and cleared instead of retried; replacement runners
       use committed immutable snapshots; baseline wrapper failures now persist
@@ -315,12 +314,13 @@ included; fixes land on branch `comebin-optimizations` in this repo.
       the CLI supports `-E`; benchmark runs keep the full 200 epochs. Comment:
       `#issuecomment-5807975873`.
 - [x] **← COMPLETE: baseline rerun + eval** (2026-09-24) — registered watchdog run `baseline_rerun_autorestart1`, exit_code: 0, wall_s: 24327 (~6.75h), 200/200 epochs, 99.19% Top1 accuracy. Evaluation: CheckM2 60 bins, 25.01% mean completeness, 2.98% mean contamination (65s); CheckM v1 lineage_wf rc=0 (multiprocessing warnings). Fixes applied: hmmer 3.1b2 (replaced 3.4, resolves `--cut_tc` on TC-less bacar_marker.hmm), sklearn KMeans `n_jobs=-1` removed (358ddd8), `run_comebin_baseline.sh` BENCHMARK_RESUME (8bb73dd). Commit `904f649`. See `runs/baseline_rerun_autorestart1/eval/checkm2/quality_report.tsv`. → push
-- [ ] After baseline: small end-to-end COMEBin + CheckM2/CheckM run via
-      `scripts/run_small_test.sh` (defaults to the verified `comebin-small-fix`
-      worktree; overlap-guarded and resource-logged)
-- [ ] After the small run passes: build/run the medium 3,000-contig derivative
-      (≤5 GB) via `scripts/make_medium_dataset.sh` (provenance+size in
-      PROVENANCE.txt, md5s) → COMEBin run+eval, then evaluate
+- [x] **Small end-to-end gate** — `small_test_v4` completed via
+      `scripts/run_small_test.sh` with 3 non-empty bins; CheckM2 and CheckM v1
+      outputs are verified and mirrored in the repository.
+- [ ] Build/run the medium 3,000-contig derivative (≤5 GB) via
+      `scripts/make_medium_dataset.sh` (provenance+size in PROVENANCE.txt, md5s)
+      → COMEBin run + CheckM2/CheckM evaluation. Do not overlap it with another
+      registered run.
 - [ ] Fix batch run on v1.1.0 base (`runs/fix_v11`, worktree COMEBin-v11) →
       full large benchmark + eval (major commit) → README row
 - [ ] CAMI II marine sample 0 benchmark run → human host-associated sample →
