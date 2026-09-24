@@ -3,10 +3,10 @@
 | | |
 |---|---|
 | Status | 🟢 `running` |
-| ⏱ Updated (Europe/Berlin) | `2026-09-24T12:22 CEST` |
-| 🏃 Last benchmark (not active) | `medium_v11_20260924` — last observed **epoch 199/200** (log 1130s old) |
+| ⏱ Updated (Europe/Berlin) | `2026-09-24T12:24 CEST` |
+| 🏃 Last benchmark (not active) | `medium_v11_20260924` — last observed **epoch 199/200** (log 1249s old) |
 | 🧠 Model (last turn) | `nemotron-3.5-lightning-free` (watchdog rotates to free models on quota) |
-| 📌 Agent note · **4 min old** | Baseline training epoch ~109/200 (~2.4 min/epoch, ETA ~22:35 UTC unless early-stop); next: baseline eval (run_eval.sh) → issue #2 small-dataset test → v1.1.0 fix run
+| 📌 Agent note · **6 min old** | Baseline training epoch ~109/200 (~2.4 min/epoch, ETA ~22:35 UTC unless early-stop); next: baseline eval (run_eval.sh) → issue #2 small-dataset test → v1.1.0 fix run
 2026-09-23 20:33:11 UTC - heartbeat
 2026-09-23 20:43:58 UTC - heartbeat
 2026-09-23 20:56:28 UTC - heartbeat
@@ -257,9 +257,9 @@
 2026-09-24T09:36:37Z issue-13-reply-push-7a80d7e
 2026-09-24T09:59:22Z wrapup
 2026-09-24T10:17:55Z medium-eval-complete |
-| ⚙️ Load · uptime | `0.13 1.07 9.02` · 20 hours, 46 minutes — 32 cores, 62 GiB, no GPU |
-| 💾 RAM used/total | `1943/64295 MB` |
+| ⚙️ Load · uptime | `0.07 0.74 7.93` · 20 hours, 48 minutes — 32 cores, 62 GiB, no GPU |
+| 💾 RAM used/total | `1948/64295 MB` |
 | 🔗 Session | `ses_f31799c77ffeTq9gcYgqc4hBhg` |
-| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `383b2d5 meta: supervise tick 2026-09-24T10:21:06Z — 0 fix(es)` |
-| 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `3080742 B` — every run, command & tool result |
+| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `26770d7 meta: supervise tick 2026-09-24T10:23:01Z — 1 fix(es)` |
+| 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `3083174 B` — every run, command & tool result |
 | 📈 Timeline | [status/status.log](status/status.log) |
