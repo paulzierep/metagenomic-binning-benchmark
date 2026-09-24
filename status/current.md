@@ -3,10 +3,10 @@
 | | |
 |---|---|
 | Status | 🟢 `running` |
-| ⏱ Updated (Europe/Berlin) | `2026-09-24T12:46 CEST` |
-| 🏃 Live benchmark | `fix_v11_20260924` — **epoch 0/200** · loss `6.104430675506592` · top1 acc `3.994140625` (log 107s fresh) |
+| ⏱ Updated (Europe/Berlin) | `2026-09-24T12:48 CEST` |
+| 🏃 Live benchmark | `fix_v11_20260924` — **epoch 1/200** · loss `5.654933452606201` · top1 acc `8.505859375` (log 94s fresh) |
 | 🧠 Model (last turn) | `big-pickle` (watchdog rotates to free models on quota) |
-| 📌 Agent note · **1 min old** | Baseline training epoch ~109/200 (~2.4 min/epoch, ETA ~22:35 UTC unless early-stop); next: baseline eval (run_eval.sh) → issue #2 small-dataset test → v1.1.0 fix run
+| 📌 Agent note · **0 min old** | Baseline training epoch ~109/200 (~2.4 min/epoch, ETA ~22:35 UTC unless early-stop); next: baseline eval (run_eval.sh) → issue #2 small-dataset test → v1.1.0 fix run
 2026-09-23 20:33:11 UTC - heartbeat
 2026-09-23 20:43:58 UTC - heartbeat
 2026-09-23 20:56:28 UTC - heartbeat
@@ -263,10 +263,11 @@
 2026-09-24T10:38:20Z fix_v11-launch-7-15-16
 2026-09-24T10:43:15Z issue-12-plots
 2026-09-24T10:44:46Z issue-12-reply
-2026-09-24T10:45:01Z turn-end |
-| ⚙️ Load · uptime | `31.18 17.55 9.24` · 21 hours, 10 minutes — 32 cores, 62 GiB, no GPU |
-| 💾 RAM used/total | `7445/64295 MB` |
+2026-09-24T10:45:01Z turn-end
+2026-09-24T10:47:16Z fix_v11-epoch2 |
+| ⚙️ Load · uptime | `30.30 21.59 11.73` · 21 hours, 12 minutes — 32 cores, 62 GiB, no GPU |
+| 💾 RAM used/total | `5263/64295 MB` |
 | 🔗 Session | `ses_f31799c77ffeTq9gcYgqc4hBhg` |
-| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `5362777 log: issue #12 reply` |
-| 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `3229273 B` — every run, command & tool result |
+| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `d655b8e meta: fix_v11 cadence/ETA in PROGRESS` |
+| 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `3233429 B` — every run, command & tool result |
 | 📈 Timeline | [status/status.log](status/status.log) |

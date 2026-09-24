@@ -37000,3 +37000,48 @@ epoch=1/200
 ===COMEBin===
 the 'paulzierep/COMEBin' repository has disabled issues
 > build · big-pickle
+No new owner activity (the #12 update is my own comment). Checking the run advanced past epoch 1, and reviewing the CAMI II prep script (read-only, for later):
+[0m→ [0mRead /vol/data/repos/metagenomic-binning-benchmark/scripts/prep_cami2_marine.sh 
+[0m$ [0mL=/vol/data/benchmark/runs/fix_v11_20260924/comebin_run.log; grep -o 'epoch=[0-9]*/200, batches=[0-9]*, loss=[0-9.]*' $L | tail -3; echo "=== run_meta tail ==="; grep -E '^exit_code|^wall_s|^bins:' /vol/data/benchmark/runs/fix_v11_20260924/run_meta.txt 2>/dev/null || echo "not finished yet"; echo "=== res ==="; tail -1 /vol/data/benchmark/runs/fix_v11_20260924/logs/resources.tsv 2>/dev/null; date -u +%FT%TZ; touch /vol/data/benchmark/.heartbeat
+epoch=1/200, batches=28, loss=6.1044307
+=== run_meta tail ===
+not finished yet
+=== res ===
+2026-09-24T10:45:46+00:00	873819,873822,876247,878176,878208,878240,878272	2938.6	9.441	7037
+2026-09-24T10:46:12Z
+> build · big-pickle
+Training is at full throttle (2939% CPU, 9.4 GB RSS, epoch 1 done). The prep script is ready for later. One confirmation that epochs are advancing:
+[0m$ [0msleep 45; L=/vol/data/benchmark/runs/fix_v11_20260924/comebin_run.log; grep -o 'epoch=[0-9]*/200, batches=[0-9]*, loss=[0-9.]*' $L | tail -2; date -u +%FT%TZ; touch /vol/data/benchmark/.heartbeat
+epoch=1/200, batches=28, loss=6.1044307
+epoch=2/200, batches=28, loss=5.6549335
+2026-09-24T10:47:03Z
+> build · big-pickle
+Epoch 2 done — cadence confirmed (~2.1 min/epoch ⇒ ~7.5 h total, ETA ≈ 18:00 UTC). Recording the ETA in PROGRESS for the next session:
+[0m$ [0mpython3 - <<'PY'
+p = "/vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md"
+with open(p) as f: c = f.read()
+c = c.replace(
+    "demo dataset (29,434 contigs), 32 threads, seed 42, 200 epochs. Next after\n      terminal status:",
+    "demo dataset (29,434 contigs), 32 threads, seed 42, 200 epochs (observed\n      cadence ~2.1–2.5 min/epoch ⇒ ~7.5 h total, ETA ≈ 18:00 UTC, 32-core CPU\n      ~2900%, RAM 9.4 GB). Next after\n      terminal status:")
+with open(p,"w") as f: f.write(c)
+print("ok")
+PY
+cp /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md /vol/data/benchmark/PROGRESS.md
+R=/vol/data/repos/metagenomic-binning-benchmark; TS=$(date -u +%FT%TZ); echo "$TS fix_v11: epoch 2/200 done, ~2.1-2.5 min/epoch, ETA ~18:00Z; no new issues; prep_cami2 ready" >> $R/status/agent-activity.log; echo "$TS fix_v11-epoch2" >> /vol/data/benchmark/.activity; flock /tmp/bench-repo.lock bash -c "cd $R && git add PROGRESS.md status/agent-activity.log && git commit -m 'meta: fix_v11 cadence/ETA in PROGRESS' -q && git push origin main -q"; cd $R && git status -sb | head -1; touch /vol/data/benchmark/.heartbeat; date -u +%FT%TZ
+ok
+## main...origin/main
+2026-09-24T10:47:18Z
+> build · big-pickle
+## Turn summary
+
+**Run:** `fix_v11_20260924` confirmed healthy and advancing — **epoch 2/200** done (loss 6.10 → 5.65), cadence ~2.1–2.5 min/epoch ⇒ **~7.5 h total, ETA ≈ 18:00 UTC**. Full 32-core CPU (~2900%), 9.4 GB RSS, no memory pressure (62 GB box). `.active_run` still registered; watchdog owns the handoff; **no further touching** of the run.
+
+**Issues:** no new owner activity — the only update since last turn (#12 at 10:44:46) was my own comment. All open issues remain answered or in-flight; nothing to duplicate.
+
+**Prep (read-only):** reviewed `scripts/prep_cami2_marine.sh` — confirmed ready for the post-fix_v11 step (contig subset ≥2000 bp, bwa mem interleaved → sorted BAM, ground-truth subset, md5s → `marine_sample0_input`). No heavy I/O started during the timed run to keep timings comparable.
+
+**Bookkeeping:**
+- PROGRESS.md updated with observed cadence + ETA (mirrored to `/vol/data/benchmark/PROGRESS.md`), committed `…` + pushed under lock, working tree clean.
+- `.activity` + `status/agent-activity.log` appended; `.heartbeat` touched.
+
+**Next turn:** when `fix_v11_20260924` reaches terminal status → `scripts/run_eval.sh runs/fix_v11_20260924` (CheckM2 + CheckM v1) → `make_results_csv.py` + `make_per_bin_plots.py -k demo` (baseline vs fix_v11 same-dataset comparison) → README / docs-11 row → CAMI II marine prep + run.
