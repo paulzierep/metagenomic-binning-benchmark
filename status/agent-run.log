@@ -42647,3 +42647,77 @@ contigs kept: 41988
 1761560  0.0 bash scripts/prep_cami2_marine.sh 2000
 1761645  0.0 /vol/data/tools/bin/micromamba run -p /vol/data/envs/comebin bwa index /vol/data/datasets/cami_II
 1761648 98.4 bwa index /vol/data/datasets/cami_II/marine_sample0_input/contigs.fa
+> build · big-pickle
+Marine prep running (41,988 contigs, bwa index in progress). Updating PROGRESS and committing:
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && python3 - <<'PY'
+p="PROGRESS.md"
+c=open(p).read()
+old="""      Remaining: **CAMI II marine sample_0** (~1/6, `scripts/prep_cami2_marine.sh`)
+      → baseline + fix runs, then CAMI III (disk budget ≤ 30 GB, 377 GB free)."""
+new="""      Next: **CAMI II marine sample_0** (docs/01 plan: contigs ≥ 2000 bp →
+      41,988 ctgs + all reads re-mapped `bwa mem`; prep **LAUNCHED 2026-09-25
+      04:02Z**, detached: `prep_cami2_marine.sh 2000` @ `marine_sample0_input`,
+      bwa index running) → then baseline + fix runs (MODE=cami2), then CAMI III
+      (disk budget ≤ 30 GB, 351 GB free)."""
+assert old in c, "anchor not found"
+c=c.replace(old,new,1)
+open(p,"w").write(c)
+print("ok")
+PY
+cp PROGRESS.md /vol/data/benchmark/PROGRESS.md && echo synced; R=/vol/data/repos/metagenomic-binning-benchmark; TS=$(date -u +%FT%TZ); echo "$TS PROGRESS updated: marine prep launched (41988 ctgs >= 2000bp)" >> $R/status/agent-activity.log; flock /tmp/bench-repo.lock bash -c "cd $R && git add PROGRESS.md status/agent-activity.log && git commit -q -m 'meta: marine sample-0 prep launched (41988 ctgs >= 2000 bp, bwa mem)' && git push origin main -q"; git -C $R status -sb | head -1; touch /vol/data/benchmark/.heartbeat
+ok
+synced
+## main...origin/main
+> build · big-pickle
+Marine prep committed to state. Final health check:
+[0m$ [0mtail -3 /vol/data/benchmark/logs/marine_prep.log 2>/dev/null | cut -c1-150; ps -eo pid,pcpu,etime,args | grep -E 'bwa|samtools' | grep -v grep | cut -c1-105 | head -3; date -u +%FT%TZ; touch /vol/data/benchmark/.heartbeat
+== marine sample-0 input: contigs >= 2000 bp ==
+contigs kept: 41988
+1761645  0.0       00:21 /vol/data/tools/bin/micromamba run -p /vol/data/envs/comebin bwa index /vol/data
+1761648 99.1       00:21 bwa index /vol/data/datasets/cami_II/marine_sample0_input/contigs.fa
+2026-09-25T04:02:11Z
+> build · big-pickle
+## Turn summary
+
+**Human host-associated benchmark (issue #18b) — COMPLETE + EVALUATED + REPORTED**
+- `human_v11_20260925`: exit 0, wall **4,912 s (~1.37 h)**, 200/200 epochs (Top-1 ≈ 96 %, no early-stop), **107 bins** on the 4,900-contig / 166 Mbp human set.
+- Eval (supervisor launched it; my duplicate launch correctly refused via lock — touched it only read-only): CheckM2 **35.31/5.13** → **HQ 20 / MQ 29**; CheckM v1 **32.64/4.65** → **HQ 21 / MQ 29**. **First dataset in the benchmark with substantial HQ recovery** (top bins ≈ 100 % / ≤ 0.45 % under both tools).
+- Posted results on #18 (`5826454210`; had to delete a bad `-f body=@file` comment first — that flag stores the literal path), added the `docs/11-run-results.md` table + history rows, updated README ("Completed human run…" + new Next), rewrote the tangled PROGRESS #18 bullet cleanly. All committed under `/tmp/bench-repo.lock` and pushed; tree clean on `origin/main`; PROGRESS synced to `/vol/data/benchmark/`.
+
+**Marine (next step) — prep launched**
+- Docs/01 already fixed the marine plan (≥ 2000 bp → **41,988 contigs**, all reads → one `bwa mem -p` BAM). No in-flight work existed. Launched `scripts/prep_cami2_marine.sh 2000` **detached** (pid 1761560 → bwa index running at ~99 % CPU); fresh `marine_sample0_input/` OUT; 41,988 contigs verified. Prep is not a registered run; no overlap with anything.
+- PROGRESS.md updated + committed + pushed.
+- Next turns: when prep completes → verify `marine.bam` + `input_meta.txt`, then register the marine **baseline** run (fresh rundir, detached, `.active_run`, watchdog handoff), eval, report; then marine **fix** run (back-to-back), then CAMI III.
+
+**Issues:** no new owner activity (latest #18 comment is my results post). COMEBin issues remain disabled.
+[0m
+> build · big-pickle
+[0m$ [0mtest -f /vol/data/benchmark/TASK_COMPLETE && echo "TASK_COMPLETE EXISTS" || echo "no TASK_COMPLETE"; echo "===active_run==="; cat /vol/data/benchmark/.active_run 2>/dev/null || echo "none"; echo "===marine prep==="; tail -6 /vol/data/benchmark/logs/marine_prep.log 2>/dev/null | cut -c1-150; echo "=== procs ==="; ps -eo pid,pcpu,etime,args | grep -E 'bwa|samtools|prep_cami2' | grep -v grep | cut -c1-105 | head -4; echo "=== marine input ==="; ls -la /vol/data/datasets/cami_II/marine_sample0_input/ /vol/data/datasets/cami_II/marine_sample0_input/bamfiles/ 2>/dev/null | head -16; date -u +%FT%TZ; touch /vol/data/benchmark/.heartbeat
+no TASK_COMPLETE
+===active_run===
+none
+===marine prep===
+== marine sample-0 input: contigs >= 2000 bp ==
+contigs kept: 41988
+=== procs ===
+1761560  0.0       01:19 bash scripts/prep_cami2_marine.sh 2000
+1761645  0.0       01:10 /vol/data/tools/bin/micromamba run -p /vol/data/envs/comebin bwa index /vol/data
+1761648 99.7       01:10 bwa index /vol/data/datasets/cami_II/marine_sample0_input/contigs.fa
+=== marine input ===
+/vol/data/datasets/cami_II/marine_sample0_input/:
+total 470456
+drwxrwxr-x 4 ubuntu ubuntu      4096 Sep 25 04:01 .
+drwxrwxr-x 5 ubuntu ubuntu      4096 Sep 25 04:01 ..
+drwxrwxr-x 2 ubuntu ubuntu      4096 Sep 25 04:01 bamfiles
+-rw-rw-r-- 1 ubuntu ubuntu 320310469 Sep 25 04:01 contigs.fa
+-rw-rw-r-- 1 ubuntu ubuntu      2422 Sep 25 04:01 contigs.fa.amb
+-rw-rw-r-- 1 ubuntu ubuntu   1511942 Sep 25 04:01 contigs.fa.ann
+-rw-rw-r-- 1 ubuntu ubuntu 159898118 Sep 25 04:01 contigs.fa.pac
+drwxrwxr-x 2 ubuntu ubuntu      4096 Sep 25 04:01 logs
+
+/vol/data/datasets/cami_II/marine_sample0_input/bamfiles/:
+total 8
+drwxrwxr-x 2 ubuntu ubuntu 4096 Sep 25 04:01 .
+drwxrwxr-x 4 ubuntu ubuntu 4096 Sep 25 04:01 ..
+2026-09-25T04:03:00Z
+> build · big-pickle
