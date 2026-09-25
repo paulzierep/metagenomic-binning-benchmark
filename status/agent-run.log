@@ -66885,3 +66885,55 @@ drwxrwxr-x 2 ubuntu ubuntu   4096 Sep 23 13:56 bin
 > build · nemotron-3.5-lightning-free
 [0m→ [0mRead /vol/data/repos/metagenomic-binning-benchmark/scripts/run_comebin_fix.sh 
 > build · nemotron-3.5-lightning-free
+[0m$ [0mpython3 << 'PYEOF'
+import urllib.request
+import gzip
+import io
+import zlib
+
+# Try to download sample_0_reads.tar.gz from the CAMI III toy dataset URL
+url = "https://s3.bi.denbi.de/swift/v1/cami/cami3_toydata/human-gut-toy/sample_0_reads.tar.gz"
+print(f"Trying to download from: {url}")
+
+try:
+    req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+    with urllib.request.urlopen(req, timeout=30) as response:
+        data = response.read()
+    print(f"Downloaded {len(data)} bytes")
+    
+    # Check if it's valid gzip
+    if data[:2] == b'\x1f\x8b':
+        # Try to decompress
+        dec = zlib.decompressobj(-zlib.MAX_WBITS)
+        try:
+            decompressed = dec.decompress(data[10:])
+            print(f"Decompressed {len(decompressed)} bytes")
+            
+            # Check if it's a tar file
+            if decompressed[:6] == b'ustar ' or decompressed[257:263] == b'ustar':
+                print("Valid tar file format")
+                # Try to open as tar
+                import tarfile, io
+                try:
+                    tf = tarfile.open(fileobj=io.BytesIO(decompressed))
+                    members = tf.getmembers()
+                    print(f"Tar has {len(members)} members:")
+                    for m in members:
+                        print(f"  {m.name} ({m.size} bytes)")
+                except Exception as e:
+                    print(f"Tar open failed: {e}")
+            else:
+                print("Not a tar file (first bytes):", decompressed[:20])
+        except Exception as e:
+            print(f"Decompression failed: {e}")
+    else:
+        print("Not a gzip file (first bytes):", data[:20].hex())
+        
+except Exception as e:
+    print(f"Download failed: {e}")
+PYEOF
+Trying to download from: https://s3.bi.denbi.de/swift/v1/cami/cami3_toydata/human-gut-toy/sample_0_reads.tar.gz
+Downloaded 4866106604 bytes
+Decompressed 4868597760 bytes
+Not a tar file (first bytes): b'sample_0_reads/\x00\x00\x00\x00\x00'
+> build · nemotron-3.5-lightning-free
