@@ -1,6 +1,6 @@
 <!--AGENT-STATUS-->
 
-> 🟢 **Agent status:** `running` · ⏱ `2026-09-25T04:00 CEST` · 🏃 last run tiny_test_n101: epoch 29/30 · not active · 🧠 `mimo-v2.6-flash-free` · [status.log](status/status.log)
+> 🟢 **Agent status:** `running` · ⏱ `2026-09-25T04:02 CEST` · 🏃 last run tiny_test_n101: epoch 29/30 · not active · 🧠 `mimo-v2.6-flash-free` · [status.log](status/status.log)
 
 # Metagenomic binning benchmark
 
@@ -28,11 +28,18 @@ for 3 epochs), **71 bins**, CheckM2 **24.38 % / 3.78 %** (HQ 1 / MQ 6), CheckM v
 24,327 s: same wall time, more bins, slightly lower mean completeness and higher
 contamination.
 
-**Next (in progress this turn):** issue **#18** — (a) build the *smallest*
-functional dataset (smaller than `comebin_small`, still ≥ 1 non-empty bin) and
-(b) a CAMI II **human host-associated** set at ~1/6 the size of the demo
-(~4,900 contigs ⇒ ~1 h per full run instead of ~7 h). Then CAMI II marine →
-CAMI III (disk budget ≤ ~105 GB).
+**Completed tiny floor (issue #18a):** `tiny_test_n100` **failed** (HNSW
+queries `k = max_edges+1 = 101` > N = 100 → exit 1), so the smallest functional
+dataset is **`comebin_tiny_101` (101 contigs)**; `tiny_test_n101` passed in
+85 s with **1 bin**, CheckM2 63.89 % / 9.05 %, CheckM v1 46.58 % / 6.35 %
+([CSV](results/tiny_test_n101.csv)).
+
+**Next (in progress this turn):** issue **#18b** — CAMI II **human
+host-associated** set at ~1/6 the size of the demo: sample 0 downloaded +
+verified (9.74 GB, md5 OK), top 4,900 longest GSA contigs (166 Mbp) selected,
+reads re-mapped with `bwa mem -p` into `human_sample0_input/`; the benchmark run
+launches once mapping finishes. Then CAMI II marine → CAMI III (disk budget
+≤ ~105 GB).
 Per-run table + full history: [`docs/11-run-results.md`](docs/11-run-results.md).
 
 ## Optimization workflow (issue #7)
