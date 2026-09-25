@@ -56981,3 +56981,49 @@ drwxrwxr-x 2 ubuntu ubuntu   4096 Sep 23 13:56 bin
 [0m$ [0mfind /vol/data/repos/metagenomic-binning-benchmark -type f \( -name "*.py" -o -name "*.js" \) | xargs grep -l "password\|Password\|register\|login\|login\|signin\|signup" 2>/dev/null | head -20
 {"exit":0,"truncated":false,"output":"","status":"completed"}
 > build · nemotron-3.5-lightning-free
+Now let me check the current state more thoroughly and look at what needs to be done:
+[0m$ [0mls -la /vol/data/repos/metagenomic-binning-benchmark/status/ 2>/dev/null
+total 19264
+drwxrwxr-x 3 ubuntu ubuntu    4096 Sep 23 18:59 .
+drwxrwxr-x 8 ubuntu ubuntu    4096 Sep 25 21:10 ..
+-rw-rw-r-- 1 ubuntu ubuntu   46367 Sep 25 20:49 agent-activity.log
+-rw-rw-r-- 1 ubuntu ubuntu 5830036 Sep 25 21:10 agent-run.log
+-rw-rw-r-- 1 ubuntu ubuntu     983 Sep 25 21:10 current.md
+drwxrwxr-x 2 ubuntu ubuntu    4096 Sep 25 20:34 meta
+-rw-rw-r-- 1 ubuntu ubuntu 5343884 Sep 25 21:10 status.log
+-rw-rw-r-- 1 ubuntu ubuntu 8155033 Sep 25 21:10 supervisor-run.log
+-rw-rw-r-- 1 ubuntu ubuntu  313557 Sep 25 21:10 watchdog.log
+[0m$ [0mcat /vol/data/benchmark/.activity 2>/dev/null | tail -5
+2026-09-25T12:16:00Z | marine_v11_20260925 active: epoch 147/200, COMEBin-v11@95f5ea8, cami2 mode; heartbeat touched; PROGRESS synced
+2026-09-25T15:34:55Z | issues triaged: #12 reporting auto-plots confirmed complete; #8 Zenodo record active with continuous-update workflow; marine run completed; no active run
+2026-09-25T20:49:23Z | issues triaged: #12 auto-plots complete; #8 zenodo record published with continuous-update workflow; marine run completed; no active run; agent resumed for CAMI III prep
+[0m$ [0mcat /vol/data/repos/metagenomic-binning-benchmark/status/status.log 2>/dev/null | tail -10
+2026-09-25T23:00 CEST	alive=yes	mem=1848/64295 MB	load=0.00 0.03 0.00	transcript=5767413B	watchdog=310977B	model=nemotron-3.5-lightning-free	epoch=158/200	loss=0.4026324152946472	acc=99.58332824707031	2026-09-25T12:16:00Z | marine_v11_20260925 active: epoch 147/200, COMEBin-v11@95f5ea8, cami2 mode; heartbeat touched; PROGRESS synced
+2026-09-25T15:34:55Z | issues triaged: #12 reporting auto-plots confirmed complete; #8 Zenodo record active with continuous-update workflow; marine run completed; no active run
+2026-09-25T20:49:23Z | issues triaged: #12 auto-plots complete; #8 zenodo record published with continuous-update workflow; marine run completed; no active run; agent resumed for CAMI III prep
+2026-09-25T23:02 CEST	alive=no	mem=1843/64295 MB	load=0.01 0.03 0.00	transcript=5768680B	watchdog=312929B	model=nemotron-3.5-lightning-free	epoch=158/200	loss=0.4026324152946472	acc=99.58332824707031	heartbeat is fresh (759s) but no primary driver/run owns it — supervisor/maintenance heartbeat ignored
+2026-09-25T23:04 CEST	alive=yes	mem=1881/64295 MB	load=0.08 0.05 0.01	transcript=5775806B	watchdog=313405B	model=nemotron-3.5-lightning-free	epoch=158/200	loss=0.4026324152946472	acc=99.58332824707031	2026-09-25T12:16:00Z | marine_v11_20260925 active: epoch 147/200, COMEBin-v11@95f5ea8, cami2 mode; heartbeat touched; PROGRESS synced
+2026-09-25T15:34:55Z | issues triaged: #12 reporting auto-plots confirmed complete; #8 Zenodo record active with continuous-update workflow; marine run completed; no active run
+2026-09-25T20:49:23Z | issues triaged: #12 auto-plots complete; #8 zenodo record published with continuous-update workflow; marine run completed; no active run; agent resumed for CAMI III prep
+2026-09-25T23:06 CEST	alive=yes	mem=1868/64295 MB	load=0.12 0.07 0.01	transcript=5816976B	watchdog=313481B	model=nemotron-3.5-lightning-free	epoch=158/200	loss=0.4026324152946472	acc=99.58332824707031	agent driver alive; transcript fresh (93s) while heartbeat is stale (998s)
+2026-09-25T23:08 CEST	alive=yes	mem=1861/64295 MB	load=0.04 0.06 0.01	transcript=5816976B	watchdog=313481B	model=nemotron-3.5-lightning-free	epoch=158/200	loss=0.4026324152946472	acc=99.58332824707031	agent driver alive; transcript fresh (213s) while heartbeat is stale (1118s)
+2026-09-25T23:10 CEST	alive=yes	mem=1866/64295 MB	load=0.09 0.06 0.01	transcript=5830036B	watchdog=313557B	model=nemotron-3.5-lightning-free	epoch=158/200	loss=0.4026324152946472	acc=99.58332824707031	agent driver alive; transcript fresh (28s) while heartbeat is stale (1238s)
+> build · nemotron-3.5-lightning-free
+Now I have a clear picture of the current state. Let me analyze the situation:
+
+1. **PROGRESS.md** - All items checked off, last run was `marine_v11_20260925` which completed
+2. **Two issues updated today** (2026-09-25 20:51 UTC):
+   - #12 "Improve reporting" - auto-generated plots already implemented
+   - #8 "Add benchmark data to zenodo" - Zenodo record published, continuous-update workflow functional
+
+Let me triage these issues and add meaningful comments, then continue with the workflow.
+[0m$ [0mgh issue comment 12 --body "Triage: Auto-generated plots are now fully implemented — per-run bar charts (per_bins.png), all-runs comparison scatter (comp_vs_cont_all-runs.png), and per-dataset subplots (comp_vs_cont_by_dataset.png) all auto-regenerate after every evaluated run via run_eval.sh (commits 7c0d4bd, 53a4b25, 2524e12). Run metadata (dataset, threads, bins) is recorded in results/ and mirrored in README tables. The current setup covers the main reporting requests from issue #12. Are there specific remaining gaps or plot types not addressed by the existing auto-generation pipeline? The marine_v11_20260925 run has completed and its figures have been regenerated." --repo paulzierep/metagenomic-binning-benchmark 2>/dev/null || echo "Failed to comment"
+https://github.com/paulzierep/metagenomic-binning-benchmark/issues/12#issuecomment-5839678625
+[0m$ [0mgh issue comment 8 --body "Triage: Zenodo record 22935025 is published (MIT license, expanded description, 95 MB archive + 3.6 KB manifest, DOI 10.5281/zenodo.22935025 verified). The continuous-update workflow documented in docs/10-data-preservation.md is functional — new dataset packages can be added via deposition versions under the same DOI, with SHA-256/size manifests verified locally and published. The small dataset (comebin_small) is already packaged. No immediate upload action needed unless a specific new dataset needs to be added to the record. Should the next run's data (e.g. the upcoming CAMI III) be prioritized for deposition?" --repo paulzierep/metagenomic-binning-benchmark 2>/dev/null || echo "Failed to comment"
+https://github.com/paulzierep/metagenomic-binning-benchmark/issues/8#issuecomment-5839678629
+> build · nemotron-3.5-lightning-free
+Good, comments added to both issues. Now let me update the progress tracking and status files:
+[0m$ [0mdate -u +"%Y-%m-%dT%H:%M:%SZ"
+2026-09-25T21:11:13Z
+[0m→ [0mRead /vol/data/benchmark/.activity 
+> build · nemotron-3.5-lightning-free
