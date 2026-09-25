@@ -3,10 +3,10 @@
 | | |
 |---|---|
 | Status | 🟢 `running` |
-| ⏱ Updated (Europe/Berlin) | `2026-09-25T03:42 CEST` |
-| 🏃 Benchmark | no active run |
+| ⏱ Updated (Europe/Berlin) | `2026-09-25T03:43 CEST` |
+| 🏃 Live benchmark | `tiny_test_n100` — **epoch 29/30** · loss `4.64705753326416` · top1 acc `7.633333683013916` (log 26s fresh) |
 | 🧠 Model (last turn) | `mimo-v2.6-flash-free` (watchdog rotates to free models on quota) |
-| 📌 Agent note · **3 min old** | Baseline training epoch ~109/200 (~2.4 min/epoch, ETA ~22:35 UTC unless early-stop); next: baseline eval (run_eval.sh) → issue #2 small-dataset test → v1.1.0 fix run
+| 📌 Agent note · **0 min old** | Baseline training epoch ~109/200 (~2.4 min/epoch, ETA ~22:35 UTC unless early-stop); next: baseline eval (run_eval.sh) → issue #2 small-dataset test → v1.1.0 fix run
 2026-09-23 20:33:11 UTC - heartbeat
 2026-09-23 20:43:58 UTC - heartbeat
 2026-09-23 20:56:28 UTC - heartbeat
@@ -271,10 +271,12 @@
 2026-09-24T11:33:38Z issues-12-7-fixed
 2026-09-25T01:04:20Z resume-after-restart: PROGRESS read; fix_v11 run TERMINAL exit_code=0 wall_s=24741 bins=71 (no eval yet); no active run
 2026-09-25T01:16:48Z eval-complete: fix_v11_20260924 CheckM2 71 bins 24.38/3.78 HQ1 MQ6; CheckM v1 21.62/5.18 HQ0 MQ8; rc=0 both; CSV+per-bin+plots written
-2026-09-25T01:38:40Z docs-fix_v11-rows |
-| ⚙️ Load · uptime | `1.32 0.60 0.55` · 1 day, 12 hours, 6 minutes — 32 cores, 62 GiB, no GPU |
-| 💾 RAM used/total | `2165/64295 MB` |
+2026-09-25T01:38:40Z docs-fix_v11-rows
+2026-09-25T01:42:13Z tiny-dataset: built /vol/data/datasets/comebin_tiny (100 contigs, 1,770,714 bp, 43 MB) from demo top-100 + overlapping reads
+2026-09-25T01:42:13Z tiny-run: launched detached tiny_test_n100 (DATA=comebin_tiny, 8 threads, 30 epochs) registered in .active_run mode=small |
+| ⚙️ Load · uptime | `3.23 1.32 0.80` · 1 day, 12 hours, 7 minutes — 32 cores, 62 GiB, no GPU |
+| 💾 RAM used/total | `2371/64295 MB` |
 | 🔗 Session | `ses_f31799c77ffeTq9gcYgqc4hBhg` |
-| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `60a2344 status: yes — fix_v11_20260924 epoch 183/200 loss 2.835580348968506 ac` |
-| 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `3559309 B` — every run, command & tool result |
+| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `4c37ccf status: yes — tiny_test_n100 epoch —/200 loss — acc — model mimo` |
+| 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `3567469 B` — every run, command & tool result |
 | 📈 Timeline | [status/status.log](status/status.log) |
