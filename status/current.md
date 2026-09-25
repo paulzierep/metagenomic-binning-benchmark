@@ -3,13 +3,13 @@
 | | |
 |---|---|
 | Status | 🟢 `running` |
-| ⏱ Updated (Europe/Berlin) | `2026-09-26T01:10 CEST` |
-| 🏃 Last benchmark (not active) | `marine_v11_20260925` — last observed **epoch 158/200** (log 37445s old) |
+| ⏱ Updated (Europe/Berlin) | `2026-09-26T01:12 CEST` |
+| 🏃 Last benchmark (not active) | `marine_v11_20260925` — last observed **epoch 158/200** (log 37565s old) |
 | 🧠 Model (last turn) | `nemotron-3.5-lightning-free` (watchdog rotates to free models on quota) |
-| 📌 Agent note · **75 min old** | agent driver alive; transcript fresh (8s) while heartbeat is stale (4439s) |
-| ⚙️ Load · uptime | `0.07 0.08 0.08` · 2 days, 9 hours, 34 minutes — 32 cores, 62 GiB, no GPU |
-| 💾 RAM used/total | `1937/64295 MB` |
+| 📌 Agent note · **77 min old** | agent driver alive; transcript fresh (17s) while heartbeat is stale (4559s) |
+| ⚙️ Load · uptime | `0.11 0.11 0.09` · 2 days, 9 hours, 36 minutes — 32 cores, 62 GiB, no GPU |
+| 💾 RAM used/total | `1883/64295 MB` |
 | 🔗 Session | `ses_f31799c77ffeTq9gcYgqc4hBhg` |
-| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `f427572 status: yes — marine_v11_20260925 epoch 158/200 loss 0.402632415294647` |
-| 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `6609109 B` — every run, command & tool result |
+| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `8eead0f status: yes — marine_v11_20260925 epoch 158/200 loss 0.402632415294647` |
+| 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `6612181 B` — every run, command & tool result |
 | 📈 Timeline | [status/status.log](status/status.log) |
