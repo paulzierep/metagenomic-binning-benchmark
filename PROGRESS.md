@@ -381,8 +381,11 @@ included; fixes land on branch `comebin-optimizations` in this repo.
       (HQ 20 / MQ 29), CheckM v1 32.64/4.65 (HQ 21 / MQ 29) — first dataset
       with substantial HQ recovery (top bins ≈ 100 % / ≤ 0.45 % under both
       tools). Comment `5826454210`, docs/11 row + per-bin CSV + figures in.
-      Remaining: **CAMI II marine sample_0** (~1/6, `scripts/prep_cami2_marine.sh`)
-      → baseline + fix runs, then CAMI III (disk budget ≤ 30 GB, 377 GB free).
+      Next: **CAMI II marine sample_0** (docs/01 plan: contigs ≥ 2000 bp →
+      41,988 ctgs + all reads re-mapped `bwa mem`; prep **LAUNCHED 2026-09-25
+      04:02Z**, detached: `prep_cami2_marine.sh 2000` @ `marine_sample0_input`,
+      bwa index running) → then baseline + fix runs (MODE=cami2), then CAMI III
+      (disk budget ≤ 30 GB, 351 GB free).
 - [x] **Issue #7 flowchart "different logic"** (user comment 2026-09-24 11:44Z):
       previous cycle/loop flowchart rendered badly → replaced with a straight
       4-stage pipeline (small → medium → large → keep/revert, no back-edges) in
