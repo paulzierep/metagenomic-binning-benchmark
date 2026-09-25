@@ -364,7 +364,11 @@ included; fixes land on branch `comebin-optimizations` in this repo.
       updated. Versus baseline (same data): +1.7 % wall, 60 → 71 bins,
       −0.63 pp completeness, +0.80 pp contamination.
 - [ ] **ACTIVE: issue #18 "Benchmark size"** (user, 2026-09-24 15:31Z; triaged
-      2026-09-25 01:10Z, comment `5824960513`). Two directives:
+      2026-09-25 01:10Z, comment `5824960513`; first tiny results `5825479305`: `tiny_test_n100`
+      FAILS (exit 1, 0 bins), `tiny_test_n101` PASSES (exit 0, wall 85 s,
+      1 bin; CheckM2 63.89/9.05 MQ1, CheckM v1 46.58/6.35;
+      `results/tiny_test_n101.csv`). Floor ≈ 101 contigs. Remaining: ~1/6
+      human set (supervisor docs in flight — do not touch). Two directives:
       (a) **smallest functional dataset** — smaller than `comebin_small`
       (300 contigs / 94 MB / 122 s), stepped down until it still trains and
       yields ≥ 1 non-empty bin (`run_small_test.sh` now takes `DATA=…` env);
@@ -375,10 +379,11 @@ included; fixes land on branch `comebin-optimizations` in this repo.
       same per-genome-BAM problem as marine, so reads must be re-mapped with
       `bwa mem` or the assembly subset must carry its own BAM). Disk budget
       ≤ 30 GB, 377 GB free.
-- [ ] **Issue #7 flowchart "different logic"** (user comment 2026-09-24 11:44Z):
+- [x] **Issue #7 flowchart "different logic"** (user comment 2026-09-24 11:44Z):
       previous cycle/loop flowchart rendered badly → replaced with a straight
       4-stage pipeline (small → medium → large → keep/revert, no back-edges) in
-      README + docs/09; comment with the new chart still to post.
+      README + docs/09, delivery comment posted 2026-09-25 01:39Z, pushed and
+      confirmed rendering in place. DONE.
 - [x] **Issue #12 subplot request + issue #7 mermaid truncation (2026-09-24 ~11:32 UTC)**:
       `make_per_bin_plots.py` now writes `results/figures/comp_vs_cont_by_dataset.png`
       (one panel per benchmark dataset auto-derived from run_meta.txt `contigs:`;
