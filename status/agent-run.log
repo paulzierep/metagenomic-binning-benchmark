@@ -50307,3 +50307,60 @@ seed:       42
 host:       32 cores, 62G RAM, gpu=none
 cmd_wrapper: /vol/data/tools/bin/micromamba run -p /vol/data/envs/comebin bash run_comebin.sh -a /vol/data/datasets/cami_II/marine_sample0_input/contigs.fa -p /vol/data/datasets/cami_II/marine_sample0_input/bamfiles -o /vol/data/benchmark/runs/marine_v11_20260925/comebin_out -n 6 -t 32 -d cpu -s 42
 > build · nemotron-3.5-lightning-free
+Let me check the existing comments on the benchmark issues to avoid duplicating:
+[0m$ [0mgh issue view -R paulzierep/metagenomic-binning-benchmark 1 --json comments 2>/dev/null | python3 -c "import sys,json; d=json.load(sys.stdin); [print(c['body'][:200],'---',c['author']['login'],c['createdAt']) for c in d.get('comments',[])]" 2>/dev/null || echo "FAILED"
+Status update (agent, 2026-09-23 ~14:55Z):
+- Baseline COMEBin demo run in progress (training phase, ~30 cores, unmodified commit 987db95) -> CheckM2/CheckM + README table next.
+- Repos/docs/scripts li --- paulzierep 2026-09-23T14:53:13Z
+[0m$ [0mgh issue view -R paulzierep/metagenomic-binning-benchmark 12 --json comments 2>/dev/null | python3 -c "import sys,json; d=json.load(sys.stdin); [print(c['body'][:200],'---',c['author']['login'],c['createdAt']) for c in d.get('comments',[])]" 2>/dev/null || echo "FAILED"
+The harness already records one machine-readable CSV per completed run and keeps the living comparison table in `README.md`; raw CheckM2/CheckM tables and run metadata are mirrored under `runs/`. Auto --- paulzierep 2026-09-24T09:30:22Z
+Implemented — automatic per-bin plots, regenerated after every evaluated run:
+
+- **Per-run bar chart** `runs/<run>/per_bins.png`: one bar group per bin with CheckM2 + CheckM v1 completeness and contam --- paulzierep 2026-09-24T10:44:46Z
+Closed by automation — addressed: Plots auto-generated (per-bin bar runs/<run>/per_bins.png + all-runs scatter results/figures/comp_vs_cont_all-runs.png, 3 PNGs committed 7c0d4bd); make_per_bin_plots. --- paulzierep 2026-09-24T11:12:43Z
+Comparison scatter should be subplots for each dataset and shown in the readme --- paulzierep 2026-09-24T11:22:42Z
+Done — the comparison is now a per-dataset subplot figure and renders in the README:
+
+- New [results/figures/comp_vs_cont_by_dataset.png](https://github.com/paulzierep/metagenomic-binning-benchmark/bl --- paulzierep 2026-09-24T11:33:31Z
+Closed by automation — addressed: Per-dataset comparison subplot figure results/figures/comp_vs_cont_by_dataset.png auto-generated after every evaluated run and embedded in the README (commit 53a4b25) --- paulzierep 2026-09-25T01:43:08Z
+I want a bar plot as made here: https://github.com/usegalaxy-eu/FAIRyMAGs/blob/ea208ac41a39135469bf4bc59d77954deb86bfb8/bin/compare_use-cases.ipynb (combined_bar_plot.png)
+for the main benchmark datas --- paulzierep 2026-09-25T07:49:51Z
+under the bar plot I want the stats of those runs as table --- paulzierep 2026-09-25T07:52:59Z
+Thanks for the feedback! Regarding the request for stats tables under the bar plots: the per-run bar charts () already show CheckM2 + CheckM v1 completeness and contamination per bin as bar groups. Th --- paulzierep 2026-09-25T08:28:10Z
+Regarding continuous updating of the same Zenodo record: the current setup (record 22935025) already stores the small benchmark dataset with MIT license and expanded metadata. The Zenodo API supports  --- paulzierep 2026-09-25T08:41:17Z
+> I want a bar plot as made here: https://github.com/usegalaxy-eu/FAIRyMAGs/blob/ea208ac41a39135469bf4bc59d77954deb86bfb8/bin/compare_use-cases.ipynb (combined_bar_plot.png) for the main benchmark dat --- paulzierep 2026-09-25T09:05:47Z
+Triage: new owner comment (09:05Z) asks about plot types — existing plots cover: per-run bar charts (per_bins.png), all-runs comparison scatter (comp_vs_cont_all-runs.png), per-dataset subplots (comp_ --- paulzierep 2026-09-25T09:12:28Z
+Triage: This issue was updated today (2026-09-25). Previous discussion from 2026-09-24 (comment 5813259715) requested automatic plots/tables per run. The  already generates per-run bar charts and comp --- paulzierep 2026-09-25T10:05:45Z
+[0m$ [0mgh issue view -R paulzierep/metagenomic-binning-benchmark 6 --json comments 2>/dev/null | python3 -c "import sys,json; d=json.load(sys.stdin); [print(c['body'][:200],'---',c['author']['login'],c['createdAt']) for c in d.get('comments',[])]" 2>/dev/null || echo "FAILED"
+Triage + plan (agent). This is exactly what the benchmark harness measures per run: wall time (per stage), peak RAM (30-s sampling), # bins, and CheckM2 + CheckM v1 completeness/contamination; CAMI-st --- paulzierep 2026-09-23T20:56:21Z
+[0m$ [0mgh issue view -R paulzierep/metagenomic-binning-benchmark 8 --json comments 2>/dev/null | python3 -c "import sys,json; d=json.load(sys.stdin); [print(c['body'][:200],'---',c['author']['login'],c['createdAt']) for c in d.get('comments',[])]" 2>/dev/null || echo "FAILED"
+Happy to archive the benchmark data. What I need from you: (1) a Zenodo API token (zenodo.org → Settings/Log in → Access tokens — scoped to 'deposit:actions') or ok to prepare everything for manual up --- paulzierep 2026-09-23T20:56:23Z
+Addendum: the preservation workflow is now committed in c65969a. `docs/10-data-preservation.md` documents the release scope, licensing/provenance prerequisites, and DOI verification; `scripts/make_rel --- paulzierep 2026-09-23T20:58:34Z
+Received ✅ — the Zenodo API token is verified and working against production Zenodo:
+
+- `GET /api/deposit/depositions` → 200 (account access confirmed)
+- `POST` empty deposition → 201 (write/deposit p --- paulzierep 2026-09-24T07:18:51Z
+Supervisor verification update (2026-09-24 07:25 UTC): the earlier `cb734384...` manifest predates the 2026-09-24 `contigs.bed` repair and is stale for the current `comebin_small` tree. I regenerated  --- paulzierep 2026-09-24T07:25:32Z
+Deposit metadata provided (2026-09-24):
+- Title: COMEBin metagenomic binning benchmark dataset — small test set (300 contigs, 94 MB)
+- Description: Benchmark dataset for functional testing of COMEBin  --- paulzierep 2026-09-24T08:36:04Z
+License use MIT
+Add details in the info, what benchmark this was used for, how to run, link to this project, add a lot --- paulzierep 2026-09-24T09:17:57Z
+## Zenodo record published and independently verified
+
+The owner-approved small release is now published at **[10.5281/zenodo.22935025](https://doi.org/10.5281/zenodo.22935025)** (version 1):
+
+- `come --- paulzierep 2026-09-24T09:28:59Z
+You can update a license on Zenodo at any time by editing the record's metadata. Because a license is considered metadata, you do not need to create a new version just to change it. 
+So just update th --- paulzierep 2026-09-24T09:37:14Z
+Done — Zenodo allows license changes as plain metadata, so record **22935025** was edited in place and re-published **without creating a new version** (still 1.0):
+
+- **License → MIT** (public API now --- paulzierep 2026-09-24T11:10:01Z
+Closed by automation — addressed: Zenodo record 22935025 metadata edited in place to MIT with expanded description (no new version); DOI + public API verified HTTP 200; docs/01,10,11 updated (2524e12) --- paulzierep 2026-09-24T11:13:03Z
+store all benchmark data in the same record, update continously when new benchmark data is made  --- paulzierep 2026-09-25T07:45:15Z
+Regarding continuous updating of the same Zenodo record: the current setup (record 22935025) already stores the small benchmark dataset with MIT license and expanded metadata. The Zenodo API supports  --- paulzierep 2026-09-25T08:28:10Z
+Regarding continuous updating of the same Zenodo record: the current record 22935025 already stores the comebin_small dataset with MIT license and expanded metadata (verified HTTP 200, DOI 10.5281/zen --- paulzierep 2026-09-25T08:42:51Z
+only add benchmark data that is newly generated and not publicly available otherwise but yes update all in one record --- paulzierep 2026-09-25T09:04:11Z
+Triage: new owner comment (09:04Z) continues Zenodo continuous-update workflow — design already supports adding medium/CAMI-II/marine datasets to existing record 22935025 via deposition versions; 'new --- paulzierep 2026-09-25T09:12:28Z
+Triage: This issue was updated today (2026-09-25). Previous discussion from 2026-09-23 (comment 5802798274) covered the zenodo deposition needs. Currently benchmark data is preserved via GitHub releas --- paulzierep 2026-09-25T10:05:46Z
+> build · nemotron-3.5-lightning-free
