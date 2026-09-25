@@ -3,10 +3,10 @@
 | | |
 |---|---|
 | Status | 🟢 `running` |
-| ⏱ Updated (Europe/Berlin) | `2026-09-25T10:06 CEST` |
-| 🏃 Live benchmark | `marine_v11_20260925` — **epoch 68/200** · loss `0.6793539524078369` · top1 acc `96.20442199707031` (log 136s fresh) |
+| ⏱ Updated (Europe/Berlin) | `2026-09-25T10:08 CEST` |
+| 🏃 Live benchmark | `marine_v11_20260925` — **epoch 69/200** · loss `0.7039782404899597` · top1 acc `95.73567199707031` (log 67s fresh) |
 | 🧠 Model (last turn) | `nemotron-3.5-lightning-free` (watchdog rotates to free models on quota) |
-| 📌 Agent note · **7 min old** | Baseline training epoch ~109/200 (~2.4 min/epoch, ETA ~22:35 UTC unless early-stop); next: baseline eval (run_eval.sh) → issue #2 small-dataset test → v1.1.0 fix run
+| 📌 Agent note · **9 min old** | Baseline training epoch ~109/200 (~2.4 min/epoch, ETA ~22:35 UTC unless early-stop); next: baseline eval (run_eval.sh) → issue #2 small-dataset test → v1.1.0 fix run
 2026-09-23 20:33:11 UTC - heartbeat
 2026-09-23 20:43:58 UTC - heartbeat
 2026-09-23 20:56:28 UTC - heartbeat
@@ -316,9 +316,9 @@
 2026-09-25T07:43:41Z marine-epoch62
 2026-09-25T07:53:49Z marine-epoch65
 2026-09-25T07:58:54Z triage-8-12 |
-| ⚙️ Load · uptime | `29.22 30.32 30.43` · 1 day, 18 hours, 30 minutes — 32 cores, 62 GiB, no GPU |
-| 💾 RAM used/total | `6939/64295 MB` |
+| ⚙️ Load · uptime | `31.20 30.55 30.50` · 1 day, 18 hours, 32 minutes — 32 cores, 62 GiB, no GPU |
+| 💾 RAM used/total | `6343/64295 MB` |
 | 🔗 Session | `ses_f31799c77ffeTq9gcYgqc4hBhg` |
-| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `ea2a6cc status: yes — marine_v11_20260925 epoch 68/200 loss 0.6793539524078369` |
-| 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `4064062 B` — every run, command & tool result |
+| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `b411370 status: yes — marine_v11_20260925 epoch 68/200 loss 0.6793539524078369` |
+| 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `4079913 B` — every run, command & tool result |
 | 📈 Timeline | [status/status.log](status/status.log) |
