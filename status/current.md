@@ -3,10 +3,10 @@
 | | |
 |---|---|
 | Status | 🟢 `running` |
-| ⏱ Updated (Europe/Berlin) | `2026-09-25T07:22 CEST` |
-| 🏃 Live benchmark | `marine_v11_20260925` — **epoch 16/200** · loss `1.8284412622451782` · top1 acc `73.34309387207031` (log 126s fresh) |
+| ⏱ Updated (Europe/Berlin) | `2026-09-25T07:24 CEST` |
+| 🏃 Live benchmark | `marine_v11_20260925` — **epoch 17/200** · loss `1.7912942171096802` · top1 acc `74.02994537353516` (log 55s fresh) |
 | 🧠 Model (last turn) | `big-pickle` (watchdog rotates to free models on quota) |
-| 📌 Agent note · **0 min old** | Baseline training epoch ~109/200 (~2.4 min/epoch, ETA ~22:35 UTC unless early-stop); next: baseline eval (run_eval.sh) → issue #2 small-dataset test → v1.1.0 fix run
+| 📌 Agent note · **2 min old** | Baseline training epoch ~109/200 (~2.4 min/epoch, ETA ~22:35 UTC unless early-stop); next: baseline eval (run_eval.sh) → issue #2 small-dataset test → v1.1.0 fix run
 2026-09-23 20:33:11 UTC - heartbeat
 2026-09-23 20:43:58 UTC - heartbeat
 2026-09-23 20:56:28 UTC - heartbeat
@@ -300,9 +300,9 @@
 2026-09-25T05:00:49Z marine-epoch10
 2026-09-25T05:11:04Z marine-epoch14
 2026-09-25T05:21:21Z marine-epoch17 |
-| ⚙️ Load · uptime | `31.47 31.09 30.30` · 1 day, 15 hours, 46 minutes — 32 cores, 62 GiB, no GPU |
-| 💾 RAM used/total | `6493/64295 MB` |
+| ⚙️ Load · uptime | `31.99 31.43 30.52` · 1 day, 15 hours, 48 minutes — 32 cores, 62 GiB, no GPU |
+| 💾 RAM used/total | `7312/64295 MB` |
 | 🔗 Session | `ses_f31799c77ffeTq9gcYgqc4hBhg` |
-| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `6554813 status: yes — marine_v11_20260925 epoch 16/200 loss 1.8284412622451782` |
+| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `6c0d5e4 meta: supervise tick 2026-09-25T05:23:01Z — 0 fix(es)` |
 | 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `3845505 B` — every run, command & tool result |
 | 📈 Timeline | [status/status.log](status/status.log) |
