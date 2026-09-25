@@ -67110,3 +67110,100 @@ Tarfile open failed: file could not be opened successfully:
 
 Trying manual tar parsing...
 > build · nemotron-3.5-lightning-free
+[0m$ [0mpython3 << 'PYEOF'
+import urllib.request
+import tarfile, io, gzip, zlib, os
+
+# Download from the URL
+url = "https://s3.bi.denbi.de/swift/v1/cami/cami3_toydata/human-gut-toy/sample_0_reads.tar.gz"
+print(f"Downloading from: {url}")
+
+try:
+    req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+    with urllib.request.urlopen(req, timeout=120) as response:
+        raw_data = response.read()
+    print(f"Downloaded {len(raw_data)} bytes")
+    
+    # Decompress
+    dec = zlib.decompressobj(-zlib.MAX_WBITS)
+    decompressed = dec.decompress(raw_data[10:])
+    print(f"Decompressed {len(decompressed)} bytes")
+    
+    # Try to open as tarfile
+    try:
+        tf = tarfile.open(fileobj=io.BytesIO(decompressed))
+        members = tf.getmembers()
+        print(f"Tar has {len(members)} members:")
+        for m in members:
+            print(f"  {m.name} ({m.size} bytes)")
+            if m.isfile():
+                f = tf.extractfile(m)
+                if f:
+                    content = f.read()
+                    print(f"    Content size: {len(content)} bytes")
+                    # Check if it's .gz compressed
+                    if m.name.endswith('.gz') or 'reads_mapping' in m.name':
+                        try:
+                            text = content[:100]
+                    else:
+                        text = content.decode('utf-8', errors='replace')[:200]
+                        print(f"    First 200 chars: {text}")
+    except Exception as e:
+        print(f"Tarfile open failed: {e}")
+        
+    # Also try manual parsing for the first 30 entries
+    print("\n--- Manual tar parsing ---")
+    pos = 0
+    count = 0
+    while pos < len(decompressed) and count < 30:
+        header = decompressed[pos:pos+512]
+        if len(header) < 512:
+            break
+        name = header[0:100].rstrip(b'\x00').decode('utf-8', errors='replace')
+        if name.strip() == '':
+            break
+        size = int(header[124:136].rstrip(b'\x00').decode('utf-8', errors='replace'), 8)
+        typeflag = header[156:157] if len(header) > 156 else b''
+        if typeflag == b'0' or typeflag == b'\0':
+            kind = 'file'
+        elif typeflag == b'5':
+            kind = 'dir'
+        else:
+            kind = f'type={typeflag}'
+        
+        if kind == 'file':
+            file_start = pos + 512
+            file_blocks = (size + 511) // 512
+            file_end = file_start + file_blocks * 512
+            file_data = decompressed[file_start:file_end]
+            if size % 512 != 0:
+                actual_data = file_data[:-((512 - size % 512) % 512)]
+            else:
+                actual_data = file_data
+            
+            basename = os.path.basename(name)
+            if basename.endswith('.gz'):
+                try:
+                    mgz = gzip.decompress(actual_data)
+                    print(f"  {name} ({len(actual_data)} bytes -> {len(mgz)} after gzip)")
+                    text = mgz.decode('utf-8', errors='replace')[:100]
+                    print(f"    First line: {text}")
+                except Exception as e:
+                    print(f"  {name} ({len(actual_data)} bytes) - gzip failed: {e}")
+            else:
+                print(f"  {name} ({len(actual_data)} bytes)")
+            count += 1
+        elif kind == 'dir':
+            print(f"  Dir: {name}")
+        
+        pos += 512
+        pos = (pos + 511) // 512 * 512
+        
+except KeyboardInterrupt:
+    print("\nInterrupted")
+PYEOF
+File "<stdin>", line 32
+    if m.name.endswith('.gz') or 'reads_mapping' in m.name':
+                                                          ^
+SyntaxError: unterminated string literal (detected at line 32)
+> build · nemotron-3.5-lightning-free
