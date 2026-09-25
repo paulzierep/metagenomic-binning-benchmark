@@ -3,10 +3,10 @@
 | | |
 |---|---|
 | Status | 🟢 `running` |
-| ⏱ Updated (Europe/Berlin) | `2026-09-25T03:26 CEST` |
-| 🏃 Last benchmark (not active) | `fix_v11_20260924` — last observed **epoch 183/200** (log 28871s old) |
+| ⏱ Updated (Europe/Berlin) | `2026-09-25T03:30 CEST` |
+| 🏃 Last benchmark (not active) | `fix_v11_20260924` — last observed **epoch 183/200** (log 29111s old) |
 | 🧠 Model (last turn) | `mimo-v2.6-flash-free` (watchdog rotates to free models on quota) |
-| 📌 Agent note · **9 min old** | Baseline training epoch ~109/200 (~2.4 min/epoch, ETA ~22:35 UTC unless early-stop); next: baseline eval (run_eval.sh) → issue #2 small-dataset test → v1.1.0 fix run
+| 📌 Agent note · **13 min old** | Baseline training epoch ~109/200 (~2.4 min/epoch, ETA ~22:35 UTC unless early-stop); next: baseline eval (run_eval.sh) → issue #2 small-dataset test → v1.1.0 fix run
 2026-09-23 20:33:11 UTC - heartbeat
 2026-09-23 20:43:58 UTC - heartbeat
 2026-09-23 20:56:28 UTC - heartbeat
@@ -271,9 +271,9 @@
 2026-09-24T11:33:38Z issues-12-7-fixed
 2026-09-25T01:04:20Z resume-after-restart: PROGRESS read; fix_v11 run TERMINAL exit_code=0 wall_s=24741 bins=71 (no eval yet); no active run
 2026-09-25T01:16:48Z eval-complete: fix_v11_20260924 CheckM2 71 bins 24.38/3.78 HQ1 MQ6; CheckM v1 21.62/5.18 HQ0 MQ8; rc=0 both; CSV+per-bin+plots written |
-| ⚙️ Load · uptime | `0.00 0.27 0.79` · 1 day, 11 hours, 50 minutes — 32 cores, 62 GiB, no GPU |
-| 💾 RAM used/total | `1790/64295 MB` |
+| ⚙️ Load · uptime | `0.00 0.12 0.60` · 1 day, 11 hours, 54 minutes — 32 cores, 62 GiB, no GPU |
+| 💾 RAM used/total | `1779/64295 MB` |
 | 🔗 Session | `ses_f31799c77ffeTq9gcYgqc4hBhg` |
-| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `48b886d meta: supervise tick 2026-09-25T01:23:01Z — 0 fix(es)` |
-| 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `3513692 B` — every run, command & tool result |
+| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `413d268 status: yes — fix_v11_20260924 epoch 183/200 loss 2.835580348968506 ac` |
+| 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `3526516 B` — every run, command & tool result |
 | 📈 Timeline | [status/status.log](status/status.log) |
