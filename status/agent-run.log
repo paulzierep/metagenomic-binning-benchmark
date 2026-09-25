@@ -54948,3 +54948,168 @@ Let me verify the PROGRESS.md updates look correct:
 [0m→ [0mRead /vol/data/benchmark/PROGRESS.md [90m[limit=30, offset=407][0m
 > build · nemotron-3.5-lightning-free
 > build · nemotron-3.5-lightning-free
+I'll continue the workflow by checking the first unfinished step. Looking at the task flow, the first unfinished step appears to be the **post-evaluation phase** — specifically, running the evaluation scripts and documenting the results for the current benchmark run (likely the marine run or a new dataset).
+
+Based on the current state:
+- The baseline rerun (`baseline_rerun_autorestart1`) completed successfully with 60 bins, 25.01% mean completeness, 2.98% mean contamination.
+- The fix_v11 run (`fix_v11_20260924`) completed with 71 bins, 24.38% mean completeness, 3.78% mean contamination, and stopped early at epoch 184/200 due to early-stopping criteria (Top-1 > 99% for 3 consecutive epochs).
+- The human host-associated run (`human_v11_20260925`) completed with 107 bins, 35.31% mean completeness, 5.13% mean contamination.
+- The **marine run** (`marine_v11_20260925`) is also complete with 152 bins.
+
+There are no remaining unfinished COMEBin runs on disk. The next meaningful step is to **proceed with evaluation/evaluation cycle for the next dataset** (CAMI II marine sample-0 or CAMI III) or document the final results of the current cycle.
+
+Let me proceed with the necessary steps:
+[0m$ [0mls /vol/data/benchmark/runs/marine_v11_20260925/
+comebin_out
+comebin_run.log
+logs
+run_meta.txt
+> build · nemotron-3.5-lightning-free
+[0m$ [0mcat /vol/data/benchmark/runs/marine_v11_20260925/run_meta.txt 2>/dev/null
+run:        /vol/data/benchmark/runs/marine_v11_20260925
+source:     /vol/data/repos/COMEBin-v11 (branch comebin-optimizations-v11)
+date:       2026-09-25T04:14:49+00:00
+commit:     95f5ea820f9a4e76f5c2911c0b5ed507ab67b015
+contigs:    /vol/data/datasets/cami_II/marine_sample0_input/contigs.fa
+bamdir:     /vol/data/datasets/cami_II/marine_sample0_input/bamfiles
+threads:    32
+seed:       42
+host:       32 cores, 62G RAM, gpu=none
+cmd_wrapper: /vol/data/tools/bin/micromamba run -p /vol/data/envs/comebin bash run_comebin.sh -a /vol/data/datasets/cami_II/marine_sample0_input/contigs.fa -p /vol/data/datasets/cami_II/marine_sample0_input/bamfiles -o /vol/data/benchmark/runs/marine_v11_20260925/comebin_out -n 6 -t 32 -d cpu -s 42 
+exit_code:  0
+wall_s:     31406
+finished:   2026-09-25T12:58:15+00:00
+bins:       152  -> /vol/data/benchmark/runs/marine_v11_20260925/comebin_out/comebin_res/comebin_res_bins
+cmd_from_log: 2026-09-25 12:46:01,262 - Marker tools: FragGeneScan=/vol/data/envs/comebin/bin/FragGeneScan, wrapper=/vol/data/envs/comebin/bin/run_FragGeneScan.pl, hmmsearch=/vol/data/envs/comebin/bin/hmmsearch, perl=/vol/data/envs/comebin/bin/perl, marker_script=/vol/data/repos/COMEBin-v11/auxiliary/test_getmarker_2quarter.pl, marker_hmm=/vol/data/repos/COMEBin-v11/auxiliary/bacar_marker.hmm.
+cmd_from_log: 2026-09-25 12:47:35,855 - HMMsearch command: /vol/data/envs/comebin/bin/hmmsearch --domtblout /vol/data/datasets/cami_II/marine_sample0_input/.contigs.fa.bacar_marker.hmmout.2018231.2fwfgpzp.tmp -E 1e-05 --cpu 32 /vol/data/repos/COMEBin-v11/auxiliary/bacar_marker.hmm /vol/data/datasets/cami_II/marine_sample0_input/contigs.fa.frag.faa
+> build · nemotron-3.5-lightning-free
+[0m$ [0mls /vol/data/benchmark/runs/ | grep -i cami
+Exited with code 1
+> build · nemotron-3.5-lightning-free
+Let me check the current state and any existing preparations:
+[0m$ [0mls /vol/data/datasets/ 2>/dev/null
+cami_II
+cami_II_human
+comebin_medium
+comebin_small
+comebin_test_data
+comebin_test_data.zip
+comebin_tiny
+comebin_tiny_101
+> build · nemotron-3.5-lightning-free
+[0m$ [0mls /vol/data/datasets/cami_II/ 2>/dev/null || echo "No cami_II dir"
+marine
+marine.zip
+marine_reads
+marine_sample0_input
+> build · nemotron-3.5-lightning-free
+[0m$ [0mls /vol/data/datasets/cami_III/ 2>/dev/null || echo "No CAMI III dir"
+No CAMI III dir
+> build · nemotron-3.5-lightning-free
+Let me check the workflow documentation and any existing preparations for the next benchmark cycle:
+[0m$ [0mls /vol/data/benchmark/docs/ 2>/dev/null
+Exited with code 2
+> build · nemotron-3.5-lightning-free
+[0m$ [0mls /vol/data/benchmark/docs/
+ls: cannot access '/vol/data/benchmark/docs/': No such file or directory
+> build · nemotron-3.5-lightning-free
+[0m$ [0mls /vol/data/repos/metagenomic-binning-benchmark/docs/ 2>/dev/null || ls /vol/data/benchmark/docs/ 2>/dev/null || echo "checking both"
+00-setup.md
+01-datasets.md
+02-comebin-baseline.md
+03-fixes.md
+04-evaluation.md
+05-agent-restart.md
+06-benchmark-commands.md
+07-fix-batches.md
+08-dataset-space-plan.md
+09-optimization-strategy.md
+10-data-preservation.md
+11-run-results.md
+> build · nemotron-3.5-lightning-free
+[0m$ [0mcat /vol/data/repos/metagenomic-binning-benchmark/docs/01-datasets.md 2>/dev/null | head -80
+# 01 — Datasets
+
+## 1. COMEBin demo data (used first)
+
+| | |
+|---|---|
+| Origin | Google Drive link in the [COMEBin README](https://github.com/paulzierep/COMEBin), file id `1xWpN2z8JTaAzWW4TcOl0Lr4Y_x--Fs5s` |
+| Downloaded | 2026-09-23, 5,575,256,185 bytes → `/vol/data/datasets/comebin_test_data.zip` |
+| Extracted | `/vol/data/datasets/comebin_test_data/` (6.4 GB) |
+| Sample | BATS `SAMN07137077_METAG` (Sequencing Read Archive `SRR5720343`) |
+
+Files:
+
+| File | Size | Notes |
+|---|---|---|
+| `BATS_SAMN07137077_METAG.scaffolds.min500.fasta.f1k.fasta` | 53 MB | **29,434 contigs** (≥1 kb subset, "f1k") |
+| `bamfiles/SRR5720343.bam` | 5.07 GB | reads mapped to the contigs — COMEBin coverage input |
+| `excepted_output/` | — | upstream reference output incl. CheckM results → sanity-check target |
+
+Notes:
+- Single sample ⇒ single coverage column; COMEBin demo command uses `-n 6 -t 40`.
+- No read-level ground truth shipped; quality is assessed with CheckM2/CheckM
+  (marker-gene completeness/contamination) — the metrics this benchmark records.
+- Verify/refresh BAM index before use: `samtools index SRR5720343.bam` if `.bai` missing.
+
+### Small derived test set (GitHub issue #2)
+
+`scripts/make_small_dataset.sh` builds a tiny but real benchmark input from the
+demo data: **top-N contigs by length** (default 300; 3.56 Mbp, with longest
+contigs most likely to carry marker genes) + **all reads overlapping them**
+(real alignments, not simulated) → `/vol/data/datasets/comebin_small/`
+(94 MB). The existing set was originally extracted with `bedtools intersect`;
+the committed reconstruction uses indexed `samtools view -L`, which is faster
+and deterministic for a contig-name list. Purpose: fast iteration for fix
+batches while keeping COMEBin's real pipeline logic.
+
+The next gate is a **medium** derivative (initially N=3,000, hard cap 5 GB),
+built only after the small COMEBin+CheckM run succeeds. Commands and the
+space plan are in `docs/06-benchmark-commands.md` and
+`docs/08-dataset-space-plan.md`. Before any public release, follow the checksum,
+licensing, and Zenodo verification checklist in
+[`docs/10-data-preservation.md`](10-data-preservation.md).
+
+### Published small release (Zenodo)
+
+The owner-approved small release is published as **[10.5281/zenodo.22935025](https://doi.org/10.5281/zenodo.22935025)**
+(version 1, **MIT** since 2026-09-24 — the record metadata was edited in
+place, no new version; the DOI resolves HTTP 200). The record contains the verified
+`comebin_small_release_v1.tar.gz` (95,216,539 bytes,
+SHA-256 `0c698d208639f4fadd4ac4477a67074320c975528b23dd61743c83ad1658b6d2`)
+and `comebin_small.release.public.json` (3,650 bytes,
+SHA-256 `84131ae359d07a78db7ae7ca2005758f4f0ec9df67a33ec62f8af50ac1702f1b`).
+The archive contains 18 payload files totaling 98,078,536 bytes; extraction
+and every public-manifest size/SHA-256 check passed. The public record was
+verified with a fresh unauthenticated API request (HTTP 200), and the safe
+publication record is stored outside the repository at
+`/vol/data/benchmark/meta/zenodo_comebin_small.json`.
+
+### Medium derived test set (local benchmark input)
+
+`/vol/data/datasets/comebin_medium/` contains the top 3,000 contigs by length
+from the same BATS demo assembly plus all reads overlapping those contigs. The
+verified derivative is **421,631,278 bytes**; `PROVENANCE.txt` records the source
+paths, 3,000-contig count, and MD5 checksums:
+
+- `contigs.fa`: `8e6174913ed7db4eb6f05259bae833cc`
+- `bamfiles/reads.bam`: `fe31efbae1d07037a54cbe907f47bc1b`
+
+The v1.1.0 benchmark `medium_v11_20260924` completed 200/200 epochs and produced
+16 non-empty bins. CheckM2/CheckM v1 results are in
+[`results/medium_v11_20260924.csv`](../results/medium_v11_20260924.csv); the
+medium release is not deposited separately until the owner confirms its license
+and metadata.
+
+### Tiny derived test set — issue #18 "smallest still possible" (2026-09-25)
+
+Two candidate "smallest" datasets were built with the same real-data method
+(`scripts/make_small_dataset.sh <out> <N>`, top-N longest demo contigs + the
+overlapping reads), because the floor is set by a **hard limit in COMEBin's
+clustering**, not by disk:
+> build · nemotron-3.5-lightning-free
+[0m$ [0mcat /vol/data/repos/metagenomic-binning-benchmark/docs/06-benchmark-commands.md 2>/dev/null | grep -i "cami\|large\|next\|next run\|next run\|next run\|next run\|next run" | head -30
+Large data is reserved for post-major-commit runs. See
+CAMI II assemblies (downloads): see `docs/01-datasets.md` for the Zenodo/GigaDB
+> build · nemotron-3.5-lightning-free
