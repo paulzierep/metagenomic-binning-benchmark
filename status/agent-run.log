@@ -66594,3 +66594,286 @@ Repaired gzip open failed: CRC check failed 0x0 != 0x5ea71d43
 > build · nemotron-3.5-lightning-free
 [0m$ [0mrm -f /tmp/repaired_test.tar.gz /vol/data/datasets/cami_III/cami3_toy_human_gut_short_read_sample_0.tar.gz.repaired
 {"exit":0,"truncated":false,"output":"","status":"completed"}
+> build · nemotron-3.5-lightning-free
+[0m$ [0mwget -c -q --show-progress --timeout=0 --tries=0 "https://s3.bi.denbi.de/swift/v1/cami/cami3_toydata/human-gut-toy/sample_0_reads.tar.gz" -O /tmp/redownload_sample_0.tar.gz 2>&1 | tail -5
+Command exceeded timeout of 600 ms. Retry with a larger timeout if the command is expected to take longer.
+> build · nemotron-3.5-lightning-free
+[0m$ [0mpython3 << 'PYEOF'
+import zlib, tarfile, io, gzip, struct, os
+
+# Read the short reads tar.gz file
+with open('/vol/data/datasets/cami_III/cami3_toy_human_gut_short_read_sample_0.tar.gz', 'rb') as f:
+    raw = f.read()
+
+# Decompress what we can (skip 10-byte gzip header)
+dec = zlib.decompressobj(-zlib.MAX_WBITS)
+decompressed = dec.decompress(raw[10:])
+
+# Manual tar parsing to find and extract anonymous_reads.fq.gz
+# and reads_mapping.tsv.gz
+
+pos = 0
+found_files = []
+
+while pos < len(decompressed):
+    header = decompressed[pos:pos+512]
+    if len(header) < 512:
+        break
+    name = header[0:100].rstrip(b'\x00').decode('utf-8', errors='replace')
+    if name.strip() == '':
+        break
+    size = int(header[124:136].rstrip(b'\x00').decode('utf-8', errors='replace'), 8)
+    typeflag = header[156:157] if len(header) > 156 else b''
+    
+    if typeflag == b'0' or typeflag == b'\0':
+        kind = 'file'
+    elif typeflag == b'5':
+        kind = 'dir'
+    else:
+        kind = f'type={typeflag}'
+    
+    if kind == 'file':
+        file_start = pos + 512
+        file_blocks = (size + 511) // 512
+        file_end = file_start + file_blocks * 512
+        file_data = decompressed[file_start:file_end]
+        # Remove padding
+        if size % 512 != 0:
+            actual_data = file_data[:-((512 - size % 512) % 512)]
+        else:
+            actual_data = file_data
+        
+        found_files.append((name, actual_data))
+        print(f'File: {name}, data size: {len(actual_data)}')
+        
+        # Try to decompress as gzip if this is .gz file
+        if name.endswith('.gz'):
+            print(f'  Attempting gzip decompression...')
+            try:
+                mgz = gzip.decompress(actual_data)
+                print(f'  gzip success: {len(mgz)} bytes')
+                # Save decompressed data
+                base_name = name[:-3]  # remove .gz
+                # Write to a temp file for later use
+                out_path = f'/tmp/{os.path.basename(base_name)}.tmp'
+                with open(out_path, 'wb') as f:
+                    f.write(mgz)
+                print(f'  Saved to {out_path}')
+            except Exception as e:
+                print(f'  gzip failed: {e}')
+            try:
+                mdecompressed = zlib.decompress(actual_data)
+                print(f'  zlib success: {len(mdecompressed)} bytes')
+            except Exception as e:
+                print(f'  zlib failed: {e}')
+    elif kind == 'dir':
+        print(f'Dir: {name}')
+    
+    # Move to next entry
+    if kind == 'file':
+        pos = file_end
+    else:
+        pos += 512
+    pos = (pos + 511) // 512 * 512
+
+print(f'\nTotal files found: {len(found_files)}')
+PYEOF
+Dir: sample_0_reads/
+File: sample_0_reads/reads_mapping.tsv.gz, data size: 81496510
+  Attempting gzip decompression...
+  gzip failed: Compressed file ended before the end-of-stream marker was reached
+  zlib failed: Error -3 while decompressing data: incorrect header check
+
+Total files found: 1
+> build · nemotron-3.5-lightning-free
+[0m$ [0mpython3 << 'PYEOF'
+import zlib, tarfile, io, gzip, struct, os
+
+# Read the long reads tar.gz file
+with open('/vol/data/datasets/cami_III/cami3_toy_human_gut-long_sample_0.tar.gz', 'rb') as f:
+    raw = f.read()
+
+# Decompress what we can (skip 10-byte gzip header)
+dec = zlib.decompressobj(-zlib.MAX_WBITS)
+decompressed = dec.decompress(raw[10:])
+
+# Manual tar parsing
+pos = 0
+found_files = []
+
+while pos < len(decompressed):
+    header = decompressed[pos:pos+512]
+    if len(header) < 512:
+        break
+    name = header[0:100].rstrip(b'\x00').decode('utf-8', errors='replace')
+    if name.strip() == '':
+        break
+    size = int(header[124:136].rstrip(b'\x00').decode('utf-8', errors='replace'), 8)
+    typeflag = header[156:157] if len(header) > 156 else b''
+    
+    if typeflag == b'0' or typeflag == b'\0':
+        kind = 'file'
+    elif typeflag == b'5':
+        kind = 'dir'
+    else:
+        kind = f'type={typeflag}'
+    
+    if kind == 'file':
+        file_start = pos + 512
+        file_blocks = (size + 511) // 512
+        file_end = file_start + file_blocks * 512
+        file_data = decompressed[file_start:file_end]
+        if size % 512 != 0:
+            actual_data = file_data[:-((512 - size % 512) % 512)]
+        else:
+            actual_data = file_data
+        
+        found_files.append((name, actual_data))
+        print(f'File: {name}, data size: {len(actual_data)}')
+        
+        # Try to decompress as gzip if this is .gz file
+        if name.endswith('.gz'):
+            print(f'  Attempting gzip decompression...')
+            try:
+                mgz = gzip.decompress(actual_data)
+                print(f'  gzip success: {len(mgz)} bytes')
+                out_path = f'/tmp/long_{os.path.basename(name)}.tmp'
+                with open(out_path, 'wb') as f:
+                    f.write(mgz)
+                print(f'  Saved to {out_path}')
+            except Exception as e:
+                print(f'  gzip failed: {e}')
+            try:
+                mdecompressed = zlib.decompress(actual_data)
+                print(f'  zlib success: {len(mdecompressed)} bytes')
+            except Exception as e:
+                print(f'  zlib failed: {e}')
+    elif kind == 'dir':
+        print(f'Dir: {name}')
+    
+    if kind == 'file':
+        pos = file_end
+    else:
+        pos += 512
+    pos = (pos + 511) // 512 * 512
+
+print(f'\nTotal files found: {len(found_files)}')
+PYEOF
+Dir: sample_0_reads/
+File: sample_0_reads/reads_mapping.tsv.gz, data size: 10172924
+  Attempting gzip decompression...
+  gzip success: 55889022 bytes
+  Saved to /tmp/long_reads_mapping.tsv.gz.tmp
+  zlib failed: Error -3 while decompressing data: incorrect header check
+File: sample_0_reads/anonymous_reads.fq.gz, data size: 70095709
+  Attempting gzip decompression...
+  gzip failed: Compressed file ended before the end-of-stream marker was reached
+  zlib failed: Error -3 while decompressing data: incorrect header check
+
+Total files found: 2
+> build · nemotron-3.5-lightning-free
+[0m$ [0mpython3 << 'PYEOF'
+import gzip
+
+# Read the decompressed mapping data from long reads
+with open('/tmp/long_reads_mapping.tsv.gz.tmp', 'rb') as f:
+    data = f.read()
+
+print(f'Decompressed mapping data size: {len(data)} bytes')
+
+# Look at the content
+text = data.decode('utf-8', errors='replace')
+lines = text.split('\n')
+print(f'Total lines: {len(lines)}')
+print('\\nFirst 10 lines:')
+for line in lines[:10]:
+    print(line)
+print('\\nLast 5 lines:')
+for line in lines[-5:]:
+    print(line)
+PYEOF
+Decompressed mapping data size: 55889022 bytes
+Total lines: 1136800
+\nFirst 10 lines:
+#anonymous_read_id	genome_id	tax_id	read_id
+S0R0	ASV387.0	1912855	NZ_JAQEHQ010000014.1-29563
+S0R1	fASV196.1	746128	JALZXH010000002.1-18580
+S0R10	ASV149.0	762982	NZ_GL883827.1-249561
+S0R100	ASV149.0	762982	NZ_GL883822.1-7377
+S0R1000	ASV149.0	762982	NZ_GL883846.1-268369
+S0R10000	fASV196.1	746128	JALZXH010000005.1-56068
+S0R100000	ASV431.3	1150298	NZ_JBDMQZ010000006.1-700
+S0R1000000	ASV487.10	2787121	NZ_JADNET010000012.1-50698
+S0R1000001	fASV201.3	5076	JAMFOS010000003.1-13449
+\nLast 5 lines:
+S0R999996	ASV149.0	762982	NZ_GL883870.1-8309
+S0R999997	ASV149.0	762982	NZ_GL883885.1-242969
+S0R999998	fASV201.3	5076	JAMFOS010000004.1-16833
+S0R999999	ASV149.0	762982	NZ_GL883879.1-129565
+> build · nemotron-3.5-lightning-free
+[0m$ [0mpython3 << 'PYEOF'
+import gzip
+
+# Try to decompress the anonymous_reads.fq.gz from long reads more carefully
+# The gzip said "success" for the mapping file but failed for the fastq
+# Let me try with different approaches
+
+# Approach 1: Try gzip.decompress with the raw data
+with open('/tmp/long_reads_anonymous.fq.gz.tmp', 'rb') as f:
+    # Actually, I need to find the .tmp file for the anonymous reads
+    pass
+
+# Let me check what temp files exist
+import os
+tmpfiles = [f for f in os.listdir('/tmp') if 'long' in f and 'anonymous' in f]
+print(f'Temp files with long+anonymous: {tmpfiles}')
+
+# Check for any .tmp files related to long reads
+tmpfiles = [f for f in os.listdir('/tmp') if f.startswith('long')]
+print(f'Temp files starting with long: {tmpfiles}')
+
+# Also check for any .fq.gz.tmp files
+tmpfiles = [f for f in os.listdir('/tmp') if '.fq.gz.tmp' in f or '.tsv.gz.tmp' in f]
+print(f'Temp files with .fq.gz.tmp or .tsv.gz.tmp: {tmpfiles}')
+PYEOF
+Traceback (most recent call last):
+  File "<stdin>", line 8, in <module>
+FileNotFoundError: [Errno 2] No such file or directory: '/tmp/long_reads_anonymous.fq.gz.tmp'
+> build · nemotron-3.5-lightning-free
+[0m$ [0mls -la /tmp/ | grep -i long
+-rw-rw-r--  1 ubuntu ubuntu 55889022 Sep 25 23:23 long_reads_mapping.tsv.gz.tmp
+> build · nemotron-3.5-lightning-free
+[0m$ [0mls -la /vol/data/repos/COMEBin/ 2>/dev/null | head -30
+total 668
+drwxrwxr-x 6 ubuntu ubuntu   4096 Sep 23 13:56 .
+drwxrwxr-x 7 ubuntu ubuntu   4096 Sep 24 00:59 ..
+drwxrwxr-x 9 ubuntu ubuntu   4096 Sep 25 13:43 .git
+drwxrwxr-x 6 ubuntu ubuntu   4096 Sep 23 23:08 COMEBin
+-rw-rw-r-- 1 ubuntu ubuntu  35149 Sep 23 13:56 LICENSE.txt
+-rw-rw-r-- 1 ubuntu ubuntu   7564 Sep 23 13:56 README.md
+-rw-rw-r-- 1 ubuntu ubuntu      0 Sep 23 13:56 __init__.py
+drwxrwxr-x 2 ubuntu ubuntu   4096 Sep 23 13:56 auxiliary
+drwxrwxr-x 2 ubuntu ubuntu   4096 Sep 23 13:56 bin
+-rw-rw-r-- 1 ubuntu ubuntu    938 Sep 23 13:56 comebin_env.yaml
+-rw-rw-r-- 1 ubuntu ubuntu 609909 Sep 23 13:56 overview.png
+[0m$ [0mfind /vol/data/repos -name "run_comebin*" -o -name "*.sh" 2>/dev/null | head -20
+/vol/data/repos/COMEBin-small-fix/COMEBin/run_comebin.sh
+/vol/data/repos/COMEBin-small-fix/COMEBin/scripts/gen_cov_file.sh
+/vol/data/repos/COMEBin-small-fix/bin/run_comebin.sh
+/vol/data/repos/COMEBin-v11/COMEBin/run_comebin.sh
+/vol/data/repos/COMEBin-v11/COMEBin/scripts/gen_cov_file.sh
+/vol/data/repos/COMEBin/COMEBin/run_comebin.sh
+/vol/data/repos/COMEBin/COMEBin/scripts/gen_cov_file.sh
+/vol/data/repos/COMEBin/bin/run_comebin.sh
+/vol/data/repos/metagenomic-binning-benchmark/scripts/make_small_dataset.sh
+/vol/data/repos/metagenomic-binning-benchmark/scripts/prep_cami2_marine.sh
+/vol/data/repos/metagenomic-binning-benchmark/scripts/benchmark-watchdog.sh
+/vol/data/repos/metagenomic-binning-benchmark/scripts/prep_cami2_human.sh
+/vol/data/repos/metagenomic-binning-benchmark/scripts/prep_cami3_toy.sh
+/vol/data/repos/metagenomic-binning-benchmark/scripts/status-heartbeat.sh
+/vol/data/repos/metagenomic-binning-benchmark/scripts/meta-watchdog.sh
+/vol/data/repos/metagenomic-binning-benchmark/scripts/run_comebin_baseline.sh
+/vol/data/repos/metagenomic-binning-benchmark/scripts/make_medium_dataset.sh
+/vol/data/repos/metagenomic-binning-benchmark/scripts/agent-watchdog.sh
+/vol/data/repos/metagenomic-binning-benchmark/scripts/run_small_test.sh
+/vol/data/repos/metagenomic-binning-benchmark/scripts/issue-closer.sh
