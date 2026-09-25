@@ -41561,3 +41561,173 @@ PROGRESS is in sync with disk; no new owner activity (the #18 latest comment is 
 **Bookkeeping:** `.activity` + `status/agent-activity.log` appended; `.heartbeat` touched. No git changes (supervisor's uncommitted docs/figures left untouched; nothing of mine to commit).
 
 **Next turn:** when the supervisor's human-set prep + docs land → register the human benchmark run (`run_comebin_fix.sh`, fresh run dir, detached, `.active_run` verify, watchdog handoff) → `run_eval.sh` → report CheckM2/CheckM v1 row on #18 and in `docs/11`/README; afterward, CAMI II marine sample 0 remains queued behind the human set per the issue-#18 order.
+[0m
+> build · big-pickle
+[0m$ [0mtest -f /vol/data/benchmark/TASK_COMPLETE && echo "TASK_COMPLETE EXISTS" || echo "no TASK_COMPLETE"; echo "===active_run==="; cat /vol/data/benchmark/.active_run 2>/dev/null || echo "none"; echo "=== procs ==="; ps -eo pid,etime,pcpu,args | grep -E 'main.py|run_comebin|run_small|checkm|bwa mem|prep_cami' | grep -v grep | cut -c1-120 | head; echo "=== human input ==="; ls -la /vol/data/datasets/cami_II_human/human_sample0_input/bamfiles/ 2>/dev/null; date -u +%FT%TZ; touch /vol/data/benchmark/.heartbeat
+no TASK_COMPLETE
+===active_run===
+none
+=== procs ===
+=== human input ===
+total 4629832
+drwxrwxr-x 2 ubuntu ubuntu       4096 Sep 25 02:12 .
+drwxrwxr-x 4 ubuntu ubuntu       4096 Sep 25 01:58 ..
+-rw-rw-r-- 1 ubuntu ubuntu 4740153478 Sep 25 02:11 human.bam
+-rw-rw-r-- 1 ubuntu ubuntu     775264 Sep 25 02:12 human.bam.bai
+2026-09-25T02:16:25Z
+> build · big-pickle
+Human-set prep finished (human.bam 4.74 GB + index built, no processes running). Checking issues and repo state:
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && gh issue list -R paulzierep/metagenomic-binning-benchmark --state open --json number,title,updatedAt --jq '.[] | "\(.number) \(.title) \(.updatedAt)"' | sort -k3; echo "=== git ==="; git log --oneline -6 | cut -c1-90; echo "=== tree ==="; git status -sb | head -12; echo "=== PROGRESS current ==="; sed -n '366,382p' PROGRESS.md
+6 Optimization 2026-09-23T20:56:21Z
+1 Idea inbox: benchmark ideas, COMEBin fixes, dataset requests 2026-09-23T14:53:13Z
+7 Optimization plan 2026-09-25T01:39:55Z
+18 Benchmark size 2026-09-25T02:04:26Z
+=== git ===
+ed89e2c status: yes — tiny_test_n101 epoch 29/30 loss 4.71933126449585 acc 6.93069314956
+003192b meta: supervise tick 2026-09-25T02:13:01Z — 0 fix(es)
+b590ed1 status: yes — tiny_test_n101 epoch 29/30 loss 4.71933126449585 acc 6.93069314956
+29cc7db issue #18: tiny floor docs (101-contig rows in docs/11/README), human prep script 
+1629bd4 status: yes — tiny_test_n101 epoch 29/30 loss 4.71933126449585 acc 6.93069314956
+7e17e11 status: yes — tiny_test_n101 epoch 29/30 loss 4.71933126449585 acc 6.93069314956
+=== tree ===
+## main...origin/main
+=== PROGRESS current ===
+- [ ] **ACTIVE: issue #18 "Benchmark size"** (user, 2026-09-24 15:31Z; triaged
+      2026-09-25 01:10Z, comment `5824960513`; first tiny results `5825479305`: `tiny_test_n100`
+      FAILS (exit 1, 0 bins), `tiny_test_n101` PASSES (exit 0, wall 85 s,
+      1 bin; CheckM2 63.89/9.05 MQ1, CheckM v1 46.58/6.35;
+      `results/tiny_test_n101.csv`). Floor ≈ 101 contigs. Remaining: ~1/6
+      human set (supervisor docs in flight — do not touch). Two directives:
+      (a) **smallest functional dataset** — smaller than `comebin_small`
+      (300 contigs / 94 MB / 122 s), stepped down until it still trains and
+      yields ≥ 1 non-empty bin (`run_small_test.sh` now takes `DATA=…` env);
+      (b) **CAMI II human host-associated set at ~1/6 the size of the big demo**
+      (29,434 contigs / 6.9 h ⇒ target ≈ 4,900 contigs, ≈ 1 h per run) — source
+      frl:6425518 (Toy Human Microbiome, `gastrooral/sample_0.tar.gz` ≈ 9.1 GB,
+      structure verified by streamed listing: `bam/OTU_*.bam` per-OTU files —
+      same per-genome-BAM problem as marine, so reads must be re-mapped with
+      `bwa mem` or the assembly subset must carry its own BAM). Disk budget
+      ≤ 30 GB, 377 GB free.
+- [x] **Issue #7 flowchart "different logic"** (user comment 2026-09-24 11:44Z):
+> build · big-pickle
+The supervisor committed `29cc7db` (tiny floor docs + human prep script; tree now clean) and the human BAM is ready with no processes running. Next step per #18 is the human benchmark run (~1–1.5 h). Before launching anything, checking whether the supervisor has claimed that launch (overlap rules), and reviewing the launcher:
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && git show 29cc7db --stat --oneline | head -12; echo "=== supervisor/benchmark-watchdog logs ==="; tail -8 /vol/data/benchmark/logs/supervisor.log 2>/dev/null | cut -c1-140; tail -5 /vol/data/benchmark/logs/benchmark-watchdog.log 2>/dev/null | cut -c1-140; echo "=== launch lock files ==="; ls -la /tmp/*.lock /vol/data/benchmark/*.lock 2>/dev/null | head; echo "=== run dirs ==="; ls -d /vol/data/benchmark/runs/*human* /vol/data/benchmark/runs/human* 2>/dev/null || echo "no human run dir yet"; echo "=== run_comebin_fix modes ==="; grep -n "MODE\|CONTIGS\|BAMDIR\|active_run" /vol/data/repos/metagenomic-binning-benchmark/scripts/run_comebin_fix.sh | head -15
+29cc7db issue #18: tiny floor docs (101-contig rows in docs/11/README), human prep script + tiny CSV
+ docs/01-datasets.md                         |  40 +++++++++++++
+ docs/08-dataset-space-plan.md               |  15 ++++-
+ docs/11-run-results.md                      |   6 +-
+ results/figures/comp_vs_cont_all-runs.png   | Bin 64918 -> 66688 bytes
+ results/figures/comp_vs_cont_by_dataset.png | Bin 87681 -> 103355 bytes
+ results/tiny_test_n101.csv                  |   2 +
+ scripts/prep_cami2_human.sh                 |  85 ++++++++++++++++++++++++++++
+ 7 files changed, 146 insertions(+), 2 deletions(-)
+=== supervisor/benchmark-watchdog logs ===
+2026-09-24T00:45:01+00:00 [bm-watchdog] pid 267462 is alive but is not a registered COMEBin runner; refusing kill/restart: bash /vol/data/be
+2026-09-24T00:50:01+00:00 [bm-watchdog] pid 267462 is alive but is not a registered COMEBin runner; refusing kill/restart: bash /vol/data/be
+2026-09-24T00:55:01+00:00 [bm-watchdog] pid 267462 is alive but is not a registered COMEBin runner; refusing kill/restart: bash /vol/data/be
+2026-09-24T00:55:38+00:00 [bm-watchdog] pid 267462 is alive but is not a registered COMEBin runner; refusing kill/restart: bash /vol/data/be
+2026-09-25T01:45:01+00:00 [bm-watchdog] tiny_test_n100 terminal failure: run_meta exit_code=1 — active-run cleared; no automatic retry
+=== launch lock files ===
+-rw-rw-r-- 1 ubuntu ubuntu 0 Sep 25 02:15 /tmp/agent-watchdog.lock
+-rw-rw-r-- 1 ubuntu ubuntu 0 Sep 25 02:16 /tmp/bench-repo.lock
+-rw-rw-r-- 1 ubuntu ubuntu 0 Sep 25 01:48 /tmp/benchmark-start.lock
+-rw-rw-r-- 1 ubuntu ubuntu 0 Sep 25 02:15 /tmp/benchmark-watchdog.lock
+-rw-rw-r-- 1 ubuntu ubuntu 0 Sep 25 01:43 /tmp/issue-closer.lock
+-rw-rw-r-- 1 ubuntu ubuntu 0 Sep 24 05:02 /tmp/meta-supervisor-verify-2.lock
+-rw-rw-r-- 1 ubuntu ubuntu 0 Sep 24 04:59 /tmp/meta-supervisor-verify.lock
+-rw-rw-r-- 1 ubuntu ubuntu 0 Sep 23 21:52 /tmp/meta-watchdog-final-verify-2.lock
+-rw-rw-r-- 1 ubuntu ubuntu 0 Sep 23 21:50 /tmp/meta-watchdog-final-verify.lock
+-rw-rw-r-- 1 ubuntu ubuntu 0 Sep 23 19:20 /tmp/meta-watchdog-supervisor-final-allok.lock
+=== run dirs ===
+no human run dir yet
+=== run_comebin_fix modes ===
+11:CONTIGS=${CONTIGS:-"$DATA/BATS_SAMN07137077_METAG.scaffolds.min500.fasta.f1k.fasta"}
+12:BAMDIR=${BAMDIR:-"$DATA/bamfiles"}
+13:MODE=${MODE:-fix}
+14:[ -f "$CONTIGS" ] || { echo "ERROR: contigs file not found: $CONTIGS"; exit 1; }
+15:[ -d "$BAMDIR" ] || { echo "ERROR: bamdir not found: $BAMDIR"; exit 1; }
+20:ACTIVE=/vol/data/benchmark/.active_run
+47:COMEBIN_ARGS=(-a "$CONTIGS" -p "$BAMDIR" -o "$RUNDIR/comebin_out" -n 6 -t "$THREADS")
+60:  echo "contigs:    $CONTIGS"
+61:  echo "bamdir:     $BAMDIR"
+73:  "$RUNDIR/comebin_run.log" "$RUNDIR" "$(date +%s)" "$MODE" "$SRC" "$CONTIGS" "$BAMDIR" > "$ACTIVE.tmp.$$"
+> build · big-pickle
+No human run exists yet and no `.active_run` — the run slot is free. The natural first-unfinished-step is launching the human benchmark run. Let me read the full launcher to invoke it correctly and safely (it must refuse overlap):
+[0m→ [0mRead /vol/data/repos/metagenomic-binning-benchmark/scripts/run_comebin_fix.sh 
+> build · big-pickle
+The launcher is ready (fresh rundir, refuses overlap, validates bins). Before launching the ~1 h human run, let me confirm how `MODE` is consumed by eval/watchdog so I register it correctly, and check the human input files match expectations:
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && echo "=== watchdog mode handling ==="; grep -n "mode\|MODE" scripts/benchmark-watchdog.sh 2>/dev/null | head -12; echo "=== run_eval mode/run naming ==="; grep -n "MODE\|mode\|run_comebin\|\.active_run" scripts/run_eval.sh | head -10; echo "=== human input contents ==="; ls -la /vol/data/datasets/cami_II_human/human_sample0_input/ /vol/data/datasets/cami_II_human/human_sample0_input/bamfiles/ 2>/dev/null; grep -c '^>' /vol/data/datasets/cami_II_human/human_sample0_input/contigs.fa; echo "=== source tree clean? ==="; git -C /vol/data/repos/COMEBin-v11 status --porcelain --untracked-files=no | wc -l; git -C /vol/data/repos/COMEBin-v11 log --oneline -1 | cut -c1-60
+=== watchdog mode handling ===
+20:ACTIVE="$BENCH/.active_run"        # pid pgid logfile rundir start_ts mode source [contigs bamdir]
+36:read -r pid pgid logfile rundir start mode source contigs bamdir < "$ACTIVE"
+39:mode=${mode:-baseline}
+46:[[ "$mode" =~ ^[A-Za-z0-9._-]+$ ]] || { log "unsafe active-run mode '$mode'; refusing state change"; exit 0; }
+47:if [ "$mode" != "baseline" ] && [ ! -f "$source/COMEBin/run_comebin.sh" ]; then
+48:  log "registered $mode source is missing run_comebin.sh: $source; refusing state change"
+263:# registrations carry mode + source; legacy five-field baseline registrations
+264:# default to mode=baseline above.
+273:case "$mode" in
+276:  *) rel=scripts/run_comebin_fix.sh; launch_env+=(MODE="$mode" PYTHONDONTWRITEBYTECODE=1)
+285:log "$name restart #$((restarts+1)) mode=$mode source=$source -> $newdir (runner=$RUNNER_REF:$rel snapshot=$(basename "$snapshot"); launcher pid $!)"
+=== run_eval mode/run naming ===
+21:if [ -f /vol/data/benchmark/.active_run ]; then
+22:  read -r active_pid _ < /vol/data/benchmark/.active_run || true
+=== human input contents ===
+/vol/data/datasets/cami_II_human/human_sample0_input/:
+total 448856
+drwxrwxr-x 4 ubuntu ubuntu      4096 Sep 25 01:58 .
+drwxrwxr-x 4 ubuntu ubuntu      4096 Sep 25 01:55 ..
+drwxrwxr-x 2 ubuntu ubuntu      4096 Sep 25 02:12 bamfiles
+-rw-rw-r-- 1 ubuntu ubuntu     79575 Sep 25 01:55 contigs.bed
+-rw-rw-r-- 1 ubuntu ubuntu 168826102 Sep 25 01:55 contigs.fa
+-rw-rw-r-- 1 ubuntu ubuntu        73 Sep 25 01:57 contigs.fa.amb
+-rw-rw-r-- 1 ubuntu ubuntu    172631 Sep 25 01:57 contigs.fa.ann
+-rw-rw-r-- 1 ubuntu ubuntu 166008768 Sep 25 01:57 contigs.fa.bwt
+-rw-rw-r-- 1 ubuntu ubuntu  41502172 Sep 25 01:57 contigs.fa.pac
+-rw-rw-r-- 1 ubuntu ubuntu  83004392 Sep 25 01:58 contigs.fa.sa
+drwxrwxr-x 2 ubuntu ubuntu      4096 Sep 25 02:12 logs
+
+/vol/data/datasets/cami_II_human/human_sample0_input/bamfiles/:
+total 4629832
+drwxrwxr-x 2 ubuntu ubuntu       4096 Sep 25 02:12 .
+drwxrwxr-x 4 ubuntu ubuntu       4096 Sep 25 01:58 ..
+-rw-rw-r-- 1 ubuntu ubuntu 4740153478 Sep 25 02:11 human.bam
+-rw-rw-r-- 1 ubuntu ubuntu     775264 Sep 25 02:12 human.bam.bai
+4900
+=== source tree clean? ===
+0
+95f5ea8 batch1 (v1.1.0 base): sequential bin numbering, drop
+> build · big-pickle
+All checks pass: 4,900 contigs, indexed `human.bam`, source tree clean (`95f5ea8`), run slot free. Launching the ~1 h human benchmark run detached with a fresh run dir (launcher refuses overlap, watchdog owns handoff):
+[0m$ [0mRD=/vol/data/benchmark/runs/human_v11_20260925; test ! -e $RD && echo "fresh dir OK"; cd /vol/data/repos/metagenomic-binning-benchmark; env SRC_COMEBIN=/vol/data/repos/COMEBin-v11 CONTIGS=/vol/data/datasets/cami_II_human/human_sample0_input/contigs.fa BAMDIR=/vol/data/datasets/cami_II_human/human_sample0_input/bamfiles MODE=cami2-human SEED=42 THREADS=32 nohup bash scripts/run_comebin_fix.sh $RD > /vol/data/benchmark/logs/human_v11_launch.log 2>&1 & echo "launcher pid: $!"; sleep 12; echo "=== .active_run ==="; cat /vol/data/benchmark/.active_run 2>/dev/null || echo "not yet"; echo "=== launch log ==="; tail -6 /vol/data/benchmark/logs/human_v11_launch.log 2>/dev/null | cut -c1-140; R=/vol/data/repos/metagenomic-binning-benchmark; TS=$(date -u +%FT%TZ); echo "$TS human benchmark launched: run_comebin_fix.sh MODE=cami2-human contigs=4900 seed42 thr32 rundir=$RD" >> $R/status/agent-activity.log; echo "$TS human-run-launched" >> /vol/data/benchmark/.activity; touch /vol/data/benchmark/.heartbeat
+fresh dir OK
+launcher pid: 1412588
+=== .active_run ===
+1412588 1412587 /vol/data/benchmark/runs/human_v11_20260925/comebin_run.log /vol/data/benchmark/runs/human_v11_20260925 1790302640 cami2-human /vol/data/repos/COMEBin-v11 /vol/data/datasets/cami_II_human/human_sample0_input/contigs.fa /vol/data/datasets/cami_II_human/human_sample0_input/bamfiles
+=== launch log ===
+2026-09-25 02:17:23,273 - generate_aug_data: fastafile
+2026-09-25 02:17:23,276 - Generate augmentation view 1/5 with seed 43.
+2026-09-25 02:17:23,276 - Generate augmentation view 2/5 with seed 44.
+2026-09-25 02:17:23,276 - Generate augmentation view 3/5 with seed 45.
+2026-09-25 02:17:23,276 - Generate augmentation view 4/5 with seed 46.
+2026-09-25 02:17:23,276 - Generate augmentation view 5/5 with seed 47.
+> build · big-pickle
+Run registered and launching (`generate_aug_data` in progress). Verifying the process is alive, then updating PROGRESS:
+[0m$ [0msleep 20; ps -eo pid,pcpu,args | grep -E 'main.py|run_comebin' | grep -v grep | cut -c1-115 | head -6; echo "=== log tail ==="; tail -3 /vol/data/benchmark/runs/human_v11_20260925/comebin_run.log 2>/dev/null | cut -c1-150; echo "=== run_meta ==="; grep -E '^contigs:|^bamdir:|^threads:|^seed:' /vol/data/benchmark/runs/human_v11_20260925/run_meta.txt 2>/dev/null; date -u +%FT%TZ; touch /vol/data/benchmark/.heartbeat
+1412588  0.0 bash scripts/run_comebin_fix.sh /vol/data/benchmark/runs/human_v11_20260925
+1412615  0.0 bash scripts/run_comebin_fix.sh /vol/data/benchmark/runs/human_v11_20260925
+1412622  0.0 /vol/data/tools/bin/micromamba run -p /vol/data/envs/comebin bash run_comebin.sh -a /vol/data/datasets
+1412625  0.0 bash run_comebin.sh -a /vol/data/datasets/cami_II_human/human_sample0_input/contigs.fa -p /vol/data/da
+1412644 63.0 python /vol/data/repos/COMEBin-v11/COMEBin/main.py generate_aug_data --contig_file /vol/data/datasets/
+1412712  9.6 python /vol/data/repos/COMEBin-v11/COMEBin/main.py generate_aug_data --contig_file /vol/data/datasets/
+=== log tail ===
+2026-09-25 02:17:44,587 - Generated binary augmentation features: assembly_contigs=4900, assembly_n50=1464728, retained_contigs=4900, views=6, kmer_fe
+2026-09-25 02:17:44,596 - Coverage requested 32 workers but only 1 BAM files exist; using 1 workers.
+2026-09-25 02:17:44,596 - Coverage inputs: contigs=4900, views=6, BAMs=1, workers=1.
+=== run_meta ===
+contigs:    /vol/data/datasets/cami_II_human/human_sample0_input/contigs.fa
+bamdir:     /vol/data/datasets/cami_II_human/human_sample0_input/bamfiles
+threads:    32
+seed:       42
+2026-09-25T02:17:58Z
+> build · big-pickle
