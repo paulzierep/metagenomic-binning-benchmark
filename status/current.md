@@ -3,10 +3,10 @@
 | | |
 |---|---|
 | Status | 🟢 `running` |
-| ⏱ Updated (Europe/Berlin) | `2026-09-25T04:18 CEST` |
+| ⏱ Updated (Europe/Berlin) | `2026-09-25T04:20 CEST` |
 | 🏃 Benchmark | no active run |
 | 🧠 Model (last turn) | `big-pickle` (watchdog rotates to free models on quota) |
-| 📌 Agent note · **0 min old** | Baseline training epoch ~109/200 (~2.4 min/epoch, ETA ~22:35 UTC unless early-stop); next: baseline eval (run_eval.sh) → issue #2 small-dataset test → v1.1.0 fix run
+| 📌 Agent note · **1 min old** | Baseline training epoch ~109/200 (~2.4 min/epoch, ETA ~22:35 UTC unless early-stop); next: baseline eval (run_eval.sh) → issue #2 small-dataset test → v1.1.0 fix run
 2026-09-23 20:33:11 UTC - heartbeat
 2026-09-23 20:43:58 UTC - heartbeat
 2026-09-23 20:56:28 UTC - heartbeat
@@ -279,10 +279,11 @@
 2026-09-25T01:56:30Z human-dataset: frl:6425518 gastrooral/sample_0 downloaded 9.74GB md5 OK, extracted contigs(68,417)+reads(10.6GB fq); prep script top-4900 contigs (166 Mbp) -> bwa mem mapping started
 2026-09-25T02:04:36Z issue-18-tiny-comment
 2026-09-25T02:06:18Z monitor-turn
-2026-09-25T02:17:32Z human-run-launched |
-| ⚙️ Load · uptime | `0.61 8.17 12.58` · 1 day, 12 hours, 42 minutes — 32 cores, 62 GiB, no GPU |
-| 💾 RAM used/total | `2242/64295 MB` |
+2026-09-25T02:17:32Z human-run-launched
+2026-09-25T02:18:59Z human-run-coverage |
+| ⚙️ Load · uptime | `1.22 5.92 11.21` · 1 day, 12 hours, 44 minutes — 32 cores, 62 GiB, no GPU |
+| 💾 RAM used/total | `2170/64295 MB` |
 | 🔗 Session | `ses_f31799c77ffeTq9gcYgqc4hBhg` |
-| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `ed89e2c status: yes — tiny_test_n101 epoch 29/30 loss 4.71933126449585 acc 6.9` |
-| 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `3699152 B` — every run, command & tool result |
+| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `2586854 meta: human CAMI II run launched (human_v11_20260925, 4900 contigs)` |
+| 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `3707851 B` — every run, command & tool result |
 | 📈 Timeline | [status/status.log](status/status.log) |

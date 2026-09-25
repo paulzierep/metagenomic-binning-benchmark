@@ -41731,3 +41731,93 @@ threads:    32
 seed:       42
 2026-09-25T02:17:58Z
 > build · big-pickle
+Run is healthy — 4,900 contigs, coverage stage, seed 42, 32 threads. Updating PROGRESS and committing:
+[0m$ [0mpython3 - <<'PY'
+p = "/vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md"
+with open(p) as f: c = f.read()
+old = """- [ ] **ACTIVE: issue #18 "Benchmark size"** (user, 2026-09-24 15:31Z; triaged
+      2026-09-25 01:10Z, comment `5824960513`; first tiny results `5825479305`: `tiny_test_n100`"""
+new = """- [ ] **ACTIVE: issue #18 "Benchmark size"** (user, 2026-09-24 15:31Z; triaged
+      2026-09-25 01:10Z, comment `5824960513`; first tiny results `5825479305`: `tiny_test_n100`
+      [keep reading below]; human-set RUN **LAUNCHED 2026-09-25 02:17Z**: mode
+      `cami2-human`, `runs/human_v11_20260925`, contigs=4,900, seed 42, 32 thr,
+      source COMEBin-v11 @ 95f5ea8, in coverage stage, ETA ~1-1.5 h; next: eval
+      via run_eval.sh → #18 report + docs/11 row)"""
+assert old in c, "anchor1 not found"
+c = c.replace(old, new, 1)
+with open(p, "w") as f: f.write(c)
+print("ok")
+PY
+cp /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md /vol/data/benchmark/PROGRESS.md && diff -q /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md /vol/data/benchmark/PROGRESS.md && echo synced
+R=/vol/data/repos/metagenomic-binning-benchmark; flock /tmp/bench-repo.lock bash -c "cd $R && git add PROGRESS.md status/agent-activity.log && git commit -m 'meta: human CAMI II run launched (human_v11_20260925, 4900 contigs)' -q && git push origin main -q"; git -C $R status -sb | head -1; touch /vol/data/benchmark/.heartbeat
+ok
+synced
+## main...origin/main
+> build · big-pickle
+Committed. Final verification of run health:
+[0m$ [0mL=/vol/data/benchmark/runs/human_v11_20260925/comebin_run.log; grep -o 'epoch=[0-9]*/200, batches=[0-9]*, loss=[0-9.]*' $L 2>/dev/null | tail -1 || echo "still in coverage/gene prediction"; tail -2 $L 2>/dev/null | cut -c1-160; ps -eo pid,pcpu,args | grep 'main.py' | grep -v grep | cut -c1-90 | head -3; date -u +%FT%TZ; touch /vol/data/benchmark/.heartbeat
+2026-09-25 02:17:44,596 - Coverage requested 32 workers but only 1 BAM files exist; using 1 workers.
+2026-09-25 02:17:44,596 - Coverage inputs: contigs=4900, views=6, BAMs=1, workers=1.
+1412644 48.6 python /vol/data/repos/COMEBin-v11/COMEBin/main.py generate_aug_data --contig
+1412712 49.6 python /vol/data/repos/COMEBin-v11/COMEBin/main.py generate_aug_data --contig
+2026-09-25T02:18:10Z
+> build · big-pickle
+## Turn summary
+
+**Run launched: `human_v11_20260925`** — the issue-#18(b) human host-associated benchmark (~1/6 the big demo). Detached launch via `run_comebin_fix.sh` in a fresh run dir, registered in `.active_run` (mode `cami2-human`, pid 1412588), verified alive: 4,900 contigs, seed 42, 32 threads, source `COMEBin-v11` @ `95f5ea8` (clean), currently in `generate_aug_data` → coverage (1 BAM → 1 worker), ETA ~1–1.5 h. `benchmark-watchdog.sh` owns the handoff; I will not touch it further.
+
+**Context verified:** supervisor had completed prep (`29cc7db`: `human.bam` 4.74 GB + `.bai` built from `prep_cami2_human.sh 4900`, docs committed); repo tree clean; no `.active_run` existed and no processes were running, so the run slot was genuinely free. The #18 latest comment is my own tiny-results reply — no new owner activity to triage.
+
+**Bookkeeping:** PROGRESS.md updated (human run launched, with context pointer) and mirrored to `/vol/data/benchmark/`; committed under `/tmp/bench-repo.lock` with only intended paths (`PROGRESS.md` + `status/agent-activity.log`), pushed; `.activity` + `agent-activity.log` appended; `.heartbeat` touched.
+
+**Next turn:** on `human_v11_20260925` terminal status → `scripts/run_eval.sh runs/human_v11_20260925` (CheckM2 + CheckM v1, auto CSV + per-bin + figures) → report row/timing on #18 and add to `docs/11`/README → then CAMI II marine sample 0 remains queued.
+[0m
+> build · big-pickle
+[0m$ [0mtest -f /vol/data/benchmark/TASK_COMPLETE && echo "TASK_COMPLETE EXISTS" || echo "no TASK_COMPLETE"; echo "===active_run==="; cat /vol/data/benchmark/.active_run 2>/dev/null || echo "none"; echo "===human run==="; L=/vol/data/benchmark/runs/human_v11_20260925/comebin_run.log; grep -o 'epoch=[0-9]*/200, batches=[0-9]*, loss=[0-9.]*, top1=[0-9.]*' $L 2>/dev/null | tail -2; grep -E '^exit_code|^wall_s|^bins:' /vol/data/benchmark/runs/human_v11_20260925/run_meta.txt 2>/dev/null || echo "not finished"; date -u +%FT%TZ; touch /vol/data/benchmark/.heartbeat
+no TASK_COMPLETE
+===active_run===
+1412588 1412587 /vol/data/benchmark/runs/human_v11_20260925/comebin_run.log /vol/data/benchmark/runs/human_v11_20260925 1790302640 cami2-human /vol/data/repos/COMEBin-v11 /vol/data/datasets/cami_II_human/human_sample0_input/contigs.fa /vol/data/datasets/cami_II_human/human_sample0_input/bamfiles
+===human run===
+not finished
+2026-09-25T02:18:49Z
+> build · big-pickle
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && gh issue list -R paulzierep/metagenomic-binning-benchmark --state open --json number,title,updatedAt --jq '.[] | "\(.number) \(.title) \(.updatedAt)"' | sort -k3 | tail -6; echo "===COMEBin==="; gh issue list -R paulzierep/COMEBin --state open --json number,title,updatedAt 2>&1 | head -3; echo "=== procs ==="; ps -eo pid,pcpu,args | grep -E 'main.py' | grep -v grep | cut -c1-100 | head -4; echo "=== log tail ==="; tail -3 /vol/data/benchmark/runs/human_v11_20260925/comebin_run.log 2>/dev/null | cut -c1-160
+6 Optimization 2026-09-23T20:56:21Z
+1 Idea inbox: benchmark ideas, COMEBin fixes, dataset requests 2026-09-23T14:53:13Z
+7 Optimization plan 2026-09-25T01:39:55Z
+18 Benchmark size 2026-09-25T02:04:26Z
+===COMEBin===
+the 'paulzierep/COMEBin' repository has disabled issues
+=== procs ===
+1412644 26.2 python /vol/data/repos/COMEBin-v11/COMEBin/main.py generate_aug_data --contig_file /vol
+1412712 81.0 python /vol/data/repos/COMEBin-v11/COMEBin/main.py generate_aug_data --contig_file /vol
+=== log tail ===
+2026-09-25 02:17:44,587 - Generated binary augmentation features: assembly_contigs=4900, assembly_n50=1464728, retained_contigs=4900, views=6, kmer_features=136
+2026-09-25 02:17:44,596 - Coverage requested 32 workers but only 1 BAM files exist; using 1 workers.
+2026-09-25 02:17:44,596 - Coverage inputs: contigs=4900, views=6, BAMs=1, workers=1.
+> build · big-pickle
+Run is in the coverage stage (BAM parsing for 4,900 contigs), processes alive — expected to take several minutes before training starts. No new issue activity (all timestamps unchanged). Checking resource health:
+[0m$ [0mtail -4 /vol/data/benchmark/runs/human_v11_20260925/logs/resources.tsv 2>/dev/null; echo "=== load/mem ==="; uptime; free -g | head -2; date -u +%FT%TZ; touch /vol/data/benchmark/.heartbeat
+2026-09-25T02:17:20+00:00	1412622	0.0	0.012	1860
+2026-09-25T02:17:50+00:00	1412622,1412625,1412644,1412712	81.4	0.808	2236
+2026-09-25T02:18:20+00:00	1412622,1412625,1412644,1412712	104.1	0.809	2209
+2026-09-25T02:18:50+00:00	1412622,1412625,1412644,1412712	107.3	0.809	2239
+=== load/mem ===
+ 02:18:56 up 1 day, 12:43,  1 user,  load average: 0.89, 6.98, 11.91
+               total        used        free      shared  buff/cache   available
+Mem:              62           2          13           0          47          60
+2026-09-25T02:18:56Z
+> build · big-pickle
+Run healthy — coverage stage (single BAM worker, ~100% CPU across the aug processes, 0.8 GB RSS, 60 GB RAM free). Logging the turn:
+[0m$ [0mR=/vol/data/repos/metagenomic-binning-benchmark; TS=$(date -u +%FT%TZ); echo "$TS human_v11_20260925: coverage stage (1 BAM worker, 4.9k contigs), healthy; no new issues" >> $R/status/agent-activity.log; echo "$TS human-run-coverage" >> /vol/data/benchmark/.activity; touch /vol/data/benchmark/.heartbeat; echo done
+done
+> build · big-pickle
+## Turn summary
+
+**Run: `human_v11_20260925`** — healthy, in the **coverage stage** (single-BAM worker parsing 4,900-contig alignment after augmentation). Sampler confirms live processes (~100% CPU across aug procs, 0.8 GB RSS, 60 GB RAM free, load ~1). Waiting on training to begin; watchdog owns the handoff; run untouched.
+
+**Issues:** no new activity — all four open issues (#1, #6, #7, #18) have unchanged timestamps; the #18 latest comment is my own tiny-results reply. COMEBin issues still disabled.
+
+**Bookkeeping:** `.activity` + `status/agent-activity.log` appended; `.heartbeat` touched. No git changes (nothing to commit; PROGRESS already records the launch and is in sync).
+
+**Next turn:** on `human_v11_20260925` terminal status → `scripts/run_eval.sh runs/human_v11_20260925` (CheckM2 + CheckM v1, auto CSV + per-bin + figures) → report timing + quality row on #18 and `docs/11`/README → then CAMI II marine sample 0.
