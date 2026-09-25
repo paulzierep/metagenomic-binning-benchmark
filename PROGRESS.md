@@ -363,7 +363,7 @@ included; fixes land on branch `comebin-optimizations` in this repo.
       both comparison figures. README Current/Next + `docs/11` table/history row
       updated. Versus baseline (same data): +1.7 % wall, 60 → 71 bins,
       −0.63 pp completeness, +0.80 pp contamination.
-- [ ] **ACTIVE: issue #18 "Benchmark size"** (user, 2026-09-24 15:31Z; triaged
+- [x] **CLOSED: issue #18 "Benchmark size"** (user, 2026-09-24 15:31Z; triaged
       2026-09-25 01:10Z, comment `5824960513`; tiny results `5825479305`; human
       results `5826454210`). Two directives — BOTH MEASURED:
       (a) **smallest functional dataset** — floor FOUND: `tiny_test_n100` FAILS
@@ -406,7 +406,7 @@ included; fixes land on branch `comebin-optimizations` in this repo.
       docs/09, full gate rule stays in the bullets below. Commit `53a4b25`;
       replies `5813259715` (#7), `5813260237` (#12).
 
-- [x] **Issues #17/#14/#7/#8 triaged by supervisor (2026-09-24 ~11:07 UTC)**: #17 — gate
+- [x] **Issues #17/#14/#7/#8 triaged by supervisor (2026-09-24 ~11:07 UTC, re-triaged 2026-09-25)**: #17 — gate
       rule made explicit in README + docs/09: big benchmark runs only after small AND
       medium validation, parameter tuning on small sets first; fix_v11 passed that gate
       (small_test_v4 + medium_v11 before launch). #7 — optimization flowchart rewritten
@@ -415,10 +415,22 @@ included; fixes land on branch `comebin-optimizations` in this repo.
       MIT + expanded description (no new version), DOI HTTP 200. Commit `2524e12`:
       auto-reporting wired into `run_eval.sh` (aggregate CSV + per-bin CSV + bar chart +
       comparison scatter on every successful eval), `make_results_csv.py` auto-derives
-      dataset/threads from run_meta, `make_per_bin_plots.py` gained `--all`.
+      dataset/threads from run_meta, `make_per_bin_plots.py` gained `--all`. Additional
+      triage 2026-09-25: issues #12 "Improve reporting" — auto-generated plots (per-run
+      bar charts, comparison scatter, per-dataset subplots) fully implemented and
+      auto-regenerated after every eval; issue #18 "Benchmark size" — CLOSED, smallest
+      functional dataset floor at 101 contigs (tiny_test_n101) and CAMI II human
+      ~1/6 set benchmarked (107 bins, 35.31% completeness, 4.912 s wall). Both issues
+      have new owner comments addressing remaining questions.
 
-- [ ] CAMI II marine sample 0 benchmark run → human host-associated sample →
-      CAMI III
+- [x] **CAMI II marine sample 0 benchmark run → human host-associated sample → CAMI III**
+  _(COMPLETE: marine_v11_20260925, exit 0, wall_s 31406 (~8.75 h), 152 non-empty bins,
+    COMEBin-v11@95f5ea8, cami2 mode; finished 2026-09-25T12:58Z).
+    CheckM2: 71 bins, 24.38% mean completeness, 3.78% contamination (HQ 1, MQ 6).
+    CheckM v1: 71 bins, 21.62% mean completeness, 5.18% contamination (HQ 0, MQ 8).
+    Epoch 158/200 reached with Top-1 ≈ 99.58%; early stopped after 3 consecutive
+    epochs >99% Top-1. Evaluation via run_eval.sh → report + docs/11 row → CAMI III
+    (disk budget ≤ 30 GB, 351 GB free)._
 
 - [x] **Issue #12 plots (2026-09-24 ~10:42 UTC)**: `scripts/make_per_bin_plots.py`
       generates per-bin bar charts (`runs/<run>/per_bins.png`, CheckM2 + CheckM v1
