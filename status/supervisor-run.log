@@ -48917,3 +48917,28 @@ ORIGIN: 1614c96f8dde03004d3f633e009684bcb7a51e9f
 1614c96 01:39:09 fix_v11 eval complete + issue #18 triage prep
 e6275d7 01:38:02 status: yes — fix_v11_20260924 epoch 183/200 loss 2.835580348968506 acc 99.03645324707031 model mimo-v2.6-flash-free — agent driver alive; transcript fresh (2s
 > build · big-pickle
+Supervision tick complete. Summary of what I found and fixed:
+
+## State at escalation (01:33Z)
+Only **C8_issues** was broken (6 new/updated issues). C1–C7, C9 all healthy; the driver agent is alive (transcript fresh, heartbeat stale — a known pattern while it generates long output) and mid-turn on the fix_v11 evaluation + issue #18 work.
+
+## Fixes applied (all verified)
+
+**1. Deployed stale scripts → `/vol/data/benchmark/bin`** (degraded state)
+- `make_per_bin_plots.py` (repo 11:32, bin 11:05): the deployed copy lacked the per-dataset subplot function. Since `bin/run_eval.sh` resolves helpers via `dirname $0`, any eval run from `bin` would have silently produced no `comp_vs_cont_by_dataset.png`.
+- `run_small_test.sh` (driver's new `DATA=` override for the #18 tiny set).
+- Verified: diff clean, `bash -n` / `ast.parse` pass, and the 4 cron scripts remain identical between repo and bin.
+
+**2. Issue handling** (no duplicate comments)
+- **#18**: driver already posted triage (01:07:50Z); its prep commit landed. Left to the driver — no response from me.
+- **#7**: driver rewrote the flowchart as a straight 4-stage pipeline ("different logic" per the owner's request) — committed in `1614c96` but not yet confirmed by the owner, so **not** marked done.
+- **Verified complete → wrote `.issues_done` markers** for **#17** (gate rule enforced, fix_v11 run finished), **#14** (README restructured: Current/Next + achievements, slim results with links), **#2** (small dataset validated end-to-end, medium built, space plan incl. human data), **#12** (per-dataset subplot figure embedded in README, regenerated post-fix_v11 with all 4 runs). I cleared the stale `.issues_closed/12` marker so the deterministic closer (next tick, 01:43) can re-close the reopened #12. No issues were closed by any other path.
+- **#6, #1**: not flagged this tick; left open.
+
+**3. Verified the driver's fix_v11 eval artifacts** — exit 0, wall 24,741 s, 71 bins, CheckM2 24.38/3.78 (HQ1/MQ6), CheckM v1 21.62/5.18 (HQ0/MQ8); CSV, per-bin tables, per-bin bar chart, and both comparison figures regenerated.
+
+**4. Git**: pushed the driver's coherent commit `1614c96` ("fix_v11 eval complete + issue #18 triage prep") under `/tmp/bench-repo.lock` — only the expected paths (PROGRESS, docs/09, docs/11, figures, CSV, run_small_test.sh). Verified `HEAD=origin/main=1614c96`, worktree clean, no unexpected staged paths.
+
+**5. Logged** one timestamped line to `supervisor-actions.log`.
+
+No service/cron/driver restarts were needed; no active benchmark run exists to disturb. The driver continues independently on #18 (tiny dataset + CAMI human ~1/6 set); the 4 markers will be closed on GitHub by the issue-closer at the next meta-watchdog tick.
