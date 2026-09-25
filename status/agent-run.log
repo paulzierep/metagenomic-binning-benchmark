@@ -42741,3 +42741,133 @@ the 'paulzierep/COMEBin' repository has disabled issues
       (exit 1, 0 bins, HNSW `k = max_edges+1 = 101` > N = 100), `tiny_test_n101`
 > build · big-pickle
 No new issue activity; repo clean; marine prep is the only in-flight item. Monitoring it with a bounded wait for the `bwa mem`/sort stage:
+[0m$ [0mfor i in $(seq 1 30); do P=$(ps -eo args | grep -E 'bwa (mem|index)|samtools' | grep -v grep | head -1); grep -q 'bam OK' /vol/data/benchmark/logs/marine_prep.log 2>/dev/null && { echo "PREP DONE at ~$((i*20))s"; break; }; sleep 20; done; echo "=== prep log tail ==="; tail -4 /vol/data/benchmark/logs/marine_prep.log | cut -c1-150; echo "=== current procs ==="; ps -eo pid,pcpu,etime,args | grep -E 'bwa|samtools' | grep -v grep | cut -c1-105 | head -3; echo "=== bam? ==="; ls -la /vol/data/datasets/cami_II/marine_sample0_input/bamfiles/ 2>/dev/null | tail -3; date -u +%FT%TZ; touch /vol/data/benchmark/.heartbeat
+=== prep log tail ===
+  reads:          /vol/data/datasets/cami_II/marine_reads/reads_0/simulation_short_read/2018.08.15_09.49.32_sample_0/reads/anonymous_reads.fq.gz (4.9G
+  bam:            /vol/data/datasets/cami_II/marine_sample0_input/bamfiles/marine.bam
+  ground truth:   /vol/data/datasets/cami_II/marine_sample0_input/binning_gs_subset.tsv (41988 S0C* lines)
+  md5s:
+=== current procs ===
+=== bam? ===
+drwxrwxr-x 4 ubuntu ubuntu       4096 Sep 25 04:13 ..
+-rw-rw-r-- 1 ubuntu ubuntu 4952871121 Sep 25 04:12 marine.bam
+-rw-rw-r-- 1 ubuntu ubuntu    3752272 Sep 25 04:13 marine.bam.bai
+2026-09-25T04:13:13Z
+> build · big-pickle
+Marine prep **completed in ~11 min**: `marine.bam` 4.95 GB + index, ground-truth subset (41,988 lines), input_meta written. Verifying the prep summary and how the baseline was previously launched (source + command) so I replicate it exactly:
+[0m$ [0mecho "=== prep log end ==="; tail -8 /vol/data/benchmark/logs/marine_prep.log | cut -c1-160; echo "=== input_meta ==="; cat /vol/data/datasets/cami_II/marine_sample0_input/logs/input_meta.txt 2>/dev/null | cut -c1-150; echo "=== previous baseline run_meta ==="; grep -E '^cmd_wrapper|^mode|^source|^contigs|^bamdir|^seed|^threads|^start_ts|^end_ts' /vol/data/benchmark/runs/baseline_rerun_autorestart1/run_meta.txt 2>/dev/null | cut -c1-170; echo "=== baseline launcher scripts ==="; ls /vol/data/repos/metagenomic-binning-benchmark/scripts/ | grep -i baseline; echo "=== pristine source ==="; git -C /vol/data/repos/COMEBin log --oneline -1 | cut -c1-60; git -C /vol/data/repos/COMEBin status --porcelain --untracked-files=no | wc -l; date -u +%FT%TZ; touch /vol/data/benchmark/.heartbeat
+=== prep log end ===
+  reads:          /vol/data/datasets/cami_II/marine_reads/reads_0/simulation_short_read/2018.08.15_09.49.32_sample_0/reads/anonymous_reads.fq.gz (4.9G gz, inter
+  bam:            /vol/data/datasets/cami_II/marine_sample0_input/bamfiles/marine.bam
+  ground truth:   /vol/data/datasets/cami_II/marine_sample0_input/binning_gs_subset.tsv (41988 S0C* lines)
+  md5s:
+    f108fbbfd766b8415c289a9e3eab2504  /vol/data/datasets/cami_II/marine_sample0_input/contigs.fa
+    94382cf1ab79c884280db715e316fc11  /vol/data/datasets/cami_II/marine_sample0_input/bamfiles/marine.bam
+    5fdd6b320903f53777d1fc4222aae691  /vol/data/datasets/cami_II/marine_sample0_input/binning_gs_subset.tsv
+DONE -> /vol/data/datasets/cami_II/marine_sample0_input
+=== input_meta ===
+cami2_marine_sample0_input:
+  contigs:        /vol/data/datasets/cami_II/marine_sample0_input/contigs.fa (41988 contigs, >=2000 bp)
+  reads:          /vol/data/datasets/cami_II/marine_reads/reads_0/simulation_short_read/2018.08.15_09.49.32_sample_0/reads/anonymous_reads.fq.gz (4.9G
+  bam:            /vol/data/datasets/cami_II/marine_sample0_input/bamfiles/marine.bam
+  ground truth:   /vol/data/datasets/cami_II/marine_sample0_input/binning_gs_subset.tsv (41988 S0C* lines)
+  md5s:
+    f108fbbfd766b8415c289a9e3eab2504  /vol/data/datasets/cami_II/marine_sample0_input/contigs.fa
+    94382cf1ab79c884280db715e316fc11  /vol/data/datasets/cami_II/marine_sample0_input/bamfiles/marine.bam
+    5fdd6b320903f53777d1fc4222aae691  /vol/data/datasets/cami_II/marine_sample0_input/binning_gs_subset.tsv
+=== previous baseline run_meta ===
+source:     /vol/data/repos/COMEBin
+contigs:    /vol/data/datasets/comebin_test_data/BATS_SAMN07137077_METAG.scaffolds.min500.fasta.f1k.fasta
+bamdir:     /vol/data/datasets/comebin_test_data/bamfiles
+threads:    32
+cmd_wrapper: bash run_comebin.sh -a /vol/data/datasets/comebin_test_data/BATS_SAMN07137077_METAG.scaffolds.min500.fasta.f1k.fasta -p /vol/data/datasets/comebin_test_data/
+=== baseline launcher scripts ===
+run_comebin_baseline.sh
+=== pristine source ===
+358ddd8 fix: remove n_jobs from KMeans for sklearn >=1.0 com
+0
+2026-09-25T04:13:21Z
+> build · big-pickle
+Marine input is ready and verified. The pristine source path is at `358ddd8` (which looks like a fix commit, not the original baseline). Checking `run_comebin_baseline.sh` to see exactly which source/commit it pins before launching the marine baseline:
+[0m→ [0mRead /vol/data/repos/metagenomic-binning-benchmark/scripts/run_comebin_baseline.sh 
+> build · big-pickle
+The baseline runner enforces a **clean source** and records HEAD at launch. The pristine repo is currently at `358ddd8`, but the demo baseline ran at `904f649`. Checking the pristine repo's history to pin the marine baseline to the *same* commit as the demo baseline:
+[0m$ [0mcd /vol/data/repos/COMEBin && echo "=== branch/HEAD ==="; git branch --show-current; git log --oneline -12 | cut -c1-90; echo "=== is 904f649 present? ==="; git cat-file -t 904f649 2>/dev/null && git log --oneline -1 904f649 | cut -c1-90; echo "=== is 358ddd8 containing n_jobs fix? ==="; git show --stat 358ddd8 --oneline | head -5; echo "=== worktree cmd ==="; git -C /vol/data/repos/metagenomic-binning-benchmark grep -n "904f649\|358ddd8" docs/01-datasets.md docs/02-comebin-baseline.md 2>/dev/null | head -6; date -u +%FT%TZ; touch /vol/data/benchmark/.heartbeat
+=== branch/HEAD ===
+master
+358ddd8 fix: remove n_jobs from KMeans for sklearn >=1.0 compatibility
+904f649 Fix: initialize covIdxArr with np.zeros instead of np.empty to prevent IndexError 
+ee2e507 Fix KeyError in gen_var.py: skip contigs not present in aug_seq_info_dict
+47c1449 Fix KeyError in gen_cov.py: skip contigs not present in aug_seq_info_dict
+586c7f7 fix: gen_seed_idx handles FileNotFoundError when seed file missing (hmmsearch --cu
+987db95 Improve thread usage in cluster.py
+236b986 control thread usage better; support the datasets with fewer than 1024 contigs;
+b6708e5 control thread usage better; support the datasets with fewer than 1024 contigs;
+d0267b7 support the datasets with fewer than 1024 contigs;DataLoader: drop_last=True
+6e5a6c6 support the datasets with fewer than 1024 contigs; DataLoader: drop_last=False
+24d5195 Update README.md
+f8c74d7 Update README.md
+=== is 904f649 present? ===
+commit
+904f649 Fix: initialize covIdxArr with np.zeros instead of np.empty to prevent IndexError 
+=== is 358ddd8 containing n_jobs fix? ===
+358ddd8 fix: remove n_jobs from KMeans for sklearn >=1.0 compatibility
+ COMEBin/cluster.py | 7 +++++--
+ 1 file changed, 5 insertions(+), 2 deletions(-)
+=== worktree cmd ===
+2026-09-25T04:13:39Z
+> build · big-pickle
+Let me verify what the n_jobs fix actually changed, to decide the marine baseline source commit:
+[0m$ [0mcd /vol/data/repos/COMEBin && echo "=== 358ddd8 diff (n_jobs fix) ==="; git show 358ddd8 -- COMEBin/cluster.py | head -40; echo "=== KMeans call at 904f649 (demo baseline source) ==="; git show 904f649:COMEBin/cluster.py | grep -n "KMeans\|n_jobs" | head; echo "=== KMeans call at 358ddd8 (current master) ==="; git show 358ddd8:COMEBin/cluster.py | grep -n "KMeans\|n_jobs" | head; date -u +%FT%TZ; touch /vol/data/benchmark/.heartbeat
+=== 358ddd8 diff (n_jobs fix) ===
+commit 358ddd8567937b42ff835d5ce357e599e8817d5f
+Author: paulzierep <paulzierep@users.noreply.github.com>
+Date:   Thu Sep 24 08:36:20 2026 +0000
+
+    fix: remove n_jobs from KMeans for sklearn >=1.0 compatibility
+    
+    sklearn 1.1.3 removed the n_jobs parameter from KMeans.__init__.
+    Also fix imports to use public sklearn API instead of private
+    sklearn.cluster._kmeans module.
+    
+    Fixes clustering failure (Seed_num: 0) that prevented binning.
+
+diff --git a/COMEBin/cluster.py b/COMEBin/cluster.py
+index d76a6ca..f08027b 100644
+--- a/COMEBin/cluster.py
++++ b/COMEBin/cluster.py
+@@ -10,7 +10,10 @@ import logging
+ 
+ from igraph import Graph
+ from sklearn.preprocessing import normalize
+-from sklearn.cluster._kmeans import euclidean_distances, stable_cumsum, KMeans, check_random_state, row_norms, MiniBatchKMeans
++from sklearn.cluster import KMeans, MiniBatchKMeans
++from sklearn.metrics.pairwise import euclidean_distances, row_norms
++from sklearn.utils import check_random_state
++from sklearn.utils.extmath import stable_cumsum
+ 
+ from utils import get_length, calculateN50, save_result
+ from scripts.gen_bins_from_tsv import gen_bins as gen_bins_from_tsv
+@@ -100,7 +103,7 @@ def seed_kmeans_full(logger, contig_file: str, namelist: List[str], out_path: st
+     output_temp = out_path + '_k_' + str(
+         bin_number) + '_result.tsv'
+     if not (os.path.exists(output_temp)):
+-        km = KMeans(n_clusters=bin_number, n_jobs=-1, random_state=7, algorithm="full",
++        km = KMeans(n_clusters=bin_number, random_state=7, algorithm="full",
+                     init=functools.partial(partial_seed_init, seed_idx=seed_bacar_marker_idx))
+         km.fit(X_mat, sample_weight=length_weight)
+         idx = km.labels_
+=== KMeans call at 904f649 (demo baseline source) ===
+13:from sklearn.cluster._kmeans import euclidean_distances, stable_cumsum, KMeans, check_random_state, row_norms, MiniBatchKMeans
+103:        km = KMeans(n_clusters=bin_number, n_jobs=-1, random_state=7, algorithm="full",
+140:    Partial initialization of KMeans centers with seeds from seed_idx.
+152:    This function initializes a KMeans clustering by partially seeding the centers with provided seeds.
+153:    It is a modification of the KMeans initialization algorithm.
+=== KMeans call at 358ddd8 (current master) ===
+13:from sklearn.cluster import KMeans, MiniBatchKMeans
+106:        km = KMeans(n_clusters=bin_number, random_state=7, algorithm="full",
+143:    Partial initialization of KMeans centers with seeds from seed_idx.
+155:    This function initializes a KMeans clustering by partially seeding the centers with provided seeds.
+156:    It is a modification of the KMeans initialization algorithm.
+2026-09-25T04:14:00Z
+> build · big-pickle
