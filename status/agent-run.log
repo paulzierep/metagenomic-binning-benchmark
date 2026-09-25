@@ -42368,3 +42368,282 @@ Verifying the posted comment, then updating docs:
 > build · big-pickle
 [0m→ [0mRead /vol/data/repos/metagenomic-binning-benchmark/README.md [90m[offset=14, limit=80][0m
 > build · big-pickle
+Updating docs/11 (table + history rows), README, and checking peak RAM for the row:
+[0m$ [0mR=/vol/data/benchmark/runs/human_v11_20260925; echo "=== resources header + peak ==="; head -1 $R/logs/resources.tsv; awk -F'\t' 'NR>1{if($3>mx)mx=$3} END{print "peak RSS GB:", mx}' $R/logs/resources.tsv; echo "=== run log first ts ==="; grep -m1 '^2026' $R/comebin_run.log | cut -c1-23
+=== resources header + peak ===
+timestamp	pids	cpu_pct	rss_gb	system_mem_mb
+peak RSS GB: 3103.3
+=== run log first ts ===
+2026-09-25 02:17:22,180
+> build · big-pickle
+RSS is column 4 (col 3 was CPU%). Getting the real peak:
+[0m$ [0mR=/vol/data/benchmark/runs/human_v11_20260925; awk -F'\t' 'NR>1{if($4+0>mx)mx=$4+0} END{print "peak RSS GB:", mx}' $R/logs/resources.tsv
+peak RSS GB: 10.403
+> build · big-pickle
+Peak RSS 10.4 GB. Now the docs/11 edits:
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/docs/11-run-results.md
+Index: /vol/data/repos/metagenomic-binning-benchmark/docs/11-run-results.md
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/docs/11-run-results.md
++++ /vol/data/repos/metagenomic-binning-benchmark/docs/11-run-results.md
+@@ -9,8 +9,9 @@
+ | `medium_v11_20260924` | 2026-09-24 | [95f5ea8](https://github.com/paulzierep/COMEBin/commit/95f5ea820f9a4e76f5c2911c0b5ed507ab67b015) | `comebin_medium` (3,000 contigs) | 32 | 2,326 s | 10.69 GB | 16 | 35.93 / 4.67 | 33.83 / 6.03 | ✅ complete; 200/200 epochs, 61.23% Top1; [CSV](../results/medium_v11_20260924.csv) |
+ | `fix_v11_20260924` | 2026-09-24 | [95f5ea8](https://github.com/paulzierep/COMEBin/commit/95f5ea820f9a4e76f5c2911c0b5ed507ab67b015) | COMEBin demo (29,434 contigs) | 32 | 24,741 s | 9.4 GB | 71 | 24.38 / 3.78 | 21.62 / 5.18 | ✅ complete; stopped early at epoch 184/200 (`--earlystop`, Top-1 ≥ 99% × 3); [CSV](../results/fix_v11_20260924.csv) |
+ | `tiny_test_n100` | 2026-09-25 | [c8f22e4](https://github.com/paulzierep/COMEBin/commit/c8f22e4935a66a0fd58b794489a9021671b15437) | `comebin_tiny` (100 contigs) | 8 | 85 s | – | – | – | – | ❌ exit 1 — HNSW `k = max_edges+1 = 101` > N=100; empirical floor is 101 contigs (issue #18) |
+ | `tiny_test_n101` | 2026-09-25 | [c8f22e4](https://github.com/paulzierep/COMEBin/commit/c8f22e4935a66a0fd58b794489a9021671b15437) | `comebin_tiny_101` (101 contigs) | 8 | 85 s | – | 1 | 63.89 / 9.05 | 46.58 / 6.35 | ✅ complete, smallest passing dataset (30 epochs); [CSV](../results/tiny_test_n101.csv) |
++| `human_v11_20260925` | 2026-09-25 | [95f5ea8](https://github.com/paulzierep/COMEBin/commit/95f5ea820f9a4e76f5c2911c0b5ed507ab67b015) | CAMI II human host-associated (4,900 contigs / 166 Mbp, ~1/6 demo) | 32 | 4,912 s | 10.40 GB | 107 | 35.31 / 5.13 | 32.64 / 4.65 | ✅ complete; 200/200 epochs, Top-1 ≈ 96 %; first dataset with substantial HQ recovery (CheckM2 HQ 20 / MQ 29, CheckM v1 HQ 21 / MQ 29); [CSV](../results/human_v11_20260925.csv) |
+ | `human_v11_20260925` | 2026-09-25 | [95f5ea8](https://github.com/paulzierep/COMEBin/commit/95f5ea820f9a4e76f5c2911c0b5ed507ab67b015) | CAMI II human sample 0 (4,900 contigs, 166 Mbp) | 32 | 4,912 s (82 min) | 8.6 GB | 107 | 35.31 / 5.13 (HQ 20, MQ 29) | 32.64 / 4.65 (HQ 21, MQ 29) | ✅ complete; 200/200 epochs, final Top-1 95.94%; [CSV](../results/human_v11_20260925.csv) |
+ | `baseline_unmodified` | 2026-09-23 | [987db95](https://github.com/paulzierep/COMEBin/commit/987db95d8d399f30b7c82a5f5f40ed6bfdc906c7) (upstream) | COMEBin demo (29,434 contigs) | 32 | – | – | – | – | – | ⏹ failed at epoch 175/200 — see [Run history](#run-history--what-happened-and-whats-next) |
+ 
+ Column contract: **Wall time** = total seconds (plus per-stage breakdown in `docs/02-comebin-baseline.md`), **Bins** = bins exported (≥200 kb filter noted), **comp/cont** = mean completeness / mean contamination, **HQ/MQ counts** live in `results/<run>.csv`. **Source commit** is always a clickable link to that exact commit on GitHub. Per-bin CheckM2 values for the completed medium gate are in [`medium_v11_20260924_checkm2_stats.csv`](../medium_v11_20260924_checkm2_stats.csv).
+
+> build · big-pickle
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/docs/11-run-results.md
+Index: /vol/data/repos/metagenomic-binning-benchmark/docs/11-run-results.md
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/docs/11-run-results.md
++++ /vol/data/repos/metagenomic-binning-benchmark/docs/11-run-results.md
+@@ -36,8 +36,9 @@
+ | [`medium_v11_20260924`](../runs/medium_v11_20260924/comebin_run.log) — 2026-09-24 09:25:50 → 10:04:36 | [95f5ea8](https://github.com/paulzierep/COMEBin/commit/95f5ea820f9a4e76f5c2911c0b5ed507ab67b015) | **✅ Complete.** 200/200 epochs, 61.23% Top1, 16 non-empty bins in 2,326 s. CheckM2: 35.93% mean completeness / 4.67% contamination (MQ=2). CheckM v1: 33.83% / 6.03% (MQ=3). | Evaluation completed with `scripts/run_eval.sh`; see the [aggregate CSV](../results/medium_v11_20260924.csv) and the [per-bin tables](../runs/medium_v11_20260924/per_bin_results.csv) / [CheckM2 per-bin](../runs/medium_v11_20260924/checkm2_per_bin.csv). |
+ | [`fix_v11_20260924`](../runs/fix_v11_20260924/comebin_run.log) — 2026-09-24 10:37:15 → 17:29:36 | [95f5ea8](https://github.com/paulzierep/COMEBin/commit/95f5ea820f9a4e76f5c2911c0b5ed507ab67b015) | **✅ Complete** (exit 0, wall 24,741 s). Stopped early at **epoch 184/200** because upstream v1.1.0 `run_comebin.sh` passes `--earlystop` (Top-1 > 99% for 3 epochs: 99.10 → 99.22 → 99.04%), then clustering completed normally (120/120 Leiden) → **71 non-empty bins**. CheckM2: 24.38% / 3.78% (HQ 1, MQ 6). CheckM v1: 21.62% / 5.18% (HQ 0, MQ 8). Versus the baseline on the same data: +1.7% wall time, +11 bins, −0.63 pp completeness, +0.80 pp contamination. | Evaluation done with `scripts/run_eval.sh` (CheckM2 71 s, CheckM v1 398 s); see the [aggregate CSV](../results/fix_v11_20260924.csv) and [per-bin table](../runs/fix_v11_20260924/per_bin_results.csv). Next: issue #18 datasets (tiny + CAMI human ~1/6). |
+ | [`tiny_test_n100`](../runs/tiny_test_n100/comebin_run.log) — 2026-09-25 01:44 → 01:46 | [c8f22e4](https://github.com/paulzierep/COMEBin/commit/c8f22e4935a66a0fd58b794489a9021671b15437) | **Failed, exit 1 (85 s).** Smallest-possible-dataset probe for issue #18: `cluster.py` builds an HNSW index and queries `k = max_edges + 1 = 101` neighbours with N = 100 contigs → `RuntimeError: Cannot return the results in a contiguous 2D array` → empty `get_bin_quality` → `ValueError: max() arg is an empty sequence`. | The empirical floor is **101 contigs**; see `tiny_test_n101`. A defensive clamp in `cluster.py` is proposed as a future fix batch (not applied — the benchmark runs upstream). |
+ | [`tiny_test_n101`](../runs/tiny_test_n101/comebin_run.log) — 2026-09-25 01:46:33 → 01:47:58 (85 s) | [c8f22e4](https://github.com/paulzierep/COMEBin/commit/c8f22e4935a66a0fd58b794489a9021671b15437) | **✅ Complete.** 101 contigs (issue #18 tiny floor), 30/30 epochs, exit 0, **1 non-empty bin**. CheckM2: 63.89% / 9.05% (MQ 1). CheckM v1: 46.58% / 6.35%. | Smallest passing dataset verified; see [`results/tiny_test_n101.csv`](../results/tiny_test_n101.csv). CAMI-II human ~1/6 set is next (issue #18). |
++| [`human_v11_20260925`](../runs/human_v11_20260925/comebin_run.log) — 2026-09-25 02:17:22 → 03:39:15 (4,912 s) | [95f5ea8](https://github.com/paulzierep/COMEBin/commit/95f5ea820f9a4e76f5c2911c0b5ed507ab67b015) | **✅ Complete** (exit 0). Issue #18b human host-associated set: top-4,900-longest contigs of CAMI II Toy Human Microbiome `gastrooral/sample_0` (166 Mbp, ~1/6 demo), reads re-mapped `bwa mem -p` → `bamfiles/human.bam` (`scripts/prep_cami2_human.sh 4900`). 200/200 epochs (Top-1 ≈ 96%, no early-stop), 120/120 Leiden → **107 non-empty bins**. CheckM2: 35.31% / 5.13% (HQ 20, MQ 29). CheckM v1: 32.64% / 4.65% (HQ 21, MQ 29). First dataset in the benchmark with substantial HQ recovery (top bins ≈ 100% / ≤ 0.45% under both tools). | Evaluation via `scripts/run_eval.sh` (CheckM2 193 s, CheckM v1 686 s); [aggregate CSV](../results/human_v11_20260925.csv), [per-bin table](../runs/human_v11_20260925/per_bin_results.csv). Next: CAMI II marine sample_0 (~1/6) baseline + fix, then CAMI III. |
+ 
+ ### Guard-only launches
+ 
+ Twelve launches stopped before COMEBin started. They are grouped by episode so refusals are not mistaken for benchmark runs; raw watchdog refusals remain in `/vol/data/benchmark/logs/*.launch.log`.
+
+> build · big-pickle
+Now README (replace the in-progress #18b paragraph with the completed human run):
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/README.md
+Index: /vol/data/repos/metagenomic-binning-benchmark/README.md
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/README.md
++++ /vol/data/repos/metagenomic-binning-benchmark/README.md
+@@ -33,14 +33,19 @@
+ dataset is **`comebin_tiny_101` (101 contigs)**; `tiny_test_n101` passed in
+ 85 s with **1 bin**, CheckM2 63.89 % / 9.05 %, CheckM v1 46.58 % / 6.35 %
+ ([CSV](results/tiny_test_n101.csv)).
+ 
+-**Next (in progress this turn):** issue **#18b** — CAMI II **human
+-host-associated** set at ~1/6 the size of the demo: sample 0 downloaded +
+-verified (9.74 GB, md5 OK), top 4,900 longest GSA contigs (166 Mbp) selected,
+-reads re-mapped with `bwa mem -p` into `human_sample0_input/`; the benchmark run
+-launches once mapping finishes. Then CAMI II marine → CAMI III (disk budget
+-≤ ~105 GB).
++**Completed human run (issue #18b):** `human_v11_20260925` on the CAMI II
++**human host-associated** ~1/6 set (top-4,900-longest contigs of
++`gastrooral/sample_0`, 166 Mbp, reads re-mapped with `bwa mem` into
++`human_sample0_input/`): exit 0, wall **4,912 s (≈ 1.37 h)** — ~1/5 the demo's
++6.9 h — 200/200 epochs, **107 bins**, CheckM2 **35.31 % / 5.13 %** (HQ 20 /
++MQ 29), CheckM v1 **32.64 % / 4.65 %** (HQ 21 / MQ 29): the **first dataset in
++the benchmark with substantial HQ genome recovery** (20–21 vs 0–1 on the demo
++set) ([CSV](results/human_v11_20260925.csv)).
++
++**Next (in progress this turn):** CAMI II **marine** sample 0 (~1/6 set) →
++baseline + fix runs, then CAMI III (disk budget ≤ ~105 GB).
+ Per-run table + full history: [`docs/11-run-results.md`](docs/11-run-results.md).
+ 
+ ## Optimization workflow (issue #7)
+ 
+
+> build · big-pickle
+Now PROGRESS.md — updating the #18 section with the completed human run:
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && grep -n "ACTIVE: issue #18\|human_v11_20260925\|Remaining: ~1/6\|two directives" PROGRESS.md | head; echo "---"; sed -n '/ACTIVE: issue #18/,/two directives/p' PROGRESS.md | head -20
+366:- [ ] **ACTIVE: issue #18 "Benchmark size"** (user, 2026-09-24 15:31Z; triaged
+369:      `cami2-human`, `runs/human_v11_20260925`, contigs=4,900, seed 42, 32 thr,
+379:      (4.74 GB, md5 `c48e4caa…`). Run `runs/human_v11_20260925` registered with
+---
+- [ ] **ACTIVE: issue #18 "Benchmark size"** (user, 2026-09-24 15:31Z; triaged
+      2026-09-25 01:10Z, comment `5824960513`; first tiny results `5825479305`: `tiny_test_n100`
+      [keep reading below]; human-set RUN **LAUNCHED 2026-09-25 02:17Z**: mode
+      `cami2-human`, `runs/human_v11_20260925`, contigs=4,900, seed 42, 32 thr,
+      source COMEBin-v11 @ 95f5ea8, in coverage stage, ETA ~1-1.5 h; next: eval
+      via run_eval.sh → #18 report + docs/11 row)
+      FAILS (exit 1, 0 bins), `tiny_test_n101` PASSES (exit 0, wall 85 s,
+      1 bin; CheckM2 63.89/9.05 MQ1, CheckM v1 46.58/6.35;
+      `results/tiny_test_n101.csv`). Floor ≈ 101 contigs. Tiny results comment:
+      `5825479305`. (b) **human set input BUILT + run LAUNCHED (2026-09-25
+      02:17Z)**: `scripts/prep_cami2_human.sh 4900` → top 4,900 longest GSA
+      contigs (166,008,681 bp, N50 1,464,728) + all 10.6 GB reads re-mapped
+      (`bwa mem -p -t 32`, 32 min) → `human_sample0_input/{contigs.fa,bamfiles/human.bam}`
+      (4.74 GB, md5 `c48e4caa…`). Run `runs/human_v11_20260925` registered with
+      the watchdog (source COMEBin-v11 `95f5ea8`, seed 42, 32 thr, MODE=cami2-human);
+      epoch 1/200 at 02:30Z took 16.3 s / 4 batches ⇒ projected ≈ 1 h + clustering.
+      Progress comment: `5825639930`. Two directives:
+      (a) **smallest functional dataset** — smaller than `comebin_small`
+      (300 contigs / 94 MB / 122 s), stepped down until it still trains and
+      yields ≥ 1 non-empty bin (`run_small_test.sh` now takes `DATA=…` env);
+> build · big-pickle
+The #18 bullet has grown messy from my earlier inline edits. Let me view the full bullet and rewrite it cleanly:
+[0m→ [0mRead /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md [90m[limit=30, offset=366][0m
+> build · big-pickle
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md
+Index: /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md
++++ /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md
+@@ -363,34 +363,27 @@
+       both comparison figures. README Current/Next + `docs/11` table/history row
+       updated. Versus baseline (same data): +1.7 % wall, 60 → 71 bins,
+       −0.63 pp completeness, +0.80 pp contamination.
+ - [ ] **ACTIVE: issue #18 "Benchmark size"** (user, 2026-09-24 15:31Z; triaged
+-      2026-09-25 01:10Z, comment `5824960513`; first tiny results `5825479305`: `tiny_test_n100`
+-      [keep reading below]; human-set RUN **LAUNCHED 2026-09-25 02:17Z**: mode
+-      `cami2-human`, `runs/human_v11_20260925`, contigs=4,900, seed 42, 32 thr,
+-      source COMEBin-v11 @ 95f5ea8, in coverage stage, ETA ~1-1.5 h; next: eval
+-      via run_eval.sh → #18 report + docs/11 row)
+-      FAILS (exit 1, 0 bins), `tiny_test_n101` PASSES (exit 0, wall 85 s,
+-      1 bin; CheckM2 63.89/9.05 MQ1, CheckM v1 46.58/6.35;
+-      `results/tiny_test_n101.csv`). Floor ≈ 101 contigs. Tiny results comment:
+-      `5825479305`. (b) **human set input BUILT + run LAUNCHED (2026-09-25
+-      02:17Z)**: `scripts/prep_cami2_human.sh 4900` → top 4,900 longest GSA
+-      contigs (166,008,681 bp, N50 1,464,728) + all 10.6 GB reads re-mapped
+-      (`bwa mem -p -t 32`, 32 min) → `human_sample0_input/{contigs.fa,bamfiles/human.bam}`
+-      (4.74 GB, md5 `c48e4caa…`). Run `runs/human_v11_20260925` registered with
+-      the watchdog (source COMEBin-v11 `95f5ea8`, seed 42, 32 thr, MODE=cami2-human);
+-      epoch 1/200 at 02:30Z took 16.3 s / 4 batches ⇒ projected ≈ 1 h + clustering.
+-      Progress comment: `5825639930`. Two directives:
+-      (a) **smallest functional dataset** — smaller than `comebin_small`
+-      (300 contigs / 94 MB / 122 s), stepped down until it still trains and
+-      yields ≥ 1 non-empty bin (`run_small_test.sh` now takes `DATA=…` env);
+-      (b) **CAMI II human host-associated set at ~1/6 the size of the big demo**
+-      (29,434 contigs / 6.9 h ⇒ target ≈ 4,900 contigs, ≈ 1 h per run) — source
+-      frl:6425518 (Toy Human Microbiome, `gastrooral/sample_0.tar.gz` ≈ 9.1 GB,
+-      structure verified by streamed listing: `bam/OTU_*.bam` per-OTU files —
+-      same per-genome-BAM problem as marine, so reads must be re-mapped with
+-      `bwa mem` or the assembly subset must carry its own BAM). Disk budget
+-      ≤ 30 GB, 377 GB free.
++      2026-09-25 01:10Z, comment `5824960513`; tiny results `5825479305`; human
++      results `5826454210`). Two directives — BOTH MEASURED:
++      (a) **smallest functional dataset** — floor FOUND: `tiny_test_n100` FAILS
++      (exit 1, 0 bins, HNSW `k = max_edges+1 = 101` > N = 100), `tiny_test_n101`
++      PASSES (exit 0, wall 85 s, 1 bin; CheckM2 63.89/9.05 MQ1, CheckM v1
++      46.58/6.35; `results/tiny_test_n101.csv`). Floor ≈ 101 contigs.
++      (b) **CAMI II human host-associated ~1/6 set** — input BUILT
++      (`scripts/prep_cami2_human.sh 4900`: top 4,900 longest GSA contigs of
++      `gastrooral/sample_0`, 166,008,681 bp, N50 1,464,728; all 10.6 GB reads
++      re-mapped `bwa mem -p -t 32` → `human_sample0_input/bamfiles/human.bam`,
++      4.74 GB, md5 `c48e4caa…`) and run **COMPLETE + EVALUATED**:
++      `runs/human_v11_20260925` (source COMEBin-v11 `95f5ea8`, seed 42, 32 thr,
++      MODE=cami2-human) exit 0, wall 4,912 s (≈ 1.37 h), 200/200 epochs
++      (Top-1 ≈ 96 %, no early-stop), **107 bins**; CheckM2 35.31/5.13
++      (HQ 20 / MQ 29), CheckM v1 32.64/4.65 (HQ 21 / MQ 29) — first dataset
++      with substantial HQ recovery (top bins ≈ 100 % / ≤ 0.45 % under both
++      tools). Comment `5826454210`, docs/11 row + per-bin CSV + figures in.
++      Remaining: **CAMI II marine sample_0** (~1/6, `scripts/prep_cami2_marine.sh`)
++      → baseline + fix runs, then CAMI III (disk budget ≤ 30 GB, 377 GB free).
+ - [x] **Issue #7 flowchart "different logic"** (user comment 2026-09-24 11:44Z):
+       previous cycle/loop flowchart rendered badly → replaced with a straight
+       4-stage pipeline (small → medium → large → keep/revert, no back-edges) in
+       README + docs/09, delivery comment posted 2026-09-25 01:39Z, pushed and
+
+> build · big-pickle
+Syncing PROGRESS mirror, appending logs, and committing under lock:
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && cp PROGRESS.md /vol/data/benchmark/PROGRESS.md && diff -q PROGRESS.md /vol/data/benchmark/PROGRESS.md >/dev/null && echo "PROGRESS synced"; R=/vol/data/repos/metagenomic-binning-benchmark; TS=$(date -u +%FT%TZ); echo "$TS #18 human results comment 5826454210 posted; docs/11 row + README + PROGRESS updated (107 bins, CheckM2 35.31/5.13 HQ20, CheckM v1 32.64/4.65 HQ21, wall 4912 s)" >> $R/status/agent-activity.log; echo "$TS human-results-reported" >> /vol/data/benchmark/.activity; flock /tmp/bench-repo.lock bash -c "cd $R && git add README.md docs/11-run-results.md PROGRESS.md status/agent-activity.log results/human_v11_20260925.csv runs/human_v11_20260925/per_bin_results.csv runs/human_v11_20260925/per_bins.png results/figures/comp_vs_cont_all-runs.png results/figures/comp_vs_cont_by_dataset.png && git commit -q -m 'issue #18: human host-associated run complete + evaluated (human_v11_20260925, 107 bins; CheckM2 HQ20/MQ29, CheckM v1 HQ21/MQ29, wall 4912 s); docs/11 + README + PROGRESS rows' && git push origin main -q"; echo "=== after push ==="; git status -sb | head -8; touch /vol/data/benchmark/.heartbeat
+PROGRESS synced
+=== after push ===
+## main...origin/main
+> build · big-pickle
+Committed and pushed cleanly. Checking whether marine prep (#18 remainder) is already in flight before starting anything:
+[0m$ [0mecho "=== procs ==="; ps -eo pid,etime,pcpu,args | grep -v grep | grep -E 'prep_cami2|bwa|wget|curl|samtools|tar|bsub|frl' | cut -c1-120 | head -8; echo "=== marine dirs ==="; ls -la /vol/data/datasets/ 2>/dev/null | grep -i marine; ls /vol/data/datasets/cami_II_marine/ 2>/dev/null | head; echo "=== prep scripts ==="; ls -la /vol/data/repos/metagenomic-binning-benchmark/scripts/prep_cami2_marine.sh 2>/dev/null; echo "=== git log ==="; cd /vol/data/repos/metagenomic-binning-benchmark && git log --oneline -2 | cut -c1-85; echo "=== activity tail ==="; tail -3 status/agent-activity.log; date -u +%FT%TZ; touch /vol/data/benchmark/.heartbeat
+=== procs ===
+   1986  1-14:24:56  0.0 sshd: /usr/sbin/sshd -D [listener] 0 of 10-100 startups
+1561664       19:07  0.0 timeout --foreground --kill-after=30s 3600s opencode run --auto --session ses_f31799c77ffeTq9gc
+1561665       19:07  0.3 opencode run --auto --session ses_f31799c77ffeTq9gcYgqc4hBhg --model opencode/big-pickle --titl
+=== marine dirs ===
+=== prep scripts ===
+-rw-rw-r-- 1 ubuntu ubuntu 3070 Sep 23 19:19 /vol/data/repos/metagenomic-binning-benchmark/scripts/prep_cami2_marine.sh
+=== git log ===
+98e5b91 issue #18: human host-associated run complete + evaluated (human_v11_20260925
+eea25ae status: yes — human_v11_20260925 epoch 199/200 loss 0.5311863422393799 acc 
+=== activity tail ===
+2026-09-25T03:42:42Z human_v11_20260925 FINISHED exit0 wall4912s bins107; run_eval.sh launched (CheckM2+CheckMv1)
+2026-09-25T03:59:36Z #18 comment posted: human_v11_20260925 results (107 bins, CheckM2 35.31/5.13 HQ20, CheckMv1 32.64/4.65 HQ21)
+2026-09-25T04:00:50Z #18 human results comment 5826454210 posted; docs/11 row + README + PROGRESS updated (107 bins, CheckM2 35.31/5.13 HQ20, CheckM v1 32.64/4.65 HQ21, wall 4912 s)
+2026-09-25T04:00:58Z
+> build · big-pickle
+No marine work in flight, no marine dataset dirs, prep script present. Reading it before deciding whether to kick off marine prep:
+[0m→ [0mRead /vol/data/repos/metagenomic-binning-benchmark/scripts/prep_cami2_marine.sh 
+> build · big-pickle
+Checking whether the CAMI II marine source data exists on disk and what the dataset docs say about the marine plan:
+[0m$ [0mecho "=== dataset dirs ==="; ls /vol/data/datasets/ 2>/dev/null; echo "=== cami_II tree (top) ==="; find /vol/data/datasets/cami_II -maxdepth 2 2>/dev/null | head -20; echo "=== marine source? ==="; df -h /vol/data/datasets | tail -1; ls -la /vol/data/datasets/cami_II/marine_reads 2>/dev/null | head; echo "=== docs marine mentions ==="; grep -rn "marine" /vol/data/repos/metagenomic-binning-benchmark/docs/01-datasets.md /vol/data/repos/metagenomic-binning-benchmark/docs/08-dataset-space-plan.md 2>/dev/null | head -12; date -u +%FT%TZ; touch /vol/data/benchmark/.heartbeat
+=== dataset dirs ===
+cami_II
+cami_II_human
+comebin_medium
+comebin_small
+comebin_test_data
+comebin_test_data.zip
+comebin_tiny
+comebin_tiny_101
+=== cami_II tree (top) ===
+/vol/data/datasets/cami_II
+/vol/data/datasets/cami_II/marine_reads
+/vol/data/datasets/cami_II/marine_reads/marmgCAMI2_sample_0_reads.tar.gz
+/vol/data/datasets/cami_II/marine_reads/marmgCAMI2_sample_0_bam.tar.gz
+/vol/data/datasets/cami_II/marine_reads/reads_0
+/vol/data/datasets/cami_II/marine_reads/marmgCAMI2_sample_0_contigs.tar.gz
+/vol/data/datasets/cami_II/marine_reads/contigs_0
+/vol/data/datasets/cami_II/marine_reads/bams_0
+/vol/data/datasets/cami_II/marine
+/vol/data/datasets/cami_II/marine/pooled
+/vol/data/datasets/cami_II/marine/single
+/vol/data/datasets/cami_II/marine.zip
+=== marine source? ===
+/dev/vdb        492G  116G  351G  25% /vol/data
+total 10609228
+drwxrwxr-x 5 ubuntu ubuntu       4096 Sep 23 19:07 .
+drwxrwxr-x 4 ubuntu ubuntu       4096 Sep 23 16:51 ..
+drwxrwxr-x 3 ubuntu ubuntu       4096 Sep 23 17:11 bams_0
+drwxrwxr-x 3 ubuntu ubuntu       4096 Sep 23 17:11 contigs_0
+-rw-rw-r-- 1 ubuntu ubuntu 4936471735 Jun 22  2021 marmgCAMI2_sample_0_bam.tar.gz
+-rw-rw-r-- 1 ubuntu ubuntu  377315812 Jun 22  2021 marmgCAMI2_sample_0_contigs.tar.gz
+-rw-rw-r-- 1 ubuntu ubuntu 5550020311 Jun 22  2021 marmgCAMI2_sample_0_reads.tar.gz
+drwxrwxr-x 3 ubuntu ubuntu       4096 Sep 23 19:07 reads_0
+=== docs marine mentions ===
+/vol/data/repos/metagenomic-binning-benchmark/docs/01-datasets.md:107:| Fraction used first | **marine** (`marine.zip`) |
+/vol/data/repos/metagenomic-binning-benchmark/docs/01-datasets.md:108:| marine.zip | 9,424,563,556 B — md5 `1c054a45f83f6475d50198274823886f` ✅ verified |
+/vol/data/repos/metagenomic-binning-benchmark/docs/01-datasets.md:109:| Download / extract | `/vol/data/datasets/cami_II/marine.zip` → `cami_II/marine/` |
+/vol/data/repos/metagenomic-binning-benchmark/docs/01-datasets.md:110:| Short reads (marine) | https://frl.publisso.de/data/frl:6425521/marine/ (challenge download page) |
+/vol/data/repos/metagenomic-binning-benchmark/docs/01-datasets.md:117:**Marine reads + per-sample inputs** (https://frl.publisso.de/data/frl:6425521/marine/):
+/vol/data/repos/metagenomic-binning-benchmark/docs/01-datasets.md:126:Sample 0 (short-read) contigs+BAM pre-downloaded → `/vol/data/datasets/cami_II/marine_reads/`
+/vol/data/repos/metagenomic-binning-benchmark/docs/01-datasets.md:150:- prep: `scripts/prep_cami2_marine.sh` (bwa index/mem + samtools sort/index + input_meta)
+/vol/data/repos/metagenomic-binning-benchmark/docs/01-datasets.md:151:- run: `scripts/run_comebin_fix.sh` with `CONTIGS=…/marine_sample0_input/contigs.fa`,
+/vol/data/repos/metagenomic-binning-benchmark/docs/01-datasets.md:162:| Members | `2017.12.04_18.45.54_sample_0/{bam,contigs,reads}` — `bam/` = **139 per-OTU BAMs** (same "per-genome BAMs do not merge" problem as marine), `contigs/` = `anonymous_gsa.fasta.gz` (**68,417 contigs**) + `gsa_mapping.tsv.gz` + `gsa_mapping_new.tsv.gz`, `reads/` = `anonymous_reads.fq` (**10.6 GB, uncompressed**, interleaved PE `@S0R0/1`+`@S0R0/2`) + `reads_mapping.tsv.gz` (293 MB, read → **genome**) + `subsample_0.{sam,bam,fq}` |
+/vol/data/repos/metagenomic-binning-benchmark/docs/08-dataset-space-plan.md:25:| 4 | CAMI II marine — sample 0 short-read | 10 GB extracted (tars 4.6+0.36 GB) | keep **1–2 samples** (~11 GB/sample extracted) | sample 0 extracted |
+/vol/data/repos/metagenomic-binning-benchmark/docs/08-dataset-space-plan.md:28:| 6 | CAMI III (marine + human gut) | – | **≤ 50 GB** (verify sizes on frl.publisso.de before download) | to download |
+/vol/data/repos/metagenomic-binning-benchmark/docs/08-dataset-space-plan.md:31:**Budget math:** demo 6.4 + small 0.1 + medium ≤5 + CAMI II marine 11 + human
+2026-09-25T04:01:09Z
+> build · big-pickle
+Marine source is present and extracted. Verifying the exact paths the prep script needs, then I'll kick off marine prep:
+[0m$ [0mS=/vol/data/datasets/cami_II/marine_reads; SAMPLE="simulation_short_read/2018.08.15_09.49.32_sample_0"; ls -la "$S/contigs_0/$SAMPLE/contigs/" 2>/dev/null | head; echo "---"; ls -la "$S/reads_0/$SAMPLE/reads/" 2>/dev/null | head; echo "---"; ls "$S/contigs_0/" 2>/dev/null; find "$S/reads_0" -maxdepth 3 -name 'anonymous_reads*' 2>/dev/null
+total 397168
+drwxrwxr-x 2 ubuntu ubuntu      4096 Sep 23 17:11 .
+drwxrwxr-x 3 ubuntu ubuntu      4096 Sep 23 17:11 ..
+-rw-r--r-- 1 ubuntu ubuntu 328890679 Aug 17  2018 anonymous_gsa.fasta.gz
+-rw-r--r-- 1 ubuntu ubuntu  42343104 Oct 15  2018 binning_gs.tsv
+-rw-r--r-- 1 ubuntu ubuntu  35441266 Aug 17  2018 gsa_mapping.tsv.gz
+---
+total 5430060
+drwxrwxr-x 2 ubuntu ubuntu       4096 Sep 23 19:07 .
+drwxrwxr-x 3 ubuntu ubuntu       4096 Sep 23 19:07 ..
+-rw-r--r-- 1 ubuntu ubuntu 5173565037 Aug 17  2018 anonymous_reads.fq.gz
+-rw-r--r-- 1 ubuntu ubuntu  386798534 Aug 17  2018 reads_mapping.tsv.gz
+---
+simulation_short_read
+> build · big-pickle
+All marine source paths verified (GSA, binning_gs.tsv, 5.17 GB reads). Before launching a long prep → long run, checking what the dataset docs already decided about marine size:
+[0m→ [0mRead /vol/data/repos/metagenomic-binning-benchmark/docs/01-datasets.md [90m[limit=55, offset=100][0m
+> build · big-pickle
+Docs/01 already settled the marine plan (2026-09-23): contigs ≥ 2000 bp → 41,988 contigs, all reads → one `bwa mem` BAM, then baseline + fix runs (`MODE=cami2`). That's the documented first-unfinished-step. Launching marine prep detached:
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && test ! -e /vol/data/datasets/cami_II/marine_sample0_input && echo "fresh OUT dir OK"; nohup bash scripts/prep_cami2_marine.sh 2000 > /vol/data/benchmark/logs/marine_prep.log 2>&1 & echo "prep pid: $!"; sleep 20; echo "=== prep log ==="; tail -8 /vol/data/benchmark/logs/marine_prep.log | cut -c1-150; ps -eo pid,pcpu,args | grep -E 'bwa|samtools|prep_cami2' | grep -v grep | cut -c1-110 | head -5; R=/vol/data/repos/metagenomic-binning-benchmark; TS=$(date -u +%FT%TZ); echo "$TS marine prep launched (prep_cami2_marine.sh minlen2000 -> 41,988 ctgs, bwa mem -p) detached" >> $R/status/agent-activity.log; echo "$TS marine-prep-launched" >> /vol/data/benchmark/.activity; touch /vol/data/benchmark/.heartbeat
+fresh OUT dir OK
+prep pid: 1761560
+=== prep log ===
+== marine sample-0 input: contigs >= 2000 bp ==
+contigs kept: 41988
+1761560  0.0 bash scripts/prep_cami2_marine.sh 2000
+1761645  0.0 /vol/data/tools/bin/micromamba run -p /vol/data/envs/comebin bwa index /vol/data/datasets/cami_II
+1761648 98.4 bwa index /vol/data/datasets/cami_II/marine_sample0_input/contigs.fa
