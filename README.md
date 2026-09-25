@@ -1,6 +1,6 @@
 <!--AGENT-STATUS-->
 
-> 🟢 **Agent status:** `running` · ⏱ `2026-09-25T03:08 CEST` · 🏃 last run fix_v11_20260924: epoch 183/200 · not active · 🧠 `mimo-v2.6-flash-free` · [status.log](status/status.log)
+> 🟢 **Agent status:** `running` · ⏱ `2026-09-25T03:10 CEST` · 🏃 last run fix_v11_20260924: epoch 183/200 · not active · 🧠 `mimo-v2.6-flash-free` · [status.log](status/status.log)
 
 # Metagenomic binning benchmark
 
@@ -35,22 +35,17 @@ batch**, each batch passing the gate below (details:
 
 ```mermaid
 flowchart TD
-    A["Candidate change or parameter"] --> B["Small functional test 300 contigs"]
-    B -->|fail| G["Investigate fix or drop"]
-    G --> A
-    B -->|pass| C["Benchmark on small or medium set"]
-    C --> D{"Better time AND quality?"}
-    D -->|yes| E["Keep commit and record"]
-    E --> F["Next batch from this commit"]
-    D -->|no| H["Revert or rework"]
-    H --> I["Combine with surviving ideas"]
-    I --> A
-    F --> J["Tune parameters on small sets"]
-    J --> K["Full large run only after gate"]
-    classDef keep fill:#d9f7be,stroke:#389e0d;
-    classDef drop fill:#ffccc7,stroke:#cf1322;
-    class A,B,C,E,F,J,K keep;
-    class G,H,I drop;
+    A["Idea or fix batch"] --> B["1. Small functional test"]
+    B --> C["2. Medium validation run"]
+    C --> D["3. Large benchmark vs baseline"]
+    D --> E{"Better time and quality?"}
+    E -->|yes| F["4. Keep and record"]
+    E -->|no| G["Rework or revert"]
+    F --> H["Next fix batch"]
+    classDef step fill:#d9f7be,stroke:#389e0d;
+    classDef stop fill:#ffccc7,stroke:#cf1322;
+    class A,B,C,D,F,H step;
+    class G stop;
 ```
 
 **Gate rules:** never skip the small functional test · baseline compared first ·

@@ -39152,3 +39152,375 @@ EOF
 gh issue comment -R paulzierep/metagenomic-binning-benchmark 18 --body-file /tmp/issue18.md
 https://github.com/paulzierep/metagenomic-binning-benchmark/issues/18#issuecomment-5824960513
 > build · mimo-v2.6-flash-free
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/README.md
+Index: /vol/data/repos/metagenomic-binning-benchmark/README.md
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/README.md
++++ /vol/data/repos/metagenomic-binning-benchmark/README.md
+@@ -34,24 +34,19 @@
+ [`docs/09-optimization-strategy.md`](docs/09-optimization-strategy.md)).
+ 
+ ```mermaid
+ flowchart TD
+-    A["Candidate change or parameter"] --> B["Small functional test 300 contigs"]
+-    B -->|fail| G["Investigate fix or drop"]
+-    G --> A
+-    B -->|pass| C["Benchmark on small or medium set"]
+-    C --> D{"Better time AND quality?"}
+-    D -->|yes| E["Keep commit and record"]
+-    E --> F["Next batch from this commit"]
+-    D -->|no| H["Revert or rework"]
+-    H --> I["Combine with surviving ideas"]
+-    I --> A
+-    F --> J["Tune parameters on small sets"]
+-    J --> K["Full large run only after gate"]
+-    classDef keep fill:#d9f7be,stroke:#389e0d;
+-    classDef drop fill:#ffccc7,stroke:#cf1322;
+-    class A,B,C,E,F,J,K keep;
+-    class G,H,I drop;
++    A["Idea or fix batch"] --> B["1. Small functional test"]
++    B --> C["2. Medium validation run"]
++    C --> D["3. Large benchmark vs baseline"]
++    D --> E{"Better time and quality?"}
++    E -->|yes| F["4. Keep and record"]
++    E -->|no| G["Rework or revert"]
++    F --> H["Next fix batch"]
++    classDef step fill:#d9f7be,stroke:#389e0d;
++    classDef stop fill:#ffccc7,stroke:#cf1322;
++    class A,B,C,D,F,H step;
++    class G stop;
+ ```
+ 
+ **Gate rules:** never skip the small functional test · baseline compared first ·
+ one timed run at a time (no concurrent COMEBin/CheckM) · keep only with
+
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/docs/09-optimization-strategy.md
+Index: /vol/data/repos/metagenomic-binning-benchmark/docs/09-optimization-strategy.md
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/docs/09-optimization-strategy.md
++++ /vol/data/repos/metagenomic-binning-benchmark/docs/09-optimization-strategy.md
+@@ -32,24 +32,19 @@
+ per batch** (see `docs/07-fix-batches.md`). Each batch goes through the gate below.
+ 
+ ```mermaid
+ flowchart TD
+-    A["Candidate change or parameter"] --> B["Small functional test 300 contigs"]
+-    B -->|fail| G["Investigate fix or drop"]
+-    G --> A
+-    B -->|pass| C["Benchmark on small or medium set"]
+-    C --> D{"Better time AND quality?"}
+-    D -->|yes| E["Keep commit and record"]
+-    E --> F["Next batch from this commit"]
+-    D -->|no| H["Revert or rework"]
+-    H --> I["Combine with surviving ideas"]
+-    I --> A
+-    F --> J["Tune parameters on small sets"]
+-    J --> K["Full large run only after gate"]
+-    classDef keep fill:#d9f7be,stroke:#389e0d;
+-    classDef drop fill:#ffccc7,stroke:#cf1322;
+-    class A,B,C,E,F,J,K keep;
+-    class G,H,I drop;
++    A["Idea or fix batch"] --> B["1. Small functional test"]
++    B --> C["2. Medium validation run"]
++    C --> D["3. Large benchmark vs baseline"]
++    D --> E{"Better time and quality?"}
++    E -->|yes| F["4. Keep and record"]
++    E -->|no| G["Rework or revert"]
++    F --> H["Next fix batch"]
++    classDef step fill:#d9f7be,stroke:#389e0d;
++    classDef stop fill:#ffccc7,stroke:#cf1322;
++    class A,B,C,D,F,H step;
++    class G stop;
+ ```
+ 
+ > The same flowchart is rendered live in the [README](../README.md) (issue #7).
+ 
+
+> build · mimo-v2.6-flash-free
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && sed -n '54,62p' README.md; echo "=== docs09 ==="; sed -n '50,60p' docs/09-optimization-strategy.md; echo "=== eval ==="; pgrep -f "run_eval.sh /vol/data/benchmark/runs/fix_v11_20260924" >/dev/null && echo RUNNING || echo FINISHED; tail -c 300 /vol/data/benchmark/logs/fix_v11_eval_20260925T010438Z.log
+ideas · **big benchmark runs only after the fix is validated on small AND
+medium — no full-large runs on unvalidated fixes or un-optimized parameters
+(issue #17)**, and parameter optimization happens on small sets first.
+
+## Results
+
+- Aggregate rows (per run): [`results/`](results/) (`results/<run>.csv`, one
+  machine-readable row per run: wall time, bins, CheckM2 + CheckM v1 means and
+  HQ/MQ counts).
+=== docs09 ===
+
+Invariants:
+
+- **Never skip the small functional test.** Any change that breaks the small run
+  is not benchmarked further.
+- **Baseline first:** every optimization is compared against the unmodified
+  baseline run (`runs/baseline_unmodified`) and, where applicable, the previous
+  kept commit.
+- **One timed thing at a time:** no concurrent COMEBin/CheckM runs, so timings
+  stay comparable.
+- **Record or reject:** a commit is kept *only* if the evidence says keep;
+=== eval ===
+RUNNING
+gning 42 of 43 (97.67%) marker genes.    Finished aligning 43 of 43 (100.00%) marker genes.
+[2026-09-25 01:06:04] INFO: Reading marker alignment files.
+[2026-09-25 01:06:04] INFO: Concatenating alignments.
+[2026-09-25 01:06:04] INFO: Placing 71 bins into the genome tree with pplacer (be patient).
+> build · mimo-v2.6-flash-free
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && sed -n '1,60p' scripts/make_small_dataset.sh
+#!/usr/bin/env bash
+# make_small_dataset.sh — build a small, self-contained COMEBin benchmark dataset
+# from the official demo data (GitHub issue #2). Real bioinformatics tools
+# (samtools + BioPython), real data provenance, real pipeline logic preserved.
+#
+#   dataset/issue:  https://github.com/paulzierep/metagenomic-binning-benchmark/issues/2
+#   demo source:    BATS_SAMN07137077_METAG.scaffolds.min500.fasta.f1k.fasta + SRR5720343.bam
+#
+# Design choices:
+#   - top-N contigs BY LENGTH (longest contigs carry the marker genes that
+#     COMEBin's seed-gene step (FragGeneScan+HMMER) needs -> keeps REAL logic)
+#   - reads = those overlapping the chosen contigs (samtools view -L) -> real
+#     coverage/alignment, not simulated
+#   - default settings run identically; only the data shrinks
+# Usage: make_small_dataset.sh [out_dir] [N_contigs]
+set -euo pipefail
+MM=/vol/data/tools/bin/micromamba
+ENV=/vol/data/envs/comebin
+DATA=/vol/data/datasets/comebin_test_data
+SRC_FA="$DATA/BATS_SAMN07137077_METAG.scaffolds.min500.fasta.f1k.fasta"
+SRC_BAM="$DATA/bamfiles/SRR5720343.bam"
+OUT=${1:-/vol/data/datasets/comebin_small}
+N=${2:-300}
+
+mkdir -p "$OUT/bamfiles"
+echo "=== 1) select top-$N contigs by length ==="
+MAMBA_ROOT_PREFIX=/vol/data/envs/.mamba "$MM" run -p "$ENV" python - "$OUT" "$SRC_FA" "$N" <<'PY'
+import sys
+from Bio import SeqIO
+out, fa, n = sys.argv[1], sys.argv[2], int(sys.argv[3])
+recs = sorted(SeqIO.parse(fa, "fasta"), key=lambda r: len(r), reverse=True)[:n]
+with open(f"{out}/contigs.fa", "w") as fh:
+    SeqIO.write(recs, fh, "fasta")
+with open(f"{out}/contig_names.txt", "w") as fh:
+    for r in recs:
+        fh.write(f"{r.id}\n")
+with open(f"{out}/contigs.bed", "w") as fh:
+    for r in recs:
+        fh.write(f"{r.id}\t0\t{len(r)}\n")
+print(f"selected {len(recs)} contigs, {sum(len(r) for r in recs):,} bp, "
+      f"min {min(len(r) for r in recs):,} max {max(len(r) for r in recs):,}")
+PY
+
+echo "=== 2) extract reads overlapping those contigs (keeps real alignment) ==="
+# samtools -L expects BED/region records, not a one-contig-per-line name file.
+# The BED interval is emitted above and also documents the exact reference span.
+MAMBA_ROOT_PREFIX=/vol/data/envs/.mamba "$MM" run -p "$ENV" \
+  samtools view -h -b -@ 32 -L "$OUT/contigs.bed" "$SRC_BAM" > "$OUT/bamfiles/reads.bam"
+MAMBA_ROOT_PREFIX=/vol/data/envs/.mamba "$MM" run -p "$ENV" \
+  samtools index -@ 32 "$OUT/bamfiles/reads.bam"
+
+echo "=== result ==="
+du -sh "$OUT" "$OUT/bamfiles/reads.bam"
+ls -la "$OUT"
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && ls scripts/ && grep -n "^N=\|^OUT\|usage\|N:-\|N=" scripts/make_small_dataset.sh | head -20
+__pycache__
+agent-watchdog.sh
+benchmark-watchdog.sh
+issue-closer.sh
+make_medium_dataset.sh
+make_per_bin_csv.py
+make_per_bin_plots.py
+make_release_manifest.py
+make_results_csv.py
+make_small_dataset.sh
+meta-watchdog.sh
+parse_eval.py
+prep_cami2_marine.sh
+run_comebin_baseline.sh
+run_comebin_fix.sh
+run_eval.sh
+run_small_test.sh
+status-heartbeat.sh
+test_batch1.py
+22:OUT=${1:-/vol/data/datasets/comebin_small}
+23:N=${2:-300}
+> build · mimo-v2.6-flash-free
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && sed -n '1,90p' scripts/run_small_test.sh
+#!/usr/bin/env bash
+# run_small_test.sh — issue #2 correctness test: run COMEBin's real pipeline on
+# /vol/data/datasets/comebin_small with the same bookkeeping as a benchmark.
+# It refuses to overlap another registered benchmark and is intentionally
+# non-interactive. Usage:
+#   bash scripts/run_small_test.sh [rundir] [threads]
+# Environment:
+#   SRC_COMEBIN=/path/to/repo-root   COMEBin checkout/worktree to test
+#                                   (default: the verified small-data fix worktree)
+#   SEED=42                          optional reproducible seed (supported CLIs)
+#   BATCH_SIZE=256 EMB_SIZE=512      small-data training defaults
+#   EPOCHS=30                         training epochs (issue #10; default 30 for
+#                                     fast functional tests; passed as -E only
+#                                     when the CLI supports it)
+set -euo pipefail
+
+MM=/vol/data/tools/bin/micromamba
+ENV=/vol/data/envs/comebin
+SRC=${SRC_COMEBIN:-/vol/data/repos/COMEBin-small-fix}
+DATA=/vol/data/datasets/comebin_small
+CONTIGS="$DATA/contigs.fa"
+BAMDIR="$DATA/bamfiles"
+RUNDIR=$(realpath -m "${1:-/vol/data/benchmark/runs/small_test}")
+THREADS=${2:-8}
+BATCH_SIZE=${BATCH_SIZE:-256}
+EMB_SIZE=${EMB_SIZE:-512}
+EPOCHS=${EPOCHS:-30}
+SEED=${SEED:-}
+START_LOCK=/tmp/benchmark-start.lock
+ACTIVE=/vol/data/benchmark/.active_run
+
+[ -f "$CONTIGS" ] || { echo "ERROR: missing small contigs: $CONTIGS"; exit 1; }
+[ -f "$BAMDIR/reads.bam" ] || { echo "ERROR: missing small BAM: $BAMDIR/reads.bam"; exit 1; }
+[ -f "$SRC/COMEBin/run_comebin.sh" ] || { echo "ERROR: SRC_COMEBIN is not a COMEBin repo root: $SRC"; exit 1; }
+
+# Serialize new launches and refuse overlap with the independently tracked run.
+# Checking .active_run is essential: the already-running baseline predates this lock.
+exec 9>"$START_LOCK"
+flock -n 9 || { echo "ERROR: another benchmark launch holds $START_LOCK"; exit 1; }
+if [ -f "$ACTIVE" ] && [ "${BENCHMARK_WATCHDOG_REPLACE:-0}" != "1" ]; then
+  read -r active_pid active_pgid active_log active_dir active_start active_mode active_src < "$ACTIVE" || true
+  active_state=$(ps -o stat= -p "${active_pid:-0}" 2>/dev/null | tr -d ' ' || true)
+  if [ -n "${active_pid:-}" ] && kill -0 "$active_pid" 2>/dev/null && [[ "$active_state" != Z* ]]; then
+    echo "ERROR: benchmark already active: pid=$active_pid dir=$active_dir mode=${active_mode:-baseline}"
+    echo "Small functional tests and full benchmarks must never overlap; try again after that run finishes."
+    exit 1
+  fi
+  old_rc=$(grep -m1 '^exit_code:' "${active_dir:-/nonexistent}/run_meta.txt" 2>/dev/null | awk '{print $2}' || true)
+  if [ "${old_rc:-}" != "0" ]; then
+    echo "ERROR: stale failed active run is registered: pid=$active_pid dir=$active_dir"
+    echo "Run /vol/data/benchmark/bin/benchmark-watchdog.sh to triage/restart it; not starting a second run."
+    exit 1
+  fi
+  echo "clearing completed stale active-run registration for $active_dir"
+  rm -f "$ACTIVE"
+fi
+
+if [ -f "$RUNDIR/run_meta.txt" ] || [ -d "$RUNDIR/comebin_out" ]; then
+  echo "ERROR: refusing to overwrite an existing run directory: $RUNDIR"
+  echo "Choose a fresh rundir (autorestart directories are created by benchmark-watchdog)."
+  exit 1
+fi
+
+mkdir -p "$RUNDIR/logs"
+COMMIT=$(git -C "$SRC" rev-parse HEAD)
+BRANCH=$(git -C "$SRC" branch --show-current)
+# Ignore generated caches such as __pycache__, but reject every tracked edit.
+DIRTY=$(git -C "$SRC" status --porcelain --untracked-files=no | wc -l)
+echo "source commit: $COMMIT branch=$BRANCH (tracked dirty files: $DIRTY) — small-dataset test run"
+[ "$DIRTY" -eq 0 ] || { echo "REFUSING: source has tracked changes; commit or clean it first"; exit 1; }
+COMEBIN_ARGS=(
+  -a "$CONTIGS" -p "$BAMDIR" -o "$RUNDIR/comebin_out"
+  -n 6 -t "$THREADS" -b "$BATCH_SIZE" -e "$EMB_SIZE" -c "$EMB_SIZE"
+)
+# v1.1.0+ defaults to CUDA; this VM is CPU-only. Older CLIs do not know -d.
+if grep -q -- '-d STR.*device' "$SRC/COMEBin/run_comebin.sh"; then
+  COMEBIN_ARGS+=(-d cpu)
+fi
+if [ -n "$SEED" ] && grep -q -- '-s INT.*seed' "$SRC/COMEBin/run_comebin.sh"; then
+  COMEBIN_ARGS+=(-s "$SEED")
+fi
+# Issue #10: cap epochs for fast functional tests (upstream CLI has no -E).
+if grep -q -- '-E INT.*epochs' "$SRC/COMEBin/run_comebin.sh"; then
+  COMEBIN_ARGS+=(-E "$EPOCHS")
+fi
+CMD_TEXT=$(printf '%q ' "$MM" run -p "$ENV" bash run_comebin.sh "${COMEBIN_ARGS[@]}")
+
+{
+  echo "run:        $RUNDIR"
+  echo "date:       $(date -Is)"
+> build · mimo-v2.6-flash-free
+[0m$ [0mgrep -n "camiClient\|frl.publisso\|wget\|curl\|http" /vol/data/repos/metagenomic-binning-benchmark/docs/01-datasets.md | head -30
+7:| Origin | Google Drive link in the [COMEBin README](https://github.com/paulzierep/COMEBin), file id `1xWpN2z8JTaAzWW4TcOl0Lr4Y_x--Fs5s` |
+46:The owner-approved small release is published as **[10.5281/zenodo.22935025](https://doi.org/10.5281/zenodo.22935025)**
+80:| Assemblies record | https://doi.org/10.5281/zenodo.5013479 |
+84:| Short reads (marine) | https://frl.publisso.de/data/frl:6425521/marine/ (challenge download page) |
+91:**Marine reads + per-sample inputs** (https://frl.publisso.de/data/frl:6425521/marine/):
+[0m$ [0mpgrep -f "run_eval.sh /vol/data/benchmark/runs/fix_v11_20260924" >/dev/null && echo EVAL_RUNNING || echo EVAL_FINISHED; tail -c 400 /vol/data/benchmark/logs/fix_v11_eval_20260925T010438Z.log; ps -o pid,etime,pcpu,cmd -C pplacer 2>/dev/null | head -5; uptime
+EVAL_RUNNING
+ of 43 (93.02%) marker genes.    Finished aligning 41 of 43 (95.35%) marker genes.    Finished aligning 42 of 43 (97.67%) marker genes.    Finished aligning 43 of 43 (100.00%) marker genes.
+[2026-09-25 01:06:04] INFO: Reading marker alignment files.
+[2026-09-25 01:06:04] INFO: Concatenating alignments.
+[2026-09-25 01:06:04] INFO: Placing 71 bins into the genome tree with pplacer (be patient).
+    PID     ELAPSED %CPU CMD
+1281607       03:01 93.7 pplacer -j 1 -c /vol/data/envs/comebin/checkm_data/genome_tree/genome_tree_full.refpkg -o /vol/data/benchmark/runs/fix_v11_20260924/eval/checkm/out/storage/tree/concatenated.pplacer.json /vol/data/benchmark/runs/fix_v11_20260924/eval/checkm/out/storage/tree/concatenated.fasta
+1282456       00:15  100 pplacer -j 1 -c /vol/data/envs/comebin/checkm_data/genome_tree/genome_tree_full.refpkg -o /vol/data/benchmark/runs/fix_v11_20260924/eval/checkm/out/storage/tree/concatenated.pplacer.json /vol/data/benchmark/runs/fix_v11_20260924/eval/checkm/out/storage/tree/concatenated.fasta
+ 01:09:06 up 1 day, 11:33,  1 user,  load average: 1.30, 1.75, 0.88
+> build · mimo-v2.6-flash-free
+[0m$ [0msed -n '70,130p' /vol/data/repos/metagenomic-binning-benchmark/docs/01-datasets.md
+16 non-empty bins. CheckM2/CheckM v1 results are in
+[`results/medium_v11_20260924.csv`](../results/medium_v11_20260924.csv); the
+medium release is not deposited separately until the owner confirms its license
+and metadata.
+
+## 2. CAMI II challenge data
+
+| | |
+|---|---|
+| Source | CAMI II challenge (2021), assembly records on Zenodo |
+| Assemblies record | https://doi.org/10.5281/zenodo.5013479 |
+| Fraction used first | **marine** (`marine.zip`) |
+| marine.zip | 9,424,563,556 B — md5 `1c054a45f83f6475d50198274823886f` ✅ verified |
+| Download / extract | `/vol/data/datasets/cami_II/marine.zip` → `cami_II/marine/` |
+| Short reads (marine) | https://frl.publisso.de/data/frl:6425521/marine/ (challenge download page) |
+
+Other fractions in the same record: `plant_associated.zip` (3.9 GB),
+`strain_madness.zip` (1.9 GB). TODO on first use: confirm exact archive layout
+(contigs per sample, ground-truth bins), pick samples, and record how contigs +
+coverage input are prepared for COMEBin (per-sample BAMs).
+
+**Marine reads + per-sample inputs** (https://frl.publisso.de/data/frl:6425521/marine/):
+
+| Path | Size (approx) | Use |
+|---|---|---|
+| `short_read/marmgCAMI2_sample_N_{reads,bam,contigs}.tar.gz` | reads 5.2 G, bam 4.6–4.7 G, contigs 360–436 M | COMEBin input (bam = coverage; contigs = assembly) |
+| `long_read/marmgCAMI2_sample_N_{reads,bam,contigs}.tar.gz` | bam 5.9 G, reads 4.4 G, contigs 315–380 M | same, long-read mode |
+| `hybrid/*` | 11 G/sample, pooled 106 G | too big for now |
+| `marmgCAMI2_genomes.tar.gz` | 798 M | gold-standard reference genomes |
+
+Sample 0 (short-read) contigs+BAM pre-downloaded → `/vol/data/datasets/cami_II/marine_reads/`
+(2026-09-23; md5 `412b657ec10dda4d6510aaf39f0236f8` (contigs) / `1de385b6641a32b1acd0806f638d7aa6`
+(bam), `gzip -t` OK). Reads archive `marmgCAMI2_sample_0_reads.tar.gz` (5.2 G) also
+downloaded + extracted (2026-09-23) → `reads_0/.../reads/`.
+
+**Marine structure — observed (sample 0, short-read):**
+- `contigs/`: `anonymous_gsa.fasta.gz` (= pooled ground-truth contigs, names `S0C0…`,
+  **1,475,972 contigs / 909 Mbp**), `binning_gs.tsv` (ground truth `S0C* → Otu genome`),
+  `gsa_mapping.tsv.gz` (name map)
+- `reads/`: `anonymous_reads.fq.gz` — single pooled **interleaved paired-end** file
+  (`@S0R0/1`+`@S0R0/2`, 35.25 M reads ≈ 17.6 M pairs); `reads_mapping.tsv.gz` maps
+  reads → **genome** (`Otu*`), NOT to contigs
+- `bam/`: **590 per-genome BAMs** (4.7 G total; `Otu*.bam`, `RNODE_*`; each mapped to its
+  own genome assembly contigs `NODE_*`) + `.bai`
+
+**Input decision (2026-09-23, docs 01+06):** COMEBin needs ONE coverage BAM over ONE
+contig set; per-genome BAMs do **not** merge (duplicate `NODE_*` names). Both native
+contig sets are far too large for COMEBin training (gsa 1.48 M contigs, pooled Megahit
+1.69 M). Chosen approach (matches issue-#2 small-data methodology, real CAMI data):
+- contigs = `anonymous_gsa.fasta.gz` **subset to ≥ 2000 bp** → **41,988 contigs**
+  (≥1 kbp: 124,436 · ≥2 kbp: 41,988 · ≥5 kbp: 11,605)
+- reads = all `anonymous_reads.fq.gz` → `bwa mem -p -t 32` (interleaved) → single BAM
+  (reads of unkept contigs produce no alignment; `S0C*` names preserved)
+- ground truth = `binning_gs.tsv` subset to kept contigs → direct recall/ARI eval
+- prep: `scripts/prep_cami2_marine.sh` (bwa index/mem + samtools sort/index + input_meta)
+- run: `scripts/run_comebin_fix.sh` with `CONTIGS=…/marine_sample0_input/contigs.fa`,
+  `BAMDIR=…/bamfiles`, `MODE=cami2`, `SRC_COMEBIN=/vol/data/repos/COMEBin-v11`
+  (v1.1.0, `-d cpu`, `-s 42`)
+
+## 3. CAMI III challenge data (planned)
+> build · mimo-v2.6-flash-free
+[0m⚙ [0mexecute {"code":"const r = await fetch(\"https://zenodo.org/api/records/5013479\");\nconst j = await r.json();\nconst files = (j.files || []).map(f => [f.key, f.size]);\nreturn {title: j.metadata && j.metadata.title, n: files.length, files: files.slice(0, 60)};"} 
+> build · mimo-v2.6-flash-free
+[0m% [0mWebFetch https://frl.publisso.de/data/frl:6425518/ 
+[0m◈ [0mWeb Search via Firecrawl "CAMI II toy human microbiome download frl.publisso.de short_read tar.gz" 
+> build · mimo-v2.6-flash-free
+[0m⚙ [0mexecute {"code":"const base = \"https://frl.publisso.de/data/frl%3A6425518/\";\nconst urls = [base, base + \"per_bodysite/\"];\nconst out = {};\nfor (const u of urls) {\n  const r = await fetch(u);\n  out[u] = (await r.text()).slice(0, 4000);\n}\nreturn out;"} 
+> build · mimo-v2.6-flash-free
+[0m⚙ [0mexecute {"code":"const base = \"https://frl.publisso.de/data/frl%3A6425518/\";\nconst paths = [\"README.md\", \"per_bodysite/gastro_bam/\", \"gastrooral/\"];\nconst out = {};\nfor (const p of paths) {\n  const r = await fetch(base + p);\n  out[p] = (await r.text()).replace(/<[^>]+>/g, \" \").replace(/\\s+/g, \" \").slice(0, 3000);\n}\nreturn out;"} 
+> build · mimo-v2.6-flash-free
