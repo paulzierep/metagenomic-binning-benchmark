@@ -3,18 +3,13 @@
 | | |
 |---|---|
 | Status | 🟢 `running` |
-| ⏱ Updated (Europe/Berlin) | `2026-09-25T13:22 CEST` |
-| 🏃 Live benchmark | `marine_v11_20260925` — **epoch 131/200** · loss `0.47218218445777893` · top1 acc `98.77603912353516` (log 48s fresh) |
+| ⏱ Updated (Europe/Berlin) | `2026-09-25T13:24 CEST` |
+| 🏃 Live benchmark | `marine_v11_20260925` — **epoch 131/200** · loss `0.47218218445777893` · top1 acc `98.77603912353516` (log 168s fresh) |
 | 🧠 Model (last turn) | `nemotron-3.5-lightning-free` (watchdog rotates to free models on quota) |
-| 📌 Agent note · **14 min old** | 2026-09-25T09:02:23Z | marine_v11_20260925 active: epoch 85/200, COMEBin-v11@95f5ea8, cami2 mode; resumed after agent restart; heartbeat touched; PROGRESS synced
-2026-09-25T09:26:57Z
-2026-09-25T10:05:29Z | marine_v11_20260925 active: epoch 106/200, COMEBin-v11@95f5ea8, cami2 mode; heartbeat touched; PROGRESS synced
-2026-09-25T10:23:16Z | marine_v11_20260925 active: epoch 112/200, COMEBin-v11@95f5ea8, cami2 mode; heartbeat touched; PROGRESS synced; run progressing normally
-2026-09-25T10:57:56Z | marine_v11_20260925 active: epoch 124/200, COMEBin-v11@95f5ea8, cami2 mode; PROGRESS.md updated; issues #8 & #12 triaged; run progressing normally
-2026-09-25T11:07:33Z | marine_v11_20260925 active: epoch 127/200, COMEBin-v11@95f5ea8, cami2 mode; heartbeat touched; PROGRESS synced; run progressing normally |
-| ⚙️ Load · uptime | `31.16 30.39 30.17` · 1 day, 21 hours, 46 minutes — 32 cores, 62 GiB, no GPU |
-| 💾 RAM used/total | `6650/64295 MB` |
+| 📌 Agent note · **16 min old** | agent driver alive; transcript fresh (26s) while heartbeat is stale (988s) |
+| ⚙️ Load · uptime | `27.78 29.62 29.93` · 1 day, 21 hours, 48 minutes — 32 cores, 62 GiB, no GPU |
+| 💾 RAM used/total | `6627/64295 MB` |
 | 🔗 Session | `ses_f31799c77ffeTq9gcYgqc4hBhg` |
-| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `f3405a9 status: yes — marine_v11_20260925 epoch 130/200 loss 0.466589421033859` |
-| 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `4892167 B` — every run, command & tool result |
+| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `0e62e79 meta: supervise tick 2026-09-25T11:23:01Z — 0 fix(es)` |
+| 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `4892342 B` — every run, command & tool result |
 | 📈 Timeline | [status/status.log](status/status.log) |
