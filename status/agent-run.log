@@ -65733,3 +65733,232 @@ Command exceeded timeout of 600 ms. Retry with a larger timeout if the command i
 [0m$ [0mls -la /tmp/test_toy.tar.gz 2>/dev/null && wc -c /tmp/test_toy.tar.gz
 -rw-rw-r-- 1 ubuntu ubuntu 34056148 Sep 25 23:04 /tmp/test_toy.tar.gz
 34056148 /tmp/test_toy.tar.gz
+> build · nemotron-3.5-lightning-free
+[0m$ [0mgzip -t /tmp/test_toy.tar.gz 2>&1 && echo "Gzip OK" || echo "Gzip truncated"
+gzip: /tmp/test_toy.tar.gz: unexpected end of file
+Gzip truncated
+[0m$ [0mtar tzf /tmp/test_toy.tar.gz 2>&1 | head -20
+sample_0_reads/
+sample_0_reads/reads_mapping.tsv.gz
+
+gzip: stdin: unexpected end of file
+tar: Unexpected EOF in archive
+tar: Error is not recoverable: exiting now
+> build · nemotron-3.5-lightning-free
+[0m$ [0mpython3 -c "
+import gzip, io, tarfile, struct
+
+# Read the raw tar.gz file
+with open('/tmp/test_toy.tar.gz', 'rb') as f:
+    raw = f.read()
+
+print(f'File size: {len(raw)} bytes')
+
+# Try to find the gzip header and manually decompress up to the end-of-stream
+# Gzip format: magic (2 bytes) + method (1 byte) + flags (1 byte) + mtime (4 bytes) + xfl (1 byte) + OS (1 byte)
+# Then deflate data
+# deflate ends when we get enough bytes or hit the checksum
+
+# Let's try to use Python's incremental decompressor
+import zlib
+
+# Strip gzip header (10 bytes is the minimum)
+try:
+    dec = zlib.decompressobj(-zlib.MAX_WBITS)
+    decompressed = dec.decompress(raw[10:])
+    print(f'Decompressed {len(decompressed)} bytes after stripping 10-byte header')
+except Exception as e:
+    print(f'Decompress after header strip failed: {e}')
+    # Try with different header sizes
+    for header_size in [10, 18]:
+        try:
+            dec = zlib.decompressobj(-zlib.MAX_WBITS)
+            decompressed = dec.decompress(raw[header_size:])
+            print(f'Decompressed {len(decompressed)} bytes after {header_size}-byte header strip')
+            break
+        except Exception as e2:
+            pass
+"
+File size: 34056148 bytes
+Decompressed 34547514 bytes after stripping 10-byte header
+> build · nemotron-3.5-lightning-free
+[0m$ [0mpython3 -c "
+import gzip, io, tarfile
+
+# Read the raw tar.gz file
+with open('/tmp/test_toy.tar.gz', 'rb') as f:
+    raw = f.read()
+
+# Decompress by stripping 10-byte gzip header
+import zlib
+dec = zlib.decompressobj(-zlib.MAX_WBITS)
+decompressed = dec.decompress(raw[10:])
+
+# Now try to open as tar
+try:
+    tf = tarfile.open(fileobj=io.BytesIO(decompressed))
+    print('Successfully opened as tar!')
+    members = tf.getmembers()
+    print(f'Number of members: {len(members)}')
+    for m in members:
+        print(f'  {m.name} ({m.size} bytes)')
+except Exception as e:
+    print(f'Not a valid tar: {e}')
+    # List the first few bytes to understand the format
+    print(f'First 500 bytes: {decompressed[:500]}')
+"
+Successfully opened as tar!
+Not a valid tar: unexpected end of data
+First 500 bytes: b'sample_0_reads/\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x000002755\x000047473\x000177776\x0000000000000\x0015143133436\x00013346\x00 5\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00ustar  \x00fmeyer\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00nobody\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+> build · nemotron-3.5-lightning-free
+[0m$ [0mpython3 -c "
+import gzip, io, tarfile, zlib
+
+# Read the original truncated file
+with open('/vol/data/datasets/cami_III/cami3_toy_human_gut_short_read_sample_0.tar.gz', 'rb') as f:
+    raw = f.read()
+
+print(f'Original file size: {len(raw)} bytes')
+
+# Decompress what we can
+dec = zlib.decompressobj(-zlib.MAX_WBITS)
+try:
+    decompressed = dec.decompress(raw[10:])
+    print(f'Decompressed size: {len(decompressed)} bytes')
+    
+    # Try to open as tar
+    try:
+        tf = tarfile.open(fileobj=io.BytesIO(decompressed))
+        print('Tar opened successfully!')
+        members = tf.getmembers()
+        print(f'Number of members: {len(members)}')
+        for m in members:
+            print(f'  {m.name} ({m.size} bytes)')
+    except Exception as e:
+        print(f'Tar open failed: {e}')
+        
+        # Try to list members anyway
+        try:
+            # Read just the tar header
+            for i in range(0, min(len(decompressed), 512 * 10), 512):
+                header = decompressed[i:i+512]
+                if header[:6] == b'ustar':
+                    name = header[0:100].rstrip(b'\x00').decode()
+                    size = int(header[124:136].rstrip(b'\x00').decode(), 8)
+                    print(f'  Found file: {name} ({size} bytes)')
+                    break
+        except Exception as e2:
+            print(f'Listing failed: {e2}')
+except Exception as e:
+    print(f'Decompression failed: {e}')
+"
+Original file size: 80336740 bytes
+Decompressed size: 81497792 bytes
+Tar opened successfully!
+Tar open failed: unexpected end of data
+> build · nemotron-3.5-lightning-free
+[0m$ [0mpython3 -c "
+import gzip, io, tarfile, zlib
+
+# Read the original truncated file
+with open('/vol/data/datasets/cami_III/cami3_toy_human_gut_short_read_sample_0.tar.gz', 'rb') as f:
+    raw = f.read()
+
+# Decompress
+dec = zlib.decompressobj(-zlib.MAX_WBITS)
+decompressed = dec.decompress(raw[10:])
+
+# Try to list tar members - iterate through blocks
+try:
+    tf = tarfile.open(fileobj=io.BytesIO(decompressed))
+    members = tf.getmembers()
+    print(f'Number of members: {len(members)}')
+    for m in members:
+        print(f'  {m.name} ({m.size} bytes)')
+except Exception as e:
+    print(f'Tar open failed: {e}')
+    # Try manual tar reading
+    import struct
+    pos = 0
+    while pos < len(decompressed):
+        header = decompressed[pos:pos+512]
+        if len(header) < 512:
+            break
+        name = header[0:100].rstrip(b'\x00').decode('utf-8', errors='replace')
+        if name.strip() == '':
+            break
+        size = int(header[124:136].rstrip(b'\x00').decode('utf-8', errors='replace'), 8)
+        # Check if this is a directory or file
+        typeflag = header[156:157]
+        if typeflag == b'0' or typeflag == b'\\0':
+            kind = 'file'
+        elif typeflag == b'5':
+            kind = 'dir'
+        else:
+            kind = f'type={typeflag}'
+        
+        print(f'  {kind}: {name} ({size} bytes)')
+        pos += 512
+        
+        # Skip file data
+        if kind == 'file' and size > 0:
+            file_blocks = (size + 511) // 512
+            pos += file_blocks * 512
+"
+Tar open failed: unexpected end of data
+  dir: sample_0_reads/ (0 bytes)
+  file: sample_0_reads/reads_mapping.tsv.gz (262931198 bytes)
+> build · nemotron-3.5-lightning-free
+[0m$ [0mpython3 -c "
+import gzip, io, tarfile, zlib
+
+# Check long reads file
+with open('/vol/data/datasets/cami_III/cami3_toy_human_gut-long_sample_0.tar.gz', 'rb') as f:
+    raw = f.read()
+
+print(f'Long reads file size: {len(raw)} bytes')
+
+# Decompress
+dec = zlib.decompressobj(-zlib.MAX_WBITS)
+decompressed = dec.decompress(raw[10:])
+print(f'Decompressed size: {len(decompressed)} bytes')
+
+# List tar members
+try:
+    tf = tarfile.open(fileobj=io.BytesIO(decompressed))
+    members = tf.getmembers()
+    print(f'Number of members: {len(members)}')
+    for m in members:
+        print(f'  {m.name} ({m.size} bytes)')
+except Exception as e:
+    print(f'Tar open failed: {e}')
+    # Manual listing
+    pos = 0
+    while pos < len(decompressed):
+        header = decompressed[pos:pos+512]
+        if len(header) < 512:
+            break
+        name = header[0:100].rstrip(b'\x00').decode('utf-8', errors='replace')
+        if name.strip() == '':
+            break
+        size = int(header[124:136].rstrip(b'\x00').decode('utf-8', errors='replace'), 8)
+        typeflag = header[156:157] if len(header) > 156 else b''
+        if typeflag == b'0' or typeflag == b'\\0':
+            kind = 'file'
+        elif typeflag == b'5':
+            kind = 'dir'
+        else:
+            kind = f'type={typeflag}'
+        print(f'  {kind}: {name} ({size} bytes)')
+        pos += 512
+        if kind == 'file' and size > 0:
+            file_blocks = (size + 511) // 512
+            pos += file_blocks * 512
+" 2>&1 | head -30
+Long reads file size: 80282092 bytes
+Decompressed size: 80270417 bytes
+Tar open failed: unexpected end of data
+  dir: sample_0_reads/ (0 bytes)
+  file: sample_0_reads/reads_mapping.tsv.gz (10172924 bytes)
+  file: sample_0_reads/anonymous_reads.fq.gz (4682559244 bytes)
+> build · nemotron-3.5-lightning-free
