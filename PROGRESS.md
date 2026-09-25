@@ -381,11 +381,17 @@ included; fixes land on branch `comebin-optimizations` in this repo.
       (HQ 20 / MQ 29), CheckM v1 32.64/4.65 (HQ 21 / MQ 29) — first dataset
       with substantial HQ recovery (top bins ≈ 100 % / ≤ 0.45 % under both
       tools). Comment `5826454210`, docs/11 row + per-bin CSV + figures in.
-      Next: **CAMI II marine sample_0** (docs/01 plan: contigs ≥ 2000 bp →
-      41,988 ctgs + all reads re-mapped `bwa mem`; prep **LAUNCHED 2026-09-25
-      04:02Z**, detached: `prep_cami2_marine.sh 2000` @ `marine_sample0_input`,
-      bwa index running) → then baseline + fix runs (MODE=cami2), then CAMI III
-      (disk budget ≤ 30 GB, 351 GB free).
+      Next: **CAMI II marine sample_0** — prep **COMPLETE** (2026-09-25
+      04:13Z, `prep_cami2_marine.sh 2000`: 41,988 ctgs ≥ 2000 bp → contigs.fa
+      md5 f108fb…, marine.bam 4.95 GB + .bai md5 94382c…, ground truth
+      `binning_gs_subset.tsv` 41,988 lines; input_meta.txt in place at
+      `marine_sample0_input/`). FIX RUN **LAUNCHED 04:14Z**: `runs/marine_v11_20260925`,
+      MODE=cami2, source COMEBin-v11 `95f5ea8` (clean), seed 42, 32 thr,
+      assembly_contigs=41,988 retained, coverage stage (1 BAM worker) →
+      ETA ~9-10 h (≈1.4× demo contig count); per docs/01 marine plan =
+      fix-branch run only (same as human precedent, no separate marine
+      baseline documented). Then eval via run_eval.sh → report + docs/11 row →
+      CAMI III (disk budget ≤ 30 GB, 351 GB free).
 - [x] **Issue #7 flowchart "different logic"** (user comment 2026-09-24 11:44Z):
       previous cycle/loop flowchart rendered badly → replaced with a straight
       4-stage pipeline (small → medium → large → keep/revert, no back-edges) in
