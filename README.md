@@ -34,12 +34,17 @@ dataset is **`comebin_tiny_101` (101 contigs)**; `tiny_test_n101` passed in
 85 s with **1 bin**, CheckM2 63.89 % / 9.05 %, CheckM v1 46.58 % / 6.35 %
 ([CSV](results/tiny_test_n101.csv)).
 
-**Next (in progress this turn):** issue **#18b** — CAMI II **human
-host-associated** set at ~1/6 the size of the demo: sample 0 downloaded +
-verified (9.74 GB, md5 OK), top 4,900 longest GSA contigs (166 Mbp) selected,
-reads re-mapped with `bwa mem -p` into `human_sample0_input/`; the benchmark run
-launches once mapping finishes. Then CAMI II marine → CAMI III (disk budget
-≤ ~105 GB).
+**Completed human run (issue #18b):** `human_v11_20260925` on the CAMI II
+**human host-associated** ~1/6 set (top-4,900-longest contigs of
+`gastrooral/sample_0`, 166 Mbp, reads re-mapped with `bwa mem` into
+`human_sample0_input/`): exit 0, wall **4,912 s (≈ 1.37 h)** — ~1/5 the demo's
+6.9 h — 200/200 epochs, **107 bins**, CheckM2 **35.31 % / 5.13 %** (HQ 20 /
+MQ 29), CheckM v1 **32.64 % / 4.65 %** (HQ 21 / MQ 29): the **first dataset in
+the benchmark with substantial HQ genome recovery** (20–21 vs 0–1 on the demo
+set) ([CSV](results/human_v11_20260925.csv)).
+
+**Next (in progress this turn):** CAMI II **marine** sample 0 (~1/6 set) →
+baseline + fix runs, then CAMI III (disk budget ≤ ~105 GB).
 Per-run table + full history: [`docs/11-run-results.md`](docs/11-run-results.md).
 
 ## Optimization workflow (issue #7)

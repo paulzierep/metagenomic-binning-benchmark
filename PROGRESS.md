@@ -364,32 +364,25 @@ included; fixes land on branch `comebin-optimizations` in this repo.
       updated. Versus baseline (same data): +1.7 % wall, 60 → 71 bins,
       −0.63 pp completeness, +0.80 pp contamination.
 - [ ] **ACTIVE: issue #18 "Benchmark size"** (user, 2026-09-24 15:31Z; triaged
-      2026-09-25 01:10Z, comment `5824960513`; first tiny results `5825479305`: `tiny_test_n100`
-      [keep reading below]; human-set RUN **LAUNCHED 2026-09-25 02:17Z**: mode
-      `cami2-human`, `runs/human_v11_20260925`, contigs=4,900, seed 42, 32 thr,
-      source COMEBin-v11 @ 95f5ea8, in coverage stage, ETA ~1-1.5 h; next: eval
-      via run_eval.sh → #18 report + docs/11 row)
-      FAILS (exit 1, 0 bins), `tiny_test_n101` PASSES (exit 0, wall 85 s,
-      1 bin; CheckM2 63.89/9.05 MQ1, CheckM v1 46.58/6.35;
-      `results/tiny_test_n101.csv`). Floor ≈ 101 contigs. Tiny results comment:
-      `5825479305`. (b) **human set input BUILT + run LAUNCHED (2026-09-25
-      02:17Z)**: `scripts/prep_cami2_human.sh 4900` → top 4,900 longest GSA
-      contigs (166,008,681 bp, N50 1,464,728) + all 10.6 GB reads re-mapped
-      (`bwa mem -p -t 32`, 32 min) → `human_sample0_input/{contigs.fa,bamfiles/human.bam}`
-      (4.74 GB, md5 `c48e4caa…`). Run `runs/human_v11_20260925` registered with
-      the watchdog (source COMEBin-v11 `95f5ea8`, seed 42, 32 thr, MODE=cami2-human);
-      epoch 1/200 at 02:30Z took 16.3 s / 4 batches ⇒ projected ≈ 1 h + clustering.
-      Progress comment: `5825639930`. Two directives:
-      (a) **smallest functional dataset** — smaller than `comebin_small`
-      (300 contigs / 94 MB / 122 s), stepped down until it still trains and
-      yields ≥ 1 non-empty bin (`run_small_test.sh` now takes `DATA=…` env);
-      (b) **CAMI II human host-associated set at ~1/6 the size of the big demo**
-      (29,434 contigs / 6.9 h ⇒ target ≈ 4,900 contigs, ≈ 1 h per run) — source
-      frl:6425518 (Toy Human Microbiome, `gastrooral/sample_0.tar.gz` ≈ 9.1 GB,
-      structure verified by streamed listing: `bam/OTU_*.bam` per-OTU files —
-      same per-genome-BAM problem as marine, so reads must be re-mapped with
-      `bwa mem` or the assembly subset must carry its own BAM). Disk budget
-      ≤ 30 GB, 377 GB free.
+      2026-09-25 01:10Z, comment `5824960513`; tiny results `5825479305`; human
+      results `5826454210`). Two directives — BOTH MEASURED:
+      (a) **smallest functional dataset** — floor FOUND: `tiny_test_n100` FAILS
+      (exit 1, 0 bins, HNSW `k = max_edges+1 = 101` > N = 100), `tiny_test_n101`
+      PASSES (exit 0, wall 85 s, 1 bin; CheckM2 63.89/9.05 MQ1, CheckM v1
+      46.58/6.35; `results/tiny_test_n101.csv`). Floor ≈ 101 contigs.
+      (b) **CAMI II human host-associated ~1/6 set** — input BUILT
+      (`scripts/prep_cami2_human.sh 4900`: top 4,900 longest GSA contigs of
+      `gastrooral/sample_0`, 166,008,681 bp, N50 1,464,728; all 10.6 GB reads
+      re-mapped `bwa mem -p -t 32` → `human_sample0_input/bamfiles/human.bam`,
+      4.74 GB, md5 `c48e4caa…`) and run **COMPLETE + EVALUATED**:
+      `runs/human_v11_20260925` (source COMEBin-v11 `95f5ea8`, seed 42, 32 thr,
+      MODE=cami2-human) exit 0, wall 4,912 s (≈ 1.37 h), 200/200 epochs
+      (Top-1 ≈ 96 %, no early-stop), **107 bins**; CheckM2 35.31/5.13
+      (HQ 20 / MQ 29), CheckM v1 32.64/4.65 (HQ 21 / MQ 29) — first dataset
+      with substantial HQ recovery (top bins ≈ 100 % / ≤ 0.45 % under both
+      tools). Comment `5826454210`, docs/11 row + per-bin CSV + figures in.
+      Remaining: **CAMI II marine sample_0** (~1/6, `scripts/prep_cami2_marine.sh`)
+      → baseline + fix runs, then CAMI III (disk budget ≤ 30 GB, 377 GB free).
 - [x] **Issue #7 flowchart "different logic"** (user comment 2026-09-24 11:44Z):
       previous cycle/loop flowchart rendered badly → replaced with a straight
       4-stage pipeline (small → medium → large → keep/revert, no back-edges) in
