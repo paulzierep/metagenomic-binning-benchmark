@@ -3,10 +3,10 @@
 | | |
 |---|---|
 | Status | 🟢 `running` |
-| ⏱ Updated (Europe/Berlin) | `2026-09-25T03:50 CEST` |
-| 🏃 Last benchmark (not active) | `tiny_test_n101` — last observed **epoch 29/30** (log 166s old) |
+| ⏱ Updated (Europe/Berlin) | `2026-09-25T03:56 CEST` |
+| 🏃 Last benchmark (not active) | `tiny_test_n101` — last observed **epoch 29/30** (log 526s old) |
 | 🧠 Model (last turn) | `mimo-v2.6-flash-free` (watchdog rotates to free models on quota) |
-| 📌 Agent note · **1 min old** | Baseline training epoch ~109/200 (~2.4 min/epoch, ETA ~22:35 UTC unless early-stop); next: baseline eval (run_eval.sh) → issue #2 small-dataset test → v1.1.0 fix run
+| 📌 Agent note · **7 min old** | Baseline training epoch ~109/200 (~2.4 min/epoch, ETA ~22:35 UTC unless early-stop); next: baseline eval (run_eval.sh) → issue #2 small-dataset test → v1.1.0 fix run
 2026-09-23 20:33:11 UTC - heartbeat
 2026-09-23 20:43:58 UTC - heartbeat
 2026-09-23 20:56:28 UTC - heartbeat
@@ -276,9 +276,9 @@
 2026-09-25T01:42:13Z tiny-run: launched detached tiny_test_n100 (DATA=comebin_tiny, 8 threads, 30 epochs) registered in .active_run mode=small
 2026-09-25T01:46:28Z tiny-test-100: FAILED exit 1 (85s) - hnswlib knn_query(k=101) on 100 contigs: 'Cannot return results in contiguous 2D array' (max_edges=100 fixed -> needs N>100); Leiden produced no results -> get_bin_quality empty; watchdog cleared .active_run, no retry
 2026-09-25T01:48:20Z tiny-test-101: PASSED exit 0, wall 85s, 1 non-empty bin — 101 contigs is the floor (hnsw k=max_edges+1=101); CheckM eval started |
-| ⚙️ Load · uptime | `2.72 2.22 1.36` · 1 day, 12 hours, 14 minutes — 32 cores, 62 GiB, no GPU |
-| 💾 RAM used/total | `19186/64295 MB` |
+| ⚙️ Load · uptime | `0.54 0.88 1.01` · 1 day, 12 hours, 20 minutes — 32 cores, 62 GiB, no GPU |
+| 💾 RAM used/total | `2112/64295 MB` |
 | 🔗 Session | `ses_f31799c77ffeTq9gcYgqc4hBhg` |
-| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `f9f5a1a status: yes — tiny_test_n101 epoch 29/30 loss 4.71933126449585 acc 6.9` |
-| 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `3593450 B` — every run, command & tool result |
+| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `b14fe1e meta: supervise tick 2026-09-25T01:53:01Z — 0 fix(es)` |
+| 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `3600803 B` — every run, command & tool result |
 | 📈 Timeline | [status/status.log](status/status.log) |

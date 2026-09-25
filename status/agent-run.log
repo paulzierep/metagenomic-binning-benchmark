@@ -40516,3 +40516,109 @@ EVAL_RUNNING
 [2026-09-25 01:49:06] INFO: Concatenating alignments.
 [2026-09-25 01:49:06] INFO: Placing 1 bins into the genome tree with pplacer (be patient).
 > build · mimo-v2.6-flash-free
+[0m$ [0mfor i in $(seq 1 30); do if ! pgrep -f "run_eval.sh /vol/data/benchmark/runs/tiny_test_n101" >/dev/null; then echo "EVAL DONE"; break; fi; sleep 10; done; tail -8 /vol/data/benchmark/logs/tiny_test_n101_eval.log; echo "=== run_meta ==="; tail -6 /vol/data/benchmark/runs/tiny_test_n101/run_meta.txt; echo "=== reads head ==="; head -4 /vol/data/datasets/cami_II_human/extract/2017.12.04_18.45.54_sample_0/reads/anonymous_reads.fq | cut -c1-80; echo "=== contigs count ==="; zcat /vol/data/datasets/cami_II_human/extract/2017.12.04_18.45.54_sample_0/contigs/anonymous_gsa.fasta.gz | grep -c "^>"
+=== auto-reporting: results/<run>.csv, runs/<run>/per_bin_results.csv, per_bins.png ===
+wrote /vol/data/repos/metagenomic-binning-benchmark/results/tiny_test_n101.csv
+tiny_test_n101,c8f22e4935a66a0fd58b794489a9021671b15437,comebin_tiny_101,8,85,1,63.89,9.05,0,1,46.58,6.35,0,0
+tiny_test_n101: 1 per-bin rows -> /vol/data/repos/metagenomic-binning-benchmark/runs/tiny_test_n101/per_bin_results.csv
+tiny_test_n101: per-bin bar chart -> runs/tiny_test_n101/per_bins.png
+comparison scatter (all-runs, 5 runs) -> results/figures/comp_vs_cont_all-runs.png
+per-dataset subplot scatter -> results/figures/comp_vs_cont_by_dataset.png
+done (checkm2 rc=0, checkm rc=0)
+=== run_meta ===
+cmd_checkm2: /vol/data/tools/bin/micromamba run -p /vol/data/envs/checkm2 checkm2 predict --threads 8 --database_path /vol/data/benchmark/checkm2db/CheckM2_database/uniref100.KO.1.dmnd --input /vol/data/benchmark/runs/tiny_test_n101/comebin_out/comebin_res/comebin_res_bins --output-directory /vol/data/benchmark/runs/tiny_test_n101/eval/checkm2 -x fa --force
+checkm2_rc: 0 checkm2_wall_s: 44
+cmd_checkm: LD_LIBRARY_PATH=/vol/data/envs/checkm/lib:/vol/data/envs/comebin/lib /vol/data/tools/bin/micromamba run -p /vol/data/envs/comebin checkm lineage_wf -x fa -t 8 --tmpdir /vol/data/benchmark/runs/tiny_test_n101/eval/checkm/tmp /vol/data/benchmark/runs/tiny_test_n101/comebin_out/comebin_res/comebin_res_bins /vol/data/benchmark/runs/tiny_test_n101/eval/checkm/out
+checkm_rc: 0 checkm_wall_s: 114
+checkm2_bins: 1 checkm2_compl_mean: 63.89 checkm2_cont_mean: 9.05
+checkm_bins: 1 checkm_compl_mean: 46.58 checkm_cont_mean: 6.35
+=== reads head ===
+@S0R0/1
+AATATGTAACATACCTGCGGTTGGAGCATGCAAAGCAGCTGTTACAGGACACCGATATCCCGGTTACGGATGTAGCCATG
++
+@ADEGGEGIIIIIGJKKKGJKF@KKAJKK@KKHJKGCE@KKKJEKBCF,EJKGKFEKK6FKKDAECEEEECAAJE$<EE=
+=== contigs count ===
+68417
+> build · mimo-v2.6-flash-free
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && sed -n '1,80p' scripts/prep_cami2_marine.sh
+#!/usr/bin/env bash
+# prep_cami2_marine.sh — build the COMEBin input for the CAMI II marine
+# benchmark, sample 0 (short-read, anonymous). Strategy (documented in
+# docs/01-datasets.md + docs/06-benchmark-commands.md):
+#   - contigs: anonymous_gsa.fasta.gz subset to contigs >= $MINLEN bp
+#     (41,988 contigs at 2,000 bp → COMEBin-feasible; real CAMI data)
+#   - reads:   anonymous_reads.fq.gz (sample-0 pooled reads, interleaved PE)
+#   - coverage BAM: bwa mem -p (interleaved) → samtools sort+index
+#     Reads of unkept contigs simply produce no alignment; filenames stay S0C*.
+# Ground truth for later eval: binning_gs.tsv (S0C* -> Otu genome).
+# Usage: bash scripts/prep_cami2_marine.sh [minlen=2000]
+set -euo pipefail
+
+MM=/vol/data/tools/bin/micromamba
+ENV=/vol/data/envs/comebin
+SRC=/vol/data/datasets/cami_II/marine_reads
+SAMPLE="simulation_short_read/2018.08.15_09.49.32_sample_0"
+GSA="$SRC/contigs_0/$SAMPLE/contigs/anonymous_gsa.fasta.gz"
+GT="$SRC/contigs_0/$SAMPLE/contigs/binning_gs.tsv"
+CONT="$SRC/reads_0/$SAMPLE/reads"
+READS="$CONT/anonymous_reads.fq.gz"
+MAPPING="$CONT/reads_mapping.tsv.gz"
+OUT=${OUT:-/vol/data/datasets/cami_II/marine_sample0_input}
+MINLEN=${1:-2000}
+
+mkdir -p "$OUT/bamfiles" "$OUT/logs"
+echo "== marine sample-0 input: contigs >= ${MINLEN} bp =="
+
+# ---- 1. subset contigs by length (streamed) -------------------------------- #
+zcat "$GSA" | awk -v L="$MINLEN" '
+  /^>/ { if (name != "" && len >= L) print ">" name "\n" seq;
+         name = substr($0, 2); seq = ""; len = 0; next }
+  { seq = seq $0; len += length($0) }
+  END { if (name != "" && len >= L) print ">" name "\n" seq }' \
+  > "$OUT/contigs.fa"
+N=$(grep -c '^>' "$OUT/contigs.fa")
+echo "contigs kept: $N"
+[ "$N" -gt 0 ] || { echo "ERROR: empty contig subset"; exit 1; }
+
+# ---- 2. bwa index + map all reads (interleaved) + sort --------------------- #
+export MAMBA_ROOT_PREFIX=/vol/data/envs/.mamba
+"$MM" run -p "$ENV" bwa index "$OUT/contigs.fa" 2>&1 | tail -2
+"$MM" run -p "$ENV" bash -c "bwa mem -p -t 32 '$OUT/contigs.fa' '$READS' 2>'$OUT/logs/bwa.log' | samtools sort -@ 32 -o '$OUT/bamfiles/marine.bam' -"
+"$MM" run -p "$ENV" samtools index "$OUT/bamfiles/marine.bam"
+"$MM" run -p "$ENV" samtools quickcheck "$OUT/bamfiles/marine.bam" && echo "bam OK"
+
+# ---- 3. ground-truth subset + input metadata ------------------------------- #
+grep -v '^@' "$GT" | awk -v K="$OUT/contigs.fa" '
+  BEGIN{ while ((getline line < K) > 0) { n=substr(line,2); keep[n]=1 } }
+  ($1 in keep)' > "$OUT/binning_gs_subset.tsv" || true
+{
+  echo "cami2_marine_sample0_input:"
+  echo "  contigs:        $OUT/contigs.fa ($N contigs, >=${MINLEN} bp)"
+  echo "  reads:          $READS ($(du -h "$READS" | cut -f1) gz, interleaved PE)"
+  echo "  bam:            $OUT/bamfiles/marine.bam"
+  echo "  ground truth:   $OUT/binning_gs_subset.tsv ($(wc -l < "$OUT/binning_gs_subset.tsv" 2>/dev/null) S0C* lines)"
+  echo "  md5s:"
+  md5sum "$OUT/contigs.fa" "$OUT/bamfiles/marine.bam" "$OUT/binning_gs_subset.tsv" \
+    | sed 's/^/    /'
+} | tee "$OUT/logs/input_meta.txt"
+echo "DONE -> $OUT"
+[0m$ [0mzcat /vol/data/datasets/cami_II_human/extract/2017.12.04_18.45.54_sample_0/contigs/anonymous_gsa.fasta.gz | awk '/^>/{if(l)print l; l=0; next}{l+=length($0)}END{if(l)print l}' | sort -nr > /tmp/human_contig_lens.txt; wc -l /tmp/human_contig_lens.txt; for n in 4900; do head -$n /tmp/human_contig_lens.txt | awk -v n=$n '{s+=$1}END{print "N="n" total_bp="s" cutoff_len="$1}'; done; for c in 1000 2000 3000 5000; do echo ">=${c}: $(awk -v c=$c '$1>=c' /tmp/human_contig_lens.txt | wc -l)"; done; du -sh /vol/data/datasets/cami_II_human/extract/*; df -h /vol/data | tail -1
+68417 /tmp/human_contig_lens.txt
+N=4900 total_bp=166008681 cutoff_len=4733
+>=1000: 34843
+>=2000: 18676
+>=3000: 10607
+>=5000: 4462
+11G	/vol/data/datasets/cami_II_human/extract/2017.12.04_18.45.54_sample_0
+/dev/vdb        492G  110G  357G  24% /vol/data
+> build · mimo-v2.6-flash-free
+[0m← [0mWrite /vol/data/repos/metagenomic-binning-benchmark/scripts/prep_cami2_human.sh
+Created file successfully: /vol/data/repos/metagenomic-binning-benchmark/scripts/prep_cami2_human.sh
+> build · mimo-v2.6-flash-free
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && bash -n scripts/prep_cami2_human.sh && echo "syntax OK" && nohup bash scripts/prep_cami2_human.sh 4900 > /vol/data/benchmark/logs/human_prep_$(date -u +%Y%m%dT%H%M%SZ).log 2>&1 & sleep 20; ls -t /vol/data/benchmark/logs/human_prep_*.log | head -1; tail -5 $(ls -t /vol/data/benchmark/logs/human_prep_*.log | head -1)
+syntax OK
+/vol/data/benchmark/logs/human_prep_20260925T015532Z.log
+== human sample-0 input: top 4900 contigs by length (GSA has 68,417) ==
+kept 4900 contigs, 166,008,681 bp, min 4,733 max 5,287,944
+contigs kept: 4900
+> build · mimo-v2.6-flash-free
