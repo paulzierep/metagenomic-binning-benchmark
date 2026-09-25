@@ -168,4 +168,17 @@ contig sets are far too large for COMEBin training (gsa 1.48 M contigs, pooled M
 
 ## 3. CAMI III challenge data (planned)
 
-TODO — same fields as above.
+**Verified 2026-09-25 from <https://cami-challenge.org/datasets/> (HTTP):**
+
+| | |
+|---|---|
+| Datasets released | **Human gut only so far** — no CAMI III marine/plant yet: (a) *Longitudinal Human Gut* (9 individuals × 4 time points), (b) *Toy Longitudinal Human Gut* (10 individuals × 2 time points = **20 samples**). Both short **and** long reads. |
+| Download lists | `https://cami-challenge.org/static/CAMI3_toy_dataset_download.list` (short, 86 URLs) · `…_long_download.list` (long) → `wget -i` |
+| Object store | `https://s3.bi.denbi.de/swift/v1/cami3__human-gut-toy/{short,long}/` — per-sample `sample_N_{bam,contigs,gsa,reads}.tar.gz` (N = 0..19) + pooled `gsa_pooled.fasta.gz`, `coverages.tar.gz`, `taxonomic_profiles.tar.gz`, `source_genomes.tar.gz`, `sample_subject_mapping.tsv` |
+| Sample IDs | `cami3_toy_human_gut_short_read_sample_[0..19]`; `…_pooled_assembly` = gold-standard pooled assembly |
+| Sizes measured (HTTP HEAD, 2026-09-25) | sample 0 short: `bam` **3.6 GB** · `contigs` **277 MB** · `reads` **4.6 GB** · `gsa` **131 MB** → ≈ **8.6 GB/sample**; `gsa_pooled.fasta.gz` 1.2 GB; `coverages.tar.gz` 105 KB → one sample ≈ 8.6 GB, two ≈ 17 GB (budget ≤ 50 GB ✅) |
+| Spec | Illumina HiSeq 2×150 bp, 100 Gbp total (short); ONT ~4 kb mean, 100 Gbp (long) |
+| Taxonomy | NCBI taxdump `taxdmp_2025-08-01.zip` |
+| Ground truth | gold-standard pooled assembly + per-sample `gsa`/`gsa_mapping` (details to confirm on download) |
+| Key difference vs CAMI II | **per-sample BAM archives are published** → if the BAM references match the published sample contigs, no `bwa mem` remap is needed (must verify first — CAMI II's BAMs were per-genome and unusable) |
+| Status | **to download after the CAMI II marine run**; sample-0 sizes verified; DOI "TBA" (cite the datasets page meanwhile) |

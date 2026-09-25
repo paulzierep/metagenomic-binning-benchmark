@@ -25,7 +25,7 @@ Current usage (2026-09-23): 76 GB used / **391 GB free**.
 | 4 | CAMI II marine — sample 0 short-read | 10 GB extracted (tars 4.6+0.36 GB) | keep **1–2 samples** (~11 GB/sample extracted) | sample 0 extracted |
 | 5 | Human host-associated (CAMI II) | sample_0 tarball 9.7 GB + extracted contigs/reads 11 GB + input build ~0.5 GB | **1–2 samples, ≤ 30 GB** | ✅ sample 0 downloaded + md5-verified 2026-09-25, input prep running |
 | 5b | Tiny functional set (issue #18) | `comebin_tiny` 43 MB + `comebin_tiny_101` 47 MB | kept permanently (floor = 101 contigs) | ✅ built, `tiny_test_n101` passed end-to-end |
-| 6 | CAMI III (marine + human gut) | – | **≤ 50 GB** (verify sizes on frl.publisso.de before download) | to download |
+| 6 | CAMI III (human gut — toy + longitudinal; **no marine released yet**) | – | **≤ 50 GB** (sample-0 sizes verified 2026-09-25: ≈ 8.6 GB/sample, BAM included) | lists + sizes verified; to download after marine run |
 | 7 | Eval refs + envs | checkm_ref 1.4 GB + checkm2db 2.9 GB + envs ~8 GB | unchanged | ready |
 
 **Budget math:** demo 6.4 + small 0.1 + medium ≤5 + CAMI II marine 11 + human
