@@ -3,10 +3,10 @@
 | | |
 |---|---|
 | Status | 🟢 `running` |
-| ⏱ Updated (Europe/Berlin) | `2026-09-25T08:22 CEST` |
-| 🏃 Live benchmark | `marine_v11_20260925` — **epoch 35/200** · loss `1.2445907592773438` · top1 acc `84.033203125` (log 68s fresh) |
+| ⏱ Updated (Europe/Berlin) | `2026-09-25T08:23 CEST` |
+| 🏃 Live benchmark | `marine_v11_20260925` — **epoch 35/200** · loss `1.2445907592773438` · top1 acc `84.033203125` (log 129s fresh) |
 | 🧠 Model (last turn) | `big-pickle` (watchdog rotates to free models on quota) |
-| 📌 Agent note · **9 min old** | Baseline training epoch ~109/200 (~2.4 min/epoch, ETA ~22:35 UTC unless early-stop); next: baseline eval (run_eval.sh) → issue #2 small-dataset test → v1.1.0 fix run
+| 📌 Agent note · **0 min old** | Baseline training epoch ~109/200 (~2.4 min/epoch, ETA ~22:35 UTC unless early-stop); next: baseline eval (run_eval.sh) → issue #2 small-dataset test → v1.1.0 fix run
 2026-09-23 20:33:11 UTC - heartbeat
 2026-09-23 20:43:58 UTC - heartbeat
 2026-09-23 20:56:28 UTC - heartbeat
@@ -304,10 +304,11 @@
 2026-09-25T05:41:42Z marine-epoch23
 2026-09-25T05:51:55Z marine-epoch27
 2026-09-25T06:02:06Z marine-epoch30
-2026-09-25T06:12:17Z marine-epoch33 |
-| ⚙️ Load · uptime | `30.74 30.00 30.00` · 1 day, 16 hours, 46 minutes — 32 cores, 62 GiB, no GPU |
-| 💾 RAM used/total | `6333/64295 MB` |
+2026-09-25T06:12:17Z marine-epoch33
+2026-09-25T06:22:26Z marine-epoch36 |
+| ⚙️ Load · uptime | `31.70 30.43 30.16` · 1 day, 16 hours, 47 minutes — 32 cores, 62 GiB, no GPU |
+| 💾 RAM used/total | `7052/64295 MB` |
 | 🔗 Session | `ses_f31799c77ffeTq9gcYgqc4hBhg` |
-| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `9bb4369 status: yes — marine_v11_20260925 epoch 34/200 loss 1.2835655212402344` |
-| 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `3857654 B` — every run, command & tool result |
+| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `71092d4 status: yes — marine_v11_20260925 epoch 35/200 loss 1.2445907592773438` |
+| 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `3859886 B` — every run, command & tool result |
 | 📈 Timeline | [status/status.log](status/status.log) |
