@@ -3,10 +3,10 @@
 | | |
 |---|---|
 | Status | 🟢 `running` |
-| ⏱ Updated (Europe/Berlin) | `2026-09-25T04:20 CEST` |
+| ⏱ Updated (Europe/Berlin) | `2026-09-25T04:26 CEST` |
 | 🏃 Benchmark | no active run |
 | 🧠 Model (last turn) | `big-pickle` (watchdog rotates to free models on quota) |
-| 📌 Agent note · **1 min old** | Baseline training epoch ~109/200 (~2.4 min/epoch, ETA ~22:35 UTC unless early-stop); next: baseline eval (run_eval.sh) → issue #2 small-dataset test → v1.1.0 fix run
+| 📌 Agent note · **7 min old** | Baseline training epoch ~109/200 (~2.4 min/epoch, ETA ~22:35 UTC unless early-stop); next: baseline eval (run_eval.sh) → issue #2 small-dataset test → v1.1.0 fix run
 2026-09-23 20:33:11 UTC - heartbeat
 2026-09-23 20:43:58 UTC - heartbeat
 2026-09-23 20:56:28 UTC - heartbeat
@@ -281,9 +281,9 @@
 2026-09-25T02:06:18Z monitor-turn
 2026-09-25T02:17:32Z human-run-launched
 2026-09-25T02:18:59Z human-run-coverage |
-| ⚙️ Load · uptime | `1.22 5.92 11.21` · 1 day, 12 hours, 44 minutes — 32 cores, 62 GiB, no GPU |
-| 💾 RAM used/total | `2170/64295 MB` |
+| ⚙️ Load · uptime | `1.03 2.52 7.95` · 1 day, 12 hours, 50 minutes — 32 cores, 62 GiB, no GPU |
+| 💾 RAM used/total | `2154/64295 MB` |
 | 🔗 Session | `ses_f31799c77ffeTq9gcYgqc4hBhg` |
-| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `2586854 meta: human CAMI II run launched (human_v11_20260925, 4900 contigs)` |
+| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `7857823 status: yes — human_v11_20260925 epoch —/200 loss — acc — model ` |
 | 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `3707851 B` — every run, command & tool result |
 | 📈 Timeline | [status/status.log](status/status.log) |
