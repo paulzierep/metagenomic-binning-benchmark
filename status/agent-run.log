@@ -65005,3 +65005,49 @@ except Exception as e:
 "
 Error: Compressed file ended before the end-of-stream marker was reached
 > build · nemotron-3.5-lightning-free
+[0m$ [0mpython3 -c "
+import gzip, io, tarfile
+
+# Try to read what we can from the gzip file
+with open('/vol/data/datasets/cami_III/cami3_toy_human_gut_short_read_sample_0.tar.gz', 'rb') as f:
+    raw = f.read()
+
+# Find where gzip data ends (look for end-of-stream marker)
+# Gzip uses deflate, let's try to decompress step by step
+try:
+    decompressed = gzip.decompress(raw)
+    print(f'Decompressed size: {len(decompressed)} bytes')
+    # Check if it's a tar file
+    if decompressed[:5] == b'BAM\x00' or decompressed[:2] == b'PK':
+        print('Not a tar file')
+    else:
+        # Try to open as tar
+        try:
+            tf = tarfile.open(fileobj=io.BytesIO(decompressed))
+            print('Successfully opened as tar!')
+            members = tf.getmembers()
+            print(f'Number of members: {len(members)}')
+            for m in members[:5]:
+                print(f'  {m.name} ({m.size} bytes)')
+        except Exception as e:
+            print(f'Not a valid tar: {e}')
+except Exception as e:
+    print(f'gzip.decompress failed: {e}')
+    # Try to find the valid portion
+    # Try decompressing with incremental option
+    try:
+        dec = gzip.GzipFile(fileobj=io.BytesIO(raw))
+        data = dec.read()
+        print(f'Read {len(data)} bytes before error')
+    except Exception as e2:
+        print(f'Incremental read also failed: {e2}')
+"
+gzip.decompress failed: Compressed file ended before the end-of-stream marker was reached
+Incremental read also failed: Compressed file ended before the end-of-stream marker was reached
+> build · nemotron-3.5-lightning-free
+[0m$ [0mwhich wget 2>/dev/null && wget --version | head -1
+/usr/bin/wget
+GNU Wget 1.21.4 built on linux-gnu.
+[0m$ [0mapt list --installed 2>/dev/null | grep -i wget
+wget/noble-updates,noble-security,now 1.21.4-1ubuntu4.5 amd64 [installed,automatic]
+> build · nemotron-3.5-lightning-free
