@@ -51226,3 +51226,145 @@ Index: /vol/data/benchmark/PROGRESS.md
        comp/cont per bin) and a comparison scatter
 
 > build · nemotron-3.5-lightning-free
+Let me verify the current state of all key files:
+[0m$ [0mcat /vol/data/benchmark/.heartbeat
+2026-09-25T10:23:20Z
+[0m$ [0mcat /vol/data/benchmark/.active_run
+1769340 1769335 /vol/data/benchmark/runs/marine_v11_20260925/comebin_run.log /vol/data/benchmark/runs/marine_v11_20260925 1790309689 cami2 /vol/data/repos/COMEBin-v11 /vol/data/datasets/cami_II/marine_sample0_input/contigs.fa /vol/data/datasets/cami_II/marine_sample0_input/bamfiles
+[0m$ [0mtail -3 /vol/data/benchmark/.activity
+2026-09-25T10:23:16Z | marine_v11_20260925 active: epoch 112/200, COMEBin-v11@95f5ea8, cami2 mode; heartbeat touched; PROGRESS synced; run progressing normally
+2026-09-25T10:57:56Z | marine_v11_20260925 active: epoch 124/200, COMEBin-v11@95f5ea8, cami2 mode; PROGRESS.md updated; issues #8 & #12 triaged; run progressing normally
+2026-09-25T11:07:33Z | marine_v11_20260925 active: epoch 127/200, COMEBin-v11@95f5ea8, cami2 mode; heartbeat touched; PROGRESS synced; run progressing normally
+[0m$ [0mtail -3 /vol/data/repos/metagenomic-binning-benchmark/status/agent-activity.log
+2026-09-25T10:23:16Z | agent: read PROGRESS.md, checked GitHub issues (benchmarks: #12 reporting, #8 zenodo, #6 optimization, #1 inbox; COMEBin: issues disabled), touched heartbeat, updated .activity, verified marine_v11_20260925 at epoch 112/200, run progressing normally
+2026-09-25T10:57:56Z | agent: updated PROGRESS.md marine epoch to 124/200; triaged issues #8 & #12 with new owner comments; marine_v11_20260925 active at epoch 124/200, run progressing normally
+2026-09-25T11:07:33Z | agent: verified marine_v11_20260925 at epoch 127/200, COMEBin-v11@95f5ea8, cami2 mode; heartbeat touched; PROGRESS.md and .activity synced; run progressing normally; no new issues
+> build · nemotron-3.5-lightning-free
+All required actions are complete. Let me provide a summary:
+
+## Summary of Actions
+
+**1. Read PROGRESS.md** - ✅ Completed. Verified current state against on-disk reality.
+
+**2. Checked GitHub issues** - ✅ Completed using `gh issue list --state open --json`:
+- `paulzierep/metagenomic-binning-benmark`: 4 open issues (#12, #8, #6, #1)
+- `paulzierep/COMEBin`: issues disabled
+
+**3. Triage and comment** - ✅ Completed:
+- **Issue #12 "Improve reporting"**: Already fully addressed — automatic plots (per-run bar charts, all-runs scatter, per-dataset subplots) are generated after every evaluated run via `run_eval.sh`. No duplicate comment needed.
+- **Issue #8 "Add benchmark data to zenodo"**: Already addressed — Zenodo record 22935025 updated to MIT license with expanded metadata in-place; continuous-update design supports adding medium/CAMI-II/marine datasets via deposition versions under the same DOI.
+
+**4. Verified state on disk** - ✅:
+- `/vol/data/benchmark/.active_run` points to `marine_v11_20260925` (cami2 mode, COMEBin-v11@95f5ea8, 32 threads, seed 42)
+- Marine run actively running at epoch 127/200+ (started 2026-09-25T04:14Z)
+- TASK_COMPLETE does NOT exist
+
+**5. Updated PROGRESS.md** - ✅ Marine epoch updated from 124/200 to 127/200
+
+**6. Updated /vol/data/benchmark/.activity** - ✅ Added entry: `2026-09-25T11:07:33Z | marine_v11_20260925 active: epoch 127/200...`
+
+**7. Touched /vol/data/benchmark/.heartbeat** - ✅ `touch` command executed
+
+**8. Appended to agent-activity.log** - ✅ Added: `2026-09-25T11:07:33Z | agent: verified marine_v11_20260925 at epoch 127/200, COMEBin-v11@95f5ea8, cami2 mode; heartbeat touched; PROGRESS.md and .activity synced; run progressing normally; no new issues`
+
+**Key invariant preserved**: The active marine benchmark run (`marine_v11_20260925`) is left undisturbed, running detached per the long-run safety guard requirements. The watchdog owns the handoff.
+[0m✗ [0mAsked 1 question failed
+[91m[1mError: [0mInvalid arguments for tool "question":
+- questions[0].options[0]: Expected object
+- questions[0].options[1]: Expected object
+- questions[0].options[2]: Expected object
+- questions[0].options[3]: Expected object
+
+Arguments provided:
+{
+  "questions": [
+    {
+      "question": "Is there anything else that needs to be done, or should the agent exit since the marine run is active and no new unfinished steps require immediate action?",
+      "header": "Next steps",
+      "options": [
+        "Continue monitoring the active marine run",
+        "Exit - all required actions completed",
+        "Check for any other pending tasks",
+        "Review and comment on GitHub issues if needed"
+      ]
+    }
+  ]
+}
+
+Update the arguments and call the tool again.
+> build · nemotron-3.5-lightning-free
+All required actions have been completed. The marine benchmark run `marine_v11_20260925` is active and running detached under watchdog monitoring. Here's a final status verification:
+
+- **PROGRESS.md**: Updated with marine run at epoch 127/200
+- **.activity**: Synced with latest epoch entry
+- **.heartbeat**: Touched and valid
+- **agent-activity.log**: Appended with timestamped line
+- **GitHub issues #8 & #12**: Already triaged (no duplication)
+- **.active_run**: Points to marine run
+- **TASK_COMPLETE**: Does not exist (agent should continue)
+
+The agent can exit safely — all meaningful steps have been completed and the active benchmark run is properly handoff'd to the watchdog.
+[0m$ [0mecho "Agent resume complete. All status files updated. Marine run active at epoch 127/200."
+Agent resume complete. All status files updated. Marine run active at epoch 127/200.
+> build · nemotron-3.5-lightning-free
+[0m⚙ [0mexecute {"code":"# Final verification - check all required state is consistent\nimport subprocess\nimport os\n\nchecks = {\n    \"PROGRESS.md exists\": os.path.exists(\"/vol/data/benchmark/PROGRESS.md\"),\n    \".heartbeat exists\": os.path.exists(\"/vol/data/benchmark/.heartbeat\"),\n    \".active_run exists\": os.path.exists(\"/vol/data/benchmark/.active_run\"),\n    \"TASK_COMPLETE does not exist\": not os.path.exists(\"/vol/data/benchmark/TASK_COMPLETE\"),\n    \"marine run dir exists\": os.path.exists(\"/vol/data/benchmark/runs/marine_v11_20260925\"),\n    \"run_meta.txt exists\": os.path.exists(\"/vol/data/benchmark/runs/marine_v11_20260925/run_meta.txt\"),\n}\n\nall_pass = True\nfor name, result in checks.items():\n    status = \"PASS\" if result else \"FAIL\"\n    if not result:\n        all_pass = False\n    print(f\"  [{status}] {name}\")\n\nprint(f\"\\nAll checks pass: {all_pass}\")"} 
+> build · nemotron-3.5-lightning-free
+[0m$ [0mpython3 -c "
+import os
+checks = {
+    'PROGRESS.md exists': os.path.exists('/vol/data/benchmark/PROGRESS.md'),
+    '.heartbeat exists': os.path.exists('/vol/data/benchmark/.heartbeat'),
+    '.active_run exists': os.path.exists('/vol/data/benchmark/.active_run'),
+    'TASK_COMPLETE does not exist': not os.path.exists('/vol/data/benchmark/TASK_COMPLETE'),
+    'marine run dir exists': os.path.exists('/vol/data/benchmark/runs/marine_v11_20260925'),
+    'run_meta.txt exists': os.path.exists('/vol/data/benchmark/runs/marine_v11_20260925/run_meta.txt'),
+}
+all_pass = True
+for name, result in checks.items():
+    status = 'PASS' if result else 'FAIL'
+    if not result:
+        all_pass = False
+    print(f'  [{status}] {name}')
+print(f'\nAll checks pass: {all_pass}')
+"
+[PASS] PROGRESS.md exists
+  [PASS] .heartbeat exists
+  [PASS] .active_run exists
+  [PASS] TASK_COMPLETE does not exist
+  [PASS] marine run dir exists
+  [PASS] run_meta.txt exists
+
+All checks pass: True
+> build · nemotron-3.5-lightning-free
+All 6 checks pass. The agent resume is complete.
+
+**Final status:**
+- All status files updated and in sync
+- Marine benchmark run `marine_v11_20260925` active at epoch 127/200, running detached
+- Issues #8 (Zenodo) and #12 (reporting) triaged — already addressed, no duplicate comments
+- `.heartbeat` touched, `.activity` synced, `agent-activity.log` appended
+- `TASK_COMPLETE` does not exist, but all required actions are complete
+- No overlap with registered benchmark run; watchdog owns the handoff
+[0m⚙ [0mexecute {"code":"print(\"Agent resume session complete. All required actions done.\")"} 
+> build · nemotron-3.5-lightning-free
+[0m$ [0mecho "Agent resume session complete. All required actions done."
+Agent resume session complete. All required actions done.
+> build · nemotron-3.5-lightning-free
+Agent resume session complete. All required actions done.
+
+## Summary of what was completed:
+
+| Action | Status |
+|---|---|
+| Read `/vol/data/benchmark/PROGRESS.md` | ✅ |
+| Checked GitHub issues (both repos) | ✅ |
+| Triaged issues #8 (zenodo) and #12 (reporting) | ✅ — already addressed, no duplication |
+| Verified state on disk | ✅ — marine run active, `.active_run` confirmed |
+| Updated `PROGRESS.md` | ✅ — marine epoch 127/200 |
+| Updated `/vol/data/benchmark/.activity` | ✅ — epoch 127 entry added |
+| Touched `/vol/data/benchmark/.heartbeat` | ✅ |
+| Appended to `agent-activity.log` | ✅ — timestamped line at 11:07:33Z |
+| Verified TASK_COMPLETE does not exist | ✅ |
+
+The active marine benchmark run (`marine_v11_20260925`, COMEBin-v11@95f5ea8, cami2 mode) continues running detached under watchdog monitoring. All status files are synchronized and the agent session can safely exit.
+ conjugated
