@@ -40622,3 +40622,173 @@ syntax OK
 kept 4900 contigs, 166,008,681 bp, min 4,733 max 5,287,944
 contigs kept: 4900
 > build · mimo-v2.6-flash-free
+[0m$ [0mL=$(ls -t /vol/data/benchmark/logs/human_prep_*.log | head -1); sleep 30; tail -3 $L; ls -la /vol/data/datasets/cami_II_human/human_sample0_input/ | head; pgrep -f "bwa mem" >/dev/null && echo "BWA RUNNING: $(ps -eo pcpu,etime,cmd | grep 'bwa mem' | grep -v grep | head -2)" || echo "bwa not running yet"; ts=$(date -u +%Y-%m-%dT%H:%M:%SZ); echo "$ts human-dataset: frl:6425518 gastrooral/sample_0 downloaded 9.74GB md5 OK, extracted contigs(68,417)+reads(10.6GB fq); prep script top-4900 contigs (166 Mbp) -> bwa mem mapping started" >> /vol/data/benchmark/.activity; echo "$ts issue-18 human: sample_0 md5 OK (9.74 GB), extracted; prep_cami2_human.sh written, 4900 contigs/166Mbp selected, bwa mem -p mapping running" >> /vol/data/repos/metagenomic-binning-benchmark/status/agent-activity.log; touch /vol/data/benchmark/.heartbeat; echo logged
+== human sample-0 input: top 4900 contigs by length (GSA has 68,417) ==
+kept 4900 contigs, 166,008,681 bp, min 4,733 max 5,287,944
+contigs kept: 4900
+total 246204
+drwxrwxr-x 4 ubuntu ubuntu      4096 Sep 25 01:55 .
+drwxrwxr-x 4 ubuntu ubuntu      4096 Sep 25 01:55 ..
+drwxrwxr-x 2 ubuntu ubuntu      4096 Sep 25 01:55 bamfiles
+-rw-rw-r-- 1 ubuntu ubuntu     79575 Sep 25 01:55 contigs.bed
+-rw-rw-r-- 1 ubuntu ubuntu 168826102 Sep 25 01:55 contigs.fa
+-rw-rw-r-- 1 ubuntu ubuntu        73 Sep 25 01:55 contigs.fa.amb
+-rw-rw-r-- 1 ubuntu ubuntu    172631 Sep 25 01:55 contigs.fa.ann
+-rw-rw-r-- 1 ubuntu ubuntu  83004342 Sep 25 01:55 contigs.fa.pac
+drwxrwxr-x 2 ubuntu ubuntu      4096 Sep 25 01:55 logs
+BWA RUNNING: 
+logged
+> build · mimo-v2.6-flash-free
+[0m$ [0mps -eo pid,etime,pcpu,rss,cmd | grep -E "bwa|samtools" | grep -v grep | head -5; echo "=== git ==="; cd /vol/data/repos/metagenomic-binning-benchmark && git status --short | head -20; ls runs/ | head -20
+1402791       01:01  0.0 12844 /vol/data/tools/bin/micromamba run -p /vol/data/envs/comebin bwa index /vol/data/datasets/cami_II_human/human_sample0_input/contigs.fa
+1402794       01:01 99.7 141148 bwa index /vol/data/datasets/cami_II_human/human_sample0_input/contigs.fa
+=== git ===
+ M results/figures/comp_vs_cont_all-runs.png
+ M results/figures/comp_vs_cont_by_dataset.png
+ M status/agent-activity.log
+?? results/tiny_test_n101.csv
+?? scripts/prep_cami2_human.sh
+README.md
+baseline_rerun
+baseline_rerun_autorestart1
+baseline_unmodified
+fix_v11_20260924
+medium_v11_20260924
+small_test
+small_test_v2
+small_test_v3
+small_test_v4
+tiny_test_n100
+tiny_test_n101
+> build · mimo-v2.6-flash-free
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && grep -n "^## \|^### " docs/01-datasets.md; git ls-files runs/tiny_test_n101 | head -5; grep -n "tiny_test" docs/11-run-results.md | head
+3:## 1. COMEBin demo data (used first)
+26:### Small derived test set (GitHub issue #2)
+44:### Published small release (Zenodo)
+59:### Medium derived test set (local benchmark input)
+75:## 2. CAMI II challenge data
+129:## 3. CAMI III challenge data (planned)
+runs/tiny_test_n101/comebin_res/comebin.log
+runs/tiny_test_n101/comebin_res/config.yml
+runs/tiny_test_n101/comebin_res/training.log
+runs/tiny_test_n101/comebin_run.log
+runs/tiny_test_n101/logs/resources.tsv
+> build · mimo-v2.6-flash-free
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/docs/01-datasets.md
+Index: /vol/data/repos/metagenomic-binning-benchmark/docs/01-datasets.md
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/docs/01-datasets.md
++++ /vol/data/repos/metagenomic-binning-benchmark/docs/01-datasets.md
+@@ -125,7 +125,21 @@
+ - run: `scripts/run_comebin_fix.sh` with `CONTIGS=…/marine_sample0_input/contigs.fa`,
+   `BAMDIR=…/bamfiles`, `MODE=cami2`, `SRC_COMEBIN=/vol/data/repos/COMEBin-v11`
+   (v1.1.0, `-d cpu`, `-s 42`)
+ 
++### CAMI II human host-associated — issue #18 "Benchmark size" (sample 0 prepped 2026-09-25)
++
++| | |
++|---|---|
++| Source | **CAMI II Toy Human Microbiome Project** (CAMISIM simulation of HMP body sites), block 2 = gastrointestinal + oral — `https://frl.publisso.de/data/frl:6425518/` |
++| Archive | `gastrooral/sample_0.tar.gz` — **9,738,621,091 B**, md5 `60e04c041c38ea168af03fc55dff15d6` ✅ verified (`md5sum -c`) 2026-09-25 01:43 UTC; server md5 from `md5sums.tsv` in the same directory |
++| Downloaded to | `/vol/data/datasets/cami_II_human/gastrooral_sample_0.tar.gz` (~97 MB/s, 100 s) |
++| Members | `2017.12.04_18.45.54_sample_0/{bam,contigs,reads}` — `bam/` = **139 per-OTU BAMs** (same "per-genome BAMs do not merge" problem as marine), `contigs/` = `anonymous_gsa.fasta.gz` (**68,417 contigs**) + `gsa_mapping.tsv.gz` + `gsa_mapping_new.tsv.gz`, `reads/` = `anonymous_reads.fq` (**10.6 GB, uncompressed**, interleaved PE `@S0R0/1`+`@S0R0/2`) + `reads_mapping.tsv.gz` (293 MB, read → **genome**) + `subsample_0.{sam,bam,fq}` |
++| Extracted (contigs + reads only, `bam/` skipped) | `/vol/data/datasets/cami_II_human/extract/2017.12.04_18.45.54_sample_0/` |
++| Input decision (issue #18: "1/6 the size of the big one") | 29,434 demo contigs / 6 ≈ 4,900 → **top 4,900 GSA contigs by length** (166.0 Mbp; the 4,900th is 4,733 bp; ≥5,000 bp would give 4,462) + **all** reads mapped `bwa mem -p -t 32` → `human_sample0_input/{contigs.fa,bamfiles/human.bam}` |
++| Prep script | [`scripts/prep_cami2_human.sh`](../scripts/prep_cami2_human.sh) (refuses to overwrite an existing build; writes `logs/input_meta.txt` with md5s) |
++| Ground truth | ⚠️ `binning_gs.tsv` is **not** inside `sample_0.tar.gz` (only the gsa name maps) → bin quality is scored with CheckM2 + CheckM v1 like every other run; the gold-standard binning lives in `setup.tar.gz` (1.8 GB) / the CAMI goldstandard bundle → **TODO** if a recall/ARI evaluation is wanted |
++| Expected wall time | ≈ 1/6 of the 6.9 h demo run → **≈ 1 h** for 200 epochs (verified by the run once launched) |
++
+ ## 3. CAMI III challenge data (planned)
+ 
+ TODO — same fields as above.
+
+> build · mimo-v2.6-flash-free
+[0m→ [0mRead /vol/data/repos/metagenomic-binning-benchmark/docs/01-datasets.md [90m[offset=59, limit=18][0m
+> build · mimo-v2.6-flash-free
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/docs/01-datasets.md
+Index: /vol/data/repos/metagenomic-binning-benchmark/docs/01-datasets.md
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/docs/01-datasets.md
++++ /vol/data/repos/metagenomic-binning-benchmark/docs/01-datasets.md
+@@ -71,8 +71,34 @@
+ [`results/medium_v11_20260924.csv`](../results/medium_v11_20260924.csv); the
+ medium release is not deposited separately until the owner confirms its license
+ and metadata.
+ 
++### Tiny derived test set — issue #18 "smallest still possible" (2026-09-25)
++
++Two candidate "smallest" datasets were built with the same real-data method
++(`scripts/make_small_dataset.sh <out> <N>`, top-N longest demo contigs + the
++overlapping reads), because the floor is set by a **hard limit in COMEBin's
++clustering**, not by disk:
++
++| Dataset | Contigs | Size | Result |
++|---|---:|---:|---|
++| `/vol/data/datasets/comebin_tiny` | 100 | 43 MB | ❌ **fails**: `cluster.py` builds an HNSW index and queries `max_edges + 1 = 101` neighbours (`max_edges_list = [100]`, `ef = max_edges*10`) → `RuntimeError: Cannot return the results in a contiguous 2D array. Probably ef or M is too small` for N = 100 ≤ 101; no Leiden result → `ValueError: max() arg is an empty sequence` in `get_final_result.get_bin_quality` (run `tiny_test_n100`, exit 1, 85 s) |
++| `/vol/data/datasets/comebin_tiny_101` | **101** | **47 MB** | ✅ **passes**: run `tiny_test_n101`, exit 0, wall 85 s, **1 non-empty bin**; CheckM2 **63.89 % / 9.05 %** (MQ 1), CheckM v1 **46.58 % / 6.35 %** → [`results/tiny_test_n101.csv`](../results/tiny_test_n101.csv) |
++
++**The smallest functional COMEBin dataset on this VM is therefore 101 contigs
++(≈ 1.82 Mbp, 47 MB on disk)** — 100 is the first failing size and 101 the first
++passing one (both verified end-to-end). It trains with the batch size capped to
++the contig count (`run_comebin.sh` clamps `-b` to `sequence_count`), 30 epochs
++(issue #10 `-E`), and yields ≥ 1 bin as required.
++
++Optional follow-up fix (not applied — belongs to a fix batch): clamp the
++neighbour query to `k = min(max_edges + 1, N)` (and/or shrink `max_edges` for
++small inputs) in `cluster.py` so datasets smaller than 101 contigs also work;
++until then 101 is the documented floor.
++
++Run with a different dataset: `DATA=/vol/data/datasets/comebin_tiny_101 bash
++scripts/run_small_test.sh <fresh_rundir> 8`.
++
+ ## 2. CAMI II challenge data
+ 
+ | | |
+ |---|---|
+
+> build · mimo-v2.6-flash-free
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/docs/08-dataset-space-plan.md
+Index: /vol/data/repos/metagenomic-binning-benchmark/docs/08-dataset-space-plan.md
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/docs/08-dataset-space-plan.md
++++ /vol/data/repos/metagenomic-binning-benchmark/docs/08-dataset-space-plan.md
+@@ -22,9 +22,10 @@
+ | 1 | COMEBin demo (BATS) | 6.4 GB + 5.2 GB zip | 6.4 GB (zip deletable → +5.2 GB) | baseline run in progress |
+ | 2 | Small dataset (issue #2) | 94 MB | kept permanently | ready |
+ | 3 | Medium derived dataset | – | target 3,000 contigs, hard cap **5 GB** | build only after small test passes |
+ | 4 | CAMI II marine — sample 0 short-read | 10 GB extracted (tars 4.6+0.36 GB) | keep **1–2 samples** (~11 GB/sample extracted) | sample 0 extracted |
+-| 5 | Human host-associated (CAMI II) | – | **1–2 samples, ≤ 30 GB** | to download |
++| 5 | Human host-associated (CAMI II) | sample_0 tarball 9.7 GB + extracted contigs/reads 11 GB + input build ~0.5 GB | **1–2 samples, ≤ 30 GB** | ✅ sample 0 downloaded + md5-verified 2026-09-25, input prep running |
++| 5b | Tiny functional set (issue #18) | `comebin_tiny` 43 MB + `comebin_tiny_101` 47 MB | kept permanently (floor = 101 contigs) | ✅ built, `tiny_test_n101` passed end-to-end |
+ | 6 | CAMI III (marine + human gut) | – | **≤ 50 GB** (verify sizes on frl.publisso.de before download) | to download |
+ | 7 | Eval refs + envs | checkm_ref 1.4 GB + checkm2db 2.9 GB + envs ~8 GB | unchanged | ready |
+ 
+ **Budget math:** demo 6.4 + small 0.1 + medium ≤5 + CAMI II marine 11 + human
+
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/docs/08-dataset-space-plan.md
+Index: /vol/data/repos/metagenomic-binning-benchmark/docs/08-dataset-space-plan.md
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/docs/08-dataset-space-plan.md
++++ /vol/data/repos/metagenomic-binning-benchmark/docs/08-dataset-space-plan.md
+@@ -58,8 +58,20 @@
+ same COMEBin input strategy as CAMI II marine (assemblies/BAMs or per-sample
+ mapping), evaluate with CheckM2/CheckM v1 against the provided ground-truth
+ binning.
+ 
++**Status 2026-09-25 (issue #18, "1/6 the size of the big one"):** the GI-tract
++block archive `gastrooral/sample_0.tar.gz` (9,738,621,091 B, md5
++`60e04c041c38ea168af03fc55dff15d6`) is downloaded and verified; `contigs/` +
++`reads/` extracted (`bam/` skipped — the 139 per-OTU BAMs cannot be merged).
++The input build subsets the gold-standard assembly from 68,417 to the **top
++4,900 contigs by length (166.0 Mbp ≈ 29,434 / 6)** and maps all 10.6 GB of
++interleaved reads with `bwa mem -p -t 32` →
++`/vol/data/datasets/cami_II_human/human_sample0_input/`
++(`scripts/prep_cami2_human.sh`). Expected benchmark wall time ≈ 1 h vs 6.9 h
++for the full demo. Ground-truth binning (`binning_gs.tsv`) is not in this
++tarball — see docs/01.
++
+ ## CAMI II marine samples (already finishing)
+ 
+ Per-sample (short-read): `_bam` ~4.6 GB + `_contigs` ~0.36–0.49 GB
+ (+`_reads` 5.2 GB, NOT needed for COMEBin — BAMs are supplied pre-mapped).
+
