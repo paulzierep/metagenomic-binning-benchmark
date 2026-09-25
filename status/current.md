@@ -3,10 +3,10 @@
 | | |
 |---|---|
 | Status | 🟢 `running` |
-| ⏱ Updated (Europe/Berlin) | `2026-09-25T09:02 CEST` |
-| 🏃 Live benchmark | `marine_v11_20260925` — **epoch 48/200** · loss `1.0006028413772583` · top1 acc `89.20572662353516` (log 34s fresh) |
+| ⏱ Updated (Europe/Berlin) | `2026-09-25T09:03 CEST` |
+| 🏃 Live benchmark | `marine_v11_20260925` — **epoch 48/200** · loss `1.0006028413772583` · top1 acc `89.20572662353516` (log 96s fresh) |
 | 🧠 Model (last turn) | `big-pickle` (watchdog rotates to free models on quota) |
-| 📌 Agent note · **9 min old** | Baseline training epoch ~109/200 (~2.4 min/epoch, ETA ~22:35 UTC unless early-stop); next: baseline eval (run_eval.sh) → issue #2 small-dataset test → v1.1.0 fix run
+| 📌 Agent note · **0 min old** | Baseline training epoch ~109/200 (~2.4 min/epoch, ETA ~22:35 UTC unless early-stop); next: baseline eval (run_eval.sh) → issue #2 small-dataset test → v1.1.0 fix run
 2026-09-23 20:33:11 UTC - heartbeat
 2026-09-23 20:43:58 UTC - heartbeat
 2026-09-23 20:56:28 UTC - heartbeat
@@ -308,10 +308,11 @@
 2026-09-25T06:22:26Z marine-epoch36
 2026-09-25T06:32:35Z marine-epoch39
 2026-09-25T06:42:45Z marine-epoch42
-2026-09-25T06:52:55Z marine-epoch46 |
-| ⚙️ Load · uptime | `30.36 30.64 30.99` · 1 day, 17 hours, 26 minutes — 32 cores, 62 GiB, no GPU |
-| 💾 RAM used/total | `6487/64295 MB` |
+2026-09-25T06:52:55Z marine-epoch46
+2026-09-25T07:03:03Z marine-epoch49 |
+| ⚙️ Load · uptime | `31.61 30.94 31.07` · 1 day, 17 hours, 27 minutes — 32 cores, 62 GiB, no GPU |
+| 💾 RAM used/total | `5014/64295 MB` |
 | 🔗 Session | `ses_f31799c77ffeTq9gcYgqc4hBhg` |
-| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `a7adaf5 status: yes — marine_v11_20260925 epoch 47/200 loss 0.9965088367462158` |
-| 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `3866531 B` — every run, command & tool result |
+| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `27349e7 status: yes — marine_v11_20260925 epoch 48/200 loss 1.0006028413772583` |
+| 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `3868090 B` — every run, command & tool result |
 | 📈 Timeline | [status/status.log](status/status.log) |
