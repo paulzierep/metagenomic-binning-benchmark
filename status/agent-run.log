@@ -41500,3 +41500,64 @@ d581048 meta: supervise tick 2026-09-25T02:03:01Z — 0 fix(es)
 ?? results/tiny_test_n101.csv
 ?? scripts/prep_cami2_human.sh
 > build · big-pickle
+#18 updated at 02:04Z. Checking the latest comment:
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && gh api repos/paulzierep/metagenomic-binning-benchmark/issues/18/comments --jq '.[-1] | "[" + .created_at + "]\n" + .body' | head -30; echo "=== human prep progress ==="; ls -la /vol/data/datasets/cami_II_human/human_sample0_input/ 2>/dev/null; tail -5 /vol/data/datasets/cami_II_human/human_sample0_input/logs/prep.log 2>/dev/null | cut -c1-150
+[2026-09-25T02:04:26Z]
+Smallest-functional-dataset stepping: first two results are in.
+
+- `tiny_test_n100` (100 contigs): **fails** — exit 1, 0 bins (below the training floor).
+- `tiny_test_n101` (101 contigs): **passes end-to-end** — exit 0, wall 85 s (30 epochs), 1 non-empty bin; CheckM2 rc 0 (44 s): 63.89% completeness / 9.05% contamination (MQ 1); CheckM v1 rc 0 (114 s): 46.58% / 6.35%. Row: `results/tiny_test_n101.csv`, per-bin + plots auto-regenerated.
+
+So the current floor is **101 contigs / ~85 s** — about 30% smaller and faster than `comebin_small` (300 contigs / 122 s). Next: the ~1/6 human host-associated set per the plan above; sizes and timings reported here as they land.
+=== human prep progress ===
+total 448856
+drwxrwxr-x 4 ubuntu ubuntu      4096 Sep 25 01:58 .
+drwxrwxr-x 4 ubuntu ubuntu      4096 Sep 25 01:55 ..
+drwxrwxr-x 2 ubuntu ubuntu      4096 Sep 25 01:55 bamfiles
+-rw-rw-r-- 1 ubuntu ubuntu     79575 Sep 25 01:55 contigs.bed
+-rw-rw-r-- 1 ubuntu ubuntu 168826102 Sep 25 01:55 contigs.fa
+-rw-rw-r-- 1 ubuntu ubuntu        73 Sep 25 01:57 contigs.fa.amb
+-rw-rw-r-- 1 ubuntu ubuntu    172631 Sep 25 01:57 contigs.fa.ann
+-rw-rw-r-- 1 ubuntu ubuntu 166008768 Sep 25 01:57 contigs.fa.bwt
+-rw-rw-r-- 1 ubuntu ubuntu  41502172 Sep 25 01:57 contigs.fa.pac
+-rw-rw-r-- 1 ubuntu ubuntu  83004392 Sep 25 01:58 contigs.fa.sa
+drwxrwxr-x 2 ubuntu ubuntu      4096 Sep 25 01:58 logs
+> build · big-pickle
+The #18 latest comment is my own tiny-results reply (posted at 02:04Z) — no new owner activity. The supervisor is actively building the ~1/6 human set (bwa mem mapping, 32 threads) and owns that in-flight work. Verifying PROGRESS is current:
+[0m$ [0mgrep -n "ACTIVE: issue #18" -A 14 /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md | head -18; echo "=== disk check ==="; ls /vol/data/datasets/cami_II_human/human_sample0_input/bamfiles/ 2>/dev/null; echo "=== prep log tail ==="; tail -3 /vol/data/datasets/cami_II_human/human_sample0_input/logs/prep.log 2>/dev/null | cut -c1-160
+366:- [ ] **ACTIVE: issue #18 "Benchmark size"** (user, 2026-09-24 15:31Z; triaged
+367-      2026-09-25 01:10Z, comment `5824960513`; first tiny results `5825479305`: `tiny_test_n100`
+368-      FAILS (exit 1, 0 bins), `tiny_test_n101` PASSES (exit 0, wall 85 s,
+369-      1 bin; CheckM2 63.89/9.05 MQ1, CheckM v1 46.58/6.35;
+370-      `results/tiny_test_n101.csv`). Floor ≈ 101 contigs. Remaining: ~1/6
+371-      human set (supervisor docs in flight — do not touch). Two directives:
+372-      (a) **smallest functional dataset** — smaller than `comebin_small`
+373-      (300 contigs / 94 MB / 122 s), stepped down until it still trains and
+374-      yields ≥ 1 non-empty bin (`run_small_test.sh` now takes `DATA=…` env);
+375-      (b) **CAMI II human host-associated set at ~1/6 the size of the big demo**
+376-      (29,434 contigs / 6.9 h ⇒ target ≈ 4,900 contigs, ≈ 1 h per run) — source
+377-      frl:6425518 (Toy Human Microbiome, `gastrooral/sample_0.tar.gz` ≈ 9.1 GB,
+378-      structure verified by streamed listing: `bam/OTU_*.bam` per-OTU files —
+379-      same per-genome-BAM problem as marine, so reads must be re-mapped with
+380-      `bwa mem` or the assembly subset must carry its own BAM). Disk budget
+=== disk check ===
+=== prep log tail ===
+> build · big-pickle
+PROGRESS is in sync with disk; no new owner activity (the #18 latest comment is my own). The **#18(b) human set is actively being built by the supervisor** (bwa mem mapping at ~3142% CPU, 32 threads) — that is the first unfinished step and it's in progress in a competing session, so I must not start anything heavy concurrently or duplicate that work. This is a light monitoring turn:
+[0m$ [0mR=/vol/data/repos/metagenomic-binning-benchmark; TS=$(date -u +%FT%TZ); echo "$TS monitor: no new issues; supervisor building #18b human set (bwa mem ~32thr, .active_run empty); PROGRESS in sync; nothing to launch concurrently" >> $R/status/agent-activity.log; echo "$TS monitor-turn" >> /vol/data/benchmark/.activity; touch /vol/data/benchmark/.heartbeat; date -u +%FT%TZ; ps -eo pid,etime,pcpu,args | grep 'main.py\|bwa mem' | grep -v grep | cut -c1-120 | head -4
+2026-09-25T02:06:18Z
+1403993       08:11  0.0 /vol/data/tools/bin/micromamba run -p /vol/data/envs/comebin bash -c bwa mem -p -t 32 '/vol/dat
+1403995       08:11  0.0 bash -c bwa mem -p -t 32 '/vol/data/datasets/cami_II_human/human_sample0_input/contigs.fa' '/vo
+1404003       08:10 3143 bwa mem -p -t 32 /vol/data/datasets/cami_II_human/human_sample0_input/contigs.fa /vol/data/data
+> build · big-pickle
+## Turn summary
+
+**State verified:** no `TASK_COMPLETE`; `.active_run` empty (no registered timed run — nothing to overlap); PROGRESS.md in sync with disk.
+
+**First unfinished step (#18b, ~1/6 human host-associated set):** currently **in progress in the supervisor session** — `prep_cami2_human.sh 4900` is running `bwa mem -p -t 32` (3143% CPU) mapping reads to the 4,900-contig subset under `/vol/data/datasets/cami_II_human/human_sample0_input/`. Since that work is owned by a concurrent session and consuming the full machine, I did not touch it or start anything heavy in parallel — launching a competing prep or benchmark now would be both an overlap and a duplicate.
+
+**Issues:** no new owner activity — the #18 latest comment is my own tiny-results reply (02:04Z). #1/#6/#7 unchanged; COMEBin issues still disabled.
+
+**Bookkeeping:** `.activity` + `status/agent-activity.log` appended; `.heartbeat` touched. No git changes (supervisor's uncommitted docs/figures left untouched; nothing of mine to commit).
+
+**Next turn:** when the supervisor's human-set prep + docs land → register the human benchmark run (`run_comebin_fix.sh`, fresh run dir, detached, `.active_run` verify, watchdog handoff) → `run_eval.sh` → report CheckM2/CheckM v1 row on #18 and in `docs/11`/README; afterward, CAMI II marine sample 0 remains queued behind the human set per the issue-#18 order.
