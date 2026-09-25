@@ -3,10 +3,10 @@
 | | |
 |---|---|
 | Status | 🟢 `running` |
-| ⏱ Updated (Europe/Berlin) | `2026-09-25T10:16 CEST` |
-| 🏃 Live benchmark | `marine_v11_20260925` — **epoch 71/200** · loss `0.6845937967300415` · top1 acc `96.19791412353516` (log 173s fresh) |
+| ⏱ Updated (Europe/Berlin) | `2026-09-25T10:18 CEST` |
+| 🏃 Live benchmark | `marine_v11_20260925` — **epoch 72/200** · loss `0.6789799928665161` · top1 acc `95.859375` (log 106s fresh) |
 | 🧠 Model (last turn) | `nemotron-3.5-lightning-free` (watchdog rotates to free models on quota) |
-| 📌 Agent note · **17 min old** | Baseline training epoch ~109/200 (~2.4 min/epoch, ETA ~22:35 UTC unless early-stop); next: baseline eval (run_eval.sh) → issue #2 small-dataset test → v1.1.0 fix run
+| 📌 Agent note · **0 min old** | Baseline training epoch ~109/200 (~2.4 min/epoch, ETA ~22:35 UTC unless early-stop); next: baseline eval (run_eval.sh) → issue #2 small-dataset test → v1.1.0 fix run
 2026-09-23 20:33:11 UTC - heartbeat
 2026-09-23 20:43:58 UTC - heartbeat
 2026-09-23 20:56:28 UTC - heartbeat
@@ -315,10 +315,11 @@
 2026-09-25T07:33:33Z marine-epoch59
 2026-09-25T07:43:41Z marine-epoch62
 2026-09-25T07:53:49Z marine-epoch65
-2026-09-25T07:58:54Z triage-8-12 |
-| ⚙️ Load · uptime | `28.40 29.54 30.01` · 1 day, 18 hours, 40 minutes — 32 cores, 62 GiB, no GPU |
-| 💾 RAM used/total | `5532/64295 MB` |
+2026-09-25T07:58:54Z triage-8-12
+2026-09-25T08:17:11Z marine_v11_20260925 active: epoch 72/200 training, COMEBin-v11 branch, cami2 mode, ETA ~9-10 h remaining |
+| ⚙️ Load · uptime | `31.79 30.46 30.30` · 1 day, 18 hours, 42 minutes — 32 cores, 62 GiB, no GPU |
+| 💾 RAM used/total | `6935/64295 MB` |
 | 🔗 Session | `ses_f31799c77ffeTq9gcYgqc4hBhg` |
-| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `b6aaacd status: yes — marine_v11_20260925 epoch 71/200 loss 0.6845937967300415` |
-| 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `4095992 B` — every run, command & tool result |
+| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `53e273a status: yes — marine_v11_20260925 epoch 71/200 loss 0.6845937967300415` |
+| 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `4098658 B` — every run, command & tool result |
 | 📈 Timeline | [status/status.log](status/status.log) |
