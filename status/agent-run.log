@@ -66221,3 +66221,187 @@ gzip: /vol/data/datasets/cami_III/cami3_toy_human_gut_short_read_sample_0.tar.gz
 
 Command exceeded timeout of 600 ms. Retry with a larger timeout if the command is expected to take longer.
 > build · nemotron-3.5-lightning-free
+[0m$ [0mpython3 -c "
+import gzip
+
+# Try to decompress with 'strict'=False or use force parameter
+try:
+    with gzip.open('/vol/data/datasets/cami_III/cami3_toy_human_gut_short_read_sample_0.tar.gz', 'rb') as f:
+        data = f.read()
+    print(f'Read {len(data)} bytes from gzip')
+except Exception as e:
+    print(f'gzip.open failed: {e}')
+
+# Try using file raw
+with open('/vol/data/datasets/cami_III/cami3_toy_human_gut_short_read_sample_0.tar.gz', 'rb') as f:
+    raw = f.read()
+print(f'Raw file size: {len(raw)} bytes')
+
+# Gzip header is 10 bytes minimum
+# Let's try to find the deflate data and decompress it
+import zlib
+# The deflate data starts after the 10-byte header
+# But we don't know where it ends
+# Let's try decompressing what we have
+dec = zlib.decompressobj(-zlib.MAX_WBITS)
+try:
+    decompressed = dec.decompress(raw[10:])
+    print(f'Decompressed {len(decompressed)} bytes from offset 10')
+except Exception as e:
+    print(f'Decompress from offset 10 failed: {e}')
+    # Try with wbits=15 (raw deflate, 16 for zlib)
+    dec2 = zlib.decompressobj(15)
+    try:
+        decompressed = dec2.decompress(raw[10:])
+        print(f'Decompressed with wbits=15: {len(decompressed)} bytes')
+    except Exception as e2:
+        print(f'wbits=15 failed: {e2}')
+" 2>&1
+gzip.open failed: Compressed file ended before the end-of-stream marker was reached
+Raw file size: 80336740 bytes
+Decompressed 81497792 bytes from offset 10
+> build · nemotron-3.5-lightning-free
+[0m$ [0mcurl -s -o /tmp/cami_toy.tar.gz "https://figshare.com/collections/CAMI-Challenge-Data/5260861" 2>&1 | head -5
+{"exit":0,"truncated":false,"output":"","status":"completed"}
+> build · nemotron-3.5-lightning-free
+[0m$ [0mls -la /tmp/cami_toy.tar.gz 2>/dev/null
+-rw-rw-r-- 1 ubuntu ubuntu 0 Sep 25 23:12 /tmp/cami_toy.tar.gz
+> build · nemotron-3.5-lightning-free
+[0m$ [0mls -la /vol/data/datasets/cami_III/toy_human_input_2samples/
+total 1119040
+drwxrwxr-x 4 ubuntu ubuntu       4096 Sep 25 22:35 .
+drwxrwxr-x 3 ubuntu ubuntu       4096 Sep 25 23:09 ..
+drwxrwxr-x 2 ubuntu ubuntu       4096 Sep 25 21:54 bamfiles
+-rw-rw-r-- 1 ubuntu ubuntu     294921 Sep 25 22:46 contigs.bed
+-rw-rw-r-- 1 ubuntu ubuntu 1145571604 Sep 25 22:46 contigs.fa
+-rw-rw-r-- 1 ubuntu ubuntu        373 Sep 25 22:46 input_meta.txt
+drwxrwxr-x 4 ubuntu ubuntu       4096 Sep 25 22:46 logs
+[0m$ [0mcat /vol/data/datasets/cami_III/toy_human_input_2samples/input_meta.txt
+cami3_toy_human_gut_input (2 samples, N=5000 contigs):
+  source:        /vol/data/datasets/cami_III (CAMI III toy human gut from cami-challenge.org)
+  contigs:       /vol/data/datasets/cami_III/toy_human_input_2samples/contigs.fa (5000 longest of pooled GSA contigs)
+  samples:       0 1
+  threads:       32
+  gsa_pooled:    /vol/data/datasets/cami_III/gsa_pooled.fasta.gz
+> build · nemotron-3.5-lightning-free
+[0m$ [0mls -la /vol/data/datasets/cami_III/toy_human_input_2samples/logs/
+total 16
+drwxrwxr-x 4 ubuntu ubuntu 4096 Sep 25 22:46 .
+drwxrwxr-x 4 ubuntu ubuntu 4096 Sep 25 22:35 ..
+drwxrwxr-x 3 ubuntu ubuntu 4096 Sep 25 22:46 sample_0
+drwxrwxr-x 3 ubuntu ubuntu 4096 Sep 25 22:46 sample_1
+[0m$ [0mls -la /vol/data/datasets/cami_III/toy_human_input_2samples/bamfiles/
+total 8
+drwxrwxr-x 2 ubuntu ubuntu 4096 Sep 25 21:54 .
+drwxrwxr-x 4 ubuntu ubuntu 4096 Sep 25 22:35 ..
+> build · nemotron-3.5-lightning-free
+[0m$ [0mls -la /vol/data/datasets/cami_III/toy_human_input_2samples/logs/sample_0/
+total 12
+drwxrwxr-x 3 ubuntu ubuntu 4096 Sep 25 22:46 .
+drwxrwxr-x 4 ubuntu ubuntu 4096 Sep 25 22:46 ..
+drwxr-xr-x 2 ubuntu ubuntu 4096 Feb 11  2026 sample_0_reads
+[0m$ [0mls -la /vol/data/datasets/cami_III/toy_human_input_2samples/logs/sample_1/
+total 12
+drwxrwxr-x 3 ubuntu ubuntu 4096 Sep 25 22:46 .
+drwxrwxr-x 4 ubuntu ubuntu 4096 Sep 25 22:46 ..
+drwxr-xr-x 2 ubuntu ubuntu 4096 Feb 11  2026 sample_1_reads
+> build · nemotron-3.5-lightning-free
+[0m$ [0mfind /vol/data/datasets/cami_III/toy_human_input_2samples/logs/sample_0/ -type f
+/vol/data/datasets/cami_III/toy_human_input_2samples/logs/sample_0/sample_0_reads/reads_mapping.tsv.gz
+[0m$ [0mfind /vol/data/datasets/cami_III/toy_human_input_2samples/logs/sample_1/ -type f
+/vol/data/datasets/cami_III/toy_human_input_2samples/logs/sample_1/sample_1_reads/reads_mapping.tsv.gz
+> build · nemotron-3.5-lightning-free
+[0m$ [0mpython3 -c "
+import zlib
+
+# Read the short reads tar decompressed data
+with open('/vol/data/datasets/cami_III/cami3_toy_human_gut_short_read_sample_0.tar.gz', 'rb') as f:
+    raw = f.read()
+
+dec = zlib.decompressobj(-zlib.MAX_WBITS)
+decompressed = dec.decompress(raw[10:])
+
+# Now find the reads_mapping.tsv.gz data within the tar
+# From the manual tar listing, the file starts after the directory header
+# Directory: sample_0_reads/ (0 bytes)
+# File: sample_0_reads/reads_mapping.tsv.gz
+
+# Let me manually parse the tar
+pos = 0
+files = []
+while pos < len(decompressed):
+    header = decompressed[pos:pos+512]
+    if len(header) < 512:
+        break
+    name = header[0:100].rstrip(b'\x00').decode('utf-8', errors='replace')
+    if name.strip() == '':
+        break
+    size = int(header[124:136].rstrip(b'\x00').decode('utf-8', errors='replace'), 8)
+    typeflag = header[156:157] if len(header) > 156 else b''
+    
+    if typeflag == b'0' or typeflag == b'\\0':
+        kind = 'file'
+    elif typeflag == b'5':
+        kind = 'dir'
+    else:
+        kind = f'type={typeflag}'
+    
+    if kind == 'file':
+        file_start = pos + 512
+        file_blocks = (size + 511) // 512
+        file_end = file_start + file_blocks * 512
+        file_data = decompressed[file_start:file_end]
+        # Remove padding
+        if size % 512 != 0:
+            actual_data = file_data[:-((512 - size % 512) % 512)]
+        else:
+            actual_data = file_data
+        files.append((name, actual_data))
+        print(f'File: {name}, data size: {len(actual_data)}')
+    elif kind == 'dir':
+        print(f'Dir: {name}')
+    
+    if kind == 'file':
+        pos = file_end
+    else:
+        pos += 512
+    pos = (pos + 511) // 512 * 512
+
+# Now try to decompress the reads_mapping.tsv.gz
+for name, data in files:
+    if 'reads_mapping' in name:
+        print(f'\\nTrying to decompress {name}...')
+        # Try gzip
+        try:
+            mgz = gzip.decompress(data)
+            print(f'gzip decompress success: {len(mgz)} bytes')
+        except:
+            pass
+        # Try zlib with different wbits
+        for wbits in [15, 31, 47]:
+            try:
+                mdecompressed = zlib.decompress(data, wbits)
+                print(f'zlib wbits={wbits} success: {len(mdecompressed)} bytes')
+            except:
+                pass
+        # Try with raw decompression
+        dec = zlib.decompressobj()
+        try:
+            mdecompressed = dec.decompress(data)
+            print(f'zlib incremental success: {len(mdecompressed)} bytes')
+        except:
+            pass
+" 2>&1
+Dir: sample_0_reads/
+File: sample_0_reads/reads_mapping.tsv.gz, data size: 81496510
+
+Trying to decompress sample_0_reads/reads_mapping.tsv.gz...
+> build · nemotron-3.5-lightning-free
+[0m$ [0mwhich aws 2>/dev/null && aws --version 2>/dev/null || echo "aws not available"
+aws not available
+[0m$ [0mwhich rsync 2>/dev/null && echo "rsync available" || echo "rsync not available"
+/usr/bin/rsync
+rsync available
+[0m$ [0mwhich aria2c 2>/dev/null && echo "aria2c available" || echo "aria2c not available"
+aria2c not available
+> build · nemotron-3.5-lightning-free
