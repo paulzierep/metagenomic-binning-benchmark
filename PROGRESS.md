@@ -371,8 +371,15 @@ included; fixes land on branch `comebin-optimizations` in this repo.
       via run_eval.sh → #18 report + docs/11 row)
       FAILS (exit 1, 0 bins), `tiny_test_n101` PASSES (exit 0, wall 85 s,
       1 bin; CheckM2 63.89/9.05 MQ1, CheckM v1 46.58/6.35;
-      `results/tiny_test_n101.csv`). Floor ≈ 101 contigs. Remaining: ~1/6
-      human set (supervisor docs in flight — do not touch). Two directives:
+      `results/tiny_test_n101.csv`). Floor ≈ 101 contigs. Tiny results comment:
+      `5825479305`. (b) **human set input BUILT + run LAUNCHED (2026-09-25
+      02:17Z)**: `scripts/prep_cami2_human.sh 4900` → top 4,900 longest GSA
+      contigs (166,008,681 bp, N50 1,464,728) + all 10.6 GB reads re-mapped
+      (`bwa mem -p -t 32`, 32 min) → `human_sample0_input/{contigs.fa,bamfiles/human.bam}`
+      (4.74 GB, md5 `c48e4caa…`). Run `runs/human_v11_20260925` registered with
+      the watchdog (source COMEBin-v11 `95f5ea8`, seed 42, 32 thr, MODE=cami2-human);
+      epoch 1/200 at 02:30Z took 16.3 s / 4 batches ⇒ projected ≈ 1 h + clustering.
+      Progress comment: `5825639930`. Two directives:
       (a) **smallest functional dataset** — smaller than `comebin_small`
       (300 contigs / 94 MB / 122 s), stepped down until it still trains and
       yields ≥ 1 non-empty bin (`run_small_test.sh` now takes `DATA=…` env);
