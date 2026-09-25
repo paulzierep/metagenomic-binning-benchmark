@@ -67464,3 +67464,161 @@ Traceback (most recent call last):
     raise ReadError("unexpected end of data")
 tarfile.ReadError: unexpected end of data
 > build · nemotron-3.5-lightning-free
+[0m$ [0mpython3 << 'PYEOF'
+import zlib, gzip, os
+
+# Process short reads archive - manual tar parsing
+print("=== Processing short reads ===")
+with open('/vol/data/datasets/cami_III/cami3_toy_human_gut_short_read_sample_0.tar.gz', 'rb') as f:
+    raw = f.read()
+
+dec = zlib.decompressobj(-zlib.MAX_WBITS)
+decompressed = dec.decompress(raw[10:])
+
+# Manual tar parsing
+pos = 0
+file_data_map = {}  # name -> raw data
+
+while pos < len(decompressed):
+    header = decompressed[pos:pos+512]
+    if len(header) < 512:
+        break
+    name = header[0:100].rstrip(b'\x00').decode('utf-8', errors='replace')
+    if name.strip() == '':
+        break
+    size = int(header[124:136].rstrip(b'\x00').decode('utf-8', errors='replace'), 8)
+    typeflag = header[156:157] if len(header) > 156 else b''
+    
+    if typeflag == b'0' or typeflag == b'\0':
+        kind = 'file'
+    elif typeflag == b'5':
+        kind = 'dir'
+    else:
+        kind = f'type={typeflag}'
+    
+    if kind == 'file':
+        file_start = pos + 512
+        file_blocks = (size + 511) // 512
+        file_end = file_start + file_blocks * 512
+        file_data = decompressed[file_start:file_end]
+        if size % 512 != 0:
+            actual_data = file_data[:-((512 - size % 512) % 512)]
+        else:
+            actual_data = file_data
+        file_data_map[name] = actual_data
+        bn = os.path.basename(name)
+        print(f"  File: {bn} ({len(actual_data)} bytes)")
+    elif kind == 'dir':
+        print(f"  Dir: {name}")
+    
+    if kind == 'file':
+        pos = file_end
+    else:
+        pos += 512
+    pos = (pos + 511) // 512 * 512
+
+# Now decompress .gz files
+print("\nDecompressing .gz files...")
+for name, data in file_data_map.items():
+    bn = os.path.basename(name)
+    if bn.endswith('.gz'):
+        try:
+            mgz = gzip.decompress(data)
+            out_name = bn[:-3]  # remove .gz
+            out_path = f"/tmp/short_{out_name}"
+            with open(out_path, 'wb') as f:
+                f.write(mgz)
+            print(f"  Decompressed {bn} -> {out_name} ({len(mgz)} bytes)")
+            # Check if it's fastq
+            if out_name.endswith('.fq') or out_name.endswith('.fastq'):
+                text = mgz.decode('utf-8', errors='replace')[:200]
+                print(f"    First 200 chars: {text}")
+        except Exception as e:
+            print(f"  Failed to decompress {bn}: {e}")
+
+print()
+
+# Process long reads archive
+print("=== Processing long reads ===")
+with open('/vol/data/datasets/cami_III/cami3_toy_human_gut-long_sample_0.tar.gz', 'rb') as f:
+    raw = f.read()
+
+dec = zlib.decompressobj(-zlib.MAX_WBITS)
+decompressed = dec.decompress(raw[10:])
+
+# Manual tar parsing
+pos = 0
+file_data_map = {}
+
+while pos < len(decompressed):
+    header = decompressed[pos:pos+512]
+    if len(header) < 512:
+        break
+    name = header[0:100].rstrip(b'\x00').decode('utf-8', errors='replace')
+    if name.strip() == '':
+        break
+    size = int(header[124:136].rstrip(b'\x00').decode('utf-8', errors='replace'), 8)
+    typeflag = header[156:157] if len(header) > 156 else b''
+    
+    if typeflag == b'0' or typeflag == b'\0':
+        kind = 'file'
+    elif typeflag == b'5':
+        kind = 'dir'
+    else:
+        kind = f'type={typeflag}'
+    
+    if kind == 'file':
+        file_start = pos + 512
+        file_blocks = (size + 511) // 512
+        file_end = file_start + file_blocks * 512
+        file_data = decompressed[file_start:file_end]
+        if size % 512 != 0:
+            actual_data = file_data[:-((512 - size % 512) % 512)]
+        else:
+            actual_data = file_data
+        file_data_map[name] = actual_data
+        bn = os.path.basename(name)
+        print(f"  File: {bn} ({len(actual_data)} bytes)")
+    elif kind == 'dir':
+        print(f"  Dir: {name}")
+    
+    if kind == 'file':
+        pos = file_end
+    else:
+        pos += 512
+    pos = (pos + 511) // 512 * 512
+
+# Decompress .gz files
+print("\nDecompressing .gz files...")
+for name, data in file_data_map.items():
+    bn = os.path.basename(name)
+    if bn.endswith('.gz'):
+        try:
+            mgz = gzip.decompress(data)
+            out_name = bn[:-3]
+            out_path = f"/tmp/long_{out_name}"
+            with open(out_path, 'wb') as f:
+                f.write(mgz)
+            print(f"  Decompressed {bn} -> {out_name} ({len(mgz)} bytes)")
+            if out_name.endswith('.fq') or out_name.endswith('.fastq'):
+                text = mgz.decode('utf-8', errors='replace')[:200]
+                print(f"    First 200 chars: {text}")
+        except Exception as e:
+            print(f"  Failed to decompress {bn}: {e}")
+PYEOF
+=== Processing short reads ===
+  Dir: sample_0_reads/
+  File: reads_mapping.tsv.gz (81496510 bytes)
+
+Decompressing .gz files...
+  Failed to decompress reads_mapping.tsv.gz: Compressed file ended before the end-of-stream marker was reached
+
+=== Processing long reads ===
+  Dir: sample_0_reads/
+  File: reads_mapping.tsv.gz (10172924 bytes)
+  File: anonymous_reads.fq.gz (70095709 bytes)
+
+Decompressing .gz files...
+  Decompressed reads_mapping.tsv.gz -> reads_mapping.tsv (55889022 bytes)
+  Failed to decompress anonymous_reads.fq.gz: Compressed file ended before the end-of-stream marker was reached
+> build · nemotron-3.5-lightning-free
