@@ -67622,3 +67622,123 @@ Decompressing .gz files...
   Decompressed reads_mapping.tsv.gz -> reads_mapping.tsv (55889022 bytes)
   Failed to decompress anonymous_reads.fq.gz: Compressed file ended before the end-of-stream marker was reached
 > build · nemotron-3.5-lightning-free
+[0m$ [0mpython3 << 'PYEOF'
+import zlib, gzip, os
+
+# Process short reads archive - more thorough manual tar parsing
+print("=== Processing short reads - thorough ===")
+with open('/vol/data/datasets/cami_III/cami3_toy_human_gut_short_read_sample_0.tar.gz', 'rb') as f:
+    raw = f.read()
+
+dec = zlib.decompressobj(-zlib.MAX_WBITS)
+decompressed = dec.decompress(raw[10:])
+
+# Manual tar parsing - go through entire archive
+pos = 0
+count = 0
+while pos < len(decompressed):
+    header = decompressed[pos:pos+512]
+    if len(header) < 512:
+        break
+    name = header[0:100].rstrip(b'\x00').decode('utf-8', errors='replace')
+    if name.strip() == '':
+        break
+    size = int(header[124:136].rstrip(b'\x00').decode('utf-8', errors='replace'), 8)
+    typeflag = header[156:157] if len(header) > 156 else b''
+    
+    if typeflag == b'0' or typeflag == b'\0':
+        kind = 'file'
+    elif typeflag == b'5':
+        kind = 'dir'
+    else:
+        kind = f'type={typeflag}'
+    
+    if kind == 'file':
+        file_start = pos + 512
+        file_blocks = (size + 511) // 512
+        file_end = file_start + file_blocks * 512
+        file_data = decompressed[file_start:file_end]
+        if size % 512 != 0:
+            actual_data = file_data[:-((512 - size % 512) % 512)]
+        else:
+            actual_data = file_data
+        bn = os.path.basename(name)
+        print(f"  [{count}] File: {bn} ({len(actual_data)} bytes)")
+        count += 1
+    elif kind == 'dir':
+        print(f"  [{count}] Dir: {name}")
+    
+    if kind == 'file':
+        pos = file_end
+    else:
+        pos += 512
+    pos = (pos + 511) // 512 * 512
+
+    if count > 50:  # safety limit
+        print("  ... (stopping after 50 entries)")
+        break
+
+print()
+
+# Process long reads archive - thorough
+print("=== Processing long reads - thorough ===")
+with open('/vol/data/datasets/cami_III/cami3_toy_human_gut-long_sample_0.tar.gz', 'rb') as f:
+    raw = f.read()
+
+dec = zlib.decompressobj(-zlib.MAX_WBITS)
+decompressed = dec.decompress(raw[10:])
+
+# Manual tar parsing - go through entire archive
+pos = 0
+count = 0
+while pos < len(decompressed):
+    header = decompressed[pos:pos+512]
+    if len(header) < 512:
+        break
+    name = header[0:100].rstrip(b'\x00').decode('utf-8', errors='replace')
+    if name.strip() == '':
+        break
+    size = int(header[124:136].rstrip(b'\x00').decode('utf-8', errors='replace'), 8)
+    typeflag = header[156:157] if len(header) > 156 else b''
+    
+    if typeflag == b'0' or typeflag == b'\0':
+        kind = 'file'
+    elif typeflag == b'5':
+        kind = 'dir'
+    else:
+        kind = f'type={typeflag}'
+    
+    if kind == 'file':
+        file_start = pos + 512
+        file_blocks = (size + 511) // 512
+        file_end = file_start + file_blocks * 512
+        file_data = decompressed[file_start:file_end]
+        if size % 512 != 0:
+            actual_data = file_data[:-((512 - size % 512) % 512)]
+        else:
+            actual_data = file_data
+        bn = os.path.basename(name)
+        print(f"  [{count}] File: {bn} ({len(actual_data)} bytes)")
+        count += 1
+    elif kind == 'dir':
+        print(f"  [{count}] Dir: {name}")
+    
+    if kind == 'file':
+        pos = file_end
+    else:
+        pos += 512
+    pos = (pos + 511) // 512 * 512
+
+    if count > 50:
+        print("  ... (stopping after 50 entries)")
+        break
+PYEOF
+=== Processing short reads - thorough ===
+  [0] Dir: sample_0_reads/
+  [0] File: reads_mapping.tsv.gz (81496510 bytes)
+
+=== Processing long reads - thorough ===
+  [0] Dir: sample_0_reads/
+  [0] File: reads_mapping.tsv.gz (10172924 bytes)
+  [1] File: anonymous_reads.fq.gz (70095709 bytes)
+> build · nemotron-3.5-lightning-free
