@@ -67207,3 +67207,113 @@ File "<stdin>", line 32
                                                           ^
 SyntaxError: unterminated string literal (detected at line 32)
 > build · nemotron-3.5-lightning-free
+[0m$ [0mpython3 << 'PYEOF'
+import urllib.request
+import tarfile, io, gzip, zlib, os
+
+# Download from the URL
+url = "https://s3.bi.denbi.de/swift/v1/cami/cami3_toydata/human-gut-toy/sample_0_reads.tar.gz"
+print(f"Downloading from: {url}")
+
+try:
+    req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+    with urllib.request.urlopen(req, timeout=120) as response:
+        raw_data = response.read()
+    print(f"Downloaded {len(raw_data)} bytes")
+    
+    # Decompress
+    dec = zlib.decompressobj(-zlib.MAX_WBITS)
+    decompressed = dec.decompress(raw_data[10:])
+    print(f"Decompressed {len(decompressed)} bytes")
+    
+    # Try to open as tarfile
+    try:
+        tf = tarfile.open(fileobj=io.BytesIO(decompressed))
+        members = tf.getmembers()
+        print(f"Tar has {len(members)} members:")
+        for m in members:
+            print(f"  {m.name} ({m.size} bytes)")
+            if m.isfile():
+                f = tf.extractfile(m)
+                if f:
+                    content = f.read()
+                    print(f"    Content size: {len(content)} bytes")
+    except Exception as e:
+        print(f"Tarfile open failed: {e}")
+        
+    # Also try manual parsing for the first 30 entries
+    print("\n--- Manual tar parsing ---")
+    pos = 0
+    count = 0
+    while pos < len(decompressed) and count < 30:
+        header = decompressed[pos:pos+512]
+        if len(header) < 512:
+            break
+        name = header[0:100].rstrip(b'\x00').decode('utf-8', errors='replace')
+        if name.strip() == '':
+            break
+        size = int(header[124:136].rstrip(b'\x00').decode('utf-8', errors='replace'), 8)
+        typeflag = header[156:157] if len(header) > 156 else b''
+        if typeflag == b'0' or typeflag == b'\0':
+            kind = 'file'
+        elif typeflag == b'5':
+            kind = 'dir'
+        else:
+            kind = f'type={typeflag}'
+        
+        if kind == 'file':
+            file_start = pos + 512
+            file_blocks = (size + 511) // 512
+            file_end = file_start + file_blocks * 512
+            file_data = decompressed[file_start:file_end]
+            if size % 512 != 0:
+                actual_data = file_data[:-((512 - size % 512) % 512)]
+            else:
+                actual_data = file_data
+            
+            basename = os.path.basename(name)
+            if basename.endswith('.gz'):
+                try:
+                    mgz = gzip.decompress(actual_data)
+                    print(f"  {name} ({len(actual_data)} bytes -> {len(mgz)} after gzip)")
+                    text = mgz.decode('utf-8', errors='replace')[:100]
+                    print(f"    First line: {text}")
+                except Exception as e:
+                    print(f"  {name} ({len(actual_data)} bytes) - gzip failed: {e}")
+            else:
+                print(f"  {name} ({len(actual_data)} bytes)")
+            count += 1
+        elif kind == 'dir':
+            print(f"  Dir: {name}")
+        
+        pos += 512
+        pos = (pos + 511) // 512 * 512
+        
+except KeyboardInterrupt:
+    print("\nInterrupted")
+PYEOF
+Downloading from: https://s3.bi.denbi.de/swift/v1/cami/cami3_toydata/human-gut-toy/sample_0_reads.tar.gz
+Downloaded 4866106604 bytes
+Decompressed 4868597760 bytes
+Tar has 3 members:
+  sample_0_reads (0 bytes)
+  sample_0_reads/reads_mapping.tsv.gz (262931198 bytes)
+    Content size: 262931198 bytes
+  sample_0_reads/anonymous_reads.fq.gz (4605656272 bytes)
+    Content size: 4605656272 bytes
+
+--- Manual tar parsing ---
+  Dir: sample_0_reads/
+  sample_0_reads/reads_mapping.tsv.gz (262931198 bytes -> 1814309182 after gzip)
+    First line: #anonymous_read_id	genome_id	tax_id	read_id
+S0R0/1	ASV153.8	818	NZ_JBDQBI010000009.1-9644/1
+S0R0/2	A
+Traceback (most recent call last):
+  File "<stdin>", line 45, in <module>
+ValueError: invalid literal for int() with base 8: '�����������\x7f'
+> build · nemotron-3.5-lightning-free
+The download and decompression worked! The tar.gz files contain:
+- `sample_0_reads/reads_mapping.tsv.gz` (262 MB compressed, 1.8 GB decompressed)
+- `sample_0_reads/anonymous_reads.fq.gz` (4.6 GB compressed)
+
+Now I need to extract the `.fq` files from both short and long read archives. Let me do that.
