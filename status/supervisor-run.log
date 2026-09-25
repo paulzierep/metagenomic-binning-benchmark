@@ -48514,3 +48514,303 @@ degraded_count=$(grep -c $'\tdegraded\t' "$META/checks.tsv" || true)
 echo "$(date -Is) tick done: fixes=$fixes broken=$broken_count degraded=$degraded_count escalated=$need_llm" >>"$LOG"
 exit 0
 > build · big-pickle
+Now I understand the full automation loop. Let me verify the driver's artifacts (fix_v11 eval outputs) and check whether the deployed bin scripts are in sync with the repo source.
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && head -5 results/fix_v11_20260924.csv && echo "---RUNMETA---" && cat runs/fix_v11_20260924/run_meta.txt
+run,source_commit,dataset,threads,total_time_s,n_bins,checkm2_mean_completeness,checkm2_mean_contamination,checkm2_HQ,checkm2_MQ,checkm_mean_completeness,checkm_mean_contamination,checkm_HQ,checkm_MQ
+fix_v11_20260924,95f5ea820f9a4e76f5c2911c0b5ed507ab67b015,"COMEBin demo (29,434 contigs)",32,24741,71,24.38,3.78,1,6,21.62,5.18,0,8
+---RUNMETA---
+run:        /vol/data/benchmark/runs/fix_v11_20260924
+source:     /vol/data/repos/COMEBin-v11 (branch comebin-optimizations-v11)
+date:       2026-09-24T10:37:15+00:00
+commit:     95f5ea820f9a4e76f5c2911c0b5ed507ab67b015
+contigs:    /vol/data/datasets/comebin_test_data/BATS_SAMN07137077_METAG.scaffolds.min500.fasta.f1k.fasta
+bamdir:     /vol/data/datasets/comebin_test_data/bamfiles
+threads:    32
+seed:       42
+host:       32 cores, 62G RAM, gpu=none
+cmd_wrapper: /vol/data/tools/bin/micromamba run -p /vol/data/envs/comebin bash run_comebin.sh -a /vol/data/datasets/comebin_test_data/BATS_SAMN07137077_METAG.scaffolds.min500.fasta.f1k.fasta -p /vol/data/datasets/comebin_test_data/bamfiles -o /vol/data/benchmark/runs/fix_v11_20260924/comebin_out -n 6 -t 32 -d cpu -s 42 
+exit_code:  0
+wall_s:     24741
+finished:   2026-09-24T17:29:36+00:00
+bins:       71  -> /vol/data/benchmark/runs/fix_v11_20260924/comebin_out/comebin_res/comebin_res_bins
+cmd_checkm2: /vol/data/tools/bin/micromamba run -p /vol/data/envs/checkm2 checkm2 predict --threads 32 --database_path /vol/data/benchmark/checkm2db/CheckM2_database/uniref100.KO.1.dmnd --input /vol/data/benchmark/runs/fix_v11_20260924/comebin_out/comebin_res/comebin_res_bins --output-directory /vol/data/benchmark/runs/fix_v11_20260924/eval/checkm2 -x fa --force
+checkm2_rc: 0 checkm2_wall_s: 71
+cmd_checkm: LD_LIBRARY_PATH=/vol/data/envs/checkm/lib:/vol/data/envs/comebin/lib /vol/data/tools/bin/micromamba run -p /vol/data/envs/comebin checkm lineage_wf -x fa -t 32 --tmpdir /vol/data/benchmark/runs/fix_v11_20260924/eval/checkm/tmp /vol/data/benchmark/runs/fix_v11_20260924/comebin_out/comebin_res/comebin_res_bins /vol/data/benchmark/runs/fix_v11_20260924/eval/checkm/out
+checkm_rc: 0 checkm_wall_s: 398
+checkm2_bins: 71 checkm2_compl_mean: 24.38 checkm2_cont_mean: 3.78
+checkm_bins: 71 checkm_compl_mean: 21.62 checkm_cont_mean: 5.18
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && for f in scripts/*.sh scripts/*.py; do b=/vol/data/benchmark/bin/$(basename "$f"); if [ -f "$b" ]; then if ! diff -q "$f" "$b" >/dev/null 2>&1; then echo "DIFFERS: $f vs $b"; fi; fi; done; echo "---done---"
+DIFFERS: scripts/run_small_test.sh vs /vol/data/benchmark/bin/run_small_test.sh
+DIFFERS: scripts/make_per_bin_plots.py vs /vol/data/benchmark/bin/make_per_bin_plots.py
+---done---
+> build · big-pickle
+[0m$ [0mdiff -u /vol/data/benchmark/bin/run_small_test.sh /vol/data/repos/metagenomic-binning-benchmark/scripts/run_small_test.sh; echo "====PLOTS===="; diff -u /vol/data/benchmark/bin/make_per_bin_plots.py /vol/data/repos/metagenomic-binning-benchmark/scripts/make_per_bin_plots.py; echo "====MTIMES===="; stat -c '%y %n' /vol/data/benchmark/bin/make_per_bin_plots.py /vol/data/repos/metagenomic-binning-benchmark/scripts/make_per_bin_plots.py /vol/data/benchmark/bin/run_small_test.sh /vol/data/repos/metagenomic-binning-benchmark/scripts/run_small_test.sh
+--- /vol/data/benchmark/bin/run_small_test.sh	2026-09-24 09:17:39.792000000 +0000
++++ /vol/data/repos/metagenomic-binning-benchmark/scripts/run_small_test.sh	2026-09-25 01:10:28.171000000 +0000
+@@ -12,12 +12,16 @@
+ #   EPOCHS=30                         training epochs (issue #10; default 30 for
+ #                                     fast functional tests; passed as -E only
+ #                                     when the CLI supports it)
++#   DATA=/vol/data/datasets/comebin_small
++#                                     dataset dir with contigs.fa + bamfiles/reads.bam
++#                                     (issue #18: point it at the tiny set to test
++#                                     the smallest functional dataset)
+ set -euo pipefail
+ 
+ MM=/vol/data/tools/bin/micromamba
+ ENV=/vol/data/envs/comebin
+ SRC=${SRC_COMEBIN:-/vol/data/repos/COMEBin-small-fix}
+-DATA=/vol/data/datasets/comebin_small
++DATA=${DATA:-/vol/data/datasets/comebin_small}
+ CONTIGS="$DATA/contigs.fa"
+ BAMDIR="$DATA/bamfiles"
+ RUNDIR=$(realpath -m "${1:-/vol/data/benchmark/runs/small_test}")
+====PLOTS====
+--- /vol/data/benchmark/bin/make_per_bin_plots.py	2026-09-24 11:05:44.317000000 +0000
++++ /vol/data/repos/metagenomic-binning-benchmark/scripts/make_per_bin_plots.py	2026-09-24 11:32:32.228000000 +0000
+@@ -33,6 +33,30 @@
+         return list(csv.DictReader(f))
+ 
+ 
++def dataset_of(run_dir):
++    """Human-readable dataset label for a run, derived from its run_meta.txt
++    `contigs:` line (mirrors make_results_csv.default_dataset)."""
++    meta = os.path.join(run_dir, "run_meta.txt")
++    contigs = ""
++    if os.path.exists(meta):
++        with open(meta, encoding="utf-8") as f:
++            for line in f:
++                if line.startswith("contigs:"):
++                    contigs = line.split(":", 1)[1].strip()
++                    break
++    known = [
++        ("BATS_SAMN07137077_METAG", "COMEBin demo (29,434 contigs)"),
++        ("comebin_medium", "comebin_medium (3,000 contigs)"),
++        ("comebin_small", "comebin_small (300 contigs)"),
++        ("cami_II", "CAMI II"),
++        ("cami_III", "CAMI III"),
++    ]
++    for key, label in known:
++        if key in contigs:
++            return label
++    return "unknown-dataset"
++
++
+ def run_bar_plot(plt, rows, out_path):
+     """Single-run grouped bar chart: comp/cont per bin (checkm2 + checkm1)."""
+     import numpy as np
+@@ -78,6 +102,32 @@
+     plt.close(fig)
+ 
+ 
++def dataset_subplot_figure(plt, groups, out_path):
++    """One subplot per dataset; within each, one point per bin (CheckM2 comp
++    vs cont) colored by run. Issue #12: comparison across runs on the SAME
++    benchmark dataset."""
++    by_ds = {}
++    for run_name, rows, ds in groups:
++        by_ds.setdefault(ds, []).append((run_name, rows))
++    n = len(by_ds)
++    if n == 0:
++        return
++    fig, axes = plt.subplots(1, n, figsize=(6.5 * n, 5.2), squeeze=False)
++    for ax, (ds, runs) in zip(axes[0], sorted(by_ds.items())):
++        for run_name, rows in runs:
++            xs = [float(r["checkm2_contamination"]) if r["checkm2_contamination"] else 0 for r in rows]
++            ys = [float(r["checkm2_completeness"]) if r["checkm2_completeness"] else 0 for r in rows]
++            ax.scatter(xs, ys, s=26, alpha=0.75, label=f"{run_name} (n={len(rows)})")
++        ax.set_xlabel("contamination (%)")
++        ax.set_ylabel("completeness (%)")
++        ax.set_title(ds, fontsize=10)
++        ax.legend(fontsize=7)
++        ax.grid(alpha=0.3)
++    fig.tight_layout()
++    fig.savefig(out_path, dpi=130)
++    plt.close(fig)
++
++
+ def main():
+     ap = argparse.ArgumentParser()
+     ap.add_argument("rundirs", nargs="+")
+@@ -126,6 +176,16 @@
+         out = os.path.join(figures, f"comp_vs_cont_{key}.png")
+         comparison_scatter(plt, groups, out, key)
+         print(f"comparison scatter ({key}, {len(groups)} runs) -> results/figures/comp_vs_cont_{key}.png")
++
++    # Per-dataset subplot figure (issue #12): one panel per benchmark dataset,
++    # runs within a panel colored separately -> direct same-dataset comparison.
++    groups_ds = []
++    for run_name, rows in groups:
++        run_path = os.path.join(REPO, "runs", run_name)
++        groups_ds.append((run_name, rows, dataset_of(run_path)))
++    ds_out = os.path.join(figures, "comp_vs_cont_by_dataset.png")
++    dataset_subplot_figure(plt, groups_ds, ds_out)
++    print(f"per-dataset subplot scatter -> results/figures/comp_vs_cont_by_dataset.png")
+     return 0
+ 
+ 
+====MTIMES====
+2026-09-24 11:05:44.317000000 +0000 /vol/data/benchmark/bin/make_per_bin_plots.py
+2026-09-24 11:32:32.228000000 +0000 /vol/data/repos/metagenomic-binning-benchmark/scripts/make_per_bin_plots.py
+2026-09-24 09:17:39.792000000 +0000 /vol/data/benchmark/bin/run_small_test.sh
+2026-09-25 01:10:28.171000000 +0000 /vol/data/repos/metagenomic-binning-benchmark/scripts/run_small_test.sh
+> build · big-pickle
+[0m$ [0mgrep -n "make_per_bin_plots\|make_per_bin_csv\|make_results_csv" /vol/data/benchmark/bin/run_eval.sh /vol/data/repos/metagenomic-binning-benchmark/scripts/run_eval.sh 2>/dev/null; echo "---"; diff -q /vol/data/benchmark/bin/run_eval.sh /vol/data/repos/metagenomic-binning-benchmark/scripts/run_eval.sh && echo "run_eval in sync"
+/vol/data/benchmark/bin/run_eval.sh:108:  python3 "$(dirname "$0")/make_results_csv.py" "$RUN" 9>&- \
+/vol/data/benchmark/bin/run_eval.sh:109:    || echo "WARNING: make_results_csv.py failed (rc=$?)" >&2
+/vol/data/benchmark/bin/run_eval.sh:110:  python3 "$(dirname "$0")/make_per_bin_csv.py" "$RUN" 9>&- \
+/vol/data/benchmark/bin/run_eval.sh:111:    || echo "WARNING: make_per_bin_csv.py failed (rc=$?)" >&2
+/vol/data/benchmark/bin/run_eval.sh:112:  "$MM" run -p "$CHECKM_ENV" python3 "$(dirname "$0")/make_per_bin_plots.py" --all "$RUN" 9>&- \
+/vol/data/benchmark/bin/run_eval.sh:113:    || echo "WARNING: make_per_bin_plots.py failed (rc=$?)" >&2
+/vol/data/repos/metagenomic-binning-benchmark/scripts/run_eval.sh:108:  python3 "$(dirname "$0")/make_results_csv.py" "$RUN" 9>&- \
+/vol/data/repos/metagenomic-binning-benchmark/scripts/run_eval.sh:109:    || echo "WARNING: make_results_csv.py failed (rc=$?)" >&2
+/vol/data/repos/metagenomic-binning-benchmark/scripts/run_eval.sh:110:  python3 "$(dirname "$0")/make_per_bin_csv.py" "$RUN" 9>&- \
+/vol/data/repos/metagenomic-binning-benchmark/scripts/run_eval.sh:111:    || echo "WARNING: make_per_bin_csv.py failed (rc=$?)" >&2
+/vol/data/repos/metagenomic-binning-benchmark/scripts/run_eval.sh:112:  "$MM" run -p "$CHECKM_ENV" python3 "$(dirname "$0")/make_per_bin_plots.py" --all "$RUN" 9>&- \
+/vol/data/repos/metagenomic-binning-benchmark/scripts/run_eval.sh:113:    || echo "WARNING: make_per_bin_plots.py failed (rc=$?)" >&2
+---
+run_eval in sync
+> build · big-pickle
+[0m$ [0mtail -25 /vol/data/benchmark/logs/fix_v11_eval_20260925T010438Z.log 2>/dev/null | sed 's/\x1b\[[0-9;]*m//g'
+3              k__Bacteria (UID203)            5449        104            58        101    3    0    0    0   0        1.36            0.00               0.00          
+  36             k__Bacteria (UID203)            5449        104            58        100    4    0    0    0   0        0.63            0.00               0.00          
+  55                 root (UID1)                 5656         56            24         56    0    0    0    0   0        0.00            0.00               0.00          
+  51                 root (UID1)                 5656         56            24         56    0    0    0    0   0        0.00            0.00               0.00          
+  41                 root (UID1)                 5656         56            24         56    0    0    0    0   0        0.00            0.00               0.00          
+  32                 root (UID1)                 5656         56            24         56    0    0    0    0   0        0.00            0.00               0.00          
+  31                 root (UID1)                 5656         56            24         56    0    0    0    0   0        0.00            0.00               0.00          
+  29                 root (UID1)                 5656         56            24         56    0    0    0    0   0        0.00            0.00               0.00          
+  16                 root (UID1)                 5656         56            24         56    0    0    0    0   0        0.00            0.00               0.00          
+  14                 root (UID1)                 5656         56            24         56    0    0    0    0   0        0.00            0.00               0.00          
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+[2026-09-25 01:12:27] INFO: { Current stage: 0:00:04.148 || Total: 0:06:37.360 }
+checkm_rc: 0 checkm_wall_s: 398
+checkm statistics: /vol/data/benchmark/runs/fix_v11_20260924/eval/checkm/out/storage/bin_stats_ext.tsv
+=== summary ===
+checkm2_bins: 71 checkm2_compl_mean: 24.38 checkm2_cont_mean: 3.78
+checkm_bins: 71 checkm_compl_mean: 21.62 checkm_cont_mean: 5.18
+=== auto-reporting: results/<run>.csv, runs/<run>/per_bin_results.csv, per_bins.png ===
+wrote /vol/data/repos/metagenomic-binning-benchmark/results/fix_v11_20260924.csv
+fix_v11_20260924,95f5ea820f9a4e76f5c2911c0b5ed507ab67b015,COMEBin demo (29,434 contigs),32,24741,71,24.38,3.78,1,6,21.62,5.18,0,8
+fix_v11_20260924: 71 per-bin rows -> /vol/data/repos/metagenomic-binning-benchmark/runs/fix_v11_20260924/per_bin_results.csv
+fix_v11_20260924: per-bin bar chart -> runs/fix_v11_20260924/per_bins.png
+comparison scatter (all-runs, 4 runs) -> results/figures/comp_vs_cont_all-runs.png
+per-dataset subplot scatter -> results/figures/comp_vs_cont_by_dataset.png
+done (checkm2 rc=0, checkm rc=0)
+[0m$ [0mtail -c 3000 /vol/data/benchmark/logs/agent-run.log | sed 's/\x1b\[[0-9;]*m//g' | tail -40
+zierep/COMEBin/commit/95f5ea820f9a4e76f5c2911c0b5ed507ab67b015) | **✅ Complete.** 200/200 epochs, 61.23% Top1, 16 non-empty bins in 2,326 s. CheckM2: 35.93% mean completeness / 4.67% contamination (MQ=2). CheckM v1: 33.83% / 6.03% (MQ=3). | Evaluation completed with `scripts/run_eval.sh`; see the [aggregate CSV](../results/medium_v11_20260924.csv) and the [per-bin tables](../runs/medium_v11_20260924/per_bin_results.csv) / [CheckM2 per-bin](../runs/medium_v11_20260924/checkm2_per_bin.csv). |
++| [`fix_v11_20260924`](../runs/fix_v11_20260924/comebin_run.log) — 2026-09-24 10:37:15 → 17:29:36 | [95f5ea8](https://github.com/paulzierep/COMEBin/commit/95f5ea820f9a4e76f5c2911c0b5ed507ab67b015) | **✅ Complete** (exit 0, wall 24,741 s). Stopped early at **epoch 184/200** because upstream v1.1.0 `run_comebin.sh` passes `--earlystop` (Top-1 > 99% for 3 epochs: 99.10 → 99.22 → 99.04%), then clustering completed normally (120/120 Leiden) → **71 non-empty bins**. CheckM2: 24.38% / 3.78% (HQ 1, MQ 6). CheckM v1: 21.62% / 5.18% (HQ 0, MQ 8). Versus the baseline on the same data: +1.7% wall time, +11 bins, −0.63 pp completeness, +0.80 pp contamination. | Evaluation done with `scripts/run_eval.sh` (CheckM2 71 s, CheckM v1 398 s); see the [aggregate CSV](../results/fix_v11_20260924.csv) and [per-bin table](../runs/fix_v11_20260924/per_bin_results.csv). Next: issue #18 datasets (tiny + CAMI human ~1/6). |
+ 
+ ### Guard-only launches
+ 
+ Twelve launches stopped before COMEBin started. They are grouped by episode so refusals are not mistaken for benchmark runs; raw watchdog refusals remain in `/vol/data/benchmark/logs/*.launch.log`.
+
+> build · mimo-v2.6-flash-free
+$ cd /vol/data/repos/metagenomic-binning-benchmark && grep -n "^|" README.md | head -20; echo "=== issue #9 section? ==="; grep -rn "Run history" README.md docs/11-run-results.md | head
+=== issue #9 section? ===
+docs/11-run-results.md:11:| `baseline_unmodified` | 2026-09-23 | [987db95](https://github.com/paulzierep/COMEBin/commit/987db95d8d399f30b7c82a5f5f40ed6bfdc906c7) (upstream) | COMEBin demo (29,434 contigs) | 32 | – | – | – | – | – | ⏹ failed at epoch 175/200 — see [Run history](#run-history--what-happened-and-whats-next) |
+docs/11-run-results.md:15:## Run history — what happened and what's next
+> build · mimo-v2.6-flash-free
+$ cd /vol/data/repos/metagenomic-binning-benchmark && ls -la PROGRESS.md; grep -n "ACTIVE: fix_v11" PROGRESS.md; grep -n "ACTIVE: fix_v11" /vol/data/benchmark/PROGRESS.md; diff <(md5sum < PROGRESS.md) <(md5sum < /vol/data/benchmark/PROGRESS.md) && echo IDENTICAL || echo DIFFER
+-rw-rw-r-- 1 ubuntu ubuntu 27843 Sep 24 11:33 PROGRESS.md
+350:- [ ] **ACTIVE: fix_v11 full-large benchmark** — `runs/fix_v11_20260924`
+350:- [ ] **ACTIVE: fix_v11 full-large benchmark** — `runs/fix_v11_20260924`
+IDENTICAL
+> build · mimo-v2.6-flash-free
+→ Read /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md [offset=348, limit=28]
+> build · big-pickle
+The driver is actively updating PROGRESS.md as part of its turn. In the meantime, I'll handle the supervisor-specific work. First, deploy the stale scripts (repo source → deployed bin), which is a real degraded state: `bin/run_eval.sh` resolves `make_per_bin_plots.py` via `dirname $0`, so future evals run from `bin` would silently use the stale plot script.
+[0m$ [0mcp /vol/data/repos/metagenomic-binning-benchmark/scripts/run_small_test.sh /vol/data/benchmark/bin/run_small_test.sh && cp /vol/data/repos/metagenomic-binning-benchmark/scripts/make_per_bin_plots.py /vol/data/benchmark/bin/make_per_bin_plots.py && chmod +x /vol/data/benchmark/bin/run_small_test.sh && echo "deployed" && diff -q /vol/data/repos/metagenomic-binning-benchmark/scripts/run_small_test.sh /vol/data/benchmark/bin/run_small_test.sh && diff -q /vol/data/repos/metagenomic-binning-benchmark/scripts/make_per_bin_plots.py /vol/data/benchmark/bin/make_per_bin_plots.py
+deployed
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && python3 -c "import ast; ast.parse(open('/vol/data/benchmark/bin/make_per_bin_plots.py').read()); print('plots script parses OK')" && bash -n /vol/data/benchmark/bin/run_small_test.sh && echo "run_small_test syntax OK"
+plots script parses OK
+run_small_test syntax OK
+> build · big-pickle
+Now I'll write the `.issues_done` markers for the issues whose work I verified complete on disk (#17, #14, #2, #12). For #12 — which was closed once and reopened by the user's subplot request, now verified delivered — the closer treats existing `.issues_closed/12` as already-handled, so I clear that stale marker to let the deterministic closer re-close it.
+[0m$ [0mMETA=/vol/data/benchmark/meta
+printf '%s\n' "Gate rule implemented and enforced: full-large benchmark runs launch only after small+medium validation (README + docs/09, commit 2524e12); the fix_v11_20260924 run referenced in the issue completed exit 0 (71 bins) and is published in docs/11 + results/." > "$META/.issues_done/17"
+printf '%s\n' "README restructured per request (commits 869754a/7c0d4bd/2524e12): top shows Current/Next summary and major achievements; Results section is slim with links only; full run table and history moved to docs/11-run-results.md." > "$META/.issues_done/14"
+printf '%s\n' "Small benchmark dataset comebin_small (300 contigs, 94 MB) built and end-to-end validated (small_test_v4: 3 non-empty bins, 122 s, CheckM2 26.07%); medium 3,000-contig dataset built and ran (16 bins); dataset/disk plan incl. human host-associated CAMI II documented in docs/08." > "$META/.issues_done/2"
+printf '%s\n' "Per-dataset comparison subplot figure results/figures/comp_vs_cont_by_dataset.png auto-generated after every evaluated run and embedded in the README (commit 53a4b25); regenerated after fix_v11 evaluation with all 4 runs." > "$META/.issues_done/12"
+rm -f "$META/.issues_closed/12"
+ls -la "$META/.issues_done/" && echo "---" && for f in 17 14 2 12; do echo "#$f: $(head -c 120 "$META/.issues_done/$f")..."; done
+total 24
+drwxrwxr-x 2 ubuntu ubuntu 4096 Sep 25 01:37 .
+drwxrwxr-x 8 ubuntu ubuntu 4096 Sep 25 01:33 ..
+-rw-rw-r-- 1 ubuntu ubuntu  222 Sep 25 01:37 12
+-rw-rw-r-- 1 ubuntu ubuntu  223 Sep 25 01:37 14
+-rw-rw-r-- 1 ubuntu ubuntu  256 Sep 25 01:37 17
+-rw-rw-r-- 1 ubuntu ubuntu  278 Sep 25 01:37 2
+---
+#17: Gate rule implemented and enforced: full-large benchmark runs launch only after small+medium validation (README + docs/0...
+#14: README restructured per request (commits 869754a/7c0d4bd/2524e12): top shows Current/Next summary and major achievements...
+#2: Small benchmark dataset comebin_small (300 contigs, 94 MB) built and end-to-end validated (small_test_v4: 3 non-empty bi...
+#12: Per-dataset comparison subplot figure results/figures/comp_vs_cont_by_dataset.png auto-generated after every evaluated r...
+> build · big-pickle
+Markers are in place. Now let me monitor the driver's progress and do a light re-verification of the healthy checks (cron, service, driver).
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && git status --short && echo "---HEAD---" && git log --format='%h %ad %s' --date=format:'%H:%M:%S' -3
+M docs/09-optimization-strategy.md
+ M docs/11-run-results.md
+ M results/figures/comp_vs_cont_all-runs.png
+ M results/figures/comp_vs_cont_by_dataset.png
+ M scripts/run_small_test.sh
+?? results/fix_v11_20260924.csv
+---HEAD---
+98c7529 01:36:02 status: yes — fix_v11_20260924 epoch 183/200 loss 2.835580348968506 acc 99.03645324707031 model mimo-v2.6-flash-free — agent driver alive; transcript fresh (15
+09581cf 01:34:02 status: yes — fix_v11_20260924 epoch 183/200 loss 2.835580348968506 acc 99.03645324707031 model mimo-v2.6-flash-free — agent driver alive; transcript fresh (35
+b5dbbb9 01:33:07 meta: supervise tick 2026-09-25T01:33:01Z — 1 fix(es)
+[0m$ [0mcrontab -l 2>/dev/null | grep -v '^#' | grep -v '^$'; echo "---SERVICE---"; systemctl is-active benchmark-status.service 2>/dev/null || ps -p 5551 -o pid,etime,cmd --no-headers 2>/dev/null; echo "---DRIVER---"; stat -c '%y' /vol/data/benchmark/.heartbeat 2>/dev/null; stat -c '%y' /vol/data/benchmark/logs/agent-run.log 2>/dev/null
+*/5 * * * * /vol/data/benchmark/bin/agent-watchdog.sh
+*/2 * * * * /vol/data/benchmark/bin/status-heartbeat.sh
+*/5 * * * * /vol/data/benchmark/bin/benchmark-watchdog.sh
+3,13,23,33,43,53 * * * * /vol/data/benchmark/bin/meta-watchdog.sh
+---SERVICE---
+inactive
+   5551  1-11:53:03 /home/ubuntu/.opencode/bin/opencode serve --service
+---DRIVER---
+2026-09-25 01:16:48.817000000 +0000
+2026-09-25 01:36:22.628000000 +0000
+> build · big-pickle
+Cron (4 jobs), service pid 5551, and the driver (transcript fresh at 01:36) are all healthy. The driver is still working and hasn't committed its changes yet. Let me check push state and look for any new dataset/run activity while waiting.
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && git status -sb | head -2 && git rev-parse HEAD origin/main && echo "---DATASETS---" && ls -la /vol/data/datasets/ 2>/dev/null && echo "---RUNS-NEWEST---" && ls -lt /vol/data/benchmark/runs/ | head -6 && echo "---ACTIVE---" && ls /vol/data/benchmark/.active_run* 2>/dev/null; cat /vol/data/benchmark/.active_run 2>/dev/null
+## main...origin/main
+ M docs/09-optimization-strategy.md
+98c7529db169e3b18159fd39a9571b969e1534ab
+98c7529db169e3b18159fd39a9571b969e1534ab
+---DATASETS---
+total 5444628
+drwxrwxr-x 6 ubuntu ubuntu       4096 Sep 24 09:25 .
+drwxr-xr-x 9 ubuntu ubuntu       4096 Sep 23 14:00 ..
+drwxrwxr-x 4 ubuntu ubuntu       4096 Sep 23 16:51 cami_II
+drwxrwxr-x 3 ubuntu ubuntu       4096 Sep 24 10:03 comebin_medium
+drwxrwxr-x 3 ubuntu ubuntu       4096 Sep 24 08:46 comebin_small
+drwxr-xr-x 4 ubuntu ubuntu      16384 Sep 24 08:22 comebin_test_data
+-rw------- 1 ubuntu ubuntu 5575256185 Jul  4  2023 comebin_test_data.zip
+---RUNS-NEWEST---
+total 36
+drwxrwxr-x 5 ubuntu ubuntu 4096 Sep 25 01:04 fix_v11_20260924
+drwxrwxr-x 5 ubuntu ubuntu 4096 Sep 24 10:05 medium_v11_20260924
+drwxrwxr-x 4 ubuntu ubuntu 4096 Sep 24 09:04 small_test_v3
+drwxrwxr-x 5 ubuntu ubuntu 4096 Sep 24 08:51 small_test_v4
+drwxrwxr-x 5 ubuntu ubuntu 4096 Sep 24 08:38 baseline_rerun_autorestart1
+---ACTIVE---
+> build · big-pickle
+[0m$ [0mls -la /vol/data/repos/metagenomic-binning-benchmark/runs/fix_v11_20260924/ 2>/dev/null && echo "---benchmark original---" && ls -la /vol/data/benchmark/runs/fix_v11_20260924/ 2>/dev/null
+total 500
+drwxrwxr-x  4 ubuntu ubuntu   4096 Sep 25 01:12 .
+drwxrwxr-x 11 ubuntu ubuntu   4096 Sep 24 10:38 ..
+drwxrwxr-x  2 ubuntu ubuntu   4096 Sep 24 10:43 comebin_res
+-rw-rw-r--  1 ubuntu ubuntu 437954 Sep 25 01:36 comebin_run.log
+drwxrwxr-x  2 ubuntu ubuntu   4096 Sep 24 10:38 logs
+-rw-rw-r--  1 ubuntu ubuntu   4385 Sep 25 01:12 per_bin_results.csv
+-rw-rw-r--  1 ubuntu ubuntu  44183 Sep 25 01:12 per_bins.png
+-rw-rw-r--  1 ubuntu ubuntu   1889 Sep 25 01:36 run_meta.txt
+---benchmark original---
+total 456
+drwxrwxr-x  5 ubuntu ubuntu   4096 Sep 25 01:04 .
+drwxrwxr-x 11 ubuntu ubuntu   4096 Sep 24 10:37 ..
+drwxrwxr-x  4 ubuntu ubuntu   4096 Sep 24 10:42 comebin_out
+-rw-rw-r--  1 ubuntu ubuntu 437954 Sep 24 17:29 comebin_run.log
+drwxrwxr-x  4 ubuntu ubuntu   4096 Sep 25 01:04 eval
+drwxrwxr-x  2 ubuntu ubuntu   4096 Sep 24 10:37 logs
+-rw-rw-r--  1 ubuntu ubuntu   1889 Sep 25 01:12 run_meta.txt
