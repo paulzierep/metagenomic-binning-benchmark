@@ -1,6 +1,6 @@
 <!--AGENT-STATUS-->
 
-> 🟢 **Agent status:** `running` · ⏱ `2026-09-25T03:32 CEST` · 🏃 last run fix_v11_20260924: epoch 183/200 · not active · 🧠 `mimo-v2.6-flash-free` · [status.log](status/status.log)
+> 🟢 **Agent status:** `running` · ⏱ `2026-09-25T03:33 CEST` · 🏃 last run fix_v11_20260924: epoch 183/200 · not active · 🧠 `mimo-v2.6-flash-free` · [status.log](status/status.log)
 
 # Metagenomic binning benchmark
 
@@ -20,11 +20,19 @@ CheckM v1 29.08 % / 0.71 %.
 **Completed medium run:** `medium_v11_20260924` (source fix batch 1 `95f5ea8`,
 3,000 contigs, seed 42): 16 bins, CheckM2 35.93 % / 4.67 %, CheckM v1
 33.83 % / 6.03 %.
+**Completed large fix run:** `fix_v11_20260924` (same source, same demo
+dataset/threads/seed as the baseline): exit 0, wall **24,741 s (6.9 h)**, early
+stop at epoch **184/200** (upstream `run_comebin.sh --earlystop`: Top-1 > 99 %
+for 3 epochs), **71 bins**, CheckM2 **24.38 % / 3.78 %** (HQ 1 / MQ 6), CheckM v1
+**21.62 % / 5.18 %** (HQ 0 / MQ 8) — vs baseline 60 bins / 25.01 / 2.98 in
+24,327 s: same wall time, more bins, slightly lower mean completeness and higher
+contamination.
 
-**Next (in progress this turn):** full-large fix-benchmark on the same demo
-dataset with the fixed v1.1.0 source (`fix_v11`, branch
-`comebin-optimizations-v11`), then eval + README row. After that: CAMI II marine
-→ CAMI II human host-associated → CAMI III (disk budget ≤ ~105 GB).
+**Next (in progress this turn):** issue **#18** — (a) build the *smallest*
+functional dataset (smaller than `comebin_small`, still ≥ 1 non-empty bin) and
+(b) a CAMI II **human host-associated** set at ~1/6 the size of the demo
+(~4,900 contigs ⇒ ~1 h per full run instead of ~7 h). Then CAMI II marine →
+CAMI III (disk budget ≤ ~105 GB).
 Per-run table + full history: [`docs/11-run-results.md`](docs/11-run-results.md).
 
 ## Optimization workflow (issue #7)
