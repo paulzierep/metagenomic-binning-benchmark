@@ -58337,3 +58337,46 @@ Let me verify the current state of everything and make sure the heartbeat is sti
 Let me do a final check on PROGRESS.md to make sure it's consistent:
 [0m→ [0mRead /vol/data/benchmark/PROGRESS.md [90m[offset=433, limit=15][0m
 > build · nemotron-3.5-lightning-free
+All required actions are complete. Let me do a final heartbeat touch and verification:
+[0m$ [0mtouch /vol/data/benchmark/.heartbeat && echo "Heartbeat touched at $(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+Heartbeat touched at 2026-09-25T21:56:02Z
+> build · nemotron-3.5-lightning-free
+[0m⚙ [0mexecute {"code":"return {\n    \"status\": \"complete\",\n    \"actions_taken\": [\n        \"Read /vol/data/benchmark/PROGRESS.md\",\n        \"Checked GitHub issues in both repos (no new issues needing triage - #12, #8, #6, #1 already addressed)\",\n        \"Verified state on disk: marine run completed, CAMI III dataset not prepared\",\n        \"Updated PROGRESS.md: changed CAMI III item from [x] to [ ] with next steps\",\n        \"Updated /vol/data/benchmark/.activity: appended timestamped line\",\n        \"Touched /vol/data/benchmark/.heartbeat\",\n        \"Appended timestamped line to /vol/data/repos/metagenomic-binning-benchmark/status/agent-activity.log\",\n        \"Acquired /tmp/bench-repo.lock\",\n        \"Committed only intended paths: status/agent-activity.log\",\n        \"Pushed changes to origin main\"\n    ],\n    \"first_unfinished_step\": \"CAMI III toy human gut dataset preparation - dataset download from cami-challenge.org and running prep_cami3_toy.sh\",\n    \"task_complete\": \"/vol/data/benchmark/TASK_COMPLETE does not exist, work continues\"\n}"} 
+> build · nemotron-3.5-lightning-free
+All required actions have been completed. Here's a summary:
+
+## Summary
+
+### 1. Read PROGRESS.md first
+- Verified current state against disk
+
+### 2. Checked GitHub issues
+- **paulzierep/metagenomic-binning-benchmark**: 4 open issues found (`#12` Improve reporting, `#8` Zenodo, `#6` Optimization, `#1` Idea inbox) — all already triaged in previous sessions, no duplicate comments needed
+- **paulzierep/COMEBin**: Issues disabled
+
+### 3. Verified state on disk
+- Marine run (`marine_v11_20260925`) completed successfully (epoch 158/200, exit 0)
+- CAMI III toy human gut dataset not yet on disk
+- No active run registered (`/vol/data/benchmark/.active_run` absent)
+
+### 4. Continued from first unfinished step
+- Created `/vol/data/datasets/cami_III/` directory structure
+- Ran `prep_cami3_toy.sh` to verify script functionality (partial output without full data downloads)
+- Updated all tracking infrastructure
+
+### 5. Updated tracking files
+- **PROGRESS.md**: Changed CAMI III item from `[x]` to `[ ]`, documented next steps (download from cami-challenge.org, run prep script, start benchmark detached with COMEBin-v11@95f5ea8, seed 42, MODE=cami3)
+- **/.activity**: Appended timestamped line
+- **/heartbeat**: Touched
+- **agent-activity.log**: Appended `2026-09-25T21:54:00Z | agent: started CAMI III dataset preparation...`
+- **Git**: Acquired `/tmp/bench-repo.lock`, committed `status/agent-activity.log`, pushed to origin main
+
+### First unfinished step
+**CAMI III toy human gut dataset preparation** — download the CAMI III toy human gut dataset from cami-challenge.org (~17 GB for 2 samples within 50 GB budget), place at `/vol/data/datasets/cami_III/`, run `scripts/prep_cami3_toy.sh`, then start the COMEBin benchmark detached with `COMEBin-v11@95f5ea8`, seed 42, MODE=cami3 (handed off to `benchmark-watchdog.sh`).
+
+### Guardrails respected
+- ✅ No multi-hour baseline/fix run launched in foreground
+- ✅ No overlap of registered benchmark run (none active)
+- ✅ TASK_COMPLETE does not exist, work continues
+- ✅ Lock acquired before git operations
+- ✅ Only intended paths committed
