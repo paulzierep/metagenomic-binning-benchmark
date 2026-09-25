@@ -39973,3 +39973,142 @@ Index: /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md
        (one panel per benchmark dataset auto-derived from run_meta.txt `contigs:`;
        runs colored within panel → direct same-dataset comparison) and the README
 
+> build · mimo-v2.6-flash-free
+[0m$ [0mcp /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md /vol/data/benchmark/PROGRESS.md && echo synced; ts=$(date -u +%Y-%m-%dT%H:%M:%SZ); echo "$ts docs: PROGRESS+README+docs11 record fix_v11 complete (71 bins, earlystop@184); issue-18 triage comment posted; issue-7 flowchart rewritten linear" >> /vol/data/repos/metagenomic-binning-benchmark/status/agent-activity.log; echo "$ts docs-fix_v11-rows" >> /vol/data/benchmark/.activity; touch /vol/data/benchmark/.heartbeat; wc -l /vol/data/benchmark/PROGRESS.md /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md
+synced
+  429 /vol/data/benchmark/PROGRESS.md
+  429 /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md
+  858 total
+> build · mimo-v2.6-flash-free
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && exec 8>/tmp/bench-repo.lock && flock -w 60 8 || { echo LOCK_FAIL; exit 1; }; git add README.md docs/09-optimization-strategy.md docs/11-run-results.md PROGRESS.md scripts/run_small_test.sh results/fix_v11_20260924.csv results/figures/comp_vs_cont_all-runs.png results/figures/comp_vs_cont_by_dataset.png status/agent-activity.log runs/fix_v11_20260924/ && git status --short | head -20
+M  PROGRESS.md
+M  docs/09-optimization-strategy.md
+M  docs/11-run-results.md
+M  results/figures/comp_vs_cont_all-runs.png
+M  results/figures/comp_vs_cont_by_dataset.png
+A  results/fix_v11_20260924.csv
+M  scripts/run_small_test.sh
+M  status/agent-activity.log
+> build · mimo-v2.6-flash-free
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && git log --oneline -1 -- README.md; grep -c "Completed large fix run" README.md; git diff --cached --stat | tail -3; git commit -q -m "fix_v11 eval complete + issue #18 triage prep
+
+- results/fix_v11_20260924.csv: 71 bins, CheckM2 24.38/3.78 (HQ1 MQ6),
+  CheckM v1 21.62/5.18 (HQ0 MQ8); wall 24741 s, early stop 184/200 (--earlystop)
+- docs/11: fix_v11 table + run-history row; attempt counts 11/7 fail/4 ok
+- README + docs/09: flowchart rewritten as a straight 4-stage pipeline (issue #7)
+- scripts/run_small_test.sh: DATA= env override for the tiny set (issue #18)
+- PROGRESS.md: fix_v11 marked complete; issue #18 and #7 tracked as active" && git log --oneline -1
+e6275d7 status: yes — fix_v11_20260924 epoch 183/200 loss 2.835580348968506 acc 99.03645324707031 model mimo-v2.6-flash-free — agent driver alive; transcript fresh (2s
+1
+ scripts/run_small_test.sh                   |   6 ++++-
+ status/agent-activity.log                   |   1 +
+ 8 files changed, 54 insertions(+), 27 deletions(-)
+1614c96 fix_v11 eval complete + issue #18 triage prep
+> build · mimo-v2.6-flash-free
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && exec 8>/tmp/bench-repo.lock && flock -w 60 8 || exit 1; git pull --rebase -q origin main 2>&1 | tail -3; git push -q origin main 2>&1 | tail -3; git log --oneline -1; git status --short | head
+1614c96 fix_v11 eval complete + issue #18 triage prep
+> build · mimo-v2.6-flash-free
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && sed -n '90,160p' scripts/run_small_test.sh
+CMD_TEXT=$(printf '%q ' "$MM" run -p "$ENV" bash run_comebin.sh "${COMEBIN_ARGS[@]}")
+
+{
+  echo "run:        $RUNDIR"
+  echo "date:       $(date -Is)"
+  echo "source:     $SRC"
+  echo "branch:     $BRANCH"
+  echo "commit:     $COMMIT"
+  echo "contigs:    $CONTIGS  ($(grep -c '^>' "$CONTIGS") contigs, $(du -h "$CONTIGS" | cut -f1))"
+  echo "bamdir:     $BAMDIR"
+  echo "threads:    $THREADS"
+  echo "batch_size: $BATCH_SIZE"
+  echo "emb_size:   $EMB_SIZE"
+  echo "epochs:     $EPOCHS (passed as -E when the CLI supports it)"
+  echo "seed:       ${SEED:-unset}"
+  echo "host:       $(nproc) cores, $(free -g | awk '/Mem:/{print $2}')G RAM"
+  echo "cmd_wrapper: $CMD_TEXT"
+} | tee "$RUNDIR/run_meta.txt"
+
+export MAMBA_ROOT_PREFIX=/vol/data/envs/.mamba
+cd "$SRC/COMEBin"
+
+# Fields: pid pgid logfile rundir start_epoch mode source_repo. Older baseline
+# registrations have five fields and are treated as mode=baseline.
+printf '%s %s %s %s %s %s %s\n' "$$" "$(ps -o pgid= -p $$ | tr -d ' ')" \
+  "$RUNDIR/comebin_run.log" "$RUNDIR" "$(date +%s)" small "$SRC" > "$ACTIVE.tmp.$$"
+mv "$ACTIVE.tmp.$$" "$ACTIVE"
+
+SAMPLER_PID=""
+cleanup() {
+  rc=$?
+  trap - EXIT
+  if [ -n "$SAMPLER_PID" ] && kill -0 "$SAMPLER_PID" 2>/dev/null; then
+    kill "$SAMPLER_PID" 2>/dev/null || true
+    wait "$SAMPLER_PID" 2>/dev/null || true
+  fi
+  # On normal completion all foreground children are gone. Explicitly release
+  # the launch lock before a short functional test exits; a signal exit does not
+  # proactively declare the launch area free.
+  if [ "$rc" -ne 130 ]; then
+    flock -u 9 2>/dev/null || true
+    exec 9>&-
+  fi
+  # A failed run stays registered so benchmark-watchdog can apply its restart
+  # budget. Only a successful run clears its own registration.
+  if [ "$rc" -eq 0 ] && [ -f "$ACTIVE" ]; then
+    read -r current_pid _ < "$ACTIVE" || true
+    [ "${current_pid:-}" = "$$" ] && rm -f "$ACTIVE"
+  fi
+  exit "$rc"
+}
+trap cleanup EXIT
+trap 'exit 130' INT TERM
+
+sample_resources() {
+  printf 'timestamp\tpids\tcpu_pct\trss_gb\tsystem_mem_mb\n'
+  while :; do
+    read -r pids cpu_pct rss_kb <<<"$(ps -eo pid=,pcpu=,rss=,args= | awk -v out="$RUNDIR/comebin_out" '
+      index($0, out) && $4 !~ /^awk/ {
+        p = p ? p "," $1 : $1; c += $2; r += $3
+      }
+      END { printf "%s %.1f %.0f", p, c, r }
+    ')"
+    system_mem_mb=$(free -m | awk '/Mem:/{print $3}')
+    printf '%s\t%s\t%s\t%.3f\t%s\n' "$(date -Is)" "${pids:-none}" \
+      "${cpu_pct:-0}" "$(awk -v kb="${rss_kb:-0}" 'BEGIN{print kb/1048576}')" "$system_mem_mb"
+    sleep 30 & wait $!
+  done
+}
+sample_resources > "$RUNDIR/logs/resources.tsv" 2> "$RUNDIR/logs/sampler.out" &
+SAMPLER_PID=$!
+[0m$ [0mcd /tmp && cat > issue7.md <<'EOF'
+Redesigned with **different logic** as requested (agent, 2026-09-25 01:30 UTC).
+
+The old chart was a cycle graph (fail → investigate → back to start, revert → rework → combine → back to start). Those back-edges are what made it render badly and made the "logic" hard to follow — GitHub's mermaid laid it out as a tangled blob.
+
+New logic: a **straight 4-stage pipeline with one decision**, no loops and no back-edges — the gate rule is now literally the shape of the diagram:
+
+```mermaid
+flowchart TD
+    A["Idea or fix batch"] --> B["1. Small functional test"]
+    B --> C["2. Medium validation run"]
+    C --> D["3. Large benchmark vs baseline"]
+    D --> E{"Better time and quality?"}
+    E -->|yes| F["4. Keep and record"]
+    E -->|no| G["Rework or revert"]
+    F --> H["Next fix batch"]
+    classDef step fill:#d9f7be,stroke:#389e0d;
+    classDef stop fill:#ffccc7,stroke:#cf1322;
+    class A,B,C,D,F,H step;
+    class G stop;
+```
+
+What changed semantically:
+- **Stages are numbered and strictly ordered** — you cannot reach "large benchmark" without passing small and medium (the issue #17 gate).
+- **One verdict node** instead of two branch points; a failed verdict stops the batch (red) instead of looping back, so "keep only with evidence" is visible at a glance.
+- The "next batch" arrow only comes out of **Keep**, i.e. surviving ideas are re-entered as a *new* batch rather than silently merged.
+
+Same short labels (no `<br/>`, no emoji in edge labels), same keep/drop colours. Applied to `README.md` and `docs/09-optimization-strategy.md`; the full gate rule text stays in the bullets directly below the chart. Will render in the next push — if this layout still looks wrong to you, tell me the shape you'd prefer (e.g. left-to-right, or a simple numbered list instead of a chart) and I'll swap it.
+EOF
+gh issue comment -R paulzierep/metagenomic-binning-benchmark 7 --body-file issue7.md
+https://github.com/paulzierep/metagenomic-binning-benchmark/issues/7#issuecomment-5825268901
+> build · mimo-v2.6-flash-free

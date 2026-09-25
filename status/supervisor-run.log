@@ -48814,3 +48814,106 @@ drwxrwxr-x  4 ubuntu ubuntu   4096 Sep 24 10:42 comebin_out
 drwxrwxr-x  4 ubuntu ubuntu   4096 Sep 25 01:04 eval
 drwxrwxr-x  2 ubuntu ubuntu   4096 Sep 24 10:37 logs
 -rw-rw-r--  1 ubuntu ubuntu   1889 Sep 25 01:12 run_meta.txt
+[0m$ [0msleep 90; cd /vol/data/repos/metagenomic-binning-benchmark && git status --short && echo "---LOG---" && git log --format='%h %ad %s' --date=format:'%H:%M:%S' -4 && echo "---TRANSCRIPT-AGE---" && stat -c '%y' /vol/data/benchmark/logs/agent-run.log
+---LOG---
+1614c96 01:39:09 fix_v11 eval complete + issue #18 triage prep
+e6275d7 01:38:02 status: yes — fix_v11_20260924 epoch 183/200 loss 2.835580348968506 acc 99.03645324707031 model mimo-v2.6-flash-free — agent driver alive; transcript fresh (2s
+98c7529 01:36:02 status: yes — fix_v11_20260924 epoch 183/200 loss 2.835580348968506 acc 99.03645324707031 model mimo-v2.6-flash-free — agent driver alive; transcript fresh (15
+09581cf 01:34:02 status: yes — fix_v11_20260924 epoch 183/200 loss 2.835580348968506 acc 99.03645324707031 model mimo-v2.6-flash-free — agent driver alive; transcript fresh (35
+---TRANSCRIPT-AGE---
+2026-09-25 01:39:09.464000000 +0000
+> build · big-pickle
+The driver committed its work at 01:39 ("fix_v11 eval complete + issue #18 triage prep"). Let me verify what it committed and whether it's pushed.
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && git show --stat 1614c96 | head -30 && echo "---PUSH-STATE---" && git rev-parse HEAD origin/main && git status -sb | head -3
+commit 1614c96f8dde03004d3f633e009684bcb7a51e9f
+Author: paulzierep <paulzierep@users.noreply.github.com>
+Date:   Fri Sep 25 01:39:09 2026 +0000
+
+    fix_v11 eval complete + issue #18 triage prep
+    
+    - results/fix_v11_20260924.csv: 71 bins, CheckM2 24.38/3.78 (HQ1 MQ6),
+      CheckM v1 21.62/5.18 (HQ0 MQ8); wall 24741 s, early stop 184/200 (--earlystop)
+    - docs/11: fix_v11 table + run-history row; attempt counts 11/7 fail/4 ok
+    - README + docs/09: flowchart rewritten as a straight 4-stage pipeline (issue #7)
+    - scripts/run_small_test.sh: DATA= env override for the tiny set (issue #18)
+    - PROGRESS.md: fix_v11 marked complete; issue #18 and #7 tracked as active
+
+ PROGRESS.md                                 |  40 ++++++++++++++++++++++------
+ docs/09-optimization-strategy.md            |  27 ++++++++-----------
+ docs/11-run-results.md                      |   5 ++--
+ results/figures/comp_vs_cont_all-runs.png   | Bin 50547 -> 64918 bytes
+ results/figures/comp_vs_cont_by_dataset.png | Bin 73185 -> 87681 bytes
+ results/fix_v11_20260924.csv                |   2 ++
+ scripts/run_small_test.sh                   |   6 ++++-
+ status/agent-activity.log                   |   1 +
+ 8 files changed, 54 insertions(+), 27 deletions(-)
+---PUSH-STATE---
+1614c96f8dde03004d3f633e009684bcb7a51e9f
+e6275d74af3bea753528186012763b07fa4a304d
+## main...origin/main [ahead 1]
+> build · big-pickle
+The driver committed its work (1614c96 — exactly the expected files: PROGRESS, docs/09, docs/11, figures, CSV, run_small_test.sh) and it's 1 commit ahead of origin. Let me re-verify the cron-script parity (C1) after my deploys, then push the pending commit under the repo lock.
+[0m$ [0mfor f in agent-watchdog.sh benchmark-watchdog.sh meta-watchdog.sh status-heartbeat.sh; do diff -q /vol/data/repos/metagenomic-binning-benchmark/scripts/$f /vol/data/benchmark/bin/$f >/dev/null 2>&1 && echo "OK $f" || echo "DIFFERS $f"; done; ls -la /vol/data/benchmark/bin/agent-watchdog.sh /vol/data/benchmark/bin/meta-watchdog.sh
+OK agent-watchdog.sh
+OK benchmark-watchdog.sh
+OK meta-watchdog.sh
+OK status-heartbeat.sh
+-rwxr-xr-x 1 ubuntu ubuntu 13123 Sep 24 10:31 /vol/data/benchmark/bin/agent-watchdog.sh
+-rwxr-xr-x 1 ubuntu ubuntu 24542 Sep 24 10:23 /vol/data/benchmark/bin/meta-watchdog.sh
+> build · big-pickle
+Cron parity is intact. Now finalizing: push the pending commit under the repo lock (without staging anything new — the driver already staged exactly the expected files).
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && (
+  exec 8>/tmp/bench-repo.lock
+  flock -w 20 8 || { echo "LOCK TIMEOUT"; exit 1; }
+  git status --short
+  git stash list | head -3
+  timeout 90s git push -q origin main && echo "PUSHED" || echo "PUSH FAILED/rc=$?"
+) ; git rev-parse HEAD origin/main
+PUSHED
+1614c96f8dde03004d3f633e009684bcb7a51e9f
+1614c96f8dde03004d3f633e009684bcb7a51e9f
+> build · big-pickle
+Push succeeded — HEAD == origin/main. Now let me check the supervisor-actions.log format and append my tick's line.
+[0m$ [0mtail -4 /vol/data/benchmark/logs/supervisor-actions.log
+2026-09-24T10:20:36+00:00 [supervisor] Published medium evaluation evidence in commit 30cc5a8: CheckM2/CheckM rc=0, aggregate CSV, per-bin CheckM2 stats, PROGRESS/docs updates; verified HEAD=origin/main and no active benchmark.
+2026-09-24T10:21:35+00:00 [supervisor] Post-publish verification: META_WATCHDOG_NO_LLM=1 reported C1-C7/C9 ok, no active benchmark, 377 GiB free, HEAD=origin/main; C8 remains intentionally broken for open issues; no service/cron/driver restart.
+2026-09-24T10:22:00+00:00 [supervisor] Added one corrective issue #15 update linking the committed 16-row per-bin CheckM2 supplement and clarifying that plots/heatmaps remain open; no duplicate closure performed.
+2026-09-24T11:14:00+00:00 [supervisor] Consumed 6 issue-closer markers (#16,#15,#12,#13,#11,#8) via two issue-closer.sh runs (MAX_PER_RUN=5); verified all 6 CLOSED on GitHub with single automation comments, no dupes; closer published status/meta (306a16c, HEAD=origin/main clean); open set now #17/#14/#7/#6/#2/#1 pending owner; fix_v11 pid 873786 alive.
+> build · big-pickle
+[0m$ [0mecho '2026-09-25T01:41:00+00:00 [supervisor] Escalation 01:33Z: only C8 broken (issues #18/#17/#14/#12/#7/#2); verified all other checks ok, driver alive mid-turn. Deployed stale repo scripts to bin (run_small_test.sh, make_per_bin_plots.py; bin/run_eval.sh would have used the old plot generator) with syntax check. Wrote .issues_done markers #17/#14/#2/#12 (all verified on disk) and cleared stale .issues_closed/12 so the deterministic closer can re-close reopened #12 (by-dataset subplot figure verified embedded in README + regenerated post-fix_v11). #18 triage already posted by driver 01:07:50Z (no duplicate); #7 flowchart rewrite committed by driver but pending owner confirmation -> not marked done. Pushed driver commit 1614c96 (fix_v11 eval complete + issue #18 triage prep) under /tmp/bench-repo.lock; verified HEAD=origin/main=1614c96, worktree clean, only expected paths committed. fix_v11 eval verified: exit 0, 24741 s, 71 bins, CheckM2 24.38/3.78, CheckM v1 21.62/5.18. No service/cron/driver restart; no active run touched.' >> /vol/data/benchmark/logs/supervisor-actions.log && tail -1 /vol/data/benchmark/logs/supervisor-actions.log | cut -c1-200
+2026-09-25T01:41:00+00:00 [supervisor] Escalation 01:33Z: only C8 broken (issues #18/#17/#14/#12/#7/#2); verified all other checks ok, driver alive mid-turn. Deployed stale repo scripts to bin (run_sm
+> build · big-pickle
+Final verification pass before closing out the tick:
+[0m$ [0mecho "=== REPO STATE ==="; cd /vol/data/repos/metagenomic-binning-benchmark && git status --short && git rev-parse --short HEAD origin/main; echo "=== MARKERS ==="; ls /vol/data/benchmark/meta/.issues_done/; echo "=== DEPLOYED SYNC ==="; for f in run_small_test.sh make_per_bin_plots.py agent-watchdog.sh benchmark-watchdog.sh meta-watchdog.sh status-heartbeat.sh; do diff -q /vol/data/repos/metagenomic-binning-benchmark/scripts/$f /vol/data/benchmark/bin/$f >/dev/null 2>&1 && echo "OK $f" || echo "DIFFERS $f"; done; echo "=== DRIVER ==="; stat -c 'transcript mtime: %y' /vol/data/benchmark/logs/agent-run.log; cat /vol/data/benchmark/.status_sig 2>/dev/null | cut -c1-160; echo; echo "=== SERVICE ==="; ps -p 5551 -o pid,etime --no-headers; echo "=== DISK ==="; df -h /vol/data | tail -1 | awk '{print $4" free"}'; echo "=== ACTIVE RUN ==="; ls /vol/data/benchmark/.active_run 2>/dev/null || echo "none"
+=== REPO STATE ===
+fatal: Needed a single revision
+=== MARKERS ===
+12
+14
+17
+2
+=== DEPLOYED SYNC ===
+OK run_small_test.sh
+OK make_per_bin_plots.py
+OK agent-watchdog.sh
+OK benchmark-watchdog.sh
+OK meta-watchdog.sh
+OK status-heartbeat.sh
+=== DRIVER ===
+transcript mtime: 2026-09-25 01:39:42.196000000 +0000
+alive=yes|state=running|note=agent driver alive; transcript fresh (2s) while heartbeat is stale (1273s)|tsize=3542538|wsize=220815|model=mimo-v2.6-flash-free|ep
+
+=== SERVICE ===
+   5551  1-11:55:30
+=== DISK ===
+377G free
+=== ACTIVE RUN ===
+none
+> build · big-pickle
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && git status -sb | head -2 && echo "HEAD: $(git rev-parse HEAD)" && echo "ORIGIN: $(git rev-parse origin/main)" && git log --format='%h %ad %s' --date=format:'%H:%M:%S' -2
+## main...origin/main
+HEAD: 1614c96f8dde03004d3f633e009684bcb7a51e9f
+ORIGIN: 1614c96f8dde03004d3f633e009684bcb7a51e9f
+1614c96 01:39:09 fix_v11 eval complete + issue #18 triage prep
+e6275d7 01:38:02 status: yes — fix_v11_20260924 epoch 183/200 loss 2.835580348968506 acc 99.03645324707031 model mimo-v2.6-flash-free — agent driver alive; transcript fresh (2s
+> build · big-pickle
