@@ -3,10 +3,10 @@
 | | |
 |---|---|
 | Status | 🟢 `running` |
-| ⏱ Updated (Europe/Berlin) | `2026-09-25T05:42 CEST` |
-| 🏃 Last benchmark (not active) | `human_v11_20260925` — last observed **epoch 199/200** (log 479s old) |
+| ⏱ Updated (Europe/Berlin) | `2026-09-25T05:43 CEST` |
+| 🏃 Last benchmark (not active) | `human_v11_20260925` — last observed **epoch 199/200** (log 541s old) |
 | 🧠 Model (last turn) | `big-pickle` (watchdog rotates to free models on quota) |
-| 📌 Agent note · **10 min old** | Baseline training epoch ~109/200 (~2.4 min/epoch, ETA ~22:35 UTC unless early-stop); next: baseline eval (run_eval.sh) → issue #2 small-dataset test → v1.1.0 fix run
+| 📌 Agent note · **0 min old** | Baseline training epoch ~109/200 (~2.4 min/epoch, ETA ~22:35 UTC unless early-stop); next: baseline eval (run_eval.sh) → issue #2 small-dataset test → v1.1.0 fix run
 2026-09-23 20:33:11 UTC - heartbeat
 2026-09-23 20:43:58 UTC - heartbeat
 2026-09-23 20:56:28 UTC - heartbeat
@@ -288,10 +288,11 @@
 2026-09-25T03:01:04Z human-epoch97
 2026-09-25T03:11:18Z human-epoch129
 2026-09-25T03:21:34Z human-epoch160
-2026-09-25T03:31:47Z human-epoch192 |
-| ⚙️ Load · uptime | `18.67 18.82 24.44` · 1 day, 14 hours, 6 minutes — 32 cores, 62 GiB, no GPU |
-| 💾 RAM used/total | `11963/64295 MB` |
+2026-09-25T03:31:47Z human-epoch192
+2026-09-25T03:42:42Z human-run-finished-eval-started |
+| ⚙️ Load · uptime | `19.50 19.13 24.20` · 1 day, 14 hours, 7 minutes — 32 cores, 62 GiB, no GPU |
+| 💾 RAM used/total | `4544/64295 MB` |
 | 🔗 Session | `ses_f31799c77ffeTq9gcYgqc4hBhg` |
-| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `7a38953 status: yes — human_v11_20260925 epoch 199/200 loss 0.5311863422393799` |
-| 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `3737722 B` — every run, command & tool result |
+| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `c31ea81 status: yes — human_v11_20260925 epoch 199/200 loss 0.5311863422393799` |
+| 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `3745563 B` — every run, command & tool result |
 | 📈 Timeline | [status/status.log](status/status.log) |

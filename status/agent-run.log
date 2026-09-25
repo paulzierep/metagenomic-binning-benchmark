@@ -42118,3 +42118,78 @@ done
 **Bookkeeping:** `.activity` + `status/agent-activity.log` appended; `.heartbeat` touched. No git changes of mine.
 
 **Next turn:** on terminal status → `scripts/run_eval.sh runs/human_v11_20260925` → post CheckM2 + CheckM v1 row + wall time on #18 and `docs/11`/README → then CAMI II marine sample 0.
+[0m
+> build · big-pickle
+[0m$ [0mtest -f /vol/data/benchmark/TASK_COMPLETE && echo "TASK_COMPLETE EXISTS" || echo "no TASK_COMPLETE"; echo "===active_run==="; cat /vol/data/benchmark/.active_run 2>/dev/null || echo "none"; echo "===human run==="; L=/vol/data/benchmark/runs/human_v11_20260925/comebin_run.log; grep -o 'epoch=[0-9]*/200, batches=[0-9]*, loss=[0-9.]*, top1=[0-9.]*' $L 2>/dev/null | tail -2; grep -E '^exit_code|^wall_s|^bins:' /vol/data/benchmark/runs/human_v11_20260925/run_meta.txt 2>/dev/null || echo "not finished"; ps -eo pid,pcpu,args | grep -E 'main.py|run_comebin' | grep -v grep | cut -c1-110 | head -5; date -u +%FT%TZ; touch /vol/data/benchmark/.heartbeat
+no TASK_COMPLETE
+===active_run===
+none
+===human run===
+epoch=199/200, batches=4, loss=0.52492607, top1=96.3867
+epoch=200/200, batches=4, loss=0.53118634, top1=95.9408
+exit_code:  0
+wall_s:     4912
+bins:       107  -> /vol/data/benchmark/runs/human_v11_20260925/comebin_out/comebin_res/comebin_res_bins
+2026-09-25T03:42:24Z
+> build · big-pickle
+The human run **finished**: exit 0, wall 4,912 s (~82 min, 1.37 h), **107 bins**, `.active_run` cleared. Now running eval. Checking issues + git state first:
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && gh issue list -R paulzierep/metagenomic-binning-benchmark --state open --json number,title,updatedAt --jq '.[] | "\(.number) \(.title) \(.updatedAt)"' | sort -k3 | tail -4; echo "===COMEBin==="; gh issue list -R paulzierep/COMEBin --state open --json number,title,updatedAt 2>&1 | head -3; echo "=== git ==="; git log --oneline -3 | cut -c1-80; git status -sb | head -4
+6 Optimization 2026-09-23T20:56:21Z
+1 Idea inbox: benchmark ideas, COMEBin fixes, dataset requests 2026-09-23T14:53:13Z
+7 Optimization plan 2026-09-25T01:39:55Z
+18 Benchmark size 2026-09-25T02:23:21Z
+===COMEBin===
+the 'paulzierep/COMEBin' repository has disabled issues
+=== git ===
+c31ea81 status: yes — human_v11_20260925 epoch 199/200 loss 0.5311863422393799
+7a38953 status: yes — human_v11_20260925 epoch 199/200 loss 0.5311863422393799
+aad6c1b status: yes — human_v11_20260925 epoch 199/200 loss 0.5311863422393799
+## main...origin/main
+> build · big-pickle
+No new issues, repo clean. Run finished — proceeding to eval. Let me confirm `run_eval.sh` usage:
+[0m→ [0mRead /vol/data/repos/metagenomic-binning-benchmark/scripts/run_eval.sh 
+> build · big-pickle
+Run completed (exit 0, 4,912 s, **107 bins**). No new issues; repo clean. Launching eval (CheckM2 + CheckM v1 + auto-reporting) detached with a log:
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && nohup bash scripts/run_eval.sh /vol/data/benchmark/runs/human_v11_20260925 32 > /vol/data/benchmark/logs/human_v11_eval.log 2>&1 & echo "eval pid: $!"; sleep 5; head -12 /vol/data/benchmark/logs/human_v11_eval.log | cut -c1-160; R=/vol/data/repos/metagenomic-binning-benchmark; TS=$(date -u +%FT%TZ); echo "$TS human_v11_20260925 FINISHED exit0 wall4912s bins107; run_eval.sh launched (CheckM2+CheckMv1)" >> $R/status/agent-activity.log; echo "$TS human-run-finished-eval-started" >> /vol/data/benchmark/.activity; touch /vol/data/benchmark/.heartbeat
+eval pid: 1563727
+ERROR: another benchmark launch/evaluation holds /tmp/benchmark-start.lock
+> build · big-pickle
+Eval was refused — `benchmark-start.lock` is held by another process. Let me see who holds it:
+[0m$ [0mecho "=== process table ==="; ps -eo pid,ppid,etime,pcpu,args | grep -v grep | grep -E 'run_comebin|run_eval|run_small|main.py|prep_cami|bwa' | cut -c1-130 | head -12; echo "=== lock holders ==="; lslocks 2>/dev/null | grep benchmark-start || fuser -v /tmp/benchmark-start.lock 2>&1 | head; echo "=== eval log if any ==="; tail -5 /vol/data/benchmark/logs/human_v11_eval.log 2>/dev/null; echo "=== active_run ==="; cat /vol/data/benchmark/.active_run 2>/dev/null || echo none; date -u +%FT%TZ; touch /vol/data/benchmark/.heartbeat
+=== process table ===
+1554975       1       03:09  0.0 /bin/bash -c cd /vol/data/repos/metagenomic-binning-benchmark && nohup bash scripts/run_eval.sh /
+1554977 1554975       03:09  0.0 bash scripts/run_eval.sh /vol/data/benchmark/runs/human_v11_20260925 32
+=== lock holders ===
+                     USER        PID ACCESS COMMAND
+/tmp/benchmark-start.lock:
+                     ubuntu    1554977 F.... bash
+=== eval log if any ===
+ERROR: another benchmark launch/evaluation holds /tmp/benchmark-start.lock
+=== active_run ===
+none
+2026-09-25T03:42:46Z
+> build · big-pickle
+The supervisor (pid 1554977) already launched the eval for this same run ~3 min before my attempt — my duplicate launch correctly refused via the lock and exited. The eval is owned by the supervisor; I will not touch it. Monitoring progress read-only:
+[0m$ [0mR=/vol/data/benchmark/runs/human_v11_20260925; echo "=== run_meta eval lines ==="; grep -E 'checkm2|checkm_rc|cmd_' $R/run_meta.txt 2>/dev/null | tail -6; echo "=== eval outputs ==="; ls $R/eval/ 2>/dev/null; ls $R/eval/checkm2/ 2>/dev/null | head; echo "=== resources ==="; tail -1 $R/logs/resources.tsv 2>/dev/null; echo "=== procs ==="; ps -eo pid,pcpu,args | grep -E 'checkm2|checkm |main.py' | grep -v grep | cut -c1-110 | head -5; date -u +%FT%TZ; touch /vol/data/benchmark/.heartbeat
+=== run_meta eval lines ===
+cmd_wrapper: /vol/data/tools/bin/micromamba run -p /vol/data/envs/comebin bash run_comebin.sh -a /vol/data/datasets/cami_II_human/human_sample0_input/contigs.fa -p /vol/data/datasets/cami_II_human/human_sample0_input/bamfiles -o /vol/data/benchmark/runs/human_v11_20260925/comebin_out -n 6 -t 32 -d cpu -s 42 
+cmd_from_log: 2026-09-25 03:34:07,166 - Marker tools: FragGeneScan=/vol/data/envs/comebin/bin/FragGeneScan, wrapper=/vol/data/envs/comebin/bin/run_FragGeneScan.pl, hmmsearch=/vol/data/envs/comebin/bin/hmmsearch, perl=/vol/data/envs/comebin/bin/perl, marker_script=/vol/data/repos/COMEBin-v11/auxiliary/test_getmarker_2quarter.pl, marker_hmm=/vol/data/repos/COMEBin-v11/auxiliary/bacar_marker.hmm.
+cmd_from_log: 2026-09-25 03:34:22,252 - HMMsearch command: /vol/data/envs/comebin/bin/hmmsearch --domtblout /vol/data/datasets/cami_II_human/human_sample0_input/.contigs.fa.bacar_marker.hmmout.1473618.91h4_894.tmp -E 1e-05 --cpu 32 /vol/data/repos/COMEBin-v11/auxiliary/bacar_marker.hmm /vol/data/datasets/cami_II_human/human_sample0_input/contigs.fa.frag.faa
+cmd_checkm2: /vol/data/tools/bin/micromamba run -p /vol/data/envs/checkm2 checkm2 predict --threads 32 --database_path /vol/data/benchmark/checkm2db/CheckM2_database/uniref100.KO.1.dmnd --input /vol/data/benchmark/runs/human_v11_20260925/comebin_out/comebin_res/comebin_res_bins --output-directory /vol/data/benchmark/runs/human_v11_20260925/eval/checkm2 -x fa --force
+checkm2_rc: 0 checkm2_wall_s: 193
+cmd_checkm: LD_LIBRARY_PATH=/vol/data/envs/checkm/lib:/vol/data/envs/comebin/lib /vol/data/tools/bin/micromamba run -p /vol/data/envs/comebin checkm lineage_wf -x fa -t 32 --tmpdir /vol/data/benchmark/runs/human_v11_20260925/eval/checkm/tmp /vol/data/benchmark/runs/human_v11_20260925/comebin_out/comebin_res/comebin_res_bins /vol/data/benchmark/runs/human_v11_20260925/eval/checkm/out
+=== eval outputs ===
+checkm
+checkm2
+checkm2.log
+diamond_output
+protein_files
+quality_report.tsv
+=== resources ===
+2026-09-25T03:38:59+00:00	1412622,1412625,1480056,1549675,1554463,1554464	101.3	0.563	2417
+=== procs ===
+1563905  0.0 /vol/data/tools/bin/micromamba run -p /vol/data/envs/comebin checkm lineage_wf -x fa -t 32 --tmpd
+1563907 97.4 /vol/data/envs/comebin/bin/python /vol/data/envs/comebin/bin/checkm lineage_wf -x fa -t 32 --tmpd
+2026-09-25T03:42:50Z
+> build · big-pickle
+Supervisor's eval progressing: **CheckM2 done (rc 0, 193 s)** → quality_report.tsv present; **CheckM v1 lineage_wf in progress**. I'll wait for it to finish before planning the report (avoiding duplication with the supervisor):
