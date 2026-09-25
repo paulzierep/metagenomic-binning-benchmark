@@ -49651,3 +49651,54 @@ Only one supervisor run exists (mine). Let me clarify the escalation history fro
 49614:2026-09-25T02:53:05+00:00 [meta] unresolved checks present but escalation budget exhausted (3/3); issue markers left pending
 49616:2026-09-25T03:03:09+00:00 [meta] escalating to LLM supervisor (esc #3/3): /vol/data/benchmark/meta/escalate-1790305387.txt
 > build · big-pickle
+The escalation history is fully consistent: escalations at 20:53/23:03/01:33 filled the budget until 01:33's (already handled), then it refreshed at 03:03 → me. Only one supervisor run exists (mine). Now let me verify the SEEN logic equivalence the watchdog will use, then log the action and do the final git stage/commit/push under the lock.
+[0m$ [0mNOW=$(date -u +%Y-%m-%dT%H:%M:%SZ); echo "now=$NOW"; printf '%s [supervisor] Escalation 03:03Z: only C8 broken (#18 updated 02:23Z by driver "run launched"); human_v11 run (pid 1412588, cami2-human) healthy at epoch ~106/200, left untouched. Triage already posted by driver (no duplicate comment); work in progress, not closeable -> no .issues_done marker. Advanced .issues_seen/18 to 1790303001 (02:23:21Z) so the watchdog stops re-escalating; marked the issue handled. Deployed missing scripts/prep_cami2_human.sh to bin (byte-identical, chmod 755, syntax OK); verified all other repo scripts are byte-identical + deployed. Verified C1-C7, C8b, C9 ok, no stale state (watchdog attempt/hang-restart markers age-filtered), no cron/service/driver restart, active run untouched. Repo HEAD=origin/main clean.\n' "$NOW" >> /vol/data/benchmark/logs/supervisor-actions.log; tail -2 /vol/data/benchmark/logs/supervisor-actions.log
+now=2026-09-25T03:06:09Z
+2026-09-25T01:41:00+00:00 [supervisor] Escalation 01:33Z: only C8 broken (issues #18/#17/#14/#12/#7/#2); verified all other checks ok, driver alive mid-turn. Deployed stale repo scripts to bin (run_small_test.sh, make_per_bin_plots.py; bin/run_eval.sh would have used the old plot generator) with syntax check. Wrote .issues_done markers #17/#14/#2/#12 (all verified on disk) and cleared stale .issues_closed/12 so the deterministic closer can re-close reopened #12 (by-dataset subplot figure verified embedded in README + regenerated post-fix_v11). #18 triage already posted by driver 01:07:50Z (no duplicate); #7 flowchart rewrite committed by driver but pending owner confirmation -> not marked done. Pushed driver commit 1614c96 (fix_v11 eval complete + issue #18 triage prep) under /tmp/bench-repo.lock; verified HEAD=origin/main=1614c96, worktree clean, only expected paths committed. fix_v11 eval verified: exit 0, 24741 s, 71 bins, CheckM2 24.38/3.78, CheckM v1 21.62/5.18. No service/cron/driver restart; no active run touched.
+2026-09-25T03:06:09Z [supervisor] Escalation 03:03Z: only C8 broken (#18 updated 02:23Z by driver "run launched"); human_v11 run (pid 1412588, cami2-human) healthy at epoch ~106/200, left untouched. Triage already posted by driver (no duplicate comment); work in progress, not closeable -> no .issues_done marker. Advanced .issues_seen/18 to 1790303001 (02:23:21Z) so the watchdog stops re-escalating; marked the issue handled. Deployed missing scripts/prep_cami2_human.sh to bin (byte-identical, chmod 755, syntax OK); verified all other repo scripts are byte-identical + deployed. Verified C1-C7, C8b, C9 ok, no stale state (watchdog attempt/hang-restart markers age-filtered), no cron/service/driver restart, active run untouched. Repo HEAD=origin/main clean.
+[0m$ [0mecho "watchdog up_epoch calc: $(date -d '2026-09-25T02:23:21Z' +%s)"; echo "SEEN/18 value:          $(cat /vol/data/benchmark/meta/.issues_seen/18)"; [ "$(date -d '2026-09-25T02:23:21Z' +%s)" = "$(cat /vol/data/benchmark/meta/.issues_seen/18)" ] && echo 'MATCH — C8 will clear next tick' || echo 'MISMATCH'
+watchdog up_epoch calc: 1790303001
+SEEN/18 value:          1790303001
+MATCH — C8 will clear next tick
+> build · big-pickle
+Log entry appended. Now the final locked git stage/commit/push — check what's pending first.
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && git status --porcelain 2>&1; echo '--- staged ---'; git diff --cached --name-only 2>&1; echo '--- head/remote ---'; git rev-parse HEAD 2>&1; timeout 30s git ls-remote origin refs/heads/main 2>&1 | awk 'NR==1{print $1}'
+--- staged ---
+--- head/remote ---
+86a6b75e8b5a4303b01322b70fc3e200426d3950
+86a6b75e8b5a4303b01322b70fc3e200426d3950
+> build · big-pickle
+HEAD moved to 86a6b75 (concurrent publisher is active — status-heartbeat commits) and is already equal to origin/main with a clean worktree. Let me do the final locked verification pass and re-confirm the run is still healthy.
+[0m$ [0mps -p 1412588 -o pid,etime,stat --no-headers 2>&1; tail -1 /vol/data/benchmark/runs/human_v11_20260925/comebin_run.log | cut -c1-120; stat -c 'log mtime: %y' /vol/data/benchmark/runs/human_v11_20260925/comebin_run.log; echo '---'; date -u +%Y-%m-%dT%H:%M:%SZ
+1412588       49:03 S
+  0%|          | 0/4 [00:00<?, ?it/s]
+log mtime: 2026-09-25 03:06:21.975000000 +0000
+---
+2026-09-25T03:06:23Z
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && exec 8>/tmp/bench-repo.lock && flock -w 20 8 && git status --porcelain && git rev-parse HEAD && timeout 30s git ls-remote origin refs/heads/main | awk 'NR==1{print $1}' && git diff --cached --name-only && echo 'LOCKED-VERIFY: clean, nothing staged, HEAD=remote'
+86a6b75e8b5a4303b01322b70fc3e200426d3950
+86a6b75e8b5a4303b01322b70fc3e200426d3950
+LOCKED-VERIFY: clean, nothing staged, HEAD=remote
+> build · big-pickle
+All fixes verified. Summary of this supervision tick:
+
+## Findings
+Only **C8_issues** was broken — a false-alarm-style trigger: issue **#18 (Benchmark size)** was updated at `02:23:21Z` by the driver's own "human run launched" comment. Everything else (C1–C7, C8b, C9) was healthy, including the active benchmark run.
+
+## Actions taken
+1. **Issue #18 handled (no comment, no close):**
+   - Confirmed via GitHub API: OPEN, 3 comments, last one at `02:23:21Z` is the driver's launch announcement — nothing new since the escalation bundle. The triage comment already exists, so posting would be a duplicate → none posted.
+   - Work is **in progress, not verified complete** — the `human_v11_20260925` run is at epoch ~106/200 → **no `.issues_done/18` marker** (no closing).
+   - Advanced the triage loop-breaker `meta/.issues_seen/18` to epoch `1790303001` (= `02:23:21Z`), which exactly matches the watchdog's computed `up_epoch` — C8 will clear on the next tick. This is the documented pattern ("markers advance only after triage").
+
+2. **Deployment fix:** `scripts/prep_cami2_human.sh` existed in the repo but was **missing from `/vol/data/benchmark/bin`**. Deployed it: copy → `chmod 755` → `bash -n` syntax OK → byte-identical (`cmp` clean). Verified all other `scripts/*` are byte-identical with `bin/`, including the 4 cron scripts.
+
+3. **No stale state to clear:** `.watchdog_attempts` and `.hang_restarts.*` markers are age-window-filtered by the watchdogs (360/1440 min) and fall outside those windows — self-managed.
+
+4. **Active run untouched (as required):** pid 1412588 (cami2-human) alive 49 min, log fresh (2 s) at epoch ~106/200 — no restart, no cron/service/driver changes.
+
+## Verification
+- **C8:** `SEEN/18` = `1790303001` matches `date -d 2026-09-25T02:23:21Z +%s` exactly → next tick reports ok. (A no-LLM watchdog rerun couldn't run — the 03:03 meta-watchdog instance holds the lock while awaiting this supervisor's completion, which is correct; it will refresh the marker itself with the identical value.)
+- **Repo:** locked verify under `/tmp/bench-repo.lock` — worktree clean, nothing staged, HEAD=origin/main (`86a6b75`). No repo changes were needed (all edits were deploy/meta-side); nothing unexpected staged or committed.
+- **Run:** still healthy/progressing after all actions.
+- **Log:** one timestamped line appended to `logs/supervisor-actions.log`.
