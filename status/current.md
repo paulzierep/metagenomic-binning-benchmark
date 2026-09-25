@@ -3,10 +3,10 @@
 | | |
 |---|---|
 | Status | 🟢 `running` |
-| ⏱ Updated (Europe/Berlin) | `2026-09-25T07:10 CEST` |
-| 🏃 Live benchmark | `marine_v11_20260925` — **epoch 12/200** · loss `1.93668794631958` · top1 acc `70.63801574707031` (log 169s fresh) |
+| ⏱ Updated (Europe/Berlin) | `2026-09-25T07:12 CEST` |
+| 🏃 Live benchmark | `marine_v11_20260925` — **epoch 13/200** · loss `1.8720523118972778` · top1 acc `71.75129699707031` (log 99s fresh) |
 | 🧠 Model (last turn) | `big-pickle` (watchdog rotates to free models on quota) |
-| 📌 Agent note · **9 min old** | Baseline training epoch ~109/200 (~2.4 min/epoch, ETA ~22:35 UTC unless early-stop); next: baseline eval (run_eval.sh) → issue #2 small-dataset test → v1.1.0 fix run
+| 📌 Agent note · **0 min old** | Baseline training epoch ~109/200 (~2.4 min/epoch, ETA ~22:35 UTC unless early-stop); next: baseline eval (run_eval.sh) → issue #2 small-dataset test → v1.1.0 fix run
 2026-09-23 20:33:11 UTC - heartbeat
 2026-09-23 20:43:58 UTC - heartbeat
 2026-09-23 20:56:28 UTC - heartbeat
@@ -297,10 +297,11 @@
 2026-09-25T04:30:13Z marine-train-epoch1-batches41
 2026-09-25T04:40:27Z marine-epoch4
 2026-09-25T04:50:38Z marine-epoch7
-2026-09-25T05:00:49Z marine-epoch10 |
-| ⚙️ Load · uptime | `30.91 31.06 29.49` · 1 day, 15 hours, 34 minutes — 32 cores, 62 GiB, no GPU |
-| 💾 RAM used/total | `6665/64295 MB` |
+2026-09-25T05:00:49Z marine-epoch10
+2026-09-25T05:11:04Z marine-epoch14 |
+| ⚙️ Load · uptime | `30.72 30.99 29.67` · 1 day, 15 hours, 36 minutes — 32 cores, 62 GiB, no GPU |
+| 💾 RAM used/total | `7406/64295 MB` |
 | 🔗 Session | `ses_f31799c77ffeTq9gcYgqc4hBhg` |
-| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `c752b99 status: yes — marine_v11_20260925 epoch 12/200 loss 1.93668794631958 a` |
-| 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `3840362 B` — every run, command & tool result |
+| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `527431b status: yes — marine_v11_20260925 epoch 12/200 loss 1.93668794631958 a` |
+| 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `3843047 B` — every run, command & tool result |
 | 📈 Timeline | [status/status.log](status/status.log) |
