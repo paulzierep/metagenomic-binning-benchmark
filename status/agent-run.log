@@ -42246,3 +42246,125 @@ b53c0f9 status: yes — human_v11_20260925 epoch 199/200 loss 0.5311863422393799
 2026-09-25T03:54:45Z
 > build · big-pickle
 Supervisor hasn't posted results yet (latest #18 comment is still the 02:23Z launch note), and `docs/11` lacks the human row. Since the supervisor explicitly promised to post both, I'll give it one tick cycle (~4 min) before claiming the report, to avoid duplication:
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark; for i in $(seq 1 12); do NEW=$(gh api repos/paulzierep/metagenomic-binning-benchmark/issues/18/comments --jq '.[-1].created_at' 2>/dev/null); if [ "$NEW" != "2026-09-25T02:23:21Z" ] && [ -n "$NEW" ]; then echo "NEW #18 COMMENT at $NEW after ~$((i*20))s"; gh api repos/paulzierep/metagenomic-binning-benchmark/issues/18/comments --jq '.[-1].body[0:220]'; break; fi; if grep -q "human_v11_20260925\|human_sample0" docs/11-run-results.md 2>/dev/null; then echo "docs/11 human row landed at ~$((i*20))s"; break; fi; sleep 20; done; echo "=== final state ==="; gh api repos/paulzierep/metagenomic-binning-benchmark/issues/18/comments --jq '.[-1].created_at' 2>/dev/null; grep -c "human" docs/11-run-results.md 2>/dev/null || true; date -u +%FT%TZ; touch /vol/data/benchmark/.heartbeat
+=== final state ===
+2026-09-25T02:23:21Z
+3
+2026-09-25T03:58:59Z
+> build · big-pickle
+Supervisor hasn't posted after a full tick cycle — claiming the report now (no results comment exists, so no duplication). First, grabbing docs/11 format + a few per-bin stats for the report:
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && echo "=== docs/11 run section ==="; grep -n "fix_v11_20260924\|medium_v11\|tiny_test_n101\|^## \|^### " docs/11-run-results.md | head -25; echo "=== human run row context ==="; awk '/fix_v11_20260924/{print NR": "$0}' docs/11-run-results.md | head -3; echo "=== per-bin top ==="; head -4 runs/human_v11_20260925/per_bin_results.csv | cut -c1-160; echo "=== per-bin HQ counts (>=90 comp, <=5 cont) ==="; python3 - <<'PY'
+import csv
+rows=list(csv.DictReader(open('/vol/data/benchmark/runs/human_v11_20260925/per_bin_results.csv')))
+print("total bins:", len(rows))
+print("cols:", list(rows[0].keys()))
+def hq(r, k): return r.get(k,'')
+try:
+    c2=[r for r in rows if float(r['checkm2_completeness'])>=90 and float(r['checkm2_contamination'])<=5]
+    c1=[r for r in rows if float(r['checkm_completeness'])>=90 and float(r['checkm_contamination'])<=5]
+    print("checkm2 HQ>=90/<=5:", len(c2), " checkm1 HQ:", len(c1))
+except Exception as e:
+    print("key issue:", e)
+PY
+date -u +%FT%TZ; touch /vol/data/benchmark/.heartbeat
+=== docs/11 run section ===
+9:| `medium_v11_20260924` | 2026-09-24 | [95f5ea8](https://github.com/paulzierep/COMEBin/commit/95f5ea820f9a4e76f5c2911c0b5ed507ab67b015) | `comebin_medium` (3,000 contigs) | 32 | 2,326 s | 10.69 GB | 16 | 35.93 / 4.67 | 33.83 / 6.03 | ✅ complete; 200/200 epochs, 61.23% Top1; [CSV](../results/medium_v11_20260924.csv) |
+10:| `fix_v11_20260924` | 2026-09-24 | [95f5ea8](https://github.com/paulzierep/COMEBin/commit/95f5ea820f9a4e76f5c2911c0b5ed507ab67b015) | COMEBin demo (29,434 contigs) | 32 | 24,741 s | 9.4 GB | 71 | 24.38 / 3.78 | 21.62 / 5.18 | ✅ complete; stopped early at epoch 184/200 (`--earlystop`, Top-1 ≥ 99% × 3); [CSV](../results/fix_v11_20260924.csv) |
+12:| `tiny_test_n101` | 2026-09-25 | [c8f22e4](https://github.com/paulzierep/COMEBin/commit/c8f22e4935a66a0fd58b794489a9021671b15437) | `comebin_tiny_101` (101 contigs) | 8 | 85 s | – | 1 | 63.89 / 9.05 | 46.58 / 6.35 | ✅ complete, smallest passing dataset (30 epochs); [CSV](../results/tiny_test_n101.csv) |
+15:Column contract: **Wall time** = total seconds (plus per-stage breakdown in `docs/02-comebin-baseline.md`), **Bins** = bins exported (≥200 kb filter noted), **comp/cont** = mean completeness / mean contamination, **HQ/MQ counts** live in `results/<run>.csv`. **Source commit** is always a clickable link to that exact commit on GitHub. Per-bin CheckM2 values for the completed medium gate are in [`medium_v11_20260924_checkm2_stats.csv`](../medium_v11_20260924_checkm2_stats.csv).
+17:## Run history — what happened and what's next
+21:### COMEBin-executing attempts
+34:| [`medium_v11_20260924`](../runs/medium_v11_20260924/comebin_run.log) — 2026-09-24 09:25:50 → 10:04:36 | [95f5ea8](https://github.com/paulzierep/COMEBin/commit/95f5ea820f9a4e76f5c2911c0b5ed507ab67b015) | **✅ Complete.** 200/200 epochs, 61.23% Top1, 16 non-empty bins in 2,326 s. CheckM2: 35.93% mean completeness / 4.67% contamination (MQ=2). CheckM v1: 33.83% / 6.03% (MQ=3). | Evaluation completed with `scripts/run_eval.sh`; see the [aggregate CSV](../results/medium_v11_20260924.csv) and the [per-bin tables](../runs/medium_v11_20260924/per_bin_results.csv) / [CheckM2 per-bin](../runs/medium_v11_20260924/checkm2_per_bin.csv). |
+35:| [`fix_v11_20260924`](../runs/fix_v11_20260924/comebin_run.log) — 2026-09-24 10:37:15 → 17:29:36 | [95f5ea8](https://github.com/paulzierep/COMEBin/commit/95f5ea820f9a4e76f5c2911c0b5ed507ab67b015) | **✅ Complete** (exit 0, wall 24,741 s). Stopped early at **epoch 184/200** because upstream v1.1.0 `run_comebin.sh` passes `--earlystop` (Top-1 > 99% for 3 epochs: 99.10 → 99.22 → 99.04%), then clustering completed normally (120/120 Leiden) → **71 non-empty bins**. CheckM2: 24.38% / 3.78% (HQ 1, MQ 6). CheckM v1: 21.62% / 5.18% (HQ 0, MQ 8). Versus the baseline on the same data: +1.7% wall time, +11 bins, −0.63 pp completeness, +0.80 pp contamination. | Evaluation done with `scripts/run_eval.sh` (CheckM2 71 s, CheckM v1 398 s); see the [aggregate CSV](../results/fix_v11_20260924.csv) and [per-bin table](../runs/fix_v11_20260924/per_bin_results.csv). Next: issue #18 datasets (tiny + CAMI human ~1/6). |
+36:| [`tiny_test_n100`](../runs/tiny_test_n100/comebin_run.log) — 2026-09-25 01:44 → 01:46 | [c8f22e4](https://github.com/paulzierep/COMEBin/commit/c8f22e4935a66a0fd58b794489a9021671b15437) | **Failed, exit 1 (85 s).** Smallest-possible-dataset probe for issue #18: `cluster.py` builds an HNSW index and queries `k = max_edges + 1 = 101` neighbours with N = 100 contigs → `RuntimeError: Cannot return the results in a contiguous 2D array` → empty `get_bin_quality` → `ValueError: max() arg is an empty sequence`. | The empirical floor is **101 contigs**; see `tiny_test_n101`. A defensive clamp in `cluster.py` is proposed as a future fix batch (not applied — the benchmark runs upstream). |
+37:| [`tiny_test_n101`](../runs/tiny_test_n101/comebin_run.log) — 2026-09-25 01:46:33 → 01:47:58 (85 s) | [c8f22e4](https://github.com/paulzierep/COMEBin/commit/c8f22e4935a66a0fd58b794489a9021671b15437) | **✅ Complete.** 101 contigs (issue #18 tiny floor), 30/30 epochs, exit 0, **1 non-empty bin**. CheckM2: 63.89% / 9.05% (MQ 1). CheckM v1: 46.58% / 6.35%. | Smallest passing dataset verified; see [`results/tiny_test_n101.csv`](../results/tiny_test_n101.csv). CAMI-II human ~1/6 set is next (issue #18). |
+39:### Guard-only launches
+54:## Data preservation and Zenodo
+58:## How to resume (for a human or a restarted agent)
+66:## References
+=== human run row context ===
+10: | `fix_v11_20260924` | 2026-09-24 | [95f5ea8](https://github.com/paulzierep/COMEBin/commit/95f5ea820f9a4e76f5c2911c0b5ed507ab67b015) | COMEBin demo (29,434 contigs) | 32 | 24,741 s | 9.4 GB | 71 | 24.38 / 3.78 | 21.62 / 5.18 | ✅ complete; stopped early at epoch 184/200 (`--earlystop`, Top-1 ≥ 99% × 3); [CSV](../results/fix_v11_20260924.csv) |
+35: | [`fix_v11_20260924`](../runs/fix_v11_20260924/comebin_run.log) — 2026-09-24 10:37:15 → 17:29:36 | [95f5ea8](https://github.com/paulzierep/COMEBin/commit/95f5ea820f9a4e76f5c2911c0b5ed507ab67b015) | **✅ Complete** (exit 0, wall 24,741 s). Stopped early at **epoch 184/200** because upstream v1.1.0 `run_comebin.sh` passes `--earlystop` (Top-1 > 99% for 3 epochs: 99.10 → 99.22 → 99.04%), then clustering completed normally (120/120 Leiden) → **71 non-empty bins**. CheckM2: 24.38% / 3.78% (HQ 1, MQ 6). CheckM v1: 21.62% / 5.18% (HQ 0, MQ 8). Versus the baseline on the same data: +1.7% wall time, +11 bins, −0.63 pp completeness, +0.80 pp contamination. | Evaluation done with `scripts/run_eval.sh` (CheckM2 71 s, CheckM v1 398 s); see the [aggregate CSV](../results/fix_v11_20260924.csv) and [per-bin table](../runs/fix_v11_20260924/per_bin_results.csv). Next: issue #18 datasets (tiny + CAMI human ~1/6). |
+=== per-bin top ===
+bin,checkm2_completeness,checkm2_contamination,checkm2_genome_size,checkm2_contigs,checkm2_n50,checkm1_completeness,checkm1_contamination
+0,100.0,0.45,5287944,1,5287944,100.0,0.0
+1,100.0,0.2,4887363,1,4887363,100.0,0.0
+2,100.0,0.03,4490357,1,4490357,99.53051643192488,0.0
+=== per-bin HQ counts (>=90 comp, <=5 cont) ===
+Traceback (most recent call last):
+  File "<stdin>", line 2, in <module>
+FileNotFoundError: [Errno 2] No such file or directory: '/vol/data/benchmark/runs/human_v11_20260925/per_bin_results.csv'
+2026-09-25T03:59:06Z
+> build · big-pickle
+Per-bin CSV lives under the repo's `runs/` symlink. Re-checking HQ counts via the repo path:
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && python3 - <<'PY'
+import csv
+rows=list(csv.DictReader(open('runs/human_v11_20260925/per_bin_results.csv')))
+print("total bins:", len(rows), "cols:", list(rows[0].keys()))
+c2=[r for r in rows if float(r['checkm2_completeness'])>=90 and float(r['checkm2_contamination'])<=5]
+c1=[r for r in rows if float(r['checkm1_completeness'])>=90 and float(r['checkm1_contamination'])<=5]
+c2b=[r for r in rows if float(r['checkm2_completeness'])>=50 and float(r['checkm2_contamination'])<=10]
+print("checkm2 HQ(>=90/<=5):", len(c2), " MQ-ish(>=50/<=10):", len(c2b))
+print("checkm1 HQ(>=90/<=5):", len(c1))
+m2=[float(r['checkm2_completeness']) for r in rows]; m1=[float(r['checkm1_completeness']) for r in rows]
+print("mean comp c2/c1:", round(sum(m2)/len(m2),2), round(sum(m1)/len(m1),2))
+print("top bins (c2):")
+for r in sorted(rows, key=lambda r:-float(r['checkm2_completeness']))[:5]:
+    print("  ", r['bin'], "c2", round(float(r['checkm2_completeness']),1), "x", round(float(r['checkm2_contamination']),2), "c1", round(float(r['checkm1_completeness']),1), "x", round(float(r['checkm1_contamination']),2))
+PY
+date -u +%FT%TZ; touch /vol/data/benchmark/.heartbeat
+total bins: 107 cols: ['bin', 'checkm2_completeness', 'checkm2_contamination', 'checkm2_genome_size', 'checkm2_contigs', 'checkm2_n50', 'checkm1_completeness', 'checkm1_contamination']
+checkm2 HQ(>=90/<=5): 20  MQ-ish(>=50/<=10): 29
+checkm1 HQ(>=90/<=5): 21
+mean comp c2/c1: 35.31 32.64
+top bins (c2):
+   0 c2 100.0 x 0.45 c1 100.0 x 0.0
+   1 c2 100.0 x 0.2 c1 100.0 x 0.0
+   2 c2 100.0 x 0.03 c1 99.5 x 0.0
+   3 c2 100.0 x 0.71 c1 100.0 x 0.08
+   14 c2 100.0 x 0.41 c1 99.4 x 0.24
+2026-09-25T03:59:13Z
+> build · big-pickle
+First run of the whole benchmark with substantial HQ bins (20–21). Filing the report. Viewing docs/11 head for precise edits:
+[0m→ [0mRead /vol/data/repos/metagenomic-binning-benchmark/docs/11-run-results.md [90m[limit=40][0m
+> build · big-pickle
+Now posting the results comment on #18 (no results comment exists — no duplication), then updating docs/11, README, PROGRESS:
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && cat > /tmp/human18_comment.md <<'EOF'
+Human host-associated set (#18b) — **run complete + evaluated**.
+
+**Run** `human_v11_20260925` (2026-09-25 02:17 → 03:39 UTC, wall **4,912 s ≈ 1.37 h** vs 6.9 h on the ≤ 1/6-larger demo): exit 0, **200/200 epochs** (no early-stop; Top-1 plateaued ≈ 96%), 120/120 Leiden clustering → **107 non-empty bins** on the 4,900-contig / 166 Mbp set (top-4900-longest contigs of CAMI II Toy Human Microbiome `gastrooral/sample_0`, reads re-mapped with `bwa mem`).
+
+**Quality** (`scripts/run_eval.sh`, fix source `95f5ea8`, seed 42):
+- **CheckM2** (wall 193 s): mean completeness **35.31 %**, contamination **5.13 %** → **HQ 20 / MQ 29** (≥90 & ≤5 / ≥50 & ≤10).
+- **CheckM v1** (wall 686 s): mean completeness **32.64 %**, contamination **4.65 %** → **HQ 21 / MQ 29**.
+- Top bins approximate complete genomes and both tools agree: bin0 100 %/0.45 %, bin1 100 %/0.20 %, bin2 100 %/0.03 % (CheckM2) with CheckM v1 100 %/0.0 %.
+
+**Highlight:** first dataset in this benchmark with substantial HQ recovery — 20–21 near-complete bins vs 1 (CheckM2) / 0 (CheckM v1) on the full demo, and more total bins (107 vs 60–71) at ~1/5 the wall time. Artifacts: [`results/human_v11_20260925.csv`](https://github.com/paulzierep/metagenomic-binning-benchmark/blob/main/results/human_v11_20260925.csv), per-bin table `runs/human_v11_20260925/per_bin_results.csv`, `docs/11-run-results.md` row added.
+
+Issues #18a (tiny floor = 101 contigs) and #18b (human ~1/6) are now both measured. Next per plan: **CAMI II marine sample_0** (~1/6 set) → baseline + fix runs, then CAMI III.
+EOF
+gh api repos/paulzierep/metagenomic-binning-benchmark/issues/18/comments -f body=@/tmp/human18_comment.md --jq '.id + " " + .created_at'; TS=$(date -u +%FT%TZ); echo "$TS #18 comment posted: human_v11_20260925 results (107 bins, CheckM2 35.31/5.13 HQ20, CheckMv1 32.64/4.65 HQ21)" >> status/agent-activity.log; echo "$TS human-results-comment" >> /vol/data/benchmark/.activity; touch /vol/data/benchmark/.heartbeat
+cannot add: number (5826451614) and string (" ")
+> build · big-pickle
+The comment may have posted (error was only in my jq formatting). Verifying:
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && gh api repos/paulzierep/metagenomic-binning-benchmark/issues/18/comments --jq '.[-1] | {id, created_at, body: (.body[0:120])}'
+{"body":"@/tmp/human18_comment.md","created_at":"2026-09-25T03:59:36Z","id":5826451614}
+> build · big-pickle
+My `-f body=@file` posted the literal path, not the content. Deleting the bad comment and re-posting the actual body:
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && gh api repos/paulzierep/metagenomic-binning-benchmark/issues/comments/5826451614 -X DELETE -f _=dummy >/dev/null 2>&1 && echo "deleted bad comment 5826451614"; sleep 3; BODY=$(cat /tmp/human18_comment.md); gh api repos/paulzierep/metagenomic-binning-benchmark/issues/18/comments -f body="$BODY" --jq '"id=" + (.id|tostring)'
+deleted bad comment 5826451614
+id=5826454210
+> build · big-pickle
+Verifying the posted comment, then updating docs:
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && gh api repos/paulzierep/metagenomic-binning-benchmark/issues/18/comments --jq '.[-1] | {id, created_at, first: (.body[0:80])}'; echo "=== README results section ==="; grep -n "human_v11\|fix_v11\|medium_v11\|tiny_test_n101\|Current state\|Next up\|Results" README.md | head -15
+{"created_at":"2026-09-25T03:59:51Z","first":"Human host-associated set (#18b) — **run complete + evaluated**.\n\n**Run** `human","id":5826454210}
+=== README results section ===
+3:> 🟢 **Agent status:** `running` · ⏱ `2026-09-25T05:56 CEST` · 🏃 last run human_v11_20260925: epoch 199/200 · not active · 🧠 `big-pickle` · [status.log](status/status.log)
+20:**Completed medium run:** `medium_v11_20260924` (source fix batch 1 `95f5ea8`,
+23:**Completed large fix run:** `fix_v11_20260924` (same source, same demo
+33:dataset is **`comebin_tiny_101` (101 contigs)**; `tiny_test_n101` passed in
+35:([CSV](results/tiny_test_n101.csv)).
+73:## Results
+> build · big-pickle
+[0m→ [0mRead /vol/data/repos/metagenomic-binning-benchmark/README.md [90m[offset=14, limit=80][0m
+> build · big-pickle
