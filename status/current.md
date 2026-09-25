@@ -3,10 +3,10 @@
 | | |
 |---|---|
 | Status | 🟢 `running` |
-| ⏱ Updated (Europe/Berlin) | `2026-09-25T03:43 CEST` |
-| 🏃 Live benchmark | `tiny_test_n100` — **epoch 29/30** · loss `4.64705753326416` · top1 acc `7.633333683013916` (log 26s fresh) |
+| ⏱ Updated (Europe/Berlin) | `2026-09-25T03:46 CEST` |
+| 🏃 Last benchmark (not active) | `tiny_test_n100` — last observed **epoch 29/30** (log 205s old) |
 | 🧠 Model (last turn) | `mimo-v2.6-flash-free` (watchdog rotates to free models on quota) |
-| 📌 Agent note · **0 min old** | Baseline training epoch ~109/200 (~2.4 min/epoch, ETA ~22:35 UTC unless early-stop); next: baseline eval (run_eval.sh) → issue #2 small-dataset test → v1.1.0 fix run
+| 📌 Agent note · **3 min old** | Baseline training epoch ~109/200 (~2.4 min/epoch, ETA ~22:35 UTC unless early-stop); next: baseline eval (run_eval.sh) → issue #2 small-dataset test → v1.1.0 fix run
 2026-09-23 20:33:11 UTC - heartbeat
 2026-09-23 20:43:58 UTC - heartbeat
 2026-09-23 20:56:28 UTC - heartbeat
@@ -274,9 +274,9 @@
 2026-09-25T01:38:40Z docs-fix_v11-rows
 2026-09-25T01:42:13Z tiny-dataset: built /vol/data/datasets/comebin_tiny (100 contigs, 1,770,714 bp, 43 MB) from demo top-100 + overlapping reads
 2026-09-25T01:42:13Z tiny-run: launched detached tiny_test_n100 (DATA=comebin_tiny, 8 threads, 30 epochs) registered in .active_run mode=small |
-| ⚙️ Load · uptime | `3.23 1.32 0.80` · 1 day, 12 hours, 7 minutes — 32 cores, 62 GiB, no GPU |
-| 💾 RAM used/total | `2371/64295 MB` |
+| ⚙️ Load · uptime | `0.66 1.11 0.83` · 1 day, 12 hours, 10 minutes — 32 cores, 62 GiB, no GPU |
+| 💾 RAM used/total | `1815/64295 MB` |
 | 🔗 Session | `ses_f31799c77ffeTq9gcYgqc4hBhg` |
-| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `4c37ccf status: yes — tiny_test_n100 epoch —/200 loss — acc — model mimo` |
-| 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `3567469 B` — every run, command & tool result |
+| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `08826e5 status: yes — tiny_test_n100 epoch 29/30 loss 4.64705753326416 acc 7.6` |
+| 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `3585387 B` — every run, command & tool result |
 | 📈 Timeline | [status/status.log](status/status.log) |
