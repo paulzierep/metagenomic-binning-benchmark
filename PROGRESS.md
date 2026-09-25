@@ -365,6 +365,10 @@ included; fixes land on branch `comebin-optimizations` in this repo.
       −0.63 pp completeness, +0.80 pp contamination.
 - [ ] **ACTIVE: issue #18 "Benchmark size"** (user, 2026-09-24 15:31Z; triaged
       2026-09-25 01:10Z, comment `5824960513`; first tiny results `5825479305`: `tiny_test_n100`
+      [keep reading below]; human-set RUN **LAUNCHED 2026-09-25 02:17Z**: mode
+      `cami2-human`, `runs/human_v11_20260925`, contigs=4,900, seed 42, 32 thr,
+      source COMEBin-v11 @ 95f5ea8, in coverage stage, ETA ~1-1.5 h; next: eval
+      via run_eval.sh → #18 report + docs/11 row)
       FAILS (exit 1, 0 bins), `tiny_test_n101` PASSES (exit 0, wall 85 s,
       1 bin; CheckM2 63.89/9.05 MQ1, CheckM v1 46.58/6.35;
       `results/tiny_test_n101.csv`). Floor ≈ 101 contigs. Remaining: ~1/6
