@@ -3,13 +3,16 @@
 | | |
 |---|---|
 | Status | 🟢 `running` |
-| ⏱ Updated (Europe/Berlin) | `2026-09-25T12:22 CEST` |
-| 🏃 Live benchmark | `marine_v11_20260925` — **epoch 112/200** · loss `0.5207460522651672` · top1 acc `98.15754699707031` (log 48s fresh) |
+| ⏱ Updated (Europe/Berlin) | `2026-09-25T12:24 CEST` |
+| 🏃 Live benchmark | `marine_v11_20260925` — **epoch 112/200** · loss `0.5207460522651672` · top1 acc `98.15754699707031` (log 168s fresh) |
 | 🧠 Model (last turn) | `nemotron-3.5-lightning-free` (watchdog rotates to free models on quota) |
-| 📌 Agent note · **16 min old** | agent driver alive; transcript fresh (20s) while heartbeat is stale (956s) |
-| ⚙️ Load · uptime | `30.28 30.40 30.19` · 1 day, 20 hours, 46 minutes — 32 cores, 62 GiB, no GPU |
-| 💾 RAM used/total | `6768/64295 MB` |
+| 📌 Agent note · **0 min old** | 2026-09-25T09:02:23Z | marine_v11_20260925 active: epoch 85/200, COMEBin-v11@95f5ea8, cami2 mode; resumed after agent restart; heartbeat touched; PROGRESS synced
+2026-09-25T09:26:57Z
+2026-09-25T10:05:29Z | marine_v11_20260925 active: epoch 106/200, COMEBin-v11@95f5ea8, cami2 mode; heartbeat touched; PROGRESS synced
+2026-09-25T10:23:16Z | marine_v11_20260925 active: epoch 112/200, COMEBin-v11@95f5ea8, cami2 mode; heartbeat touched; PROGRESS synced; run progressing normally |
+| ⚙️ Load · uptime | `27.07 29.64 29.96` · 1 day, 20 hours, 48 minutes — 32 cores, 62 GiB, no GPU |
+| 💾 RAM used/total | `5442/64295 MB` |
 | 🔗 Session | `ses_f31799c77ffeTq9gcYgqc4hBhg` |
-| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `80464fa status: yes — marine_v11_20260925 epoch 111/200 loss 0.509672999382019` |
-| 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `4714943 B` — every run, command & tool result |
+| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `8f7a205 meta: supervise tick 2026-09-25T10:23:01Z — 0 fix(es)` |
+| 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `4728729 B` — every run, command & tool result |
 | 📈 Timeline | [status/status.log](status/status.log) |
