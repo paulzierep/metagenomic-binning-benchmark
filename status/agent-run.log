@@ -41821,3 +41821,71 @@ done
 **Bookkeeping:** `.activity` + `status/agent-activity.log` appended; `.heartbeat` touched. No git changes (nothing to commit; PROGRESS already records the launch and is in sync).
 
 **Next turn:** on `human_v11_20260925` terminal status → `scripts/run_eval.sh runs/human_v11_20260925` (CheckM2 + CheckM v1, auto CSV + per-bin + figures) → report timing + quality row on #18 and `docs/11`/README → then CAMI II marine sample 0.
+[0m
+> build · big-pickle
+[0m$ [0mtest -f /vol/data/benchmark/TASK_COMPLETE && echo "TASK_COMPLETE EXISTS" || echo "no TASK_COMPLETE"; echo "===active_run==="; cat /vol/data/benchmark/.active_run 2>/dev/null || echo "none"; echo "===human run==="; L=/vol/data/benchmark/runs/human_v11_20260925/comebin_run.log; grep -o 'epoch=[0-9]*/200, batches=[0-9]*, loss=[0-9.]*, top1=[0-9.]*' $L 2>/dev/null | tail -2; grep -E '^exit_code|^wall_s|^bins:' /vol/data/benchmark/runs/human_v11_20260925/run_meta.txt 2>/dev/null || echo "not finished"; date -u +%FT%TZ; touch /vol/data/benchmark/.heartbeat
+no TASK_COMPLETE
+===active_run===
+1412588 1412587 /vol/data/benchmark/runs/human_v11_20260925/comebin_run.log /vol/data/benchmark/runs/human_v11_20260925 1790302640 cami2-human /vol/data/repos/COMEBin-v11 /vol/data/datasets/cami_II_human/human_sample0_input/contigs.fa /vol/data/datasets/cami_II_human/human_sample0_input/bamfiles
+===human run===
+not finished
+2026-09-25T02:29:05Z
+> build · big-pickle
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && gh issue list -R paulzierep/metagenomic-binning-benchmark --state open --json number,title,updatedAt --jq '.[] | "\(.number) \(.title) \(.updatedAt)"' | sort -k3 | tail -5; echo "===COMEBin==="; gh issue list -R paulzierep/COMEBin --state open --json number,title,updatedAt 2>&1 | head -3; echo "=== procs ==="; ps -eo pid,pcpu,args | grep -E 'main.py' | grep -v grep | cut -c1-100 | head -5; echo "=== log tail ==="; tail -3 /vol/data/benchmark/runs/human_v11_20260925/comebin_run.log 2>/dev/null | cut -c1-170; echo "=== res ==="; tail -2 /vol/data/benchmark/runs/human_v11_20260925/logs/resources.tsv 2>/dev/null
+6 Optimization 2026-09-23T20:56:21Z
+1 Idea inbox: benchmark ideas, COMEBin fixes, dataset requests 2026-09-23T14:53:13Z
+7 Optimization plan 2026-09-25T01:39:55Z
+18 Benchmark size 2026-09-25T02:23:21Z
+===COMEBin===
+the 'paulzierep/COMEBin' repository has disabled issues
+=== procs ===
+1412644  3.4 python /vol/data/repos/COMEBin-v11/COMEBin/main.py generate_aug_data --contig_file /vol
+1412712 89.2 python /vol/data/repos/COMEBin-v11/COMEBin/main.py generate_aug_data --contig_file /vol
+=== log tail ===
+2026-09-25 02:17:44,587 - Generated binary augmentation features: assembly_contigs=4900, assembly_n50=1464728, retained_contigs=4900, views=6, kmer_features=136.
+2026-09-25 02:17:44,596 - Coverage requested 32 workers but only 1 BAM files exist; using 1 workers.
+2026-09-25 02:17:44,596 - Coverage inputs: contigs=4900, views=6, BAMs=1, workers=1.
+=== res ===
+2026-09-25T02:28:21+00:00	1412622,1412625,1412644,1412712	92.3	0.809	2178
+2026-09-25T02:28:51+00:00	1412622,1412625,1412644,1412712	92.4	0.810	2159
+> build · big-pickle
+#18 has a new update (02:23:21Z) since my last turn. Checking what changed:
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && gh api repos/paulzierep/metagenomic-binning-benchmark/issues/18/comments --jq '.[] | "[" + .created_at + "] " + (.body[0:300] | gsub("\n"; " "))' | tail -3; echo "=== git ==="; git log --oneline -4 | cut -c1-90; git status -sb | head -6
+[2026-09-25T01:07:50Z] Triage (agent, 2026-09-25 01:10 UTC) — both directives accepted, plan below.  **Context first:** the run you were waiting on finished while the session was down — `fix_v11_20260924` completed 2026-09-24 17:29 UTC, exit 0, 71 bins, wall **24,741 s (6.9 h)**, and it stopped early at epoch 184/200 beca
+[2026-09-25T02:04:26Z] Smallest-functional-dataset stepping: first two results are in.  - `tiny_test_n100` (100 contigs): **fails** — exit 1, 0 bins (below the training floor). - `tiny_test_n101` (101 contigs): **passes end-to-end** — exit 0, wall 85 s (30 epochs), 1 non-empty bin; CheckM2 rc 0 (44 s): 63.89% completeness
+[2026-09-25T02:23:21Z] Human host-associated set (#18b) — input built, run launched.  **Dataset** (`/vol/data/datasets/cami_II_human/human_sample0_input`, built by `scripts/prep_cami2_human.sh 4900`): - Source: CAMI II Toy Human Microbiome `gastrooral/sample_0` (frl:6425518), 9,738,621,091 B, md5 `60e04c041c38ea168af03fc5
+=== git ===
+60086a0 status: yes — human_v11_20260925 epoch —/200 loss — acc — model big-pickle
+1660b7f status: yes — human_v11_20260925 epoch —/200 loss — acc — model big-pickle
+7857823 status: yes — human_v11_20260925 epoch —/200 loss — acc — model big-pickle
+df1dc73 meta: supervise tick 2026-09-25T02:23:01Z — 0 fix(es)
+## main...origin/main
+> build · big-pickle
+The 02:23Z #18 comment is the supervisor's own human-set launch note (dataset provenance + run launch) — no owner input and nothing to duplicate. Reading it fully so I don't double-report later:
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && gh api repos/paulzierep/metagenomic-binning-benchmark/issues/18/comments --jq '.[-1].body' | head -40
+Human host-associated set (#18b) — input built, run launched.
+
+**Dataset** (`/vol/data/datasets/cami_II_human/human_sample0_input`, built by `scripts/prep_cami2_human.sh 4900`):
+- Source: CAMI II Toy Human Microbiome `gastrooral/sample_0` (frl:6425518), 9,738,621,091 B, md5 `60e04c041c38ea168af03fc55dff15d6` verified.
+- Contigs: top **4,900 longest** GSA contigs (of 68,417) → **166,008,681 bp**, min 4,733 / max 5,287,944, N50 1,464,728 — ≈ 1/6 of the demo set (29,434 contigs / 1.0 Gbp) as requested.
+- Reads: the per-OTU `bam/OTU_*.bam` files are unusable for a co-assembly run (each covers one genome), so **all 10.6 GB of interleaved paired reads were re-mapped** with `bwa mem -p -t 32` → `bamfiles/human.bam` (4.74 GB, indexed; md5 `c48e4caa94c3c11640ba6ed4b96ab0e4`).
+
+**Run:** `runs/human_v11_20260925` launched 02:17 UTC with the fix source (COMEBin-v11 @ `95f5ea8`), seed 42, 32 threads, registered with the watchdog (`.active_run`). Augmentation already reports `assembly_contigs=4900, retained_contigs=4900, views=6`. Target wall ≈ 1 h vs 6.9 h for the demo set; results (CheckM2 + CheckM v1, aggregate CSV, per-bin tables) will be posted here and in `docs/11-run-results.md` when it finishes.
+> build · big-pickle
+The supervisor's comment documents the same run I launched (02:17Z, same rundir) — consistent, no conflict, no duplicate needed. Monitoring turn; run is still in coverage. Logging and closing out:
+[0m$ [0mR=/vol/data/repos/metagenomic-binning-benchmark; TS=$(date -u +%FT%TZ); echo "$TS human_v11_20260925: still coverage (~10min in), healthy 92% CPU; supervisor posted #18 human-set launch note (02:23Z) matching my launch; nothing to triage" >> $R/status/agent-activity.log; echo "$TS monitor-turn" >> /vol/data/benchmark/.activity; touch /vol/data/benchmark/.heartbeat; date -u +%FT%TZ
+2026-09-25T02:29:23Z
+> build · big-pickle
+## Turn summary
+
+**Run: `human_v11_20260925`** — healthy, still in **coverage** ~11 min in (single-BAM worker, ~92% CPU, 0.8 GB RSS, no memory pressure). `.active_run` registered; watchdog owns handoff; not touched.
+
+**Issues:** #18's new update (02:23:21Z) is the **supervisor's own human-set launch note** — dataset provenance (4,900 contigs / 166 Mbp, re-mapped reads → `human.bam`) documenting the *same* run I launched at 02:17Z. Consistent, nothing to triage or duplicate. No owner input. #1/#6/#7 unchanged; COMEBin issues disabled.
+
+**Repo:** clean and synced (`origin/main`); status-heartbeat commits are the supervisor's epoch probes for the run.
+
+**Bookkeeping:** `.activity` + `status/agent-activity.log` appended; `.heartbeat` touched. No git changes of mine.
+
+**Next turn:** on terminal status → `scripts/run_eval.sh runs/human_v11_20260925` → post CheckM2 + CheckM v1 row + timing on #18 and `docs/11`/README → then CAMI II marine sample 0.
+[0m
+> build · big-pickle
