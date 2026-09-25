@@ -1,6 +1,6 @@
 <!--AGENT-STATUS-->
 
-> 🟢 **Agent status:** `running` · ⏱ `2026-09-25T04:04 CEST` · 🏃 last run tiny_test_n101: epoch 29/30 · not active · 🧠 `muse-spark-1.3-contributor-free` · [status.log](status/status.log)
+> 🟢 **Agent status:** `running` · ⏱ `2026-09-25T04:06 CEST` · 🏃 last run tiny_test_n101: epoch 29/30 · not active · 🧠 `big-pickle` · [status.log](status/status.log)
 
 # Metagenomic binning benchmark
 

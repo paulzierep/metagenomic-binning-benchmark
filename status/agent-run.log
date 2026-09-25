@@ -41282,3 +41282,221 @@ run_meta.txt
 /vol/data/benchmark/runs/tiny_test_n100/run_meta.txt:wall_s:     85
 /vol/data/benchmark/runs/tiny_test_n100/run_meta.txt:bins:       0  -> /vol/data/benchmark/runs/tiny_test_n100/comebin_out/comebin_res/comebin_res_bins (missing or empty)
 > build · muse-spark-1.3-contributor-free
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && git log --oneline -S "Next fix batch" -- README.md | cut -c1-80; git status -sb | head -6; git log origin/main --oneline -3 | cut -c1-80; echo "=== n101 eval ==="; grep -E 'checkm2_rc|checkm_rc' /vol/data/benchmark/runs/tiny_test_n101/run_meta.txt; echo "=== #18 triage body tail ==="; gh api repos/paulzierep/metagenomic-binning-benchmark/issues/18/comments --jq '.[0].body' | tail -30
+6cb8d4e status: yes — fix_v11_20260924 epoch 183/200 loss 2.835580348968506 ac
+## main...origin/main
+ M docs/01-datasets.md
+ M docs/08-dataset-space-plan.md
+ M docs/11-run-results.md
+ M results/figures/comp_vs_cont_all-runs.png
+ M results/figures/comp_vs_cont_by_dataset.png
+a51a576 status: yes — tiny_test_n101 epoch 29/30 loss 4.71933126449585 acc 6.9
+d581048 meta: supervise tick 2026-09-25T02:03:01Z — 0 fix(es)
+9100e2d status: yes — tiny_test_n101 epoch 29/30 loss 4.71933126449585 acc 6.9
+=== n101 eval ===
+checkm2_rc: 0 checkm2_wall_s: 44
+checkm_rc: 0 checkm_wall_s: 114
+=== #18 triage body tail ===
+Triage (agent, 2026-09-25 01:10 UTC) — both directives accepted, plan below.
+
+**Context first:** the run you were waiting on finished while the session was down — `fix_v11_20260924` completed 2026-09-24 17:29 UTC, exit 0, 71 bins, wall **24,741 s (6.9 h)**, and it stopped early at epoch 184/200 because upstream v1.1.0 `run_comebin.sh` passes `--earlystop` (Top-1 > 99 % for 3 epochs). CheckM2 is done (71 bins), CheckM v1 is running now. So yes — ~7 h per large run is way too slow for iteration, agreed.
+
+### 1. Human CAMI set at ~1/6 the size of the big one
+- "Big" = the full demo: **29,434 contigs / 6.9 h** → target ≈ **4,900 contigs**, expected wall time ≈ 1–1.5 h per run.
+- Source (docs/08): CAMI II human host-associated — *Multisample Human Microbiome Project* (DOI 10.4126/frl01-006425518) or *Toy Human Microbiome* (per-body-site download via camiClient, e.g. `CAMI_Gastrointestinal_tract`).
+- Steps: download one human sample within the ≤30 GB budget → subset the assembly to the ~4,900 longest contigs → map that sample's reads to the subset with `bwa mem` → record md5/provenance in `docs/01` → run `run_comebin_fix.sh` + `run_eval.sh` and report CheckM2/CheckM v1 next to the baseline row.
+- If you meant 1/6 by **bytes/read count** instead of contigs, say so and I'll size the subset by that metric instead.
+
+### 2. Smallest possible tool + dataset combo that still works
+- Current smallest: `comebin_small` = 300 contigs / 94 MB / 122 s (30 epochs) → 3 non-empty bins.
+- I'll step down (300 → 200 → 150 → 100 → 50 …) and keep the **smallest** combo that (a) trains without the zero-batch crash and (b) produces **≥ 1 non-empty bin**, verified end-to-end by `scripts/run_small_test.sh` + CheckM2/CheckM. Every attempt is logged under `runs/`, and the chosen size + measured wall time get added to `docs/08`.
+
+Order of work: finish the `fix_v11` evaluation and publish its row → build the tiny set (fast) → build the ~1/6 human set (download). I'll report actual sizes and timings here as each lands.
+> build · muse-spark-1.3-contributor-free
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && gh issue comment 18 -R paulzierep/metagenomic-binning-benchmark --body 'Smallest-functional-dataset stepping: first two results are in.
+
+- `tiny_test_n100` (100 contigs): **fails** — exit 1, 0 bins (below the training floor).
+- `tiny_test_n101` (101 contigs): **passes end-to-end** — exit 0, wall 85 s (30 epochs), 1 non-empty bin; CheckM2 rc 0 (44 s): 63.89% completeness / 9.05% contamination (MQ 1); CheckM v1 rc 0 (114 s): 46.58% / 6.35%. Row: `results/tiny_test_n101.csv`, per-bin + plots auto-regenerated.
+
+So the current floor is **101 contigs / ~85 s** — about 30% smaller and faster than `comebin_small` (300 contigs / 122 s). Next: the ~1/6 human host-associated set per the plan above; sizes and timings reported here as they land.' 2>&1 | tail -1
+https://github.com/paulzierep/metagenomic-binning-benchmark/issues/18#issuecomment-5825479305
+> build · muse-spark-1.3-contributor-free
+Comment posted. Updating PROGRESS and logs, then committing only my paths:
+[0m$ [0mpython3 - <<'PY'
+p = "/vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md"
+with open(p) as f: c = f.read()
+old = """- [ ] **Issue #7 flowchart "different logic"** (user comment 2026-09-24 11:44Z):
+      previous cycle/loop flowchart rendered badly → replaced with a straight
+      4-stage pipeline (small → medium → large → keep/revert, no back-edges) in
+      README + docs/09; comment with the new chart still to post."""
+new = """- [x] **Issue #7 flowchart "different logic" DONE (2026-09-25 01:39Z, comment
+      `5813260237`-followup)**: cycle graph replaced with a straight 4-stage
+      pipeline (idea → 1. small → 2. medium → 3. large vs baseline → verdict →
+      keep/next-batch or rework/revert, no back-edges) in README + docs/09;
+      delivery comment with the new chart posted and pushed."""
+assert old in c
+c = c.replace(old, new, 1)
+old2 = """- [ ] **ACTIVE: issue #18 "Benchmark size"** (user, 2026-09-24 15:31Z; triaged
+       2026-09-25 01:10Z, comment `5824960513`)."""
+new2 = """- [ ] **ACTIVE: issue #18 "Benchmark size"** (user, 2026-09-24 15:31Z; triaged
+       2026-09-25 01:10Z, comment `5824960513`; first results `5825479305`).
+       Smallest-functional stepping: `tiny_test_n100` FAILS (exit 1, 0 bins),
+       `tiny_test_n101` PASSES (exit 0, wall 85 s, 1 bin; CheckM2 63.89/9.05
+       MQ1, CheckM v1 46.58/6.35; `results/tiny_test_n101.csv`). Floor ≈ 101
+       contigs. Remaining: ~1/6 human host-associated set (supervisor docs
+       in flight: docs/01, docs/08, docs/11 uncommitted — do not touch)."""
+assert old2 in c
+c = c.replace(old2, new2, 1)
+with open(p,"w") as f: f.write(c)
+print("ok")
+PY
+cp /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md /vol/data/benchmark/PROGRESS.md
+R=/vol/data/repos/metagenomic-binning-benchmark; TS=$(date -u +%FT%TZ); echo "$TS #18 tiny results comment 5825479305 (n100 fail/n101 pass, floor ~101); #7 marked done; supervisor docs left untouched" >> $R/status/agent-activity.log; echo "$TS issue-18-tiny-comment" >> /vol/data/benchmark/.activity; touch /vol/data/benchmark/.heartbeat; echo staged
+Traceback (most recent call last):
+  File "<stdin>", line 23, in <module>
+AssertionError
+staged
+> build · muse-spark-1.3-contributor-free
+The edit script hit an assertion (nothing was written — file unchanged). Checking the exact text in the repo copy:
+[0m$ [0mgrep -n "ACTIVE: issue #18" -A 12 /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md | head -16; echo "=== flowchart line ==="; grep -n 'comment with the new chart still to post' /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md
+366:- [ ] **ACTIVE: issue #18 "Benchmark size"** (user, 2026-09-24 15:31Z; triaged
+367-      2026-09-25 01:10Z, comment `5824960513`). Two directives:
+368-      (a) **smallest functional dataset** — smaller than `comebin_small`
+369-      (300 contigs / 94 MB / 122 s), stepped down until it still trains and
+370-      yields ≥ 1 non-empty bin (`run_small_test.sh` now takes `DATA=…` env);
+371-      (b) **CAMI II human host-associated set at ~1/6 the size of the big demo**
+372-      (29,434 contigs / 6.9 h ⇒ target ≈ 4,900 contigs, ≈ 1 h per run) — source
+373-      frl:6425518 (Toy Human Microbiome, `gastrooral/sample_0.tar.gz` ≈ 9.1 GB,
+374-      structure verified by streamed listing: `bam/OTU_*.bam` per-OTU files —
+375-      same per-genome-BAM problem as marine, so reads must be re-mapped with
+376-      `bwa mem` or the assembly subset must carry its own BAM). Disk budget
+377-      ≤ 30 GB, 377 GB free.
+378-- [ ] **Issue #7 flowchart "different logic"** (user comment 2026-09-24 11:44Z):
+=== flowchart line ===
+381:      README + docs/09; comment with the new chart still to post.
+> build · muse-spark-1.3-contributor-free
+[0m$ [0mpython3 - <<'PY'
+p = "/vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md"
+with open(p) as f: c = f.read()
+old = """- [ ] **Issue #7 flowchart "different logic"** (user comment 2026-09-24 11:44Z):
+      previous cycle/loop flowchart rendered badly → replaced with a straight
+      4-stage pipeline (small → medium → large → keep/revert, no back-edges) in
+      README + docs/09; comment with the new chart still to post."""
+new = """- [x] **Issue #7 flowchart "different logic" DONE (2026-09-25 01:39Z delivery
+      comment)**: cycle graph replaced with a straight 4-stage pipeline
+      (idea → 1. small → 2. medium → 3. large vs baseline → verdict →
+      keep/next-batch or rework/revert, no back-edges) in README + docs/09,
+      pushed and confirmed rendering in place."""
+assert old in c, "flowchart block not found"
+c = c.replace(old, new, 1)
+old2 = """       2026-09-25 01:10Z, comment `5824960513`). Two directives:"""
+new2 = """       2026-09-25 01:10Z, comment `5824960513`; first results `5825479305`).
+       Stepping so far: `tiny_test_n100` FAILS (exit 1, 0 bins),
+       `tiny_test_n101` PASSES (exit 0, wall 85 s, 1 bin; CheckM2 63.89/9.05
+       MQ1, CheckM v1 46.58/6.35; `results/tiny_test_n101.csv`). Floor ≈ 101
+       contigs. Remaining: ~1/6 human host-associated set (supervisor docs
+       in flight: docs/01, docs/08, docs/11 uncommitted — do not touch).
+       Two directives:"""
+assert old2 in c, "issue18 block not found"
+c = c.replace(old2, new2, 1)
+with open(p,"w") as f: f.write(c)
+print("ok")
+PY
+Traceback (most recent call last):
+  File "<stdin>", line 22, in <module>
+AssertionError: issue18 block not found
+> build · muse-spark-1.3-contributor-free
+[0m$ [0mpython3 - <<'PY'
+p = "/vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md"
+with open(p) as f: c = f.read()
+old = "README + docs/09; comment with the new chart still to post."
+new = ("README + docs/09, delivery comment posted 2026-09-25 01:39Z, pushed and\n"
+       "      confirmed rendering in place. DONE.")
+assert old in c, "flowchart not found"
+c = c.replace(old, new, 1)
+c = c.replace("- [ ] **Issue #7 flowchart",
+              "- [x] **Issue #7 flowchart", 1)
+old2 = "comment `5824960513`). Two directives:"
+new2 = ("comment `5824960513`; first tiny results `5825479305`: `tiny_test_n100`\n"
+        "      FAILS (exit 1, 0 bins), `tiny_test_n101` PASSES (exit 0, wall 85 s,\n"
+        "      1 bin; CheckM2 63.89/9.05 MQ1, CheckM v1 46.58/6.35;\n"
+        "      `results/tiny_test_n101.csv`). Floor ≈ 101 contigs. Remaining: ~1/6\n"
+        "      human set (supervisor docs in flight — do not touch). Two directives:")
+assert old2 in c, "issue18 not found"
+c = c.replace(old2, new2, 1)
+with open(p,"w") as f: f.write(c)
+print("ok")
+PY
+cp /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md /vol/data/benchmark/PROGRESS.md && diff -q /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md /vol/data/benchmark/PROGRESS.md && echo "PROGRESS in sync"
+ok
+PROGRESS in sync
+> build · muse-spark-1.3-contributor-free
+[0m$ [0mR=/vol/data/repos/metagenomic-binning-benchmark; git -C $R diff --stat; echo "=== committing only intended paths ==="; flock /tmp/bench-repo.lock bash -c "cd $R && git add PROGRESS.md status/agent-activity.log && git commit -m 'meta: #18 tiny results (n100 fail/n101 pass, floor ~101) + #7 done in PROGRESS' -q && git push origin main -q && git log --oneline -1 | cut -c1-80"; git -C $R status -sb | head -6; touch /vol/data/benchmark/.heartbeat; date -u +%FT%TZ
+PROGRESS.md                                 |  11 +++++---
+ docs/01-datasets.md                         |  40 ++++++++++++++++++++++++++++
+ docs/08-dataset-space-plan.md               |  15 ++++++++++-
+ docs/11-run-results.md                      |   6 ++++-
+ results/figures/comp_vs_cont_all-runs.png   | Bin 64918 -> 66688 bytes
+ results/figures/comp_vs_cont_by_dataset.png | Bin 87681 -> 103355 bytes
+ status/agent-activity.log                   |   1 +
+ 7 files changed, 68 insertions(+), 5 deletions(-)
+=== committing only intended paths ===
+f4b787e meta: #18 tiny results (n100 fail/n101 pass, floor ~101) + #7 done in PR
+## main...origin/main
+ M docs/01-datasets.md
+ M docs/08-dataset-space-plan.md
+ M docs/11-run-results.md
+ M results/figures/comp_vs_cont_all-runs.png
+ M results/figures/comp_vs_cont_by_dataset.png
+2026-09-25T02:05:06Z
+> build · muse-spark-1.3-contributor-free
+## Turn summary
+
+**Verified against disk:** no `TASK_COMPLETE`; `.active_run` is empty (no registered run — machine idle, no COMEBin/CheckM processes); `fix_v11_20260924` is complete on disk (exit 0, wall 24,741 s, 71 bins, early-stop at epoch 184/200) **and already evaluated** (CheckM2 24.38/3.78 HQ1/MQ6; CheckM v1 21.62/5.18 HQ0/MQ8; `results/fix_v11_20260924.csv` + per-bin + plots all present). PROGRESS.md "Current state" matches.
+
+**Issues triaged (no duplicates):**
+- #7 — the 01:39Z delivery comment *is* the full new-chart post (straight 4-stage pipeline, already in README + pushed). PROGRESS's "comment still to post" was stale → marked done.
+- #18 — posted first stepping results (`5825479305`): `tiny_test_n100` **fails** (exit 1, 0 bins), `tiny_test_n101` **passes** (exit 0, 85 s, 1 bin; CheckM2 63.89/9.05, CheckM v1 46.58/6.35). Functional floor ≈ **101 contigs**. No prior results comment existed.
+- #1/#6 unchanged; COMEBin issues still disabled.
+
+**Committed under lock (`f4b787e`, pushed):** only `PROGRESS.md` + `status/agent-activity.log`. The supervisor's in-flight modifications (`docs/01`, `docs/08`, `docs/11`, both figures) were deliberately left untouched. Both PROGRESS copies in sync; `.activity` + `agent-activity.log` appended; `.heartbeat` touched.
+
+**First unfinished step for next turn:** #18(b) — the ~1/6-size CAMI II human host-associated set (~4,900 contigs) once the supervisor's docs land; then `run_comebin_fix.sh` + `run_eval.sh` on it (fresh run dir, detached, verified via `.active_run`, watchdog handoff).
+[0m
+> build · big-pickle
+[0m$ [0mtest -f /vol/data/benchmark/TASK_COMPLETE && echo "TASK_COMPLETE EXISTS" || echo "no TASK_COMPLETE"; echo "===active_run==="; cat /vol/data/benchmark/.active_run 2>/dev/null || echo "none"; echo "=== procs ==="; ps -eo pid,etime,pcpu,args | grep -E 'main.py|run_comebin|run_small|checkm|cami' | grep -v grep | cut -c1-120 | head; date -u +%FT%TZ; touch /vol/data/benchmark/.heartbeat
+no TASK_COMPLETE
+===active_run===
+none
+=== procs ===
+1402774       10:22  0.0 /bin/bash -c cd /vol/data/repos/metagenomic-binning-benchmark && bash -n scripts/prep_cami2_hum
+1402777       10:21  0.0 bash scripts/prep_cami2_human.sh 4900
+1403993       07:47  0.0 /vol/data/tools/bin/micromamba run -p /vol/data/envs/comebin bash -c bwa mem -p -t 32 '/vol/dat
+1403995       07:47  0.0 bash -c bwa mem -p -t 32 '/vol/data/datasets/cami_II_human/human_sample0_input/contigs.fa' '/vo
+1404003       07:47 3142 bwa mem -p -t 32 /vol/data/datasets/cami_II_human/human_sample0_input/contigs.fa /vol/data/data
+1404005       07:47  3.5 samtools sort -@ 8 -m 1G -o /vol/data/datasets/cami_II_human/human_sample0_input/bamfiles/human
+2026-09-25T02:05:54Z
+> build · big-pickle
+Human CAMI II prep (bwa mem mapping) is running — that's dataset prep, not a registered timed run (`.active_run` empty), so no conflict. Checking PROGRESS + issues:
+[0m$ [0mR=/vol/data/repos/metagenomic-binning-benchmark; gh issue list -R paulzierep/metagenomic-binning-benchmark --state open --json number,title,updatedAt --jq '.[] | "\(.number) \(.title) \(.updatedAt)"' | sort -k3; echo "=== git ==="; git -C $R log --oneline -6 | cut -c1-90; echo "=== tree ==="; git -C $R status -sb | head -12
+6 Optimization 2026-09-23T20:56:21Z
+1 Idea inbox: benchmark ideas, COMEBin fixes, dataset requests 2026-09-23T14:53:13Z
+7 Optimization plan 2026-09-25T01:39:55Z
+18 Benchmark size 2026-09-25T02:04:26Z
+=== git ===
+f4b787e meta: #18 tiny results (n100 fail/n101 pass, floor ~101) + #7 done in PROGRESS
+a51a576 status: yes — tiny_test_n101 epoch 29/30 loss 4.71933126449585 acc 6.93069314956
+d581048 meta: supervise tick 2026-09-25T02:03:01Z — 0 fix(es)
+9100e2d status: yes — tiny_test_n101 epoch 29/30 loss 4.71933126449585 acc 6.93069314956
+07a08bc status: yes — tiny_test_n101 epoch 29/30 loss 4.71933126449585 acc 6.93069314956
+2be587f status: yes — tiny_test_n101 epoch 29/30 loss 4.71933126449585 acc 6.93069314956
+=== tree ===
+## main...origin/main
+ M docs/01-datasets.md
+ M docs/08-dataset-space-plan.md
+ M docs/11-run-results.md
+ M results/figures/comp_vs_cont_all-runs.png
+ M results/figures/comp_vs_cont_by_dataset.png
+?? results/tiny_test_n101.csv
+?? scripts/prep_cami2_human.sh
+> build · big-pickle
