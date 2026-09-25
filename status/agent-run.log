@@ -42871,3 +42871,92 @@ index d76a6ca..f08027b 100644
 156:    It is a modification of the KMeans initialization algorithm.
 2026-09-25T04:14:00Z
 > build · big-pickle
+Key finding: `904f649` (recorded for the demo baseline) still had the `n_jobs=-1` KMeans call — the n_jobs fix (`358ddd8`) was committed *after* the demo baseline finished. I need to know how the baseline is defined for reproducibility. Checking docs/02 + the comebin env sklearn:
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && echo "=== docs/02 baseline definition ==="; grep -n -i "baseline\|904f649\|358ddd8\|n_jobs\|1b476a4" docs/02-comebin-baseline.md | head -20; echo "=== baseline_rerun run_meta full ==="; cat /vol/data/benchmark/runs/baseline_rerun_autorestart1/run_meta.txt 2>/dev/null | head -25; echo "=== comebin env sklearn ==="; /vol/data/tools/bin/micromamba run -p /vol/data/envs/comebin python -c "import sklearn; print('sklearn', sklearn.__version__)" 2>&1 | tail -1; date -u +%FT%TZ; touch /vol/data/benchmark/.heartbeat
+=== docs/02 baseline definition ===
+1:# 02 — COMEBin baseline run (unmodified)
+15:Wrapper: `scripts/run_comebin_baseline.sh` (calls the upstream entry point unchanged):
+22:  -o /vol/data/benchmark/runs/baseline_unmodified/comebin_out \
+36:## Parameters (baseline defaults)
+=== baseline_rerun run_meta full ===
+run:        /vol/data/benchmark/runs/baseline_rerun_autorestart1
+date:       2026-09-24T00:30:01+00:00
+source:     /vol/data/repos/COMEBin
+commit:     904f649ef5cbb4582a6f0e5ec8b0b1f45778d85b
+contigs:    /vol/data/datasets/comebin_test_data/BATS_SAMN07137077_METAG.scaffolds.min500.fasta.f1k.fasta
+bamdir:     /vol/data/datasets/comebin_test_data/bamfiles
+threads:    32
+host:       32 cores, 62G RAM, gpu=none
+cmd_wrapper: bash run_comebin.sh -a /vol/data/datasets/comebin_test_data/BATS_SAMN07137077_METAG.scaffolds.min500.fasta.f1k.fasta -p /vol/data/datasets/comebin_test_data/bamfiles -o /vol/data/benchmark/runs/baseline_rerun_autorestart1/comebin_out -n 6 -t 32  # via: micromamba run -p /vol/data/envs/comebin
+exit_code:  0
+wall_s:     24327
+finished:   2026-09-24T07:15:28+00:00
+terminal:   wrapper_exit
+cmd_checkm2: /vol/data/tools/bin/micromamba run -p /vol/data/envs/checkm2 checkm2 predict --threads 32 --database_path /vol/data/benchmark/checkm2db/CheckM2_database/uniref100.KO.1.dmnd --input /vol/data/benchmark/runs/baseline_rerun_autorestart1/comebin_out/comebin_res/comebin_res_bins --output-directory /vol/data/benchmark/runs/baseline_rerun_autorestart1/eval/checkm2 -x fasta
+cmd_checkm2: /vol/data/tools/bin/micromamba run -p /vol/data/envs/checkm2 checkm2 predict --threads 32 --database_path /vol/data/benchmark/checkm2db/CheckM2_database/uniref100.KO.1.dmnd --input /vol/data/benchmark/runs/baseline_rerun_autorestart1/comebin_out/comebin_res/comebin_res_bins --output-directory /vol/data/benchmark/runs/baseline_rerun_autorestart1/eval/checkm2 -x fasta
+cmd_checkm2: /vol/data/tools/bin/micromamba run -p /vol/data/envs/checkm2 checkm2 predict --threads 32 --database_path /vol/data/benchmark/checkm2db/CheckM2_database/uniref100.KO.1.dmnd --input /vol/data/benchmark/runs/baseline_rerun_autorestart1/comebin_out/comebin_res/comebin_res_bins --output-directory /vol/data/benchmark/runs/baseline_rerun_autorestart1/eval/checkm2 -x fasta
+checkm2_rc: 0 checkm2_wall_s: 65
+cmd_checkm: /vol/data/tools/bin/micromamba run -p /vol/data/envs/checkm checkm lineage_wf -x fasta -t 32 --tmpdir /vol/data/benchmark/runs/baseline_rerun_autorestart1/eval/checkm/tmp /vol/data/benchmark/runs/baseline_rerun_autorestart1/comebin_out/comebin_res/comebin_res_bins /vol/data/benchmark/runs/baseline_rerun_autorestart1/eval/checkm/out
+checkm_rc: 0 checkm_wall_s: 2
+eval_checkm2_bins: 60
+eval_checkm2_compl_mean: 25.01
+eval_checkm2_cont_mean: 2.98
+eval_checkm_rc: 0
+eval_checkm2_rc: 0
+eval_wall_s_checkm2: 1790239171
+=== comebin env sklearn ===
+sklearn 1.1.3
+2026-09-25T04:14:14Z
+> build · big-pickle
+The demo baseline ran at `904f649` with the same env — and it worked, so 904f649 is the recorded "unmodified" baseline definition. But docs/01's marine plan says run the **fix branch** (`run_comebin_fix.sh`, MODE=cami2) — matching the human-set precedent (fix run only, no baseline). Verifying there's no documented marine baseline requirement before committing to a ~10 h run:
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && echo "=== marine + baseline mentions in docs ==="; grep -rn -i "baseline" docs/01-datasets.md docs/08-dataset-space-plan.md 2>/dev/null | head; echo "=== marine run line ==="; grep -n "run_comebin_fix\|MODE=cami2\|marine_v11\|marine_sample0_input" docs/01-datasets.md | head; echo "=== human run line (precedent) ==="; grep -n "cami2-human\|run_comebin_fix\|4900" docs/01-datasets.md | head -8; echo "=== PROGRESS next ==="; grep -n "marine" /vol/data/benchmark/PROGRESS.md | head -5; date -u +%FT%TZ; touch /vol/data/benchmark/.heartbeat
+=== marine + baseline mentions in docs ===
+docs/08-dataset-space-plan.md:22:| 1 | COMEBin demo (BATS) | 6.4 GB + 5.2 GB zip | 6.4 GB (zip deletable → +5.2 GB) | baseline run in progress |
+docs/08-dataset-space-plan.md:34:Delete `comebin_test_data.zip` (5.2 GB) after the baseline run if needed.
+docs/08-dataset-space-plan.md:42:data. This stage is intentionally **not** built while the active baseline is
+=== marine run line ===
+151:- run: `scripts/run_comebin_fix.sh` with `CONTIGS=…/marine_sample0_input/contigs.fa`,
+152:  `BAMDIR=…/bamfiles`, `MODE=cami2`, `SRC_COMEBIN=/vol/data/repos/COMEBin-v11`
+=== human run line (precedent) ===
+151:- run: `scripts/run_comebin_fix.sh` with `CONTIGS=…/marine_sample0_input/contigs.fa`,
+=== PROGRESS next ===
+220:- [x] CAMI II marine assemblies downloaded + **md5 verified** (`1c054a45…`), 9.42 GB;
+221:      extraction running; marine short-reads URL recorded (docs/01)
+222:- [x] CAMI II marine sample 0 (short-read): reads archive downloaded (5.2 G, 2026-09-23)
+228:      `scripts/prep_cami2_marine.sh` + env-overridable `run_comebin_fix.sh`
+384:      Next: **CAMI II marine sample_0** (docs/01 plan: contigs ≥ 2000 bp →
+2026-09-25T04:14:39Z
+> build · big-pickle
+Confirmed: docs/01 + PROGRESS + the human precedent all say marine runs via `run_comebin_fix.sh` (fix branch, MODE=cami2, seed 42) — no separate marine baseline documented. Launching the marine fix run detached (fresh rundir, watchdog handoff):
+[0m$ [0mRD=/vol/data/benchmark/runs/marine_v11_20260925; test ! -e $RD && echo "fresh dir OK"; echo "=== v11 worktree ==="; git -C /vol/data/repos/COMEBin-v11 status --porcelain --untracked-files=no | wc -l; git -C /vol/data/repos/COMEBin-v11 log --oneline -1 | cut -c1-60; cd /vol/data/repos/metagenomic-binning-benchmark; env SRC_COMEBIN=/vol/data/repos/COMEBin-v11 CONTIGS=/vol/data/datasets/cami_II/marine_sample0_input/contigs.fa BAMDIR=/vol/data/datasets/cami_II/marine_sample0_input/bamfiles MODE=cami2 SEED=42 THREADS=32 nohup bash scripts/run_comebin_fix.sh $RD > /vol/data/benchmark/logs/marine_v11_launch.log 2>&1 & echo "launcher pid: $!"; sleep 15; echo "=== .active_run ==="; cat /vol/data/benchmark/.active_run 2>/dev/null || echo "not yet"; echo "=== launch log ==="; tail -5 /vol/data/benchmark/logs/marine_v11_launch.log | cut -c1-140
+fresh dir OK
+=== v11 worktree ===
+0
+95f5ea8 batch1 (v1.1.0 base): sequential bin numbering, drop
+launcher pid: 1769340
+=== .active_run ===
+1769340 1769335 /vol/data/benchmark/runs/marine_v11_20260925/comebin_run.log /vol/data/benchmark/runs/marine_v11_20260925 1790309689 cami2 /vol/data/repos/COMEBin-v11 /vol/data/datasets/cami_II/marine_sample0_input/contigs.fa /vol/data/datasets/cami_II/marine_sample0_input/bamfiles
+=== launch log ===
+2026-09-25 04:14:52,930 - Generate augmentation view 1/5 with seed 43.
+2026-09-25 04:14:52,930 - Generate augmentation view 2/5 with seed 44.
+2026-09-25 04:14:52,930 - Generate augmentation view 3/5 with seed 45.
+2026-09-25 04:14:52,930 - Generate augmentation view 4/5 with seed 46.
+2026-09-25 04:14:52,930 - Generate augmentation view 5/5 with seed 47.
+> build · big-pickle
+Run registered (mode `cami2`, source `95f5ea8` clean). Verifying augmentation picks up all 41,988 contigs, then updating state:
+[0m$ [0msleep 15; echo "=== aug summary ==="; grep -o 'assembly_contigs=[0-9]*, assembly_n50=[0-9]*, retained_contigs=[0-9]*' /vol/data/benchmark/runs/marine_v11_20260925/comebin_run.log 2>/dev/null | tail -1; grep -o 'Coverage inputs: contigs=[0-9]*' /vol/data/benchmark/runs/marine_v11_20260925/comebin_run.log 2>/dev/null | tail -1; echo "=== procs ==="; ps -eo pid,pcpu,args | grep 'main.py' | grep -v grep | cut -c1-100 | head -3; echo "=== run_meta ==="; grep -E '^contigs:|^bamdir:|^threads:|^seed:|^mode:' /vol/data/benchmark/runs/marine_v11_20260925/run_meta.txt 2>/dev/null; date -u +%FT%TZ; touch /vol/data/benchmark/.heartbeat
+=== aug summary ===
+=== procs ===
+1769396 99.9 python /vol/data/repos/COMEBin-v11/COMEBin/main.py generate_aug_data --contig_file /vol
+=== run_meta ===
+contigs:    /vol/data/datasets/cami_II/marine_sample0_input/contigs.fa
+bamdir:     /vol/data/datasets/cami_II/marine_sample0_input/bamfiles
+threads:    32
+seed:       42
+2026-09-25T04:15:24Z
+> build · big-pickle
+Augmentation running for the 42k-contig set; waiting for the retained-contigs confirmation:
+[0m$ [0mfor i in $(seq 1 15); do L=/vol/data/benchmark/runs/marine_v11_20260925/comebin_run.log; grep -q 'retained_contigs=[0-9]' $L 2>/dev/null && break; sleep 10; done; grep -o 'assembly_contigs=[0-9]*, assembly_n50=[0-9]*, retained_contigs=[0-9]*' $L 2>/dev/null | tail -1; grep -o 'Coverage inputs: contigs=[0-9]*, views=[0-9]*, BAMs=[0-9]*, workers=[0-9]*' $L 2>/dev/null | tail -1; R=/vol/data/repos/metagenomic-binning-benchmark; TS=$(date -u +%FT%TZ); echo "$TS marine fix run LAUNCHED + registered: marine_v11_20260925, MODE=cami2, 41988-ctg marine_sample0_input, seed42, thr32, source 95f5ea8, in augmentation" >> $R/status/agent-activity.log; echo "$TS marine-run-launched" >> /vol/data/benchmark/.activity; date -u +%FT%TZ; touch /vol/data/benchmark/.heartbeat
+assembly_contigs=41988, assembly_n50=14656, retained_contigs=41988
+Coverage inputs: contigs=41988, views=6, BAMs=1, workers=1
+2026-09-25T04:15:59Z
