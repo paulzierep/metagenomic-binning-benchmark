@@ -3,10 +3,10 @@
 | | |
 |---|---|
 | Status | 🟢 `running` |
-| ⏱ Updated (Europe/Berlin) | `2026-09-25T10:12 CEST` |
-| 🏃 Live benchmark | `marine_v11_20260925` — **epoch 70/200** · loss `0.6836137175559998` · top1 acc `96.10676574707031` (log 118s fresh) |
+| ⏱ Updated (Europe/Berlin) | `2026-09-25T10:14 CEST` |
+| 🏃 Live benchmark | `marine_v11_20260925` — **epoch 71/200** · loss `0.6845937967300415` · top1 acc `96.19791412353516` (log 53s fresh) |
 | 🧠 Model (last turn) | `nemotron-3.5-lightning-free` (watchdog rotates to free models on quota) |
-| 📌 Agent note · **13 min old** | Baseline training epoch ~109/200 (~2.4 min/epoch, ETA ~22:35 UTC unless early-stop); next: baseline eval (run_eval.sh) → issue #2 small-dataset test → v1.1.0 fix run
+| 📌 Agent note · **15 min old** | Baseline training epoch ~109/200 (~2.4 min/epoch, ETA ~22:35 UTC unless early-stop); next: baseline eval (run_eval.sh) → issue #2 small-dataset test → v1.1.0 fix run
 2026-09-23 20:33:11 UTC - heartbeat
 2026-09-23 20:43:58 UTC - heartbeat
 2026-09-23 20:56:28 UTC - heartbeat
@@ -316,9 +316,9 @@
 2026-09-25T07:43:41Z marine-epoch62
 2026-09-25T07:53:49Z marine-epoch65
 2026-09-25T07:58:54Z triage-8-12 |
-| ⚙️ Load · uptime | `30.19 29.87 30.17` · 1 day, 18 hours, 36 minutes — 32 cores, 62 GiB, no GPU |
-| 💾 RAM used/total | `5330/64295 MB` |
+| ⚙️ Load · uptime | `27.75 29.62 30.08` · 1 day, 18 hours, 38 minutes — 32 cores, 62 GiB, no GPU |
+| 💾 RAM used/total | `6017/64295 MB` |
 | 🔗 Session | `ses_f31799c77ffeTq9gcYgqc4hBhg` |
-| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `a1c1bd1 status: yes — marine_v11_20260925 epoch 69/200 loss 0.7039782404899597` |
-| 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `4081005 B` — every run, command & tool result |
+| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `bb64b9b meta: supervise tick 2026-09-25T08:13:01Z — 0 fix(es)` |
+| 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `4081128 B` — every run, command & tool result |
 | 📈 Timeline | [status/status.log](status/status.log) |
