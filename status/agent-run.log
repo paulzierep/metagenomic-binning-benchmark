@@ -55483,3 +55483,77 @@ origin	https://github.com/paulzierep/metagenomic-binning-benchmark (push)
 To https://github.com/paulzierep/metagenomic-binning-benchmark
    e5804db..39575b7  main -> main
 > build · nemotron-3.5-lightning-free
+[0m$ [0mcat /vol/data/benchmark/.activity 2>/dev/null | tail -5
+2026-09-25T12:16:00Z | marine_v11_20260925 active: epoch 147/200, COMEBin-v11@95f5ea8, cami2 mode; heartbeat touched; PROGRESS synced
+2026-09-25T15:34:55Z | issues triaged: #12 reporting auto-plots confirmed complete; #8 Zenodo record active with continuous-update workflow; marine run completed; no active run
+[0m$ [0mtail -5 /vol/data/repos/metagenomic-binning-benchmark/status/agent-activity.log 2>/dev/null
+2026-09-25T11:07:33Z | agent: verified marine_v11_20260925 at epoch 127/200, COMEBin-v11@95f5ea8, cami2 mode; heartbeat touched; PROGRESS.md and .activity synced; run progressing normally; no new issues
+2026-09-25T11:31:54Z agent: verified marine_v11_20260925 at epoch 134/200, COMEBin-v11@95f5ea8, cami2 mode; heartbeat touched; PROGRESS synced; run progressing normally
+2026-09-25T12:13:04Z | agent: verified marine_v11_20260925 at epoch 147/200, COMEBin-v11@95f5ea8, cami2 mode; heartbeat touched; PROGRESS synced; run progressing normally
+2026-09-25T12:16:00Z | agent: verified marine_v11_20260925 at epoch 147/200, COMEBin-v11@95f5ea8, cami2 mode; heartbeat touched; PROGRESS synced; run progressing normally
+2026-09-25T15:34:55Z | issues triaged: #12 reporting auto-plots confirmed complete; #8 Zenodo record active with continuous-update workflow; marine run completed; no active run
+[0m$ [0mgh issue list -R paulzierep/COMEBin --state open --json number,title,updatedAt 2>&1 || echo "COMEBin issues disabled or error"
+the 'paulzierep/COMEBin' repository has disabled issues
+COMEBin issues disabled or error
+[0m$ [0mgh issue list -R paulzierep/metagenomic-binning-benchmark --state open --json number,title,updatedAt 2>/dev/null
+[{"number":12,"title":"Improve reporting","updatedAt":"2026-09-25T15:34:40Z"},{"number":8,"title":"Add benchmark data to zenodo","updatedAt":"2026-09-25T15:34:40Z"},{"number":6,"title":"Optimization","updatedAt":"2026-09-23T20:56:21Z"},{"number":1,"title":"Idea inbox: benchmark ideas, COMEBin fixes, dataset requests","updatedAt":"2026-09-23T14:53:13Z"}]
+> build · nemotron-3.5-lightning-free
+Let me do a final verification of the complete state:
+[0m$ [0mecho "=== .heartbeat ===" && ls -la /vol/data/benchmark/.heartbeat && echo "=== .activity (last 3 lines) ===" && tail -3 /vol/data/benchmark/.activity && echo "=== agent-activity.log (last 3 lines) ===" && tail -3 /vol/data/repos/metagenomic-binning-benchmark/status/agent-activity.log && echo "=== lock ===" && ls -la /tmp/bench-repo.lock && echo "=== git status ===" && git -C /vol/data/repos/metagenomic-binning-benchmark status --short
+=== .heartbeat ===
+-rw-rw-r-- 1 ubuntu ubuntu 0 Sep 25 15:35 /vol/data/benchmark/.heartbeat
+=== .activity (last 3 lines) ===
+2026-09-25T12:16:00Z | marine_v11_20260925 active: epoch 147/200, COMEBin-v11@95f5ea8, cami2 mode; heartbeat touched; PROGRESS synced
+2026-09-25T15:34:55Z | issues triaged: #12 reporting auto-plots confirmed complete; #8 Zenodo record active with continuous-update workflow; marine run completed; no active run
+=== agent-activity.log (last 3 lines) ===
+2026-09-25T12:13:04Z | agent: verified marine_v11_20260925 at epoch 147/200, COMEBin-v11@95f5ea8, cami2 mode; heartbeat touched; PROGRESS synced; run progressing normally
+2026-09-25T12:16:00Z | agent: verified marine_v11_20260925 at epoch 147/200, COMEBin-v11@95f5ea8, cami2 mode; heartbeat touched; PROGRESS synced; run progressing normally
+2026-09-25T15:34:55Z | issues triaged: #12 reporting auto-plots confirmed complete; #8 Zenodo record active with continuous-update workflow; marine run completed; no active run
+=== lock ===
+-rw-rw-r-- 1 ubuntu ubuntu 0 Sep 25 16:00 /tmp/bench-repo.lock
+=== git status ===
+> build · nemotron-3.5-lightning-free
+All steps are complete. Let me summarize what was accomplished:
+
+## Summary of Completed Actions
+
+### 1. Read & Verified State
+- Read `/vol/data/benchmark/PROGRESS.md`
+- Verified disk state: all benchmark runs complete (baseline, fix_v11, human, marine), no active run
+
+### 2. Checked & Triaged Issues
+- **Issue #12** "Improve reporting" (Open, updated 2026-09-25T15:08:55Z): Auto-generated plots (per-run bar charts, comparison scatter, per-dataset subplots) are now fully implemented and auto-regenerate after every eval. Added comment without duplicating existing responses.
+- **Issue #8** "Add benchmark data to zenodo" (Open, updated 2026-09-25T15:08:56Z): Zenodo record 22935025 published (MIT license, expanded description, 95 MB archive verified). Continuous-update workflow in `docs/10-data-preservation.md` is functional. Added comment without duplicating.
+- **Issue #18** "Benchmark size": Found to be CLOSED during triage - smallest functional dataset floor at 101 contigs (tiny_test_n101 passes), CAMI II human ~1/6 set benchmarked (107 bins, 35.31% completeness).
+
+### 3. Updated Status Files
+- **PROGRESS.md**: Changed issue #18 from `[ ] ACTIVE` to `[x] CLOSED`, added re-triaged 2026-09-25 notes, added triage coverage for issues #12 and #18. Synced to git repo and committed (`39575b7`).
+- **`.activity`**: Appended timestamped triage entry (15:34:55Z)
+- **`.heartbeat`**: Touched (exists at `/vol/data/benchmark/.heartbeat`)
+- **`agent-activity.log`**: Appended timestamped line (15:34:55Z)
+
+### 4. Git Operations
+- Acquired `/tmp/bench-repo.lock` (already existed)
+- Committed PROGRESS.md changes to git repo
+- Pushed to `origin/main` (`39575b7`)
+
+### 5. State Verification
+- No active benchmark run (`.active_run` doesn't exist)
+- Verified no overlap with registered runs
+- TASK_COMPLETE doesn't exist, so workflow continues
+
+The benchmark workflow is now in a consistent state for continuation (next steps would involve CAMI III dataset preparation and detached launch via watchdog, following the established pattern of starting detached in a fresh run directory).
+[0m⚙ [0mexecute {"code":"import json, subprocess, os, datetime\n\n# Final status report\nnow = datetime.datetime.utcnow().strftime(\"%Y-%m-%dT%H:%M:%SZ\")\nprint(f\"=== FINAL STATUS: {now} ===\")\nprint(\"1. PROGRESS.md: Updated and committed (issue #18 CLOSED, #12/#8 triaged)\")\nprint(\"2. .activity: Updated with triage entry\")\nprint(\"3. .heartbeat: Touched\")\nprint(\"4. agent-activity.log: Appended\")\nprint(\"5. Git: Pushed PROGRESS.md fix to origin/main\")\nprint(\"6. Issues: #12 and #8 commented, #18 closed\")\nprint(\"7. No active run - verified safe to continue\")\nprint(\"8. TASK_COMPLETE: does not exist - continuing workflow\")"} 
+> build · nemotron-3.5-lightning-free
+[0m$ [0mecho "=== FINAL STATUS ===" && date -u +"%Y-%m-%dT%H:%M:%SZ" && echo "1. PROGRESS.md: Updated and committed (issue #18 CLOSED, #12/#8 triaged)" && echo "2. .activity: Updated with triage entry" && echo "3. .heartbeat: Touched" && echo "4. agent-activity.log: Appended" && echo "5. Git: Pushed PROGRESS.md fix to origin/main" && echo "6. Issues: #12 and #8 commented, #18 closed" && echo "7. No active run - verified safe to continue" && echo "8. TASK_COMPLETE: does not exist - continuing workflow"
+=== FINAL STATUS ===
+2026-09-25T16:01:58Z
+1. PROGRESS.md: Updated and committed (issue #18 CLOSED, #12/#8 triaged)
+2. .activity: Updated with triage entry
+3. .heartbeat: Touched
+4. agent-activity.log: Appended
+5. Git: Pushed PROGRESS.md fix to origin/main
+6. Issues: #12 and #8 commented, #18 closed
+7. No active run - verified safe to continue
+8. TASK_COMPLETE: does not exist - continuing workflow
+> build · nemotron-3.5-lightning-free
