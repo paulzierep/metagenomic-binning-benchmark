@@ -48,12 +48,11 @@ for marker in "$DONE"/*; do
   num=$(basename "$marker")
   case "$num" in *[!0-9]*|'') log "skipping non-numeric marker '$num'"; rm -f "$marker"; continue ;; esac
 
-  # already handled by us -> archive the marker and move on
-  if [ -f "$CLOSED/$num" ]; then
-    log "#$num already closed by issue-closer; archiving marker"
-    rm -f "$marker"
-    continue
-  fi
+  # NOTE: .issues_closed/<num> is only a record of a PAST close. The user can
+  # reopen an issue after we close it (e.g. a follow-up request on the same
+  # issue), and a new marker must then be able to close it again. Never use the
+  # local record to skip the live GitHub state check below — only GitHub's
+  # current state decides whether this marker archives or closes.
 
   if [ "$closed" -ge "$MAX_PER_RUN" ]; then
     log "hit MAX_PER_RUN=$MAX_PER_RUN; leaving remaining markers for next tick"
