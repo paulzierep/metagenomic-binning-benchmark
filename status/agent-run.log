@@ -57308,3 +57308,313 @@ grep -v '^@' "$GT" | awk -v K="$OUT/contigs.fa" '
   BEGIN{ while ((getline line < K) > 0) { n=substr(line,2); keep[n]=1 } }
   ($1 in keep)' > "$OUT/binning_gs_subset.tsv" || true
 > build · nemotron-3.5-lightning-free
+[0m$ [0mgh api graphql -f query='{ repo(owner: "paulzierep", name: "COMEBin") { issues(first: 20, state: OPEN) { nodes { number title updatedAt } } } }' 2>/dev/null || echo "graphql failed, trying rest"
+{"errors":[{"path":["query","repo"],"extensions":{"code":"undefinedField","typeName":"Query","fieldName":"repo"},"locations":[{"line":1,"column":3}],"message":"Field 'repo' doesn't exist on type 'Query'"}]}graphql failed, trying rest
+[0m$ [0mgh issue list -R paulzierep/COMEBin --state open --limit 20 2>/dev/null || echo "rest failed"
+rest failed
+> build · nemotron-3.5-lightning-free
+[0m$ [0mgh api paulzierep/COMEBin/issues --state open --limit 20 2>/dev/null || echo "failed"
+failed
+[0m$ [0mgh api repos/paulzierep/COMEBin/issues --state open --limit 20 2>/dev/null || echo "failed"
+failed
+> build · nemotron-3.5-lightning-free
+[0m$ [0mgit -C /vol/data/repos/COMEBin remote -v 2>/dev/null || echo "no remote"
+origin	https://github.com/paulzierep/COMEBin.git (fetch)
+origin	https://github.com/paulzierep/COMEBin.git (push)
+[0m$ [0mgit -C /vol/data/repos/metagenomic-binning-benchmark remote -v 2>/dev/null || echo "no remote"
+origin	https://github.com/paulzierep/metagenomic-binning-benchmark (fetch)
+origin	https://github.com/paulzierep/metagenomic-binning-benchmark (push)
+> build · nemotron-3.5-lightning-free
+[0m$ [0mcat /vol/data/repos/metagenomic-binning-benchmark/docs/01-datasets.md 2>/dev/null | head -100
+# 01 — Datasets
+
+## 1. COMEBin demo data (used first)
+
+| | |
+|---|---|
+| Origin | Google Drive link in the [COMEBin README](https://github.com/paulzierep/COMEBin), file id `1xWpN2z8JTaAzWW4TcOl0Lr4Y_x--Fs5s` |
+| Downloaded | 2026-09-23, 5,575,256,185 bytes → `/vol/data/datasets/comebin_test_data.zip` |
+| Extracted | `/vol/data/datasets/comebin_test_data/` (6.4 GB) |
+| Sample | BATS `SAMN07137077_METAG` (Sequencing Read Archive `SRR5720343`) |
+
+Files:
+
+| File | Size | Notes |
+|---|---|---|
+| `BATS_SAMN07137077_METAG.scaffolds.min500.fasta.f1k.fasta` | 53 MB | **29,434 contigs** (≥1 kb subset, "f1k") |
+| `bamfiles/SRR5720343.bam` | 5.07 GB | reads mapped to the contigs — COMEBin coverage input |
+| `excepted_output/` | — | upstream reference output incl. CheckM results → sanity-check target |
+
+Notes:
+- Single sample ⇒ single coverage column; COMEBin demo command uses `-n 6 -t 40`.
+- No read-level ground truth shipped; quality is assessed with CheckM2/CheckM
+  (marker-gene completeness/contamination) — the metrics this benchmark records.
+- Verify/refresh BAM index before use: `samtools index SRR5720343.bam` if `.bai` missing.
+
+### Small derived test set (GitHub issue #2)
+
+`scripts/make_small_dataset.sh` builds a tiny but real benchmark input from the
+demo data: **top-N contigs by length** (default 300; 3.56 Mbp, with longest
+contigs most likely to carry marker genes) + **all reads overlapping them**
+(real alignments, not simulated) → `/vol/data/datasets/comebin_small/`
+(94 MB). The existing set was originally extracted with `bedtools intersect`;
+the committed reconstruction uses indexed `samtools view -L`, which is faster
+and deterministic for a contig-name list. Purpose: fast iteration for fix
+batches while keeping COMEBin's real pipeline logic.
+
+The next gate is a **medium** derivative (initially N=3,000, hard cap 5 GB),
+built only after the small COMEBin+CheckM run succeeds. Commands and the
+space plan are in `docs/06-benchmark-commands.md` and
+`docs/08-dataset-space-plan.md`. Before any public release, follow the checksum,
+licensing, and Zenodo verification checklist in
+[`docs/10-data-preservation.md`](10-data-preservation.md).
+
+### Published small release (Zenodo)
+
+The owner-approved small release is published as **[10.5281/zenodo.22935025](https://doi.org/10.5281/zenodo.22935025)**
+(version 1, **MIT** since 2026-09-24 — the record metadata was edited in
+place, no new version; the DOI resolves HTTP 200). The record contains the verified
+`comebin_small_release_v1.tar.gz` (95,216,539 bytes,
+SHA-256 `0c698d208639f4fadd4ac4477a67074320c975528b23dd61743c83ad1658b6d2`)
+and `comebin_small.release.public.json` (3,650 bytes,
+SHA-256 `84131ae359d07a78db7ae7ca2005758f4f0ec9df67a33ec62f8af50ac1702f1b`).
+The archive contains 18 payload files totaling 98,078,536 bytes; extraction
+and every public-manifest size/SHA-256 check passed. The public record was
+verified with a fresh unauthenticated API request (HTTP 200), and the safe
+publication record is stored outside the repository at
+`/vol/data/benchmark/meta/zenodo_comebin_small.json`.
+
+### Medium derived test set (local benchmark input)
+
+`/vol/data/datasets/comebin_medium/` contains the top 3,000 contigs by length
+from the same BATS demo assembly plus all reads overlapping those contigs. The
+verified derivative is **421,631,278 bytes**; `PROVENANCE.txt` records the source
+paths, 3,000-contig count, and MD5 checksums:
+
+- `contigs.fa`: `8e6174913ed7db4eb6f05259bae833cc`
+- `bamfiles/reads.bam`: `fe31efbae1d07037a54cbe907f47bc1b`
+
+The v1.1.0 benchmark `medium_v11_20260924` completed 200/200 epochs and produced
+16 non-empty bins. CheckM2/CheckM v1 results are in
+[`results/medium_v11_20260924.csv`](../results/medium_v11_20260924.csv); the
+medium release is not deposited separately until the owner confirms its license
+and metadata.
+
+### Tiny derived test set — issue #18 "smallest still possible" (2026-09-25)
+
+Two candidate "smallest" datasets were built with the same real-data method
+(`scripts/make_small_dataset.sh <out> <N>`, top-N longest demo contigs + the
+overlapping reads), because the floor is set by a **hard limit in COMEBin's
+clustering**, not by disk:
+
+| Dataset | Contigs | Size | Result |
+|---|---:|---:|---|
+| `/vol/data/datasets/comebin_tiny` | 100 | 43 MB | ❌ **fails**: `cluster.py` builds an HNSW index and queries `max_edges + 1 = 101` neighbours (`max_edges_list = [100]`, `ef = max_edges*10`) → `RuntimeError: Cannot return the results in a contiguous 2D array. Probably ef or M is too small` for N = 100 ≤ 101; no Leiden result → `ValueError: max() arg is an empty sequence` in `get_final_result.get_bin_quality` (run `tiny_test_n100`, exit 1, 85 s) |
+| `/vol/data/datasets/comebin_tiny_101` | **101** | **47 MB** | ✅ **passes**: run `tiny_test_n101`, exit 0, wall 85 s, **1 non-empty bin**; CheckM2 **63.89 % / 9.05 %** (MQ 1), CheckM v1 **46.58 % / 6.35 %** → [`results/tiny_test_n101.csv`](../results/tiny_test_n101.csv) |
+
+**The smallest functional COMEBin dataset on this VM is therefore 101 contigs
+(≈ 1.82 Mbp, 47 MB on disk)** — 100 is the first failing size and 101 the first
+passing one (both verified end-to-end). It trains with the batch size capped to
+the contig count (`run_comebin.sh` clamps `-b` to `sequence_count`), 30 epochs
+(issue #10 `-E`), and yields ≥ 1 bin as required.
+
+Optional follow-up fix (not applied — belongs to a fix batch): clamp the
+neighbour query to `k = min(max_edges + 1, N)` (and/or shrink `max_edges` for
+small inputs) in `cluster.py` so datasets smaller than 101 contigs also work;
+until then 101 is the documented floor.
+
+Run with a different dataset: `DATA=/vol/data/datasets/comebin_tiny_101 bash
+scripts/run_small_test.sh <fresh_rundir> 8`.
+[0m$ [0mfind /vol/data -name "*cami*III*" -o -name "*cami3*" 2>/dev/null | head -20
+{"exit":0,"truncated":false,"output":"","status":"completed"}
+> build · nemotron-3.5-lightning-free
+Let me check the current state and what needs to be done next. The agent was last preparing for CAMI III dataset prep after triaging issues.
+[0m$ [0mls -la /vol/data/datasets/cami_III/ 2>/dev/null || echo "No cami_III dataset dir"
+No cami_III dataset dir
+[0m$ [0mcat /vol/data/repos/metagenomic-binning-benchmark/docs/01-datasets.md 2>/dev/null | grep -A5 -i "cami.III\|cami3\|toy human" | head -30
+| Source | **CAMI II Toy Human Microbiome Project** (CAMISIM simulation of HMP body sites), block 2 = gastrointestinal + oral — `https://frl.publisso.de/data/frl:6425518/` |
+| Archive | `gastrooral/sample_0.tar.gz` — **9,738,621,091 B**, md5 `60e04c041c38ea168af03fc55dff15d6` ✅ verified (`md5sum -c`) 2026-09-25 01:43 UTC; server md5 from `md5sums.tsv` in the same directory |
+| Downloaded to | `/vol/data/datasets/cami_II_human/gastrooral_sample_0.tar.gz` (~97 MB/s, 100 s) |
+| Members | `2017.12.04_18.45.54_sample_0/{bam,contigs,reads}` — `bam/` = **139 per-OTU BAMs** (same "per-genome BAMs do not merge" problem as marine), `contigs/` = `anonymous_gsa.fasta.gz` (**68,417 contigs**) + `gsa_mapping.tsv.gz` + `gsa_mapping_new.tsv.gz`, `reads/` = `anonymous_reads.fq` (**10.6 GB, uncompressed**, interleaved PE `@S0R0/1`+`@S0R0/2`) + `reads_mapping.tsv.gz` (293 MB, read → **genome**) + `subsample_0.{sam,bam,fq}` |
+| Extracted (contigs + reads only, `bam/` skipped) | `/vol/data/datasets/cami_II_human/extract/2017.12.04_18.45.54_sample_0/` |
+| Input decision (issue #18: "1/6 the size of the big one") | 29,434 demo contigs / 6 ≈ 4,900 → **top 4,900 GSA contigs by length** (166.0 Mbp; the 4,900th is 4,733 bp; ≥5,000 bp would give 4,462) + **all** reads mapped `bwa mem -p -t 32` → `human_sample0_input/{contigs.fa,bamfiles/human.bam}` |
+--
+## 3. CAMI III challenge data (planned)
+
+**Verified 2026-09-25 from <https://cami-challenge.org/datasets/> (HTTP):**
+
+| | |
+|---|---|
+| Datasets released | **Human gut only so far** — no CAMI III marine/plant yet: (a) *Longitudinal Human Gut* (9 individuals × 4 time points), (b) *Toy Longitudinal Human Gut* (10 individuals × 2 time points = **20 samples**). Both short **and** long reads. |
+| Download lists | `https://cami-challenge.org/static/CAMI3_toy_dataset_download.list` (short, 86 URLs) · `…_long_download.list` (long) → `wget -i` |
+| Object store | `https://s3.bi.denbi.de/swift/v1/cami3__human-gut-toy/{short,long}/` — per-sample `sample_N_{bam,contigs,gsa,reads}.tar.gz` (N = 0..19) + pooled `gsa_pooled.fasta.gz`, `coverages.tar.gz`, `taxonomic_profiles.tar.gz`, `source_genomes.tar.gz`, `sample_subject_mapping.tsv` |
+| Sample IDs | `cami3_toy_human_gut_short_read_sample_[0..19]`; `…_pooled_assembly` = gold-standard pooled assembly |
+| Sizes measured (HTTP HEAD, 2026-09-25) | sample 0 short: `bam` **3.6 GB** · `contigs` **277 MB** · `reads` **4.6 GB** · `gsa` **131 MB** → ≈ **8.6 GB/sample**; `gsa_pooled.fasta.gz` 1.2 GB; `coverages.tar.gz` 105 KB → one sample ≈ 8.6 GB, two ≈ 17 GB (budget ≤ 50 GB ✅) |
+| Spec | Illumina HiSeq 2×150 bp, 100 Gbp total (short); ONT ~4 kb mean, 100 Gbp (long) |
+| Taxonomy | NCBI taxdump `taxdmp_2025-08-01.zip` |
+| Ground truth | gold-standard pooled assembly + per-sample `gsa`/`gsa_mapping` (details to confirm on download) |
+| Key difference vs CAMI II | **per-sample BAM archives are published** → if the BAM references match the published sample contigs, no `bwa mem` remap is needed (must verify first — CAMI II's BAMs were per-genome and unusable) |
+> build · nemotron-3.5-lightning-free
+[0m$ [0mcat /vol/data/repos/metagenomic-binning-benchmark/scripts/prep_cami2_human.sh 2>/dev/null | head -80
+#!/usr/bin/env bash
+# prep_cami2_human.sh — build the COMEBin input for the CAMI II **human
+# host-associated** benchmark (issue #18: "a human based benchmark set from
+# cami that is like 1/6 the size of the big one").
+#
+# Source: CAMI II Toy Human Microbiome, gastrointestinal + oral block,
+#   frl:6425518  (https://frl.publisso.de/data/frl:6425518/)
+#   gastrooral/sample_0.tar.gz  9,738,621,091 B  md5 60e04c041c38ea168af03fc55dff15d6
+#   extracted members: contigs/anonymous_gsa.fasta.gz (68,417 contigs),
+#                      reads/anonymous_reads.fq (interleaved PE), reads_mapping.tsv.gz
+#
+# Strategy (same real-data method as comebin_small/medium and the marine prep):
+#   - contigs: anonymous_gsa.fasta.gz subset to the TOP $N contigs by length.
+#     N defaults to 4,900 = 29,434 (COMEBin demo) / 6  → expected wall time
+#     ≈ 1/6 of the 6.9 h large run (≈ 1 h). The 4,900th contig is 4,733 bp.
+#   - coverage BAM: bwa mem -p (interleaved) over ALL reads → sort + index.
+#     Reads from unkept contigs simply produce no alignment; S0R* names kept.
+#
+# Ground truth binning (binning_gs.tsv) is NOT inside sample_0.tar.gz (only
+# gsa_mapping*.tsv); quality is therefore scored with CheckM2 + CheckM v1 like
+# every other run, and the gold-standard binning is a documented TODO (it ships
+# in setup.tar.gz / the CAMI goldstandard bundle).
+#
+# Usage: bash scripts/prep_cami2_human.sh [N_contigs=4900]
+set -euo pipefail
+
+MM=/vol/data/tools/bin/micromamba
+ENV=/vol/data/envs/comebin
+SRC=/vol/data/datasets/cami_II_human/extract/2017.12.04_18.45.54_sample_0
+GSA="$SRC/contigs/anonymous_gsa.fasta.gz"
+READS="$SRC/reads/anonymous_reads.fq"
+MAPPING="$SRC/reads/reads_mapping.tsv.gz"
+OUT=${OUT:-/vol/data/datasets/cami_II_human/human_sample0_input}
+N=${1:-4900}
+THREADS=${THREADS:-32}
+
+mkdir -p "$OUT/bamfiles" "$OUT/logs"
+[ -f "$GSA" ] || { echo "ERROR: missing $GSA"; exit 1; }
+[ -f "$READS" ] || { echo "ERROR: missing $READS"; exit 1; }
+if [ -e "$OUT/contigs.fa" ] || [ -e "$OUT/bamfiles/human.bam" ]; then
+  echo "ERROR: refusing to overwrite an existing input build in $OUT"
+  exit 1
+fi
+echo "== human sample-0 input: top $N contigs by length (GSA has 68,417) =="
+
+# ---- 1. subset to the N longest contigs ------------------------------------ #
+export MAMBA_ROOT_PREFIX=/vol/data/envs/.mamba
+"$MM" run -p "$ENV" python - "$GSA" "$OUT/contigs.fa" "$N" "$OUT/contigs.bed" <<'PY'
+import gzip, sys
+from Bio import SeqIO
+gsa, out, n, bed = sys.argv[1], sys.argv[2], int(sys.argv[3]), sys.argv[4]
+op = gzip.open if gsa.endswith(".gz") else open
+recs = sorted(SeqIO.parse(op(gsa, "rt"), "fasta"), key=lambda r: len(r), reverse=True)[:n]
+with open(out, "w") as fh:
+    SeqIO.write(recs, fh, "fasta")
+with open(bed, "w") as fh:
+    for r in recs:
+        fh.write(f"{r.id}\t0\t{len(r)}\n")
+print(f"kept {len(recs)} contigs, {sum(len(r) for r in recs):,} bp, "
+      f"min {min(len(r) for r in recs):,} max {max(len(r) for r in recs):,}")
+PY
+NN=$(grep -c '^>' "$OUT/contigs.fa")
+echo "contigs kept: $NN"
+[ "$NN" -gt 0 ] || { echo "ERROR: empty contig subset"; exit 1; }
+
+# ---- 2. bwa index + map all reads (interleaved PE) + sort/index ------------ #
+"$MM" run -p "$ENV" bwa index "$OUT/contigs.fa" 2>&1 | tail -2
+"$MM" run -p "$ENV" bash -c "bwa mem -p -t $THREADS '$OUT/contigs.fa' '$READS' 2>'$OUT/logs/bwa.log' | samtools view -b -u -F 4 | samtools sort -@ 8 -m 1G -o '$OUT/bamfiles/human.bam' -"
+"$MM" run -p "$ENV" samtools index "$OUT/bamfiles/human.bam"
+"$MM" run -p "$ENV" samtools quickcheck "$OUT/bamfiles/human.bam" && echo "bam OK"
+
+# ---- 3. input metadata ------------------------------------------------------ #
+{
+  echo "cami2_human_sample0_input (issue #18: ~1/6 of the 29,434-contig demo):"
+  echo "  source:         frl:6425518 gastrooral/sample_0.tar.gz md5 60e04c041c38ea168af03fc55dff15d6"
+  echo "  contigs:        $OUT/contigs.fa ($NN longest of 68,417 GSA contigs)"
+  echo "  reads:          $READS ($(du -h "$READS" | cut -f1), interleaved PE, mapped with bwa mem -p -t $THREADS)"
+  echo "  reads->genome:  $MAPPING"
+  echo "  bam:            $OUT/bamfiles/human.bam (secondary/supplementary kept, unmapped dropped)"
+  echo "  threads:        $THREADS"
+[0m$ [0mcat /vol/data/repos/metagenomic-binning-benchmark/docs/10-data-preservation.md 2>/dev/null | head -80
+# 10 — Data preservation and Zenodo release plan
+
+This is the release checklist for newly generated benchmark data (issue #8). It
+keeps the repository small while making a deposition reviewable and
+reproducible. The watchdogs do not upload data automatically; an owner-approved
+Zenodo account/token and a final choice of data license and release contents
+are required for each manual or supervisor-operated deposit.
+
+## What would be released
+
+The preferred release unit is a reproducible derivative dataset, not the VM's
+whole working directory:
+
+- `comebin_small` and, after its end-to-end run passes, `comebin_medium`:
+  contigs, selected-read BAM, indexes, provenance, and the release manifest;
+- selected CAMI II samples when their licensing, storage cost, and provenance
+  have been reviewed;
+- result tables and the exact COMEBin commit/parameters needed to regenerate
+  them.
+
+Raw source archives, temporary extraction directories, model checkpoints, and
+large intermediate augmentation files remain local unless explicitly selected
+for a release. CheckM databases and environment trees are not uploaded as part
+of a dataset record; their versions and checksums are documented instead.
+
+## What is needed before upload
+
+1. **Owner approval and account access:** a Zenodo account with permission to
+   create a deposition (normally an owner or authorized account), and a token
+   supplied through a secret environment variable or secret store. Never put a
+   token in this Git repository, a log, a command transcript, or an issue.
+2. **Deposit metadata:** title, authors/creators and ORCIDs where available,
+   abstract, keywords, related DOI/repository URL, and a citation suggestion.
+3. **Licensing:** an explicit data license (for example CC BY 4.0 when
+   appropriate), plus the code license and any third-party restrictions. CAMI
+   terms and any human-host-associated restrictions must be checked before
+   redistribution.
+4. **Release contents and size:** confirm which samples/files are in scope,
+   whether raw reads are included, and the expected compressed size. The current
+   disk plan keeps the small set permanently and caps the derived medium set at
+   5 GB; future human/CAMI additions are budgeted separately.
+5. **Provenance:** source URLs/DOIs and checksums, generation commands, source
+   repository commit, environment/tool versions, parameters, and the manifest
+   SHA-256.
+
+## Manifest first
+
+Generate a manifest outside the dataset directory. It streams SHA-256 hashes and
+records every regular file, so the file can be reviewed before upload:
+
+```bash
+python3 scripts/make_release_manifest.py \
+  /vol/data/datasets/comebin_small \
+  /vol/data/benchmark/meta/release_manifests/comebin_small.json \
+  --metadata source_commit=<comebin-commit> \
+  --metadata dataset=comebin_small
+```
+
+For a public copy, add `--omit-local-path` so the VM-specific `dataset_path`
+field is not exposed. The JSON contains sorted relative paths, byte sizes, and
+SHA-256 values. Add `--exclude` for intentionally omitted files, and use
+`--force` only when replacing a manifest deliberately. Keep the manifest and
+its own checksum with the release metadata. The same procedure applies to
+`comebin_medium` and any CAMI sample selected for publication.
+
+Before depositing, verify that:
+
+- the manifest has no absolute source paths in the public metadata (the local
+  `dataset_path` field should be removed or rewritten in the public copy);
+- every selected file is present and readable after extraction from a clean
+  temporary directory;
+- BAM/FASTA indexes and checksums are included where required;
+- no credentials, personal data, or unreviewed third-party material are present;
+- the repository documentation names the Zenodo DOI and release version.
+
+## Deposit and verification
+
+After owner approval, create a **new version** rather than overwriting a prior
+record. Upload the selected archive/files and the public manifest/provenance,
+wait for Zenodo's checksum processing, and verify the returned record and DOI
+> build · nemotron-3.5-lightning-free
