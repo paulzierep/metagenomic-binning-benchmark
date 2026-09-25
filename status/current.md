@@ -3,13 +3,13 @@
 | | |
 |---|---|
 | Status | 🔴 `stopped (watchdog will restart)` |
-| ⏱ Updated (Europe/Berlin) | `2026-09-25T19:22 CEST` |
-| 🏃 Last benchmark (not active) | `marine_v11_20260925` — last observed **epoch 158/200** (log 16565s old) |
+| ⏱ Updated (Europe/Berlin) | `2026-09-25T19:24 CEST` |
+| 🏃 Last benchmark (not active) | `marine_v11_20260925` — last observed **epoch 158/200** (log 16685s old) |
 | 🧠 Model (last turn) | `big-pickle` (watchdog rotates to free models on quota) |
-| 📌 Agent note · **106 min old** | heartbeat stale 6415s — agent dead/idle, watchdog should restart within ~5 min |
-| ⚙️ Load · uptime | `0.00 0.00 0.00` · 2 days, 3 hours, 46 minutes — 32 cores, 62 GiB, no GPU |
-| 💾 RAM used/total | `1787/64295 MB` |
+| 📌 Agent note · **108 min old** | heartbeat stale 6535s — agent dead/idle, watchdog should restart within ~5 min |
+| ⚙️ Load · uptime | `0.00 0.00 0.00` · 2 days, 3 hours, 48 minutes — 32 cores, 62 GiB, no GPU |
+| 💾 RAM used/total | `1783/64295 MB` |
 | 🔗 Session | `ses_f31799c77ffeTq9gcYgqc4hBhg` |
-| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `ad1385a status: no — marine_v11_20260925 epoch 158/200 loss 0.4026324152946472` |
+| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `0efc70d meta: supervise tick 2026-09-25T17:23:01Z — 0 fix(es)` |
 | 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `5678808 B` — every run, command & tool result |
 | 📈 Timeline | [status/status.log](status/status.log) |
