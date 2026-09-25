@@ -42193,3 +42193,56 @@ quality_report.tsv
 2026-09-25T03:42:50Z
 > build · big-pickle
 Supervisor's eval progressing: **CheckM2 done (rc 0, 193 s)** → quality_report.tsv present; **CheckM v1 lineage_wf in progress**. I'll wait for it to finish before planning the report (avoiding duplication with the supervisor):
+[0m$ [0mR=/vol/data/benchmark/runs/human_v11_20260925; for i in $(seq 1 36); do if grep -q '^checkm_rc:' $R/run_meta.txt 2>/dev/null && grep -q 'checkm_wall_s:' $R/run_meta.txt; then echo "EVAL DONE after ~$((i*20))s"; break; fi; sleep 20; done; grep -E 'checkm2_rc|checkm_rc' $R/run_meta.txt | tail -2; echo "=== auto-report files ==="; ls -la /vol/data/repos/metagenomic-binning-benchmark/results/human_v11_20260925.csv /vol/data/benchmark/runs/human_v11_20260925/eval/checkm/out/storage/bin_stats_ext.tsv 2>/dev/null; tail -3 /vol/data/benchmark/logs/human_v11_eval.log 2>/dev/null | cut -c1-140; date -u +%FT%TZ; touch /vol/data/benchmark/.heartbeat
+EVAL DONE after ~700s
+checkm2_rc: 0 checkm2_wall_s: 193
+checkm_rc: 0 checkm_wall_s: 686
+=== auto-report files ===
+-rw-rw-r-- 1 ubuntu ubuntu 321167 Sep 25 03:54 /vol/data/benchmark/runs/human_v11_20260925/eval/checkm/out/storage/bin_stats_ext.tsv
+-rw-rw-r-- 1 ubuntu ubuntu    326 Sep 25 03:54 /vol/data/repos/metagenomic-binning-benchmark/results/human_v11_20260925.csv
+ERROR: another benchmark launch/evaluation holds /tmp/benchmark-start.lock
+2026-09-25T03:54:17Z
+> build · big-pickle
+Eval complete: CheckM2 rc 0 (193 s), CheckM v1 rc 0 (686 s), aggregate CSV written. Reading results:
+[0m$ [0mecho "=== aggregate CSV ==="; cat /vol/data/repos/metagenomic-binning-benchmark/results/human_v11_20260925.csv; echo "=== per-run summary from parse_eval ==="; grep -A4 'summary' /vol/data/benchmark/runs/human_v11_20260925/run_meta.txt | head -12; echo "=== docs/11 tail ==="; tail -8 /vol/data/repos/metagenomic-binning-benchmark/docs/11-run-results.md; echo "=== recent git ==="; cd /vol/data/repos/metagenomic-binning-benchmark && git log --oneline -5 | cut -c1-80; echo "=== #18 latest comment ==="; gh api repos/paulzierep/metagenomic-binning-benchmark/issues/18/comments --jq '.[-1].created_at + " " + (.body[0:200] | gsub("\n"; " "))'; date -u +%FT%TZ; touch /vol/data/benchmark/.heartbeat
+=== aggregate CSV ===
+run,source_commit,dataset,threads,total_time_s,n_bins,checkm2_mean_completeness,checkm2_mean_contamination,checkm2_HQ,checkm2_MQ,checkm_mean_completeness,checkm_mean_contamination,checkm_HQ,checkm_MQ
+human_v11_20260925,95f5ea820f9a4e76f5c2911c0b5ed507ab67b015,human_sample0_input,32,4912,107,35.31,5.13,20,29,32.64,4.65,21,29
+=== per-run summary from parse_eval ===
+=== docs/11 tail ===
+
+See `docs/00-setup.md` for the agent watchdog that performs automatic restart + free-model rotation on token exhaustion.
+
+## References
+
+- Wang Z. et al. *Effective binning of metagenomic contigs using contrastive multi-view representation learning.* Nat Commun 15, 585 (2024).
+- Parks D.H. et al. *CheckM...* Genome Res 25(7):1043–1055 (2015). (CheckM v1)
+- Chklovsky A. et al. *CheckM2...* Nat Biotechnol (2024). (CheckM2)=== recent git ===
+f4f2b93 meta: supervise tick 2026-09-25T03:53:01Z — 0 fix(es)
+a71dec0 status: yes — human_v11_20260925 epoch 199/200 loss 0.5311863422393799
+b53c0f9 status: yes — human_v11_20260925 epoch 199/200 loss 0.5311863422393799
+c833ec8 meta: supervise tick 2026-09-25T03:43:01Z — 1 fix(es)
+7a1399f status: yes — human_v11_20260925 epoch 199/200 loss 0.5311863422393799
+=== #18 latest comment ===
+expected an object but got: array ([{"author_association":"O ...])
+2026-09-25T03:54:22Z
+> build · big-pickle
+Results in hand: **107 bins, CheckM2 35.31/5.13 (HQ 20/MQ 29), CheckM v1 32.64/4.65 (HQ 21/MQ 29), wall 4,912 s** — notably the first run yielding many HQ bins. The supervisor drove this eval and promised the #18 results post + docs/11 row. Checking whether it has landed already (my jq call failed — retrying):
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && echo "=== latest #18 comment ==="; gh api repos/paulzierep/metagenomic-binning-benchmark/issues/18/comments --jq '.[-1] | {created_at, body: (.body[0:400])}' ; echo "=== git log ==="; git log --oneline -3 | cut -c1-90; echo "=== docs/11 human row? ==="; grep -n "human_v11\|human_sample0" docs/11-run-results.md | head -5; echo "=== uncommitted? ==="; git status -sb | head -8; date -u +%FT%TZ; touch /vol/data/benchmark/.heartbeat
+=== latest #18 comment ===
+{"body":"Human host-associated set (#18b) — input built, run launched.\n\n**Dataset** (`/vol/data/datasets/cami_II_human/human_sample0_input`, built by `scripts/prep_cami2_human.sh 4900`):\n- Source: CAMI II Toy Human Microbiome `gastrooral/sample_0` (frl:6425518), 9,738,621,091 B, md5 `60e04c041c38ea168af03fc55dff15d6` verified.\n- Contigs: top **4,900 longest** GSA contigs (of 68,417) → **166,008,681 bp**, m","created_at":"2026-09-25T02:23:21Z"}
+=== git log ===
+f4f2b93 meta: supervise tick 2026-09-25T03:53:01Z — 0 fix(es)
+a71dec0 status: yes — human_v11_20260925 epoch 199/200 loss 0.5311863422393799 acc 95.94
+b53c0f9 status: yes — human_v11_20260925 epoch 199/200 loss 0.5311863422393799 acc 95.94
+=== docs/11 human row? ===
+=== uncommitted? ===
+## main...origin/main
+ M results/figures/comp_vs_cont_all-runs.png
+ M results/figures/comp_vs_cont_by_dataset.png
+?? results/human_v11_20260925.csv
+?? runs/human_v11_20260925/per_bin_results.csv
+?? runs/human_v11_20260925/per_bins.png
+2026-09-25T03:54:45Z
+> build · big-pickle
+Supervisor hasn't posted results yet (latest #18 comment is still the 02:23Z launch note), and `docs/11` lacks the human row. Since the supervisor explicitly promised to post both, I'll give it one tick cycle (~4 min) before claiming the report, to avoid duplication:
