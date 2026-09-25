@@ -3,10 +3,10 @@
 | | |
 |---|---|
 | Status | 🟢 `running` |
-| ⏱ Updated (Europe/Berlin) | `2026-09-25T10:02 CEST` |
-| 🏃 Live benchmark | `marine_v11_20260925` — **epoch 67/200** · loss `0.684532105922699` · top1 acc `95.966796875` (log 84s fresh) |
+| ⏱ Updated (Europe/Berlin) | `2026-09-25T10:04 CEST` |
+| 🏃 Live benchmark | `marine_v11_20260925` — **epoch 68/200** · loss `0.6793539524078369` · top1 acc `96.20442199707031` (log 16s fresh) |
 | 🧠 Model (last turn) | `mimo-v2.6-flash-free` (watchdog rotates to free models on quota) |
-| 📌 Agent note · **3 min old** | Baseline training epoch ~109/200 (~2.4 min/epoch, ETA ~22:35 UTC unless early-stop); next: baseline eval (run_eval.sh) → issue #2 small-dataset test → v1.1.0 fix run
+| 📌 Agent note · **5 min old** | Baseline training epoch ~109/200 (~2.4 min/epoch, ETA ~22:35 UTC unless early-stop); next: baseline eval (run_eval.sh) → issue #2 small-dataset test → v1.1.0 fix run
 2026-09-23 20:33:11 UTC - heartbeat
 2026-09-23 20:43:58 UTC - heartbeat
 2026-09-23 20:56:28 UTC - heartbeat
@@ -316,9 +316,9 @@
 2026-09-25T07:43:41Z marine-epoch62
 2026-09-25T07:53:49Z marine-epoch65
 2026-09-25T07:58:54Z triage-8-12 |
-| ⚙️ Load · uptime | `29.98 30.65 30.50` · 1 day, 18 hours, 26 minutes — 32 cores, 62 GiB, no GPU |
-| 💾 RAM used/total | `6451/64295 MB` |
+| ⚙️ Load · uptime | `31.03 30.73 30.55` · 1 day, 18 hours, 28 minutes — 32 cores, 62 GiB, no GPU |
+| 💾 RAM used/total | `7781/64295 MB` |
 | 🔗 Session | `ses_f31799c77ffeTq9gcYgqc4hBhg` |
-| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `c08a4cd status: yes — marine_v11_20260925 epoch 66/200 loss 0.7101765275001526` |
-| 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `3959006 B` — every run, command & tool result |
+| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `17ed10e status: yes — marine_v11_20260925 epoch 67/200 loss 0.684532105922699 ` |
+| 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `3959038 B` — every run, command & tool result |
 | 📈 Timeline | [status/status.log](status/status.log) |
