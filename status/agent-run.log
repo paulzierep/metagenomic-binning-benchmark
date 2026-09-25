@@ -66405,3 +66405,137 @@ rsync available
 [0m$ [0mwhich aria2c 2>/dev/null && echo "aria2c available" || echo "aria2c not available"
 aria2c not available
 > build · nemotron-3.5-lightning-free
+[0m$ [0mpython3 -c "
+import zlib, struct, gzip
+
+# Read the short reads tar.gz file
+with open('/vol/data/datasets/cami_III/cami3_toy_human_gut_short_read_sample_0.tar.gz', 'rb') as f:
+    raw = f.read()
+
+# Decompress what we can (skip 10-byte gzip header)
+dec = zlib.decompressobj(-zlib.MAX_WBITS)
+decompressed = dec.decompress(raw[10:])
+
+print(f'Decompressed size: {len(decompressed)} bytes')
+print(f'First 100 bytes: {decompressed[:100]}')
+print(f'Last 100 bytes: {decompressed[-100:]}')
+
+# Check if the decompressed data looks like a tar file
+# Tar files start with a magic string
+import os
+# Check for 'ustar' at offset 257
+if decompressed[257:263] == b'ustar':
+    print('Valid ustar tar format detected')
+else:
+    print(f'Position 257-263: {decompressed[257:263]}')
+
+# Try to create a new gzip file from the decompressed data
+# First, compute CRC32 and ISIZE
+crc = zlib.crc32(decompressed) & 0xFFFFFFFF
+isize = len(decompressed) % (2**32)
+print(f'CRC32: {crc}')
+print(f'ISIZE: {isize}')
+
+# Pack the footer: CRC32 (4 bytes little-endian) + ISIZE (4 bytes little-endian)
+footer = struct.pack('<II', crc, isize)
+print(f'Footer: {footer.hex()}')
+
+# Create new gzip data: header + decompressed data + footer
+# Gzip header: 1f 8b 08 00 (magic + method + flags) + mtime (4 bytes) + xfl (1 byte) + os (1 byte)
+# Standard header: 1f 8b 08 00 00 00 00 00 00 03 (for Unix)
+import array
+header = b'\x1f\x8b\x08\x00\x00\x00\x00\x00\x00\x03'
+new_gzip_data = header + decompressed + footer
+
+# Write the new file
+with open('/vol/data/datasets/cami_III/cami3_toy_human_gut_short_read_sample_0.tar.gz.repaired', 'wb') as f:
+    f.write(new_gzip_data)
+print(f'Repaired file written: {len(new_gzip_data)} bytes')
+
+# Test if the repaired file is valid
+import gzip
+try:
+    with gzip.open('/vol/data/datasets/cami_III/cami3_toy_human_gut_short_read_sample_0.tar.gz.repaired', 'rb') as f:
+        repaired_data = f.read()
+    print(f'Repaired gzip decompressed size: {len(repaired_data)} bytes')
+    # Check if it matches the original decompressed data
+    if repaired_data == decompressed:
+        print('Repaired data matches original decompressed data!')
+    else:
+        print('Data mismatch!')
+except Exception as e:
+    print(f'Repaired gzip open failed: {e}')
+" 2>&1
+Decompressed size: 81497792 bytes
+First 100 bytes: b'sample_0_reads/\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+Last 100 bytes: b"\x87DA&9;\x04\x1b\x8c\xcc\xb6\xb3~\x99\xb7\xc4\x91\x99\xd46\xd6\xdf8\xe0\xb3\x87Id3L\x8b4GP\xeda\x12\xc0!\x9f\x9a\x91\xcd\xc2B9:\xe93jV\x132\xc0 \x8f\xee\xf03+\xc5/\x8b\x9f\x9au\x8b\x9f\x8dA\x1e\xdf\x00\xaa\xe8dZ\xe7\xb7<\xfb&P\x01\x8c\xcc\xc9\x1fU\xcf\x1b\x06'PK\xe1\xef\x07#3"
+Position 257-263: b'ustar '
+CRC32: 2194877219
+ISIZE: 81497792
+Footer: 232bd382c08edb04
+Repaired file written: 81497810 bytes
+Repaired gzip open failed: CRC check failed 0x0 != 0x5ea71d43
+> build · nemotron-3.5-lightning-free
+[0m$ [0mpython3 -c "
+import zlib, tarfile, io
+
+# Read the short reads tar.gz file
+with open('/vol/data/datasets/cami_III/cami3_toy_human_gut_short_read_sample_0.tar.gz', 'rb') as f:
+    raw = f.read()
+
+# Decompress what we can
+dec = zlib.decompressobj(-zlib.MAX_WBITS)
+decompressed = dec.decompress(raw[10:])
+
+# Open as tar (it may be truncated but let's try)
+try:
+    tf = tarfile.open(fileobj=io.BytesIO(decompressed))
+    members = tf.getmembers()
+    print(f'Number of members: {len(members)}')
+    for m in members:
+        print(f'  {m.name} ({m.size} bytes)')
+        # Try to extract file content
+        if m.isfile():
+            f = tf.extractfile(m)
+            if f:
+                data = f.read()
+                print(f'    Content size: {len(data)} bytes')
+                print(f'    First 200 chars: {data[:200]}')
+except Exception as e:
+    print(f'Tar open failed: {e}')
+" 2>&1
+Tar open failed: unexpected end of data
+> build · nemotron-3.5-lightning-free
+[0m$ [0mpython3 -c "
+import gzip
+
+# Try to read the truncated gzip with different approaches
+# Approach 1: gzip.open with 'rb' 
+try:
+    with gzip.open('/vol/data/datasets/cami_III/cami3_toy_human_gut_short_read_sample_0.tar.gz', 'rb') as f:
+        data = f.read()
+    print(f'gzip.open succeeded: {len(data)} bytes')
+except Exception as e:
+    print(f'gzip.open failed: {e}')
+
+# Approach 2: Use gzip.GzipFile directly
+try:
+    with open('/vol/data/datasets/cami_III/cami3_toy_human_gut_short_read_sample_0.tar.gz', 'rb') as f:
+        gz = gzip.GzipFile(fileobj=f, mode='rb')
+        data = gz.read()
+    print(f'GzipFile.read succeeded: {len(data)} bytes')
+except Exception as e:
+    print(f'GzipFile.read failed: {e}')
+
+# Approach 3: Decompress with zlib (already showed this works)
+import zlib
+with open('/vol/data/datasets/cami_III/cami3_toy_human_gut_short_read_sample_0.tar.gz', 'rb') as f:
+    raw = f.read()
+dec = zlib.decompressobj(-zlib.MAX_WBITS)
+data = dec.decompress(raw[10:])
+print(f'zlib decompress succeeded: {len(data)} bytes')
+" 2>&1
+gzip.open failed: Compressed file ended before the end-of-stream marker was reached
+GzipFile.read failed: Compressed file ended before the end-of-stream marker was reached
+zlib decompress succeeded: 81497792 bytes
+> build · nemotron-3.5-lightning-free
