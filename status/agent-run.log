@@ -65962,3 +65962,203 @@ Tar open failed: unexpected end of data
   file: sample_0_reads/reads_mapping.tsv.gz (10172924 bytes)
   file: sample_0_reads/anonymous_reads.fq.gz (4682559244 bytes)
 > build · nemotron-3.5-lightning-free
+[0m$ [0mpython3 -c "
+import gzip, io, tarfile, zlib
+
+# Read short reads file
+with open('/vol/data/datasets/cami_III/cami3_toy_human_gut_short_read_sample_0.tar.gz', 'rb') as f:
+    raw = f.read()
+
+# Decompress
+dec = zlib.decompressobj(-zlib.MAX_WBITS)
+decompressed = dec.decompress(raw[10:])
+
+# List tar members manually
+pos = 0
+files_found = []
+while pos < len(decompressed):
+    header = decompressed[pos:pos+512]
+    if len(header) < 512:
+        break
+    name = header[0:100].rstrip(b'\x00').decode('utf-8', errors='replace')
+    if name.strip() == '':
+        break
+    size = int(header[124:136].rstrip(b'\x00').decode('utf-8', errors='replace'), 8)
+    typeflag = header[156:157] if len(header) > 156 else b''
+    if typeflag == b'0' or typeflag == b'\\0':
+        kind = 'file'
+    elif typeflag == b'5':
+        kind = 'dir'
+    else:
+        kind = f'type={typeflag}'
+    
+    if kind == 'file':
+        # Try to extract file content
+        file_start = pos + 512
+        # Skip to file content + padding
+        file_blocks = (size + 511) // 512
+        file_end = file_start + file_blocks * 512
+        
+        file_data = decompressed[file_start:file_end]
+        # The last block may have padding
+        actual_data = file_data[:-((512 - size % 512) % 512)] if size % 512 != 0 else file_data
+        
+        files_found.append((name, actual_data))
+        print(f'File: {name}, data size: {len(actual_data)}')
+    elif kind == 'dir':
+        print(f'Dir: {name}')
+    
+    pos = file_end if kind == 'file' else pos + 512
+    # Align to 512
+    pos = (pos + 511) // 512 * 512
+
+print(f'\\nTotal files found: {len(files_found)}')
+" 2>&1
+Dir: sample_0_reads/
+File: sample_0_reads/reads_mapping.tsv.gz, data size: 81496510
+
+Total files found: 1
+> build · nemotron-3.5-lightning-free
+[0m$ [0mpython3 -c "
+import gzip
+
+# Read the short reads tar decompressed data
+import tarfile, io
+
+with open('/vol/data/datasets/cami_III/cami3_toy_human_gut_short_read_sample_0.tar.gz', 'rb') as f:
+    raw = f.read()
+
+dec = zlib.decompressobj(-zlib.MAX_WBITS)
+decompressed = dec.decompress(raw[10:])
+
+# Find the reads_mapping.tsv.gz data in the tar
+# It starts after the directory header
+pos = 512  # skip directory entry header
+
+# Read the file header
+header = decompressed[pos:pos+512]
+size = int(header[124:136].rstrip(b'\x00').decode('utf-8'), 8)
+print(f'Compressed size from tar header: {size}')
+
+# Skip file data + padding
+file_start = pos + 512
+file_blocks = (size + 511) // 512
+file_end = file_start + file_blocks * 512
+file_data = decompressed[file_start:file_end]
+
+# Remove padding
+if size % 512 != 0:
+    actual_data = file_data[:-((512 - size % 512) % 512)]
+else:
+    actual_data = file_data
+
+print(f'Actual data size: {len(actual_data)}')
+
+# Now try to decompress as gzip
+try:
+    mgz = gzip.decompress(actual_data)
+    print(f'Decompressed mapping data size: {len(mgz)}')
+    # Print first few lines
+    text = mgz.decode('utf-8', errors='replace')
+    lines = text.split('\n')[:10]
+    for line in lines:
+        print(line)
+except Exception as e:
+    print(f'Gzip decompress failed: {e}')
+    # Try as raw deflate
+    import zlib
+    try:
+        mdecompressed = zlib.decompress(actual_data)
+        print(f'Decompressed with zlib: {len(mdecompressed)} bytes')
+    except Exception as e2:
+        print(f'Zlib decompress also failed: {e2}')
+" 2>&1
+Traceback (most recent call last):
+  File "<string>", line 10, in <module>
+NameError: name 'zlib' is not defined. Did you forget to import 'zlib'?
+> build · nemotron-3.5-lightning-free
+[0m$ [0mpython3 -c "
+import gzip, zlib
+
+# Read the short reads tar decompressed data
+with open('/vol/data/datasets/cami_III/cami3_toy_human_gut_short_read_sample_0.tar.gz', 'rb') as f:
+    raw = f.read()
+
+dec = zlib.decompressobj(-zlib.MAX_WBITS)
+decompressed = dec.decompress(raw[10:])
+
+# Find the reads_mapping.tsv.gz data in the tar
+pos = 512  # skip directory entry header
+
+# Read the file header
+header = decompressed[pos:pos+512]
+size = int(header[124:136].rstrip(b'\x00').decode('utf-8'), 8)
+print(f'Compressed size from tar header: {size}')
+
+# Skip file data + padding
+file_start = pos + 512
+file_blocks = (size + 511) // 512
+file_end = file_start + file_blocks * 512
+file_data = decompressed[file_start:file_end]
+
+# Remove padding
+if size % 512 != 0:
+    actual_data = file_data[:-((512 - size % 512) % 512)]
+else:
+    actual_data = file_data
+
+print(f'Actual data size: {len(actual_data)}')
+
+# Now try to decompress as gzip
+try:
+    mgz = gzip.decompress(actual_data)
+    print(f'Decompressed mapping data size: {len(mgz)}')
+    # Print first few lines
+    text = mgz.decode('utf-8', errors='replace')
+    lines = text.split('\n')[:10]
+    for line in lines:
+        print(line)
+except Exception as e:
+    print(f'Gzip decompress failed: {e}')
+    # Try as raw deflate
+    try:
+        mdecompressed = zlib.decompress(actual_data)
+        print(f'Decompressed with zlib: {len(mdecompressed)} bytes')
+    except Exception as e2:
+        print(f'Zlib decompress also failed: {e2}')
+" 2>&1
+Compressed size from tar header: 262931198
+Actual data size: 81496510
+Gzip decompress failed: Compressed file ended before the end-of-stream marker was reached
+Zlib decompress also failed: Error -3 while decompressing data: incorrect header check
+> build · nemotron-3.5-lightning-free
+[0m$ [0mfind /vol -name "anonymous_reads*" 2>/dev/null
+/vol/data/datasets/cami_II/marine_reads/reads_0/simulation_short_read/2018.08.15_09.49.32_sample_0/reads/anonymous_reads.fq.gz
+/vol/data/datasets/cami_II_human/extract/2017.12.04_18.45.54_sample_0/reads/anonymous_reads.fq
+[0m$ [0mfind /vol -name "*.fq*" -o -name "*.fastq*" 2>/dev/null | head -20
+/vol/data/datasets/cami_II/marine_reads/reads_0/simulation_short_read/2018.08.15_09.49.32_sample_0/reads/anonymous_reads.fq.gz
+/vol/data/datasets/cami_II_human/extract/2017.12.04_18.45.54_sample_0/reads/anonymous_reads.fq
+/vol/data/datasets/cami_II_human/extract/2017.12.04_18.45.54_sample_0/reads/subsample_0.fq
+> build · nemotron-3.5-lightning-free
+[0m$ [0menv | grep -i -E "cami|data|download|tar|gz|fastq|read" 2>/dev/null
+Exited with code 1
+[0m$ [0mls -la /vol/data/tools/ 2>/dev/null | head -20
+total 12
+drwxrwxr-x 3 ubuntu ubuntu 4096 Sep 23 13:56 .
+drwxr-xr-x 9 ubuntu ubuntu 4096 Sep 23 14:00 ..
+drwxrwxr-x 2 ubuntu ubuntu 4096 Sep 23 13:56 bin
+> build · nemotron-3.5-lightning-free
+[0m$ [0mls /vol/data/envs/ 2>/dev/null | head -20
+checkm
+checkm2
+comebin
+[0m$ [0mls -la /vol/data/tools/bin/
+total 17876
+drwxrwxr-x 2 ubuntu ubuntu     4096 Sep 23 13:56 .
+drwxrwxr-x 3 ubuntu ubuntu     4096 Sep 23 13:56 ..
+-rwxrwxr-x 1 ubuntu ubuntu 18292808 Aug  7 18:10 micromamba
+> build · nemotron-3.5-lightning-free
+[0m$ [0mgunzip -f /vol/data/datasets/cami_III/cami3_toy_human_gut_short_read_sample_0.tar.gz 2>&1 || true
+ls -la /vol/data/datasets/cami_III/cami3_toy_human_gut_short_read_sample_0.tar 2>/dev/null
+gzip: /vol/data/datasets/cami_III/cami3_toy_human_gut_short_read_sample_0.tar.gz: unexpected end of file
+> build · nemotron-3.5-lightning-free
