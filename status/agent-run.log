@@ -39524,3 +39524,138 @@ contig sets are far too large for COMEBin training (gsa 1.48 M contigs, pooled M
 > build · mimo-v2.6-flash-free
 [0m⚙ [0mexecute {"code":"const base = \"https://frl.publisso.de/data/frl%3A6425518/\";\nconst paths = [\"README.md\", \"per_bodysite/gastro_bam/\", \"gastrooral/\"];\nconst out = {};\nfor (const p of paths) {\n  const r = await fetch(base + p);\n  out[p] = (await r.text()).replace(/<[^>]+>/g, \" \").replace(/\\s+/g, \" \").slice(0, 3000);\n}\nreturn out;"} 
 > build · mimo-v2.6-flash-free
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && grep -n "DATA=\|CONTIGS=\|BAMDIR=" scripts/run_small_test.sh scripts/run_comebin_fix.sh | head -20
+scripts/run_small_test.sh:20:DATA=/vol/data/datasets/comebin_small
+scripts/run_small_test.sh:21:CONTIGS="$DATA/contigs.fa"
+scripts/run_small_test.sh:22:BAMDIR="$DATA/bamfiles"
+scripts/run_comebin_fix.sh:10:DATA=${DATA:-/vol/data/datasets/comebin_test_data}
+scripts/run_comebin_fix.sh:11:CONTIGS=${CONTIGS:-"$DATA/BATS_SAMN07137077_METAG.scaffolds.min500.fasta.f1k.fasta"}
+scripts/run_comebin_fix.sh:12:BAMDIR=${BAMDIR:-"$DATA/bamfiles"}
+[0m$ [0mpgrep -f "run_eval.sh /vol/data/benchmark/runs/fix_v11_20260924" >/dev/null && echo EVAL_RUNNING || echo EVAL_FINISHED; tail -c 300 /vol/data/benchmark/logs/fix_v11_eval_20260925T010438Z.log; echo; grep -c "" /vol/data/benchmark/runs/fix_v11_20260924/run_meta.txt; tail -3 /vol/data/benchmark/runs/fix_v11_20260924/run_meta.txt
+EVAL_RUNNING
+gning 42 of 43 (97.67%) marker genes.    Finished aligning 43 of 43 (100.00%) marker genes.
+[2026-09-25 01:06:04] INFO: Reading marker alignment files.
+[2026-09-25 01:06:04] INFO: Concatenating alignments.
+[2026-09-25 01:06:04] INFO: Placing 71 bins into the genome tree with pplacer (be patient).
+
+17
+cmd_checkm2: /vol/data/tools/bin/micromamba run -p /vol/data/envs/checkm2 checkm2 predict --threads 32 --database_path /vol/data/benchmark/checkm2db/CheckM2_database/uniref100.KO.1.dmnd --input /vol/data/benchmark/runs/fix_v11_20260924/comebin_out/comebin_res/comebin_res_bins --output-directory /vol/data/benchmark/runs/fix_v11_20260924/eval/checkm2 -x fa --force
+checkm2_rc: 0 checkm2_wall_s: 71
+cmd_checkm: LD_LIBRARY_PATH=/vol/data/envs/checkm/lib:/vol/data/envs/comebin/lib /vol/data/tools/bin/micromamba run -p /vol/data/envs/comebin checkm lineage_wf -x fa -t 32 --tmpdir /vol/data/benchmark/runs/fix_v11_20260924/eval/checkm/tmp /vol/data/benchmark/runs/fix_v11_20260924/comebin_out/comebin_res/comebin_res_bins /vol/data/benchmark/runs/fix_v11_20260924/eval/checkm/out
+> build · mimo-v2.6-flash-free
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/scripts/run_small_test.sh
+Index: /vol/data/repos/metagenomic-binning-benchmark/scripts/run_small_test.sh
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/scripts/run_small_test.sh
++++ /vol/data/repos/metagenomic-binning-benchmark/scripts/run_small_test.sh
+@@ -11,8 +11,12 @@
+ #   BATCH_SIZE=256 EMB_SIZE=512      small-data training defaults
+ #   EPOCHS=30                         training epochs (issue #10; default 30 for
+ #                                     fast functional tests; passed as -E only
+ #                                     when the CLI supports it)
++#   DATA=/vol/data/datasets/comebin_small
++#                                     dataset dir with contigs.fa + bamfiles/reads.bam
++#                                     (issue #18: point it at the tiny set to test
++#                                     the smallest functional dataset)
+ set -euo pipefail
+ 
+ MM=/vol/data/tools/bin/micromamba
+ ENV=/vol/data/envs/comebin
+
+> build · mimo-v2.6-flash-free
+[0m✗ [0mEdit /vol/data/repos/metagenomic-binning-benchmark/scripts/run_small_test.sh failed
+[91m[1mError: [0mFound 2 matches for oldString, but expected exactly one. Add more surrounding context to make oldString unique, or set replaceAll to true to replace every occurrence.
+> build · mimo-v2.6-flash-free
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/scripts/run_small_test.sh
+Index: /vol/data/repos/metagenomic-binning-benchmark/scripts/run_small_test.sh
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/scripts/run_small_test.sh
++++ /vol/data/repos/metagenomic-binning-benchmark/scripts/run_small_test.sh
+@@ -20,9 +20,9 @@
+ 
+ MM=/vol/data/tools/bin/micromamba
+ ENV=/vol/data/envs/comebin
+ SRC=${SRC_COMEBIN:-/vol/data/repos/COMEBin-small-fix}
+-DATA=/vol/data/datasets/comebin_small
++DATA=${DATA:-/vol/data/datasets/comebin_small}
+ CONTIGS="$DATA/contigs.fa"
+ BAMDIR="$DATA/bamfiles"
+ RUNDIR=$(realpath -m "${1:-/vol/data/benchmark/runs/small_test}")
+ THREADS=${2:-8}
+
+> build · mimo-v2.6-flash-free
+[0m$ [0mpgrep -f "run_eval.sh /vol/data/benchmark/runs/fix_v11_20260924" >/dev/null && echo EVAL_RUNNING || echo EVAL_FINISHED; ps -o pid,etime,pcpu,cmd -C pplacer 2>/dev/null | tail -2; ps -o pid,etime,pcpu,cmd -C checkm 2>/dev/null | tail -3
+EVAL_RUNNING
+1281607       04:34 62.1 pplacer -j 1 -c /vol/data/envs/comebin/checkm_data/genome_tree/genome_tree_full.refpkg -o /vol/data/benchmark/runs/fix_v11_20260924/eval/checkm/out/storage/tree/concatenated.pplacer.json /vol/data/benchmark/runs/fix_v11_20260924/eval/checkm/out/storage/tree/concatenated.fasta
+1282456       01:48 99.9 pplacer -j 1 -c /vol/data/envs/comebin/checkm_data/genome_tree/genome_tree_full.refpkg -o /vol/data/benchmark/runs/fix_v11_20260924/eval/checkm/out/storage/tree/concatenated.pplacer.json /vol/data/benchmark/runs/fix_v11_20260924/eval/checkm/out/storage/tree/concatenated.fasta
+    PID     ELAPSED %CPU CMD
+1276861       04:49  1.1 /vol/data/envs/comebin/bin/python /vol/data/envs/comebin/bin/checkm lineage_wf -x fa -t 32 --tmpdir /vol/data/benchmark/runs/fix_v11_20260924/eval/checkm/tmp /vol/data/benchmark/runs/fix_v11_20260924/comebin_out/comebin_res/comebin_res_bins /vol/data/benchmark/runs/fix_v11_20260924/eval/checkm/out
+[0m$ [0mcd /tmp && timeout 90 bash -c 'curl -sL --max-time 85 "https://frl.publisso.de/data/frl%3A6425518/gastrooral/sample_0.tar.gz" | tar -tzf - 2>/dev/null | head -60' ; echo "rc=$?"
+2017.12.04_18.45.54_sample_0/
+2017.12.04_18.45.54_sample_0/bam/
+2017.12.04_18.45.54_sample_0/bam/OTU_97.4094.0.bam
+2017.12.04_18.45.54_sample_0/bam/OTU_97.4094.0.bam.bai
+2017.12.04_18.45.54_sample_0/bam/OTU_97.4094.1.bam
+2017.12.04_18.45.54_sample_0/bam/OTU_97.7551.0.bam
+2017.12.04_18.45.54_sample_0/bam/OTU_97.4094.1.bam.bai
+2017.12.04_18.45.54_sample_0/bam/OTU_97.6890.0.bam
+2017.12.04_18.45.54_sample_0/bam/OTU_97.25906.0.bam
+2017.12.04_18.45.54_sample_0/bam/OTU_97.7551.0.bam.bai
+2017.12.04_18.45.54_sample_0/bam/OTU_97.18736.0.bam
+2017.12.04_18.45.54_sample_0/bam/OTU_97.40136.0.bam
+2017.12.04_18.45.54_sample_0/bam/OTU_97.6890.0.bam.bai
+2017.12.04_18.45.54_sample_0/bam/OTU_97.3641.0.bam
+2017.12.04_18.45.54_sample_0/bam/OTU_97.17701.0.bam
+2017.12.04_18.45.54_sample_0/bam/OTU_97.25906.0.bam.bai
+2017.12.04_18.45.54_sample_0/bam/OTU_97.3641.0.bam.bai
+2017.12.04_18.45.54_sample_0/bam/OTU_97.18736.0.bam.bai
+2017.12.04_18.45.54_sample_0/bam/OTU_97.4902.1.bam
+2017.12.04_18.45.54_sample_0/bam/OTU_97.4902.1.bam.bai
+2017.12.04_18.45.54_sample_0/bam/OTU_97.40136.0.bam.bai
+2017.12.04_18.45.54_sample_0/bam/OTU_97.1070.0.bam
+2017.12.04_18.45.54_sample_0/bam/OTU_97.17701.0.bam.bai
+2017.12.04_18.45.54_sample_0/bam/OTU_97.14013.0.bam
+2017.12.04_18.45.54_sample_0/bam/OTU_97.30392.0.bam
+2017.12.04_18.45.54_sample_0/bam/OTU_97.18340.0.bam
+2017.12.04_18.45.54_sample_0/bam/OTU_97.2576.0.bam
+2017.12.04_18.45.54_sample_0/bam/OTU_97.1070.0.bam.bai
+2017.12.04_18.45.54_sample_0/bam/OTU_97.18340.0.bam.bai
+2017.12.04_18.45.54_sample_0/bam/OTU_97.15599.0.bam
+2017.12.04_18.45.54_sample_0/bam/OTU_97.2576.0.bam.bai
+2017.12.04_18.45.54_sample_0/bam/OTU_97.36636.0.bam
+2017.12.04_18.45.54_sample_0/bam/OTU_97.30392.0.bam.bai
+2017.12.04_18.45.54_sample_0/bam/OTU_97.15599.0.bam.bai
+2017.12.04_18.45.54_sample_0/bam/OTU_97.40665.0.bam
+2017.12.04_18.45.54_sample_0/bam/OTU_97.36636.0.bam.bai
+2017.12.04_18.45.54_sample_0/bam/OTU_97.45053.0.bam
+2017.12.04_18.45.54_sample_0/bam/OTU_97.14013.0.bam.bai
+2017.12.04_18.45.54_sample_0/bam/OTU_97.45053.1.bam
+2017.12.04_18.45.54_sample_0/bam/OTU_97.45053.1.bam.bai
+2017.12.04_18.45.54_sample_0/bam/OTU_97.45053.0.bam.bai
+2017.12.04_18.45.54_sample_0/bam/OTU_97.40665.0.bam.bai
+2017.12.04_18.45.54_sample_0/bam/OTU_97.326.1.bam
+2017.12.04_18.45.54_sample_0/bam/OTU_97.6577.0.bam
+2017.12.04_18.45.54_sample_0/bam/OTU_97.6577.0.bam.bai
+2017.12.04_18.45.54_sample_0/bam/OTU_97.10984.0.bam
+2017.12.04_18.45.54_sample_0/bam/OTU_97.10120.0.bam
+2017.12.04_18.45.54_sample_0/bam/OTU_97.326.1.bam.bai
+2017.12.04_18.45.54_sample_0/bam/OTU_97.10984.0.bam.bai
+2017.12.04_18.45.54_sample_0/bam/OTU_97.326.0.bam
+2017.12.04_18.45.54_sample_0/bam/OTU_97.44483.0.bam
+2017.12.04_18.45.54_sample_0/bam/OTU_97.10120.0.bam.bai
+2017.12.04_18.45.54_sample_0/bam/OTU_97.40119.1.bam
+2017.12.04_18.45.54_sample_0/bam/OTU_97.40119.0.bam
+2017.12.04_18.45.54_sample_0/bam/OTU_97.1154.0.bam
+2017.12.04_18.45.54_sample_0/bam/OTU_97.40119.1.bam.bai
+2017.12.04_18.45.54_sample_0/bam/OTU_97.326.0.bam.bai
+2017.12.04_18.45.54_sample_0/bam/OTU_97.7000.0.bam
+2017.12.04_18.45.54_sample_0/bam/OTU_97.3498.0.bam
+2017.12.04_18.45.54_sample_0/bam/OTU_97.12293.0.bam
+rc=0
+> build · mimo-v2.6-flash-free
+[0m$ [0mps -eo pid,ppid,lstart,etime,cmd | grep -E "run_eval|checkm|pplacer" | grep -v grep
+1272053       1 Fri Sep 25 01:04:38 2026       06:23 /bin/bash -c cd /vol/data/repos/metagenomic-binning-benchmark && nohup bash scripts/run_eval.sh /vol/data/benchmark/runs/fix_v11_20260924 32 > /vol/data/benchmark/logs/fix_v11_eval_$(date -u +%Y%m%dT%H%M%SZ).log 2>&1 & echo "eval pid $!"; sleep 5; ls -t /vol/data/benchmark/logs/ | head -3
+1272055 1272053 Fri Sep 25 01:04:38 2026       06:23 bash scripts/run_eval.sh /vol/data/benchmark/runs/fix_v11_20260924 32
+1276859 1272055 Fri Sep 25 01:05:49 2026       05:13 /vol/data/tools/bin/micromamba run -p /vol/data/envs/comebin checkm lineage_wf -x fa -t 32 --tmpdir /vol/data/benchmark/runs/fix_v11_20260924/eval/checkm/tmp /vol/data/benchmark/runs/fix_v11_20260924/comebin_out/comebin_res/comebin_res_bins /vol/data/benchmark/runs/fix_v11_20260924/eval/checkm/out
+1276861 1276859 Fri Sep 25 01:05:49 2026       05:13 /vol/data/envs/comebin/bin/python /vol/data/envs/comebin/bin/checkm lineage_wf -x fa -t 32 --tmpdir /vol/data/benchmark/runs/fix_v11_20260924/eval/checkm/tmp /vol/data/benchmark/runs/fix_v11_20260924/comebin_out/comebin_res/comebin_res_bins /vol/data/benchmark/runs/fix_v11_20260924/eval/checkm/out
+> build · mimo-v2.6-flash-free
