@@ -23,7 +23,8 @@ Current usage (2026-09-23): 76 GB used / **391 GB free**.
 | 2 | Small dataset (issue #2) | 94 MB | kept permanently | ready |
 | 3 | Medium derived dataset | – | target 3,000 contigs, hard cap **5 GB** | build only after small test passes |
 | 4 | CAMI II marine — sample 0 short-read | 10 GB extracted (tars 4.6+0.36 GB) | keep **1–2 samples** (~11 GB/sample extracted) | sample 0 extracted |
-| 5 | Human host-associated (CAMI II) | – | **1–2 samples, ≤ 30 GB** | to download |
+| 5 | Human host-associated (CAMI II) | sample_0 tarball 9.7 GB + extracted contigs/reads 11 GB + input build ~0.5 GB | **1–2 samples, ≤ 30 GB** | ✅ sample 0 downloaded + md5-verified 2026-09-25, input prep running |
+| 5b | Tiny functional set (issue #18) | `comebin_tiny` 43 MB + `comebin_tiny_101` 47 MB | kept permanently (floor = 101 contigs) | ✅ built, `tiny_test_n101` passed end-to-end |
 | 6 | CAMI III (marine + human gut) | – | **≤ 50 GB** (verify sizes on frl.publisso.de before download) | to download |
 | 7 | Eval refs + envs | checkm_ref 1.4 GB + checkm2db 2.9 GB + envs ~8 GB | unchanged | ready |
 
@@ -57,6 +58,18 @@ Plan: pick **1 GI-tract sample + 1 second body site** (host diversity), reuse th
 same COMEBin input strategy as CAMI II marine (assemblies/BAMs or per-sample
 mapping), evaluate with CheckM2/CheckM v1 against the provided ground-truth
 binning.
+
+**Status 2026-09-25 (issue #18, "1/6 the size of the big one"):** the GI-tract
+block archive `gastrooral/sample_0.tar.gz` (9,738,621,091 B, md5
+`60e04c041c38ea168af03fc55dff15d6`) is downloaded and verified; `contigs/` +
+`reads/` extracted (`bam/` skipped — the 139 per-OTU BAMs cannot be merged).
+The input build subsets the gold-standard assembly from 68,417 to the **top
+4,900 contigs by length (166.0 Mbp ≈ 29,434 / 6)** and maps all 10.6 GB of
+interleaved reads with `bwa mem -p -t 32` →
+`/vol/data/datasets/cami_II_human/human_sample0_input/`
+(`scripts/prep_cami2_human.sh`). Expected benchmark wall time ≈ 1 h vs 6.9 h
+for the full demo. Ground-truth binning (`binning_gs.tsv`) is not in this
+tarball — see docs/01.
 
 ## CAMI II marine samples (already finishing)
 
