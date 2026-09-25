@@ -49738,3 +49738,63 @@ The gh comments were posted successfully. Let me verify the state and do final c
 > build · nemotron-3.5-lightning-free
 [0m→ [0mRead /vol/data/benchmark/.heartbeat 
 > build · nemotron-3.5-lightning-free
+The heartbeat file needs content, not just a timestamp update. Let me write a heartbeat line:
+[0m$ [0mdate -u +"%Y-%m-%dT%H:%M:%SZ" > /vol/data/benchmark/.heartbeat
+{"exit":0,"truncated":false,"output":"","status":"completed"}
+> build · nemotron-3.5-lightning-free
+[0m→ [0mRead /vol/data/benchmark/.heartbeat 
+> build · nemotron-3.5-lightning-free
+Good. Now let me check the full state and see if there are any git changes or unfinished items:
+[0m$ [0mgit -C /vol/data/repos/metagenomic-binning-benchmark status 2>&1
+On branch main
+Your branch is up to date with 'origin/main'.
+
+nothing to commit, working tree clean
+[0m$ [0mls /tmp/bench-repo.lock 2>&1
+/tmp/bench-repo.lock
+[0m$ [0mgit -C /vol/data/repos/COMEBin status 2>&1
+On branch master
+Your branch and 'origin/master' have diverged,
+and have 5 and 3 different commits each, respectively.
+  (use "git pull" if you want to integrate the remote branch with yours)
+
+Untracked files:
+  (use "git add <file>..." to include in what will be committed)
+	COMEBin/__pycache__/
+	COMEBin/data_aug/__pycache__/
+	COMEBin/models/__pycache__/
+	COMEBin/scripts/__pycache__/
+
+nothing added to commit but untracked files present (use "git add" to track)
+> build · nemotron-3.5-lightning-free
+[0m$ [0mls /vol/data/benchmark/TASK_COMPLETE 2>&1
+ls: cannot access '/vol/data/benchmark/TASK_COMPLETE': No such file or directory
+> build · nemotron-3.5-lightning-free
+Let me verify the active run state and ensure everything is consistent:
+[0m$ [0mls /vol/data/benchmark/runs/marine_v11_20260925/ 2>&1
+comebin_out
+comebin_run.log
+logs
+run_meta.txt
+> build · nemotron-3.5-lightning-free
+[0m→ [0mRead /vol/data/benchmark/runs/marine_v11_20260925/run_meta.txt 
+> build · nemotron-3.5-lightning-free
+All required actions are complete. Let me do a final verification of the state:
+[0m$ [0mecho "=== .heartbeat ===" && cat /vol/data/benchmark/.heartbeat && echo "" && echo "=== .activity last lines ===" && tail -2 /vol/data/benchmark/.activity && echo "" && echo "=== agent-activity.log last line ===" && tail -1 /vol/data/repos/metagenomic-binning-benchmark/status/agent-activity.log && echo "" && echo "=== .active_run ===" && cat /vol/data/benchmark/.active_run && echo "" && echo "=== TASK_COMPLETE check ===" && ls /vol/data/benchmark/TASK_COMPLETE 2>&1 || echo "TASK_COMPLETE does not exist (continuing)"}
+=== .heartbeat ===
+2026-09-25T10:06:05Z
+
+=== .activity last lines ===
+2026-09-25T09:26:57Z
+2026-09-25T10:05:29Z | marine_v11_20260925 active: epoch 106/200, COMEBin-v11@95f5ea8, cami2 mode; heartbeat touched; PROGRESS synced
+
+=== agent-activity.log last line ===
+2026-09-25T10:05:29Z | agent: heartbeat touched, .activity updated, issues #8/#12 triaged; marine_v11_20260925 active at epoch 106/200
+
+=== .active_run ===
+1769340 1769335 /vol/data/benchmark/runs/marine_v11_20260925/comebin_run.log /vol/data/benchmark/runs/marine_v11_20260925 1790309689 cami2 /vol/data/repos/COMEBin-v11 /vol/data/datasets/cami_II/marine_sample0_input/contigs.fa /vol/data/datasets/cami_II/marine_sample0_input/bamfiles
+
+=== TASK_COMPLETE check ===
+ls: cannot access '/vol/data/benchmark/TASK_COMPLETE': No such file or directory
+TASK_COMPLETE does not exist (continuing)}
+> build · nemotron-3.5-lightning-free
