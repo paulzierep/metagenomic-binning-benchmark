@@ -347,14 +347,38 @@ included; fixes land on branch `comebin-optimizations` in this repo.
       Aggregate evidence: `results/medium_v11_20260924.csv`; per-bin joined table
       `runs/medium_v11_20260924/per_bin_results.csv` (CheckM2 x CheckM v1, from
       `scripts/make_per_bin_csv.py`); CheckM2-only `runs/medium_v11_20260924/checkm2_per_bin.csv`.
-- [ ] **ACTIVE: fix_v11 full-large benchmark** — `runs/fix_v11_20260924`
-      registered in `.active_run` (mode fix) at 2026-09-24T10:37Z; source
-      COMEBin-v11 @ `95f5ea8` (branch comebin-optimizations-v11, clean), full
-      demo dataset (29,434 contigs), 32 threads, seed 42, 200 epochs (observed
-      cadence ~1.4–1.9 min/epoch steady-state ⇒ ~5 h total, ETA ≈ 16:00 UTC,
-      32-core CPU ~2900%, RAM 9.4 GB). Next after
-      terminal status: `scripts/run_eval.sh runs/fix_v11_20260924` (CheckM2 +
-      CheckM v1) → `make_results_csv.py` → per-bin CSV → README/docs-11 row.
+- [x] **COMPLETE: fix_v11 full-large benchmark + evaluation (2026-09-24/25)** —
+      `runs/fix_v11_20260924` registered at 2026-09-24T10:37Z, source COMEBin-v11
+      @ `95f5ea8` (branch comebin-optimizations-v11), full demo dataset (29,434
+      contigs), 32 threads, seed 42. **exit_code 0, wall_s 24,741 (~6.9 h),
+      finished 2026-09-24T17:29:36Z, 71 non-empty bins.** Training stopped
+      **early at epoch 184/200** — not an error: upstream v1.1.0
+      `run_comebin.sh` passes `--earlystop` (Top-1 > 99 % for 3 consecutive
+      epochs: 99.10 → 99.22 → 99.04 %); clustering then ran 120/120 Leiden and
+      finished normally. Evaluation (run 2026-09-25 01:04–01:16Z, no other
+      run active): **CheckM2** rc 0 / 71 s → 71 bins, 24.38 % mean completeness,
+      3.78 % contamination, HQ 1, MQ 6; **CheckM v1** rc 0 / 398 s → 21.62 % /
+      5.18 %, HQ 0, MQ 8. Auto-reporting wrote `results/fix_v11_20260924.csv`,
+      `runs/fix_v11_20260924/per_bin_results.csv`, `per_bins.png` and refreshed
+      both comparison figures. README Current/Next + `docs/11` table/history row
+      updated. Versus baseline (same data): +1.7 % wall, 60 → 71 bins,
+      −0.63 pp completeness, +0.80 pp contamination.
+- [ ] **ACTIVE: issue #18 "Benchmark size"** (user, 2026-09-24 15:31Z; triaged
+      2026-09-25 01:10Z, comment `5824960513`). Two directives:
+      (a) **smallest functional dataset** — smaller than `comebin_small`
+      (300 contigs / 94 MB / 122 s), stepped down until it still trains and
+      yields ≥ 1 non-empty bin (`run_small_test.sh` now takes `DATA=…` env);
+      (b) **CAMI II human host-associated set at ~1/6 the size of the big demo**
+      (29,434 contigs / 6.9 h ⇒ target ≈ 4,900 contigs, ≈ 1 h per run) — source
+      frl:6425518 (Toy Human Microbiome, `gastrooral/sample_0.tar.gz` ≈ 9.1 GB,
+      structure verified by streamed listing: `bam/OTU_*.bam` per-OTU files —
+      same per-genome-BAM problem as marine, so reads must be re-mapped with
+      `bwa mem` or the assembly subset must carry its own BAM). Disk budget
+      ≤ 30 GB, 377 GB free.
+- [ ] **Issue #7 flowchart "different logic"** (user comment 2026-09-24 11:44Z):
+      previous cycle/loop flowchart rendered badly → replaced with a straight
+      4-stage pipeline (small → medium → large → keep/revert, no back-edges) in
+      README + docs/09; comment with the new chart still to post.
 - [x] **Issue #12 subplot request + issue #7 mermaid truncation (2026-09-24 ~11:32 UTC)**:
       `make_per_bin_plots.py` now writes `results/figures/comp_vs_cont_by_dataset.png`
       (one panel per benchmark dataset auto-derived from run_meta.txt `contigs:`;

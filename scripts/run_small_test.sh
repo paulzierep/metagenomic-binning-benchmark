@@ -12,12 +12,16 @@
 #   EPOCHS=30                         training epochs (issue #10; default 30 for
 #                                     fast functional tests; passed as -E only
 #                                     when the CLI supports it)
+#   DATA=/vol/data/datasets/comebin_small
+#                                     dataset dir with contigs.fa + bamfiles/reads.bam
+#                                     (issue #18: point it at the tiny set to test
+#                                     the smallest functional dataset)
 set -euo pipefail
 
 MM=/vol/data/tools/bin/micromamba
 ENV=/vol/data/envs/comebin
 SRC=${SRC_COMEBIN:-/vol/data/repos/COMEBin-small-fix}
-DATA=/vol/data/datasets/comebin_small
+DATA=${DATA:-/vol/data/datasets/comebin_small}
 CONTIGS="$DATA/contigs.fa"
 BAMDIR="$DATA/bamfiles"
 RUNDIR=$(realpath -m "${1:-/vol/data/benchmark/runs/small_test}")
