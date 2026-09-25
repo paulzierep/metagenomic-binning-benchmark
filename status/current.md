@@ -3,10 +3,10 @@
 | | |
 |---|---|
 | Status | 🟢 `running` |
-| ⏱ Updated (Europe/Berlin) | `2026-09-25T04:08 CEST` |
-| 🏃 Last benchmark (not active) | `tiny_test_n101` — last observed **epoch 29/30** (log 1247s old) |
+| ⏱ Updated (Europe/Berlin) | `2026-09-25T04:10 CEST` |
+| 🏃 Last benchmark (not active) | `tiny_test_n101` — last observed **epoch 29/30** (log 1366s old) |
 | 🧠 Model (last turn) | `big-pickle` (watchdog rotates to free models on quota) |
-| 📌 Agent note · **1 min old** | Baseline training epoch ~109/200 (~2.4 min/epoch, ETA ~22:35 UTC unless early-stop); next: baseline eval (run_eval.sh) → issue #2 small-dataset test → v1.1.0 fix run
+| 📌 Agent note · **3 min old** | Baseline training epoch ~109/200 (~2.4 min/epoch, ETA ~22:35 UTC unless early-stop); next: baseline eval (run_eval.sh) → issue #2 small-dataset test → v1.1.0 fix run
 2026-09-23 20:33:11 UTC - heartbeat
 2026-09-23 20:43:58 UTC - heartbeat
 2026-09-23 20:56:28 UTC - heartbeat
@@ -279,9 +279,9 @@
 2026-09-25T01:56:30Z human-dataset: frl:6425518 gastrooral/sample_0 downloaded 9.74GB md5 OK, extracted contigs(68,417)+reads(10.6GB fq); prep script top-4900 contigs (166 Mbp) -> bwa mem mapping started
 2026-09-25T02:04:36Z issue-18-tiny-comment
 2026-09-25T02:06:18Z monitor-turn |
-| ⚙️ Load · uptime | `32.54 28.18 15.90` · 1 day, 12 hours, 32 minutes — 32 cores, 62 GiB, no GPU |
-| 💾 RAM used/total | `16400/64295 MB` |
+| ⚙️ Load · uptime | `33.40 30.15 18.13` · 1 day, 12 hours, 34 minutes — 32 cores, 62 GiB, no GPU |
+| 💾 RAM used/total | `16943/64295 MB` |
 | 🔗 Session | `ses_f31799c77ffeTq9gcYgqc4hBhg` |
-| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `7e17e11 status: yes — tiny_test_n101 epoch 29/30 loss 4.71933126449585 acc 6.9` |
+| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `29cc7db issue #18: tiny floor docs (101-contig rows in docs/11/README), human pr` |
 | 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `3684362 B` — every run, command & tool result |
 | 📈 Timeline | [status/status.log](status/status.log) |
