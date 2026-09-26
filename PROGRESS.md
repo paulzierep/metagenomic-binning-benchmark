@@ -185,6 +185,8 @@ included; fixes land on branch `comebin-optimizations` in this repo.
 ## Current state
 
 - [x] `/vol/data` layout created; micromamba 2.9.0 installed
+- [x] Issue triage (2026-09-26): reviewed open issues #22 (summary table), #21 (seeds), #20 (optimization ideas), #19 (better plots), #6 (optimization); posted initial comments
+- [x] **Agent restart resumed (2026-09-26)**: read PROGRESS.md, checked GitHub issues via `gh issue list`; triaged without duplicating existing responses; verified disk state: CAMI III rerun (cami3_v11_20260926_rerun) complete with Zenodo v3, fix_v11_20260924 completed, baseline_rerun_autorestart1 completed; tiny_test_n100 failed (exit 1, 0 bins - floor at ~101 contigs), tiny_test_n101 passed (exit 0, 1 bin); infrastructure created: agent-activity.log, .heartbeat touched; open issues #22/#21/#20/#19 already commented; no active .active_run; issue #23 commented
 - [x] COMEBin test dataset downloaded (5.58 GB) **and extracted** (6.4 GB; 29,434 contigs)
 - [x] Full COMEBin source review (findings above)
 - [x] Base env `/vol/data/envs/comebin` installed (python3.10, numpy1.23, sklearn1.1,
@@ -323,6 +325,7 @@ included; fixes land on branch `comebin-optimizations` in this repo.
       links; performance-table baseline row now links to it); summary comment posted
       (`#issuecomment-5807827932`).
 - [x] **Issue #10 triaged (2026-09-24 04:54 → 05:05 UTC)**: fewer epochs for
+- [x] **Script modifications committed (2026-09-27)**: `run_comebin_fix.sh` pre-flight free-space guard (≥2 GiB free check to prevent ENOSPC poisoning of CheckM marker tables) and `run_eval.sh` CheckM2 thread-capping/retry guard (≥400 bins → cap at 16 threads, automatic retry at lower thread count on failure). Both guards env-overridable. Committed to main as `170ca0ad`.
       functional tests → `run_comebin.sh` (branch `comebin-small-fix`) gained an
       optional **`-E INT`** flag passing `--epochs` (default 200 = unchanged
       upstream behavior; pushed as `a0be243`); `run_small_test.sh` gained
