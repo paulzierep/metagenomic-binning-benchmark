@@ -76477,3 +76477,138 @@ docs/11 done. Checking Zenodo upload progress:
 [zenodo_update] uploading as Zenodo version 3
 ZENODO_RUNNING
 -rw-rw-r--  1 ubuntu ubuntu    65 Sep 26 01:41 zenodo_last_content.sha256
+> build · mimo-v2.6-flash-free
+Package finalized at 520 MB (vs 168 MB v2), uploading now. Checking what grew while it uploads:
+[0m$ [0mgrep -n "staged\|STAGE\|rsync\|cp -a\|tar -c\|MANIFEST\|manifest\|find " /vol/data/benchmark/bin/zenodo_update.sh | head -25; echo "=== big staged items ==="; du -sh /vol/data/benchmark/releases/stage.KdLVJM/* 2>/dev/null | sort -rh | head -8; touch /vol/data/benchmark/.heartbeat
+15:# into a deterministic release tarball with a SHA-256 manifest, then publishes
+26:#   --dry-run: package + manifest + change detection, no network calls
+67:STAGE=$(mktemp -d "$RELEASES/stage.XXXXXX")
+69:cleanup() { rm -rf "$STAGE" ${WORK:+"$WORK"}; }
+72:log "staging benchmark data -> $STAGE"
+73:cp -a "$REPO/results" "$REPO/runs" "$REPO/docs" "$STAGE/"
+74:cp -a "$REPO/README.md" "$REPO/PROGRESS.md" "$STAGE/"
+75:mkdir -p "$STAGE/status"
+77:  cp -a "$REPO/status/agent-activity.log" "$STAGE/status/"
+87:    dst="$STAGE/runs/$name/comebin_res/comebin_res_bins"
+91:    done < <(find -L "$bins" -maxdepth 1 -type f -size +0c 2>/dev/null)
+97:      mkdir -p "$STAGE/runs/$name/$(dirname "$rel")"
+98:      cp -a "$rd$rel" "$STAGE/runs/$name/$rel"
+102:  if [ -f "$STAGE/runs/$name/run_meta.txt" ] && \
+103:     { [ "$n_bins" -gt 0 ] || [ -f "$STAGE/runs/$name/per_bin_results.csv" ]; }; then
+106:    rm -rf "$STAGE/runs/$name"
+113:# make_release_manifest.py refuses an output inside the dataset dir, so hash
+114:# outside, then copy the manifest into the stage so it ships in the tarball.
+115:MANIFEST="$RELEASES/manifest.$STAMP.json"
+116:python3 "$REPO/scripts/make_release_manifest.py" "$STAGE" "$MANIFEST" \
+123:log "manifest: $(python3 -c "import json,sys;d=json.load(open('$MANIFEST'));print(len(d['files']),'files,',sum(f['bytes'] for f in d['files']),'bytes')")"
+124:cp "$MANIFEST" "$STAGE/manifest.json"
+126:CONTENT_SHA=$(python3 - "$MANIFEST" <<'PY'
+147:      --mtime='2020-01-01 00:00:00Z' -cf - -C "$STAGE" . | gzip -n > "$1"
+251:    "manifest.json inside the archive lists every file with size and SHA-256.\n\n"
+=== big staged items ===
+> build · mimo-v2.6-flash-free
+Staging copies the runs' **bins** (the newly-generated data per #8) — the 492 cami3 bins explain the growth. Now updating PROGRESS with the completion record:
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md
+Index: /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md
++++ /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md
+@@ -479,11 +479,28 @@
+       **Retry `cami3_v11_20260926_rerun` launched 2026-09-26 04:48 UTC**
+       (fresh run dir per protocol — the fix wrapper refuses existing dirs):
+       MODE=cami3, seed 42, 32 threads, commit 95f5ea8, dirty 0, registered in
+       `.active_run` (pid 3727084), watchdog owns handoff. Same deterministic
+-      pipeline (seed 42 ⇒ same embeddings/kmeans); ETA ~06:30 UTC for
+-      training+clustering+get_result, then run_eval.sh (CheckM2 + CheckM v1 →
+-      auto-report + Zenodo v3).*
++      pipeline (seed 42 ⇒ same embeddings/kmeans).*
++      *2026-09-26 06:18: **retry COMPLETED** — exit 0, wall 5,392 s (90 min),
++      full 200/200 epochs (final Top-1 74.95 %, no early stop; epoch 99 loss/top1
++      bit-identical to attempt 1 ⇒ deterministic replay), Leiden 120/120 →
++      **492 non-empty bins**; run_meta has exit_code/wall_s/bins, `.active_run`
++      cleared by cleanup. Eval launched detached 06:18 (run_eval.sh): CheckM v1
++      rc 0 (2,514 s incl. pplacer over 492 bins) → **32.46 % / 13.38 %
++      (HQ 54, MQ 100)**; CheckM2 attempt 1 rc 1 — CheckM2 1.1.0's 32-thread
++      gene-calling race on the 492-bin set ("List of protein files does not
++      match internal reference"), failed output preserved as
++      `eval/checkm2.incomplete.<ts>`, **16-thread retry rc 0** (1,137 s) →
++      **35.97 % / 11.42 % (HQ 53, MQ 112)** — most bins and most HQ/MQ of any
++      run, highest mean contamination (strain-rich toy gut). Report chain all
++      rc 0: `results/cami3_v11_20260926_rerun.csv` (label **"CAMI III"** via
++      the `32c5240` matcher fix), per-bin CSV + plots, combined bar plot (3 main
++      datasets unchanged per #12), Zenodo **v3** in flight (draft 22973575,
++      520 MB tarball — cami3's 492 bins ship as the new data per #8).
++      docs/11 gained the summary row + two attempt rows; README bullet + this
++      entry to commit. Outstanding: verify Zenodo v3 receipt + DOI, README
++      bullet with v3 DOI, report on issue #6.*
+ 
+ - [x] **Issue #12 plots (2026-09-24 ~10:42 UTC)**: `scripts/make_per_bin_plots.py`
+       generates per-bin bar charts (`runs/<run>/per_bins.png`, CheckM2 + CheckM v1
+       comp/cont per bin) and a comparison scatter
+
+> build · mimo-v2.6-flash-free
+Checking Zenodo upload status:
+[0m$ [0mR=/vol/data/benchmark/runs/cami3_v11_20260926_rerun; date -u +%FT%TZ; tail -8 $R/report_chain.log; pgrep -f "zenodo_update.sh" >/dev/null && echo ZENODO_RUNNING || echo ZENODO_EXITED; ls /vol/data/benchmark/releases/stage.KdLVJM 2>/dev/null | head -3; touch /vol/data/benchmark/.heartbeat
+2026-09-26T07:45:25Z
+[zenodo_update] published record 22973575 (doi 10.5281/zenodo.22973575)
+Traceback (most recent call last):
+  File "<stdin>", line 3, in <module>
+AttributeError: 'list' object has no attribute 'get'
++ echo ZENODO_RC=1
+ZENODO_RC=1
++ echo REPORT_CHAIN_DONE
+REPORT_CHAIN_DONE
+ZENODO_RUNNING
+> build · mimo-v2.6-flash-free
+v3 **published** (record 22973575, DOI 10.5281/zenodo.22973575) but a post-publish bookkeeping step crashed (`'list' object has no attribute 'get'`). Inspecting the script's post-publish block and marker state — must not cause a duplicate publish:
+[0m$ [0mgrep -n "published record" -A 30 /vol/data/benchmark/bin/zenodo_update.sh | head -45; echo "=== marker/receipt state ==="; ls -la /vol/data/benchmark/meta/zenodo*; cat /vol/data/benchmark/meta/zenodo_last_content.sha256; date -u +%FT%TZ; touch /vol/data/benchmark/.heartbeat
+286:log "published record $NEW_ID (doi $NEW_DOI)"
+287-rm -rf "$WORK"; WORK=$(mktemp -d "$RELEASES/api.XXXXXX")
+288-
+289-req GET "https://zenodo.org/api/records/$NEW_ID"
+290-[ "$CODE" = "200" ] || die "post-publish record lookup failed (HTTP $CODE)"
+291-python3 - "$WORK/resp.json" "$FNAME" "$(stat -c%s "$OUT")" "$OUT_MD5" <<'PY'
+292-import json, sys
+293-rec, fname, size, md5 = json.load(open(sys.argv[1])), sys.argv[2], int(sys.argv[3]), sys.argv[4]
+294-files = rec.get("files", {}).get("entries", {}) or {
+295-    f.get("key") or f.get("filename"): f for f in rec.get("files", [])}
+296-entry = files.get(fname)
+297-if entry is None:
+298:    sys.exit(f"uploaded file {fname} missing from published record")
+299-est = entry.get("checksum", "")
+300-if est.replace("md5:", "") != md5:
+301-    sys.exit(f"published md5 {est} != local {md5}")
+302-if int(entry.get("size", entry.get("bytes", -1))) != size:
+303-    sys.exit("published size mismatch")
+304-print(f"verified published file {fname}: {size} bytes md5 {md5}")
+305-PY
+306-if [ -n "$NEW_DOI" ]; then
+307-  DOI_HTTP=$(curl -sS -o /dev/null -w '%{http_code}' -L "https://doi.org/$NEW_DOI")
+308-  log "doi.org/$NEW_DOI -> HTTP $DOI_HTTP"
+309-else
+310-  DOI_HTTP=""
+311-fi
+312-rm -rf "$WORK"; WORK=$(mktemp -d "$RELEASES/api.XXXXXX")
+313-
+314-# --- Receipt + change marker --------------------------------------------------
+315-RECEIPT="$META/zenodo_benchmark_release_v${VERSION}.json"
+316-python3 - "$RECEIPT" "$VERSION" "$NEW_ID" "$NEW_DOI" "$FNAME" \
+317-  "$(stat -c%s "$OUT")" "$OUT_MD5" "$CONTENT_SHA" "$(IFS=,; echo "${RUNS_INCLUDED[*]}")" "$DOI_HTTP" <<'PY'
+318-import json, sys, datetime
+319-keys = ["receipt_path", "version", "record_id", "doi", "filename", "bytes",
+320-        "md5", "content_sha256", "runs", "doi_resolver_http"]
+321-d = dict(zip(keys, sys.argv[1:11]))
+322-d["published_at_utc"] = datetime.datetime.now(datetime.timezone.utc).isoformat()
+323-d["concept_doi"] = "10.5281/zenodo.22935024"
+324-d["state"] = "published_verified"
+325-json.dump(d, open(sys.argv[1], "w"), indent=2, sort_keys=True)
+326-print("receipt:", sys.argv[1])
+327-PY
+328-echo "$CONTENT_SHA" > "$LAST"
+=== marker/receipt state ===
+-rw-rw-r-- 1 ubuntu ubuntu 1613 Sep 26 02:54 /vol/data/benchmark/meta/zenodo_benchmark_release_v2.json
+-rw-r--r-- 1 ubuntu ubuntu 2040 Sep 24 11:04 /vol/data/benchmark/meta/zenodo_comebin_small.json
+-rw-rw-r-- 1 ubuntu ubuntu   65 Sep 26 01:41 /vol/data/benchmark/meta/zenodo_last_content.sha256
+7b80d8362d0eaa0152c2c41234dbaebeab200116a2e53c349123d6b44a735b94
+2026-09-26T07:45:46Z
+> build · mimo-v2.6-flash-free
