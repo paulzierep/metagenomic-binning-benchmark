@@ -76612,3 +76612,200 @@ v3 **published** (record 22973575, DOI 10.5281/zenodo.22973575) but a post-publi
 7b80d8362d0eaa0152c2c41234dbaebeab200116a2e53c349123d6b44a735b94
 2026-09-26T07:45:46Z
 > build · mimo-v2.6-flash-free
+The crash hit before the DOI check, receipt, and content-marker update (v2 marker still active — a blind re-run would publish a duplicate v4). Recovering the bookkeeping manually. First, the content SHA from the log and the API verification:
+[0m$ [0mR=/vol/data/benchmark/runs/cami3_v11_20260926_rerun; echo "=== content sha lines in log ==="; grep -ai "content\|sha" $R/report_chain.log | head -10; echo "=== v2 receipt for schema ==="; cat /vol/data/benchmark/meta/zenodo_benchmark_release_v2.json; date -u +%FT%TZ; touch /vol/data/benchmark/.heartbeat
+=== content sha lines in log ===
+=== v2 receipt for schema ===
+{
+  "bytes": 168110629,
+  "concept_doi": "10.5281/zenodo.22935024",
+  "concept_doi_resolver_http": 200,
+  "concept_doi_resolver_target": "https://zenodo.org/records/22969763 (resolves to the newest version, v2.0)",
+  "concept_record_id": 22935024,
+  "content_sha256": "7b80d8362d0eaa0152c2c41234dbaebeab200116a2e53c349123d6b44a735b94",
+  "doi": "10.5281/zenodo.22969763",
+  "file_verified": "public size+md5 match local tarball",
+  "filename": "comebin_benchmark_release_v2_20260926.tar.gz",
+  "license": "MIT",
+  "md5": "114459d4e728e70b2aefb70e1d8f620e",
+  "published_at_utc": "2026-09-26T01:41:50.635444+00:00",
+  "record_id": 22969763,
+  "runs": "baseline_rerun_autorestart1 (60 bins),fix_v11_20260924 (71 bins),human_v11_20260925 (107 bins),marine_v11_20260925 (152 bins),medium_v11_20260924 (16 bins),small_test_v4 (3 bins),tiny_test_n101 (1 bins)",
+  "state": "published_verified",
+  "title": "COMEBin metagenomic binning benchmark — datasets and run results",
+  "upload_path": "run_eval.sh auto-reporting chain -> scripts/zenodo_update.sh (first continuous update)",
+  "version": "2.0",
+  "version_doi_note": "Version DOI propagation lag confirmed resolved: re-checked 2026-09-26T02:54Z -> doi.org/10.5281/zenodo.22969763 HTTP 200, DataCite state=findable (registered 2026-09-26T02:46:23Z, ~68 min after publish — same lag pattern as v1). Both the version DOI and the concept DOI 10.5281/zenodo.22935024 now resolve; file size+md5 already verified against the public record.",
+  "version_doi_recheck_http": 200,
+  "version_doi_recheck_utc": "2026-09-26T02:54:25Z",
+  "version_doi_resolver_http": 200
+}2026-09-26T07:46:13Z
+> build · mimo-v2.6-flash-free
+v2 receipt schema in hand. Reading the script's CONTENT_SHA computation to replicate it exactly:
+[0m$ [0msed -n '115,150p' /vol/data/benchmark/bin/zenodo_update.sh; echo "=== newest manifest ==="; ls -t /vol/data/benchmark/releases/manifest.*.json | head -3; touch /vol/data/benchmark/.heartbeat
+MANIFEST="$RELEASES/manifest.$STAMP.json"
+python3 "$REPO/scripts/make_release_manifest.py" "$STAGE" "$MANIFEST" \
+  --omit-local-path \
+  --metadata source_repo="https://github.com/paulzierep/metagenomic-binning-benchmark" \
+  --metadata source_commit="$(git -C "$REPO" rev-parse HEAD 2>/dev/null || echo unknown)" \
+  --metadata kind="benchmark-results" \
+  --metadata runs="$(IFS=,; echo "${RUNS_INCLUDED[*]}")" \
+  --metadata created_utc="$STAMP" >/dev/null
+log "manifest: $(python3 -c "import json,sys;d=json.load(open('$MANIFEST'));print(len(d['files']),'files,',sum(f['bytes'] for f in d['files']),'bytes')")"
+cp "$MANIFEST" "$STAGE/manifest.json"
+
+CONTENT_SHA=$(python3 - "$MANIFEST" <<'PY'
+import hashlib, json, sys
+m = json.load(open(sys.argv[1]))
+h = hashlib.sha256()
+for f in m["files"]:
+    # Activity/status logs are appended to constantly and are provenance, not
+    # benchmark data — they must not trigger a new version on their own.
+    if f["path"].startswith("status/"):
+        continue
+    h.update(f"{f['sha256']}  {f['path']}\n".encode())
+print(h.hexdigest())
+PY
+)
+LAST="$META/zenodo_last_content.sha256"
+if [ -f "$LAST" ] && [ "$(cat "$LAST")" = "$CONTENT_SHA" ]; then
+  skip "content unchanged since last upload (sha256 $CONTENT_SHA)"
+fi
+
+# --- Build the deterministic tarball -----------------------------------------
+build_tar() {
+  tar --sort=name --owner=0 --group=0 --numeric-owner \
+      --mtime='2020-01-01 00:00:00Z' -cf - -C "$STAGE" . | gzip -n > "$1"
+}
+
+if [ "$DRY" -eq 1 ]; then
+=== newest manifest ===
+/vol/data/benchmark/releases/manifest.20260926T073806Z.json
+/vol/data/benchmark/releases/manifest.20260926T021113Z.json
+/vol/data/benchmark/releases/manifest.20260926T013645Z.json
+> build · mimo-v2.6-flash-free
+Replicating the receipt chain: compute CONTENT_SHA, verify the published file via API, resolve the DOI, write receipt + marker:
+[0m$ [0mM=/vol/data/benchmark/releases/manifest.20260926T073806Z.json; python3 - "$M" <<'PY' > /tmp/v3recovery.txt 2>&1
+import hashlib, json, sys, urllib.request, datetime
+m = json.load(open(sys.argv[1]))
+h = hashlib.sha256()
+for f in m["files"]:
+    if f["path"].startswith("status/"):
+        continue
+    h.update(f"{f['sha256']}  {f['path']}\n".encode())
+content_sha = h.hexdigest()
+print("content_sha256:", content_sha)
+
+# verify published file via API (list- or dict-shaped files)
+req = urllib.request.Request("https://zenodo.org/api/records/22973575", headers={"User-Agent": "benchmark-recovery"})
+rec = json.load(urllib.request.urlopen(req, timeout=30))
+print("record state:", rec.get("state"), "doi:", rec.get("doi"), "conceptdoi:", rec.get("conceptdoi"))
+files = rec.get("files")
+if isinstance(files, dict):
+    entries = files.get("entries", {}) or {}
+    if not entries and isinstance(rec.get("files", {}).get("entries"), dict):
+        pass
+    entries = entries or {k: v for k, v in files.items() if isinstance(v, dict)}
+elif isinstance(files, list):
+    entries = {(f.get("key") or f.get("filename")): f for f in files}
+else:
+    entries = {}
+fname = "comebin_benchmark_release_v3_20260926.tar.gz"
+e = entries.get(fname)
+print("file entry found:", e is not None)
+if e:
+    est = (e.get("checksum") or e.get("checksums", [{}])[0].get("value") or "")
+    esz = e.get("size") or e.get("bytes")
+    print("remote size:", esz, "remote checksum:", est)
+    print("size match:", int(esz) == 520343638, "md5 match:", est.replace("md5:", "") == "b8b1b6471288b2bad43cdcd8627e3c27")
+
+# DOI resolver
+import urllib.error
+def resolver(url):
+    try:
+        r = urllib.request.urlopen(urllib.request.Request(url, headers={"User-Agent": "benchmark-recovery"}), timeout=30)
+        return r.status, r.geturl()
+    except urllib.error.HTTPError as ex:
+        return ex.code, str(ex)
+    except Exception as ex:
+        return None, str(ex)
+code, target = resolver("https://doi.org/10.5281/zenodo.22973575")
+print("version doi http:", code, "->", target)
+ccode, ctarget = resolver("https://doi.org/10.5281/zenodo.22935024")
+print("concept doi http:", ccode, "->", ctarget)
+print("now:", datetime.datetime.now(datetime.timezone.utc).isoformat())
+PY
+cat /tmp/v3recovery.txt; touch /vol/data/benchmark/.heartbeat
+content_sha256: eea303263357a63f3d51cee8576e1a09565244458ed5ae7a81aaa269e08823e2
+record state: done doi: 10.5281/zenodo.22973575 conceptdoi: 10.5281/zenodo.22935024
+file entry found: True
+remote size: 520343638 remote checksum: md5:b8b1b6471288b2bad43cdcd8627e3c27
+size match: True md5 match: True
+version doi http: 404 -> HTTP Error 404: Not Found
+concept doi http: 200 -> https://zenodo.org/records/22973575
+now: 2026-09-26T07:47:07.425439+00:00
+> build · mimo-v2.6-flash-free
+Public file verified (size+md5 match), concept DOI already resolves to v3, version DOI shows the known DataCite lag (404 — same as v2, recheck later). Writing receipt + marker (marker prevents a duplicate v4 on any future eval):
+[0m$ [0mpython3 - <<'PY'
+import json, datetime
+d = {
+ "receipt_path": "/vol/data/benchmark/meta/zenodo_benchmark_release_v3.json",
+ "version": "3.0",
+ "record_id": 22973575,
+ "doi": "10.5281/zenodo.22973575",
+ "filename": "comebin_benchmark_release_v3_20260926.tar.gz",
+ "bytes": 520343638,
+ "md5": "b8b1b6471288b2bad43cdcd8627e3c27",
+ "content_sha256": "eea303263357a63f3d51cee8576e1a09565244458ed5ae7a81aaa269e08823e2",
+ "runs": "baseline_rerun_autorestart1 (60 bins),cami3_v11_20260926_rerun (492 bins),fix_v11_20260924 (71 bins),human_v11_20260925 (107 bins),marine_v11_20260925 (152 bins),medium_v11_20260924 (16 bins),small_test_v4 (3 bins),tiny_test_n101 (1 bins)",
+ "doi_resolver_http": 404,
+ "published_at_utc": "2026-09-26T07:45:00+00:00",
+ "concept_doi": "10.5281/zenodo.22935024",
+ "concept_doi_resolver_http": 200,
+ "concept_doi_resolver_target": "https://zenodo.org/records/22973575 (already resolves to v3)",
+ "state": "published_verified",
+ "file_verified": "public size+md5 match local tarball (API record state=done, 2026-09-26T07:47Z)",
+ "title": "COMEBin metagenomic binning benchmark — datasets and run results",
+ "license": "MIT",
+ "upload_path": "run_eval.sh auto-reporting chain -> scripts/zenodo_update.sh (first continuous update)",
+ "version_doi_note": "Known DataCite propagation lag: at 2026-09-26T07:47Z (2 min post-publish) doi.org/10.5281/zenodo.22973575 returned 404 while the concept DOI already resolved to the new record; v2 showed the same pattern (findable ~68 min after publish). Recheck recorded below.",
+ "recovery_note": "Auto-chain crashed post-publish (zenodo_update.sh assumed Zenodo API files dict; record returned list -> AttributeError 'list' object has no attribute 'get'), so receipt+marker were written by the agent; publish itself succeeded and was verified via API.",
+ "version_doi_recheck_http": None,
+ "version_doi_recheck_utc": None
+}
+json.dump(d, open("/vol/data/benchmark/meta/zenodo_benchmark_release_v3.json", "w"), indent=2, sort_keys=True)
+print("receipt written")
+PY
+echo "eea303263357a63f3d51cee8576e1a09565244458ed5ae7a81aaa269e08823e2" > /vol/data/benchmark/meta/zenodo_last_content.sha256
+cat /vol/data/benchmark/meta/zenodo_last_content.sha256; ls -la /vol/data/benchmark/meta/zenodo_benchmark_release_v3.json; date -u +%FT%TZ; TS=$(date -u +%FT%TZ); echo "$TS zenodo-v3-published-22973575-doi-22973575 file-verified-md5 receipt+marker-written-manually (auto-step crashed on files-list API shape)" >> /vol/data/repos/metagenomic-binning-benchmark/status/agent-activity.log; echo "$TS zenodo-v3-published" >> /vol/data/benchmark/.activity; touch /vol/data/benchmark/.heartbeat
+receipt written
+eea303263357a63f3d51cee8576e1a09565244458ed5ae7a81aaa269e08823e2
+-rw-rw-r-- 1 ubuntu ubuntu 1867 Sep 26 07:47 /vol/data/benchmark/meta/zenodo_benchmark_release_v3.json
+2026-09-26T07:47:33Z
+> build · mimo-v2.6-flash-free
+Receipt + marker in place. Now fixing the script bug (files list-vs-dict) in the repo and deploying to `bin/`:
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/scripts/zenodo_update.sh
+Index: /vol/data/repos/metagenomic-binning-benchmark/scripts/zenodo_update.sh
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/scripts/zenodo_update.sh
++++ /vol/data/repos/metagenomic-binning-benchmark/scripts/zenodo_update.sh
+@@ -290,10 +290,15 @@
+ [ "$CODE" = "200" ] || die "post-publish record lookup failed (HTTP $CODE)"
+ python3 - "$WORK/resp.json" "$FNAME" "$(stat -c%s "$OUT")" "$OUT_MD5" <<'PY'
+ import json, sys
+ rec, fname, size, md5 = json.load(open(sys.argv[1])), sys.argv[2], int(sys.argv[3]), sys.argv[4]
+-files = rec.get("files", {}).get("entries", {}) or {
+-    f.get("key") or f.get("filename"): f for f in rec.get("files", [])}
++# Zenodo returns "files" either as {"entries": {...}} (API 2.x), a bare dict, or
++# a plain list (API 1.x shape) — normalise all three before the lookups.
++raw = rec.get("files", {})
++if isinstance(raw, dict):
++    files = raw.get("entries", {}) or raw
++else:
++    files = {f.get("key") or f.get("filename"): f for f in raw}
+ entry = files.get(fname)
+ if entry is None:
+     sys.exit(f"uploaded file {fname} missing from published record")
+ est = entry.get("checksum", "")
+
+> build · mimo-v2.6-flash-free
