@@ -71236,3 +71236,200 @@ public: id 22969763 | is_published: None | version: 2.0 | doi: 10.5281/zenodo.22
 RUNNING
 2026-09-26T01:39:54Z
 > build · mimo-v2.6-flash-free
+The publish **succeeded asynchronously** (state=done, DOI `10.5281/zenodo.22969763`, all 3 files public) — only my script's strict code check flagged it. Verifying the auto-report outputs first:
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && echo "=== marine results csv ==="; cat results/marine_v11_20260925.csv; echo "=== per-bin ==="; wc -l runs/marine_v11_20260925/per_bin_results.csv; echo "=== combined table ==="; cat results/main_runs_table.md; echo "=== figures ==="; ls -la --time-style=long-iso results/figures/; echo "=== run_eval final lines ==="; tail -3 /vol/data/benchmark/logs/marine_eval_retry.log; date -u +%FT%TZ; touch /vol/data/benchmark/.heartbeat
+=== marine results csv ===
+run,source_commit,dataset,threads,total_time_s,n_bins,checkm2_mean_completeness,checkm2_mean_contamination,checkm2_HQ,checkm2_MQ,checkm_mean_completeness,checkm_mean_contamination,checkm_HQ,checkm_MQ
+marine_v11_20260925,95f5ea820f9a4e76f5c2911c0b5ed507ab67b015,marine_sample0_input,32,31406,152,50.60,4.10,35,60,46.36,5.09,37,60
+=== per-bin ===
+153 runs/marine_v11_20260925/per_bin_results.csv
+=== combined table ===
+| Run | Dataset | COMEBin version | Seed | Wall time | Bins | CheckM2 comp / cont | CheckM2 HQ / MQ | CheckM v1 comp / cont | CheckM v1 HQ / MQ |
+|---|---|---|---|---|---|---|---|---|---|
+| `baseline_rerun_autorestart1` | COMEBin demo (29,434 contigs) | `904f649` (master) | - | 6h45m | 60 | 25.01 / 2.98 | 0 / 7 | 21.23 / 3.40 | 0 / 9 |
+| `fix_v11_20260924` | COMEBin demo (29,434 contigs) | `95f5ea8` (comebin-optimizations-v11) | 42 | 6h52m | 71 | 24.38 / 3.78 | 1 / 6 | 21.62 / 5.18 | 0 / 8 |
+| `human_v11_20260925` | CAMI II human (4,900 contigs) | `95f5ea8` (comebin-optimizations-v11) | 42 | 1h21m | 107 | 35.31 / 5.13 | 20 / 29 | 32.64 / 4.65 | 21 / 29 |
+| `marine_v11_20260925` | CAMI II marine (41,988 contigs) | `95f5ea8` (comebin-optimizations-v11) | 42 | 8h43m | 152 | 50.60 / 4.10 | 35 / 60 | 46.36 / 5.09 | 37 / 60 |
+=== figures ===
+total 820
+drwxrwxr-x 2 ubuntu ubuntu   4096 2026-09-26 00:58 .
+drwxrwxr-x 3 ubuntu ubuntu   4096 2026-09-26 01:36 ..
+-rw-rw-r-- 1 ubuntu ubuntu 440997 2026-09-26 01:36 combined_bar_plot.png
+-rw-rw-r-- 1 ubuntu ubuntu 118789 2026-09-26 01:36 combined_bar_plot.svg
+-rw-rw-r-- 1 ubuntu ubuntu 104706 2026-09-26 01:36 comp_vs_cont_all-runs.png
+-rw-rw-r-- 1 ubuntu ubuntu 158038 2026-09-26 01:36 comp_vs_cont_by_dataset.png
+=== run_eval final lines ===
+[zenodo_update] ERROR: publish failed (HTTP 202): {"created": "2026-09-26T01:38:40.578115+00:00", "modified": "2026-09-26T01:38:40.793436+00:00", "id": 22969763, "conceptrecid": "22935024", "doi": "10.5281/zenodo.22969763", "conceptdoi": "10.5281/zenodo.22935024", "doi_url": "https://doi.org/10.5281/zenodo.22969763", "metadata": {"title": "COMEBin metagenomic binning benchmark \u2014 datasets and run results", "doi": "10.5281/zenodo.22969763", "p
+WARNING: zenodo_update.sh failed (rc=1)
+done (checkm2 rc=0, checkm rc=0)
+2026-09-26T01:40:33Z
+> build · mimo-v2.6-flash-free
+All outputs landed — marine final: **CheckM2 50.60/4.10 (HQ 35/MQ 60), CheckM v1 46.36/5.09 (HQ 37/MQ 60)**, and the combined plot/table now include marine. Fixing the two script issues (async 202 publish + volatile log in change hash):
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/scripts/zenodo_update.sh
+Index: /vol/data/repos/metagenomic-binning-benchmark/scripts/zenodo_update.sh
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/scripts/zenodo_update.sh
++++ /vol/data/repos/metagenomic-binning-benchmark/scripts/zenodo_update.sh
+@@ -116,8 +116,12 @@
+ import hashlib, json, sys
+ m = json.load(open(sys.argv[1]))
+ h = hashlib.sha256()
+ for f in m["files"]:
++    # Activity/status logs are appended to constantly and are provenance, not
++    # benchmark data — they must not trigger a new version on their own.
++    if f["path"].startswith("status/"):
++        continue
+     h.update(f"{f['sha256']}  {f['path']}\n".encode())
+ print(h.hexdigest())
+ PY
+ )
+
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/scripts/zenodo_update.sh
+Index: /vol/data/repos/metagenomic-binning-benchmark/scripts/zenodo_update.sh
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/scripts/zenodo_update.sh
++++ /vol/data/repos/metagenomic-binning-benchmark/scripts/zenodo_update.sh
+@@ -253,14 +253,26 @@
+ log "metadata updated (version $VERSION.0, title/description refreshed)"
+ rm -rf "$WORK"; WORK=$(mktemp -d "$RELEASES/api.XXXXXX")
+ 
+ # --- Publish + verify ---------------------------------------------------------
++# Zenodo's publish action may answer 202 (Accepted) and finish asynchronously;
++# poll the deposition until its state is `done` before verifying.
+ req POST "https://zenodo.org/api/deposit/depositions/$DRAFT_ID/actions/publish"
+-[ "$CODE" = "200" ] || [ "$CODE" = "201" ] || \
+-  die "publish failed (HTTP $CODE): $(head -c 400 "$WORK/resp.json")"
+-NEW_ID=$(python3 -c "import json;print(json.load(open('$WORK/resp.json'))['id'])")
++case "$CODE" in
++  200|201|202) ;;
++  *) die "publish failed (HTTP $CODE): $(head -c 400 "$WORK/resp.json")" ;;
++esac
++NEW_ID=$(python3 -c "import json;print(json.load(open('$WORK/resp.json')).get('id') or '$DRAFT_ID')")
+ NEW_DOI=$(python3 -c "
+ import json;d=json.load(open('$WORK/resp.json'));print(d.get('doi') or d.get('metadata',{}).get('doi') or '')")
++for _ in 1 2 3 4 5 6 7 8 9 10; do
++  req GET "https://zenodo.org/api/deposit/depositions/$DRAFT_ID"
++  [ "$CODE" = "200" ] || die "polling draft state failed (HTTP $CODE)"
++  STATE=$(python3 -c "import json;print(json.load(open('$WORK/resp.json')).get('state',''))")
++  [ "$STATE" = "done" ] && break
++  sleep 3
++done
++[ "${STATE:-}" = "done" ] || die "deposition did not reach state=done (state=${STATE:-unknown})"
+ log "published record $NEW_ID (doi $NEW_DOI)"
+ rm -rf "$WORK"; WORK=$(mktemp -d "$RELEASES/api.XXXXXX")
+ 
+ req GET "https://zenodo.org/api/records/$NEW_ID"
+
+> build · mimo-v2.6-flash-free
+Completing the interrupted v2 verification + receipt manually:
+[0m$ [0mset -e
+OUT=/vol/data/benchmark/releases/comebin_benchmark_release_v2_20260926.tar.gz
+LOCAL_MD5=$(md5sum "$OUT" | cut -d' ' -f1); LOCAL_SIZE=$(stat -c%s "$OUT")
+echo "local: $LOCAL_SIZE bytes md5 $LOCAL_MD5"
+echo "=== public record file entries ==="
+curl -sS https://zenodo.org/api/records/22969763 -o /tmp/zv2.json -w "public http=%{http_code}\n"
+python3 -c "
+import json; d=json.load(open('/tmp/zv2.json'))
+e=d['files']['entries']
+for k,v in e.items(): print(' ', k, v.get('size'), v.get('checksum'))
+m=e['comebin_benchmark_release_v2_20260926.tar.gz']
+assert int(m['size'])==$LOCAL_SIZE, 'size mismatch'
+assert m['checksum'].replace('md5:','')=='$LOCAL_MD5', 'md5 mismatch'
+print('PUBLISHED FILE VERIFIED (size+md5 match)')"
+echo "=== content sha from uploaded manifest (status/ excluded) ==="
+tar -xOf "$OUT" ./manifest.json | python3 -c "
+import hashlib, json, sys
+m=json.load(sys.stdin); h=hashlib.sha256()
+for f in m['files']:
+    if f['path'].startswith('status/'): continue
+    h.update(f\"{f['sha256']}  {f['path']}\n\".encode())
+print(h.hexdigest())" | tee /tmp/zv2_sha.txt
+echo "=== DOI resolvers ==="
+curl -sS -o /dev/null -L -w "version doi -> %{http_code} (final %{url_effective})\n" https://doi.org/10.5281/zenodo.22969763
+curl -sS -o /dev/null -L -w "concept doi -> %{http_code} (final %{url_effective})\n" https://doi.org/10.5281/zenodo.22935024
+date -u +%FT%TZ
+local: 168110629 bytes md5 114459d4e728e70b2aefb70e1d8f620e
+=== public record file entries ===
+public http=200
+Traceback (most recent call last):
+  File "<string>", line 3, in <module>
+TypeError: list indices must be integers or slices, not str
+> build · mimo-v2.6-flash-free
+[0m$ [0mset -e
+OUT=/vol/data/benchmark/releases/comebin_benchmark_release_v2_20260926.tar.gz
+LOCAL_MD5=$(md5sum "$OUT" | cut -d' ' -f1); LOCAL_SIZE=$(stat -c%s "$OUT")
+python3 - "$LOCAL_SIZE" "$LOCAL_MD5" <<'PY'
+import json, sys
+d = json.load(open('/tmp/zv2.json'))
+files = d.get('files')
+if isinstance(files, dict):
+    entries = files.get('entries') or {}
+    entries = {k: v for k, v in entries.items()}
+else:
+    entries = {f.get('key') or f.get('filename'): f for f in files}
+for k, v in entries.items():
+    print(' ', k, v.get('size'), v.get('checksum'))
+m = entries['comebin_benchmark_release_v2_20260926.tar.gz']
+assert int(m['size']) == int(sys.argv[1]), 'size mismatch'
+assert m['checksum'].replace('md5:', '') == sys.argv[2], 'md5 mismatch'
+print('PUBLISHED FILE VERIFIED (size+md5 match)')
+PY
+tar -xOf "$OUT" ./manifest.json | python3 -c "
+import hashlib, json, sys
+m=json.load(sys.stdin); h=hashlib.sha256()
+for f in m['files']:
+    if f['path'].startswith('status/'): continue
+    h.update(f\"{f['sha256']}  {f['path']}\n\".encode())
+print(h.hexdigest())" | tee /tmp/zv2_sha.txt
+curl -sS -o /dev/null -L -w "version doi -> %{http_code} (final %{url_effective})\n" https://doi.org/10.5281/zenodo.22969763
+curl -sS -o /dev/null -L -w "concept doi -> %{http_code} (final %{url_effective})\n" https://doi.org/10.5281/zenodo.22935024
+date -u +%FT%TZ; touch /vol/data/benchmark/.heartbeat
+comebin_small_release_v1.tar.gz 95216539 md5:e37e24b1053e61ca2769f3cc94070e61
+  comebin_small.release.public.json 3650 md5:8cc6b7fb4d77f6f460f44687c163a618
+  comebin_benchmark_release_v2_20260926.tar.gz 168110629 md5:114459d4e728e70b2aefb70e1d8f620e
+PUBLISHED FILE VERIFIED (size+md5 match)
+7b80d8362d0eaa0152c2c41234dbaebeab200116a2e53c349123d6b44a735b94
+version doi -> 404 (final https://doi.org/10.5281/zenodo.22969763)
+concept doi -> 200 (final https://zenodo.org/records/22969763)
+2026-09-26T01:41:30Z
+> build · mimo-v2.6-flash-free
+File + concept DOI verified; the fresh version DOI just needs propagation (v1 had the same lag). Writing the receipt and change marker:
+[0m$ [0mpython3 - <<'EOF'
+import json, datetime, os
+receipt = {
+  "published_at_utc": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+  "version": "2.0",
+  "record_id": 22969763,
+  "concept_record_id": 22935024,
+  "doi": "10.5281/zenodo.22969763",
+  "concept_doi": "10.5281/zenodo.22935024",
+  "filename": "comebin_benchmark_release_v2_20260926.tar.gz",
+  "bytes": 168110629,
+  "md5": "114459d4e728e70b2aefb70e1d8f620e",
+  "content_sha256": open('/tmp/zv2_sha.txt').read().strip(),
+  "runs": "baseline_rerun_autorestart1 (60 bins),fix_v11_20260924 (71 bins),human_v11_20260925 (107 bins),marine_v11_20260925 (152 bins),medium_v11_20260924 (16 bins),small_test_v4 (3 bins),tiny_test_n101 (1 bins)",
+  "title": "COMEBin metagenomic binning benchmark — datasets and run results",
+  "license": "MIT",
+  "state": "published_verified",
+  "file_verified": "public size+md5 match local tarball",
+  "concept_doi_resolver_http": 200,
+  "version_doi_resolver_http": 404,
+  "version_doi_note": "fresh DOI still propagating to doi.org at first check (same lag as v1); re-check in ~10 min",
+  "upload_path": "run_eval.sh auto-reporting chain -> scripts/zenodo_update.sh (first continuous update)",
+}
+p = '/vol/data/benchmark/meta/zenodo_benchmark_release_v2.json'
+json.dump(receipt, open(p, 'w'), indent=2, sort_keys=True)
+print('receipt ->', p)
+EOF
+echo "$(python3 -c "import json;print(json.load(open('/vol/data/benchmark/meta/zenodo_benchmark_release_v2.json'))['content_sha256'])")" > /vol/data/benchmark/meta/zenodo_last_content.sha256
+cat /vol/data/benchmark/meta/zenodo_last_content.sha256
+R=/vol/data/repos/metagenomic-binning-benchmark; TS=$(date -u +%FT%TZ)
+echo "$TS zenodo-v2: FIRST CONTINUOUS UPDATE PUBLISHED via run_eval auto-chain -> record 22969763 (concept 22935024, v2.0): comebin_benchmark_release_v2_20260926.tar.gz 168,110,629 B md5 114459d4... (7 runs, 410 bins, 522 files); public size+md5 verified, concept DOI resolves to v2; script fixed for async HTTP 202 publish + volatile-log exclusion in change hash" >> $R/status/agent-activity.log
+echo "$TS zenodo-v2-published" >> /vol/data/benchmark/.activity
+touch /vol/data/benchmark/.heartbeat
+rm -f /tmp/zv2.json /tmp/zpub.json /tmp/zpub2.json /tmp/zrec.json /tmp/zdraft.json /tmp/zdraft2.json /tmp/znew.json /tmp/zvers.json
+date -u +%FT%TZ
+receipt -> /vol/data/benchmark/meta/zenodo_benchmark_release_v2.json
+7b80d8362d0eaa0152c2c41234dbaebeab200116a2e53c349123d6b44a735b94
+2026-09-26T01:41:50Z
+> build · mimo-v2.6-flash-free
