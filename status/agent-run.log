@@ -72681,3 +72681,132 @@ cami3_toy_human_gut_input (2 samples, N=5000 contigs):
 2026-09-26T02:27:54Z
 > build · big-pickle
 Prep is progressing well: index complete, `sample_0_bam.bam` sorted (76 MB), but `.bai` and `sample_1` pending — the sibling is between pipeline steps. No processes currently running, so it's mid-transition. Continuing to monitor:
+[0m$ [0msleep 300; echo "=== procs ==="; ps -eo pid,ppid,etime,cmd | grep -E "bwa|samtools|micromamba run" | grep -v grep | head -10; echo "=== bamfiles ==="; ls -la --time-style=long-iso /vol/data/datasets/cami_III/toy_human_input_2samples/bamfiles/ 2>/dev/null; echo "=== logs/sample dirs ==="; for s in 0 1; do echo "-- sample_$s:"; ls /vol/data/datasets/cami_III/toy_human_input_2samples/logs/sample_$s/ | head -5; done; date -u +%FT%TZ; touch /vol/data/benchmark/.heartbeat
+=== procs ===
+=== bamfiles ===
+total 74396
+drwxrwxr-x 2 ubuntu ubuntu     4096 2026-09-26 02:27 .
+drwxrwxr-x 4 ubuntu ubuntu     4096 2026-09-26 02:24 ..
+-rw-rw-r-- 1 ubuntu ubuntu 76171595 2026-09-26 02:27 sample_0_bam.bam
+=== logs/sample dirs ===
+-- sample_0:
+sample_0_reads
+-- sample_1:
+sample_1_reads
+2026-09-26T02:32:57Z
+> build · big-pickle
+No processes running and no new artifacts since 02:27 — the sibling appears to be between touches (sample_0 bam done but unindexed, sample_1 not started). Let me wait a bit longer while checking whether the bam is complete/stable and monitoring DOI:
+[0m$ [0mecho "=== DOI ==="; curl -sS -o /dev/null -L -w "version2 doi -> %{http_code}\n" https://doi.org/10.5281/zenodo.22969763; echo "=== read dirs ==="; for s in 0 1; do find /vol/data/datasets/cami_III/toy_human_input_2samples/logs/sample_$s -maxdepth 2 -type f 2>/dev/null | head -6; done; echo "=== bam stability ==="; stat -c '%s %y %n' /vol/data/datasets/cami_III/toy_human_input_2samples/bamfiles/sample_0_bam.bam; ls -la --time-style=long-iso /vol/data/datasets/cami_III/toy_human_input_2samples/contigs.fa.sa; date -u +%FT%TZ; touch /vol/data/benchmark/.heartbeat
+=== DOI ===
+version2 doi -> 404
+=== read dirs ===
+/vol/data/datasets/cami_III/toy_human_input_2samples/logs/sample_0/sample_0_reads/anonymous_reads.fq.gz
+/vol/data/datasets/cami_III/toy_human_input_2samples/logs/sample_0/sample_0_reads/reads_mapping.tsv.gz
+/vol/data/datasets/cami_III/toy_human_input_2samples/logs/sample_1/sample_1_reads/reads_mapping.tsv.gz
+=== bam stability ===
+76171595 2026-09-26 02:27:40.790000000 +0000 /vol/data/datasets/cami_III/toy_human_input_2samples/bamfiles/sample_0_bam.bam
+-rw-rw-r-- 1 ubuntu ubuntu 563268712 2026-09-26 02:24 /vol/data/datasets/cami_III/toy_human_input_2samples/contigs.fa.sa
+2026-09-26T02:33:03Z
+> build · big-pickle
+sample_0 bam is stable (76 MB, 02:27). Prep still mid-flight (sample_1 reads extraction / index pending). While waiting, let me confirm the exact launch parameters for the CAMI III run from the marine run's record:
+[0m$ [0mgrep -E "cmd_wrapper|cmd_train|cmd_from_log|mode|MODE|src:|commit" /vol/data/benchmark/runs/marine_v11_20260925/run_meta.txt | head -12; echo "=== run_comebin.sh MODE handling ==="; grep -n "MODE\|cami" /vol/data/repos/COMEBin-v11/COMEBin/run_comebin.sh | head -15; touch /vol/data/benchmark/.heartbeat
+commit:     95f5ea820f9a4e76f5c2911c0b5ed507ab67b015
+cmd_wrapper: /vol/data/tools/bin/micromamba run -p /vol/data/envs/comebin bash run_comebin.sh -a /vol/data/datasets/cami_II/marine_sample0_input/contigs.fa -p /vol/data/datasets/cami_II/marine_sample0_input/bamfiles -o /vol/data/benchmark/runs/marine_v11_20260925/comebin_out -n 6 -t 32 -d cpu -s 42 
+cmd_from_log: 2026-09-25 12:46:01,262 - Marker tools: FragGeneScan=/vol/data/envs/comebin/bin/FragGeneScan, wrapper=/vol/data/envs/comebin/bin/run_FragGeneScan.pl, hmmsearch=/vol/data/envs/comebin/bin/hmmsearch, perl=/vol/data/envs/comebin/bin/perl, marker_script=/vol/data/repos/COMEBin-v11/auxiliary/test_getmarker_2quarter.pl, marker_hmm=/vol/data/repos/COMEBin-v11/auxiliary/bacar_marker.hmm.
+cmd_from_log: 2026-09-25 12:47:35,855 - HMMsearch command: /vol/data/envs/comebin/bin/hmmsearch --domtblout /vol/data/datasets/cami_II/marine_sample0_input/.contigs.fa.bacar_marker.hmmout.2018231.2fwfgpzp.tmp -E 1e-05 --cpu 32 /vol/data/repos/COMEBin-v11/auxiliary/bacar_marker.hmm /vol/data/datasets/cami_II/marine_sample0_input/contigs.fa.frag.faa
+=== run_comebin.sh MODE handling ===
+> build · big-pickle
+run_comebin.sh takes CLI args (`-a contigs -p bamdir -o out -n 6 -t 32 -d cpu -s 42`); MODE is just a label. Let me see how run_comebin_fix.sh wraps this and what mode value to use for CAMI III:
+[0m$ [0msed -n '55,120p' /vol/data/repos/metagenomic-binning-benchmark/scripts/run_comebin_fix.sh; echo "=== how MODE appeared in run_meta for marine ==="; grep -n "mode:" /vol/data/benchmark/runs/marine_v11_20260925/run_meta.txt; echo "=== how it appears for fix_v11 ==="; grep -n "mode:" /vol/data/benchmark/runs/fix_v11_20260924/run_meta.txt 2>/dev/null
+{
+  echo "run:        $RUNDIR"
+  echo "source:     $SRC (branch $BRANCH)"
+  echo "date:       $(date -Is)"
+  echo "commit:     $COMMIT"
+  echo "contigs:    $CONTIGS"
+  echo "bamdir:     $BAMDIR"
+  echo "threads:    $THREADS"
+  echo "seed:       ${SEED:-unset}"
+  echo "host:       $(nproc) cores, $(free -g | awk '/Mem:/{print $2}')G RAM, gpu=$(nvidia-smi -L 2>/dev/null || echo none)"
+  echo "cmd_wrapper: $CMD_TEXT"
+} | tee "$RUNDIR/run_meta.txt"
+
+export MAMBA_ROOT_PREFIX=/vol/data/envs/.mamba
+cd "$SRC/COMEBin"   # upstream resolves ../auxiliary relative to CWD
+
+# Fields: pid pgid logfile rundir start_epoch mode source_repo contigs bamdir.
+printf '%s %s %s %s %s %s %s %s %s\n' "$$" "$(ps -o pgid= -p $$ | tr -d ' ')" \
+  "$RUNDIR/comebin_run.log" "$RUNDIR" "$(date +%s)" "$MODE" "$SRC" "$CONTIGS" "$BAMDIR" > "$ACTIVE.tmp.$$"
+mv "$ACTIVE.tmp.$$" "$ACTIVE"
+
+SAMPLER_PID=""
+cleanup() {
+  rc=$?
+  trap - EXIT
+  if [ -n "$SAMPLER_PID" ] && kill -0 "$SAMPLER_PID" 2>/dev/null; then
+    kill "$SAMPLER_PID" 2>/dev/null || true
+    wait "$SAMPLER_PID" 2>/dev/null || true
+  fi
+  if [ "$rc" -eq 0 ] && [ -f "$ACTIVE" ]; then
+    read -r current_pid _ < "$ACTIVE" || true
+    [ "${current_pid:-}" = "$$" ] && rm -f "$ACTIVE"
+  fi
+  exit "$rc"
+}
+trap cleanup EXIT
+trap 'exit 130' INT TERM
+
+sample_resources() {
+  printf 'timestamp\tpids\tcpu_pct\trss_gb\tsystem_mem_mb\n'
+  while :; do
+    read -r pids cpu_pct rss_kb <<<"$(ps -eo pid=,pcpu=,rss=,args= | awk -v out="$RUNDIR/comebin_out" '
+      index($0, out) && $4 !~ /^awk/ {
+        p = p ? p "," $1 : $1; c += $2; r += $3
+      }
+      END { printf "%s %.1f %.0f", p, c, r }
+    ')"
+    system_mem_mb=$(free -m | awk '/Mem:/{print $3}')
+    printf '%s\t%s\t%s\t%.3f\t%s\n' "$(date -Is)" "${pids:-none}" \
+      "${cpu_pct:-0}" "$(awk -v kb="${rss_kb:-0}" 'BEGIN{print kb/1048576}')" "$system_mem_mb"
+    sleep 30 & wait $!
+  done
+}
+sample_resources > "$RUNDIR/logs/resources.tsv" 2> "$RUNDIR/logs/sampler.out" &
+SAMPLER_PID=$!
+
+# capture the real main.py train command once training starts (non-blocking)
+( sleep 12; MCMD=$(pgrep -af 'main.py train' 2>/dev/null | head -1 | cut -d' ' -f2-); \
+  [ -n "$MCMD" ] && echo "cmd_train_py: $MCMD" >> "$RUNDIR/run_meta.txt" ) &
+
+START=$(date +%s)
+set +e
+CUDA_VISIBLE_DEVICES= "$MM" run -p "$ENV" bash run_comebin.sh \
+  "${COMEBIN_ARGS[@]}" 2>&1 | tee "$RUNDIR/comebin_run.log"
+RC=${PIPESTATUS[0]}
+set -e
+=== how MODE appeared in run_meta for marine ===
+=== how it appears for fix_v11 ===
+> build · big-pickle
+[0m$ [0msed -n '35,54p' /vol/data/repos/metagenomic-binning-benchmark/scripts/run_comebin_fix.sh
+fi
+if [ -f "$RUNDIR/run_meta.txt" ] || [ -d "$RUNDIR/comebin_out" ]; then
+  echo "ERROR: refusing to overwrite existing run directory: $RUNDIR"
+  exit 1
+fi
+
+mkdir -p "$RUNDIR/logs"
+COMMIT=$(git -C "$SRC" rev-parse HEAD)
+DIRTY=$(git -C "$SRC" status --porcelain --untracked-files=no | wc -l)
+BRANCH=$(git -C "$SRC" branch --show-current)
+echo "source: $SRC (branch $BRANCH) commit: $COMMIT (dirty files: $DIRTY)"
+[ "$DIRTY" -eq 0 ] || { echo "REFUSING: source tree has uncommitted changes; commit them first"; exit 1; }
+COMEBIN_ARGS=(-a "$CONTIGS" -p "$BAMDIR" -o "$RUNDIR/comebin_out" -n 6 -t "$THREADS")
+if grep -q -- '-d STR.*device' "$SRC/COMEBin/run_comebin.sh"; then
+  COMEBIN_ARGS+=(-d cpu)
+fi
+if [ -n "$SEED" ] && grep -q -- '-s INT.*seed' "$SRC/COMEBin/run_comebin.sh"; then
+  COMEBIN_ARGS+=(-s "$SEED")
+fi
+CMD_TEXT=$(printf '%q ' "$MM" run -p "$ENV" bash run_comebin.sh "${COMEBIN_ARGS[@]}")
+> build · big-pickle
+Launch command is locked in: `CONTIGS=.../contigs.fa BAMDIR=.../bamfiles MODE=cami3 SEED=42 run_comebin_fix.sh /vol/data/benchmark/runs/cami3_v11_20260926`, detached. Prep still needs sample_1 BAM + `.bai`/quickcheck. Continuing to monitor:
