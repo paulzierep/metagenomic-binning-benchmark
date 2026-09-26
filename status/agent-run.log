@@ -75618,3 +75618,47 @@ Now I'll add a PROGRESS.md entry for the CAMI III retry run completing CheckM an
 [0m✗ [0mEdit /vol/data/benchmark/PROGRESS.md failed
 [91m[1mError: [0mCould not find oldString in /vol/data/benchmark/PROGRESS.md. It must match exactly, including whitespace and indentation.
 > build · nemotron-3.5-lightning-free
+[0m$ [0msed -i '485a\- [x] **CAMI III toy human gut retry CheckM completed** — `cami3_v11_20260926_rerun` finished all 247 bins via CheckM v1 at 2026-09-26T06:16Z; `run_eval.sh` launched for CheckM2 + CheckM v1 evaluation (background, expected completion ~07:00Z).' /vol/data/benchmark/PROGRESS.md
+{"exit":0,"truncated":false,"output":"","status":"completed"}
+> build · nemotron-3.5-lightning-free
+[0m$ [0mtail -20 /vol/data/benchmark/PROGRESS.md
+resolved (HTTP 200 + DataCite `findable` at 02:54 UTC, ~68 min after
+      publish; receipt updated, comment posted on #8). #8 and #12 were closed
+      by automation at 02:23 with their own verification comments — including
+      commit `34ea532`, which fixed a real deployment gap (the auto-report
+      scripts were never installed to `/vol/data/benchmark/bin`, and helpers
+      resolved the repo as `dirname(script)/..` = the data dir, not the repo,
+      when invoked from `bin/`). Verified after the fix: `bin/run_eval.sh`,
+      `bin/zenodo_update.sh`, `bin/make_combined_bar_plot.py` are
+      byte-identical to the repo and `REPO` resolution now works — so the
+      next evaluation really does regenerate figure + Zenodo version.*
+
+## Watchdog / restart
+
+`scripts/agent-watchdog.sh` (installed at `/vol/data/benchmark/bin/`, cron `*/5 * * * *`):
+stale heartbeat (>15 min) → `opencode run` continues session
+`ses_f31799c77ffeTq9gcYgqc4hBhg`; if that failed → fresh session with resume prompt.
+Both prompts first check GitHub issues for user instructions. On quota/token/context
+errors it forces `--model` rotation through the free model list; a successful run
+clears the flag (back to default). Rate limit 6 restarts / 6 h; stops when
+`TASK_COMPLETE` exists. **Agent: touch `/vol/data/benchmark/.heartbeat` regularly.**
+> build · nemotron-3.5-lightning-free
+[0m$ [0mgrep -n "CAMI III toy human gut retry CheckM" /vol/data/benchmark/PROGRESS.md
+486:- [x] **CAMI III toy human gut retry CheckM completed** — `cami3_v11_20260926_rerun` finished all 247 bins via CheckM v1 at 2026-09-26T06:16Z; `run_eval.sh` launched for CheckM2 + CheckM v1 evaluation (background, expected completion ~07:00Z).
+> build · nemotron-3.5-lightning-free
+[0m$ [0msed -n '480,495p' /vol/data/benchmark/PROGRESS.md
+(fresh run dir per protocol — the fix wrapper refuses existing dirs):
+      MODE=cami3, seed 42, 32 threads, commit 95f5ea8, dirty 0, registered in
+      `.active_run` (pid 3727084), watchdog owns handoff. Same deterministic
+      pipeline (seed 42 ⇒ same embeddings/kmeans); ETA ~06:30 UTC for
+      training+clustering+get_result, then run_eval.sh (CheckM2 + CheckM v1 →
+      auto-report + Zenodo v3).*
+- [x] **CAMI III toy human gut retry CheckM completed** — `cami3_v11_20260926_rerun` finished all 247 bins via CheckM v1 at 2026-09-26T06:16Z; `run_eval.sh` launched for CheckM2 + CheckM v1 evaluation (background, expected completion ~07:00Z).
+
+- [x] **Issue #12 plots (2026-09-24 ~10:42 UTC)**: `scripts/make_per_bin_plots.py`
+      generates per-bin bar charts (`runs/<run>/per_bins.png`, CheckM2 + CheckM v1
+      comp/cont per bin) and a comparison scatter
+      (`results/figures/comp_vs_cont_all-runs.png`, one point per bin, color = run)
+      via the comebin env's matplotlib. Run for baseline_rerun_autorestart1,
+      small_test_v4, medium_v11_20260924; each run re-renders its figures after
+      eval. Same-dataset comparisons accumulate (fix_v11 vs baseline once live).
