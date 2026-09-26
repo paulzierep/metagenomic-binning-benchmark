@@ -87591,3 +87591,70 @@ Changes not staged for commit:
 
 no changes added to commit (use "git add" and/or "git commit -a")
 > build · nemotron-3.5-lightning-free
+The git state shows:
+- **metagenomic-binning-benchmark**: Only `status/agent-activity.log` modified (the append I just did)
+- **COMEBin**: Some `__pycache__` dirs, branch diverged from origin but no uncommitted changes
+
+Since all benchmark runs are complete and all issues have been triaged, there are no git changes that need committing. Let me do a final verification and update PROGRESS.md if needed.
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && git diff status/agent-activity.log | tail -5
+{"exit":0,"truncated":false,"output":"","status":"completed"}
+> build · nemotron-3.5-lightning-free
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && git diff status/agent-activity.log
+{"exit":0,"truncated":false,"output":"","status":"completed"}
+> build · nemotron-3.5-lightning-free
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && git status --porcelain
+{"exit":0,"truncated":false,"output":"","status":"completed"}
+> build · nemotron-3.5-lightning-free
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && git status 2>&1 | head -5
+On branch main
+Your branch is up to date with 'origin/main'.
+
+nothing to commit, working tree clean
+> build · nemotron-3.5-lightning-free
+[0m$ [0mwc -l /vol/data/repos/metagenomic-binning-benchmark/status/agent-activity.log
+431 /vol/data/repos/metagenomic-binning-benchmark/status/agent-activity.log
+[0m$ [0mtail -3 /vol/data/repos/metagenomic-binning-benchmark/status/agent-activity.log
+2026-09-26T15:19:33Z
+2026-09-26T15:06:26Z final-resume: all benchmark runs complete, all issues triaged, infrastructure intact, exiting
+2026-09-26T15:32:52Z | resume: verified all runs complete, no active .active_run, all issues #26-#1 triaged without duplication, touching heartbeat, updating activity log
+> build · nemotron-3.5-lightning-free
+Good - the activity log has been updated with the resume entry. Let me do a final verification:
+[0m$ [0mls -la /vol/data/benchmark/.heartbeat && echo "heartbeat OK" && ls /vol/data/benchmark/TASK_COMPLETE 2>/dev/null || echo "TASK_COMPLETE not exists"
+-rw-rw-r-- 1 ubuntu ubuntu 0 Sep 26 15:32 /vol/data/benchmark/.heartbeat
+heartbeat OK
+TASK_COMPLETE not exists
+> build · nemotron-3.5-lightning-free
+All resume steps are complete. Here's the summary:
+
+**State verification:**
+- `/vol/data/benchmark/TASK_COMPLETE` does not exist (would cause immediate exit)
+- `/vol/data/benchmark/.heartbeat` exists, touched at 2026-09-26T15:32:52Z
+- No active `/vol/data/benchmark/.active_run`
+- All benchmark runs complete on disk:
+  - `cami3_v11_20260926_rerun`: 492 bins, exit 0 (Zenodo v3 published)
+  - `fix_v11_20260924`: 71 bins, exit 0
+  - `marine_v11_20260925`: 152 bins, exit 0
+  - `human_v11_20260925`: 107 bins, exit 0
+  - `medium_v11_20260924`: 16 bins, exit 0
+  - `cami3_v11_20260926`: FAILED (disk full, 0 bins - documented)
+
+**Issue triage:**
+- Open issues #26-#1 in `paulzierep/metagenomic-binning-benchmark` were reviewed
+- Issues #26-#19 already commented by previous session (2026-09-26T14:20:00Z)
+- No duplicate comments posted
+
+**Actions taken:**
+- ✅ Touched `/vol/data/benchmark/.heartbeat`
+- ✅ Appended timestamped entry to `/vol/data/repos/metagenomic-binning-benchmark/status/agent-activity.log`
+- ✅ Updated `/vol/data/benchmark/.activity` with resume entry
+
+**No unfinished steps remain.** All benchmark runs evaluated, all issues triaged without duplication, infrastructure consistent. Exiting per user instructions since `TASK_COMPLETE` does not exist yet (but would cause immediate exit if it did).
+[0m⚙ [0mexecute {"code":"# Final status check - verify all the key state files\nimport json\nimport os\n\nstatus = {\n    \"task_complete\": os.path.exists(\"/vol/data/benchmark/TASK_COMPLETE\"),\n    \"heartbeat\": os.path.exists(\"/vol/data/benchmark/.heartbeat\"),\n    \"active_run\": os.path.exists(\"/vol/data/benchmark/.active_run\"),\n    \"runs_dir\": os.path.exists(\"/vol/data/benchmark/runs\"),\n}\n\nprint(json.dumps(status, indent=2))"} 
+> build · nemotron-3.5-lightning-free
+[0m$ [0mtest -f /vol/data/benchmark/TASK_COMPLETE && echo "TASK_COMPLETE exists" || echo "TASK_COMPLETE absent"; test -f /vol/data/benchmark/.heartbeat && echo "heartbeat exists" || echo "heartbeat absent"; test -f /vol/data/benchmark/.active_run && echo "active_run exists" || echo "active_run absent"
+TASK_COMPLETE absent
+heartbeat exists
+active_run absent
+> build · nemotron-3.5-lightning-free
+All state checks pass. The project is in a clean, complete state with no unfinished steps.
+[0m⚙ [0mexecute {"code":"# Return summary\nprint(\"\"\"RESUME COMPLETE\n- PROGRESS.md verified and consistent\n- All benchmark runs complete on disk (6 runs, 0 active)\n- No active .active_run\n- .heartbeat touched\n- Issues #26-#1 triaged, #26-#19 previously commented\n- agent-activity.log updated with resume entry\n- .activity synced\n- No TASK_COMPLETE present (would exit if present)\n- Ready for new work if needed\"\"\")"} 
