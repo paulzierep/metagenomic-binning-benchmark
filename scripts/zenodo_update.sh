@@ -291,8 +291,13 @@ req GET "https://zenodo.org/api/records/$NEW_ID"
 python3 - "$WORK/resp.json" "$FNAME" "$(stat -c%s "$OUT")" "$OUT_MD5" <<'PY'
 import json, sys
 rec, fname, size, md5 = json.load(open(sys.argv[1])), sys.argv[2], int(sys.argv[3]), sys.argv[4]
-files = rec.get("files", {}).get("entries", {}) or {
-    f.get("key") or f.get("filename"): f for f in rec.get("files", [])}
+# Zenodo returns "files" either as {"entries": {...}} (API 2.x), a bare dict, or
+# a plain list (API 1.x shape) — normalise all three before the lookups.
+raw = rec.get("files", {})
+if isinstance(raw, dict):
+    files = raw.get("entries", {}) or raw
+else:
+    files = {f.get("key") or f.get("filename"): f for f in raw}
 entry = files.get(fname)
 if entry is None:
     sys.exit(f"uploaded file {fname} missing from published record")

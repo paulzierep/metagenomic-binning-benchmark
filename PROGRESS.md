@@ -480,9 +480,26 @@ included; fixes land on branch `comebin-optimizations` in this repo.
       (fresh run dir per protocol — the fix wrapper refuses existing dirs):
       MODE=cami3, seed 42, 32 threads, commit 95f5ea8, dirty 0, registered in
       `.active_run` (pid 3727084), watchdog owns handoff. Same deterministic
-      pipeline (seed 42 ⇒ same embeddings/kmeans); ETA ~06:30 UTC for
-      training+clustering+get_result, then run_eval.sh (CheckM2 + CheckM v1 →
-      auto-report + Zenodo v3).*
+      pipeline (seed 42 ⇒ same embeddings/kmeans).*
+      *2026-09-26 06:18: **retry COMPLETED** — exit 0, wall 5,392 s (90 min),
+      full 200/200 epochs (final Top-1 74.95 %, no early stop; epoch 99 loss/top1
+      bit-identical to attempt 1 ⇒ deterministic replay), Leiden 120/120 →
+      **492 non-empty bins**; run_meta has exit_code/wall_s/bins, `.active_run`
+      cleared by cleanup. Eval launched detached 06:18 (run_eval.sh): CheckM v1
+      rc 0 (2,514 s incl. pplacer over 492 bins) → **32.46 % / 13.38 %
+      (HQ 54, MQ 100)**; CheckM2 attempt 1 rc 1 — CheckM2 1.1.0's 32-thread
+      gene-calling race on the 492-bin set ("List of protein files does not
+      match internal reference"), failed output preserved as
+      `eval/checkm2.incomplete.<ts>`, **16-thread retry rc 0** (1,137 s) →
+      **35.97 % / 11.42 % (HQ 53, MQ 112)** — most bins and most HQ/MQ of any
+      run, highest mean contamination (strain-rich toy gut). Report chain all
+      rc 0: `results/cami3_v11_20260926_rerun.csv` (label **"CAMI III"** via
+      the `32c5240` matcher fix), per-bin CSV + plots, combined bar plot (3 main
+      datasets unchanged per #12), Zenodo **v3** in flight (draft 22973575,
+      520 MB tarball — cami3's 492 bins ship as the new data per #8).
+      docs/11 gained the summary row + two attempt rows; README bullet + this
+      entry to commit. Outstanding: verify Zenodo v3 receipt + DOI, README
+      bullet with v3 DOI, report on issue #6.*
 
 - [x] **Issue #12 plots (2026-09-24 ~10:42 UTC)**: `scripts/make_per_bin_plots.py`
       generates per-bin bar charts (`runs/<run>/per_bins.png`, CheckM2 + CheckM v1
