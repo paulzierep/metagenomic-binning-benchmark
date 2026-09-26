@@ -3,10 +3,10 @@
 | | |
 |---|---|
 | Status | 🟢 `running` |
-| ⏱ Updated (Europe/Berlin) | `2026-09-26T17:52 CEST` |
-| 🏃 Last benchmark (not active) | `cami3_v11_20260926_rerun` — last observed **epoch 199/200** (log 35702s old) |
+| ⏱ Updated (Europe/Berlin) | `2026-09-26T17:54 CEST` |
+| 🏃 Last benchmark (not active) | `cami3_v11_20260926_rerun` — last observed **epoch 199/200** (log 35822s old) |
 | 🧠 Model (last turn) | `nemotron-3.5-lightning-free` (watchdog rotates to free models on quota) |
-| 📌 Agent note · **19 min old** | 2026-09-25T12:16:00Z | marine_v11_20260925 active: epoch 147/200, COMEBin-v11@95f5ea8, cami2 mode; heartbeat touched; PROGRESS synced
+| 📌 Agent note · **21 min old** | 2026-09-25T12:16:00Z | marine_v11_20260925 active: epoch 147/200, COMEBin-v11@95f5ea8, cami2 mode; heartbeat touched; PROGRESS synced
 2026-09-25T15:34:55Z | issues triaged: #12 reporting auto-plots confirmed complete; #8 Zenodo record active with continuous-update workflow; marine run completed; no active run
 2026-09-25T20:49:23Z | issues triaged: #12 auto-plots complete; #8 zenodo record published with continuous-update workflow; marine run completed; no active run; agent resumed for CAMI III prep
 2026-09-25T21:11:13Z | issues #12 and #8 triaged: reporting auto-plots confirmed complete and Zenodo continuous-update workflow verified; no active runs; preparing for CAMI III dataset prep
@@ -71,9 +71,9 @@
 2026-09-26T15:13:07Z
 2026-09-26T15:06:26Z agent-resume-second: all runs complete, no unfinished steps, issues re-triaged without duplication
 2026-09-26T15:32:52Z | resume: agent restart; verified all runs complete (cami3_rerun 492 bins, fix_v11 71, marine 152, human 107, medium 16), no active .active_run, all open issues #26-#1 triaged without duplication; heartbeat touched |
-| ⚙️ Load · uptime | `0.02 0.05 0.04` · 3 days, 2 hours, 16 minutes — 32 cores, 62 GiB, no GPU |
-| 💾 RAM used/total | `2162/64295 MB` |
+| ⚙️ Load · uptime | `0.06 0.07 0.04` · 3 days, 2 hours, 18 minutes — 32 cores, 62 GiB, no GPU |
+| 💾 RAM used/total | `2173/64295 MB` |
 | 🔗 Session | `ses_f31799c77ffeTq9gcYgqc4hBhg` |
-| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `e337f542 status: yes — cami3_v11_20260926_rerun epoch 199/200 loss 1.408849954` |
-| 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `8857052 B` — every run, command & tool result |
+| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `f99dacee meta: supervise tick 2026-09-26T15:53:01Z — 0 fix(es)` |
+| 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `8861581 B` — every run, command & tool result |
 | 📈 Timeline | [status/status.log](status/status.log) |
