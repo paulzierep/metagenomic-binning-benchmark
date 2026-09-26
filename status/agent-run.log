@@ -72441,3 +72441,115 @@ total 8
 drwxrwxr-x 2 ubuntu ubuntu 4096 Sep 25 21:54 .
 drwxrwxr-x 4 ubuntu ubuntu 4096 Sep 26 01:54 ..
 2026-09-26T01:57:50Z
+> build · big-pickle
+Monitoring continues. Let me re-check DOI propagation and prep progress in parallel:
+[0m$ [0mls -la --time-style=long-iso /vol/data/datasets/cami_III/toy_human_input_2samples/contigs.fa.* 2>/dev/null; echo "=== procs ==="; ps -eo pid,etime,cmd | grep -E "bwa (index|mem)|samtools" | grep -v grep | head -6; echo "=== bamfiles ==="; ls -la --time-style=long-iso /vol/data/datasets/cami_III/toy_human_input_2samples/bamfiles/ 2>/dev/null; date -u +%FT%TZ; touch /vol/data/benchmark/.heartbeat
+-rw-rw-r-- 1 ubuntu ubuntu      1478 2026-09-26 01:49 /vol/data/datasets/cami_III/toy_human_input_2samples/contigs.fa.amb
+-rw-rw-r-- 1 ubuntu ubuntu    391378 2026-09-26 01:49 /vol/data/datasets/cami_III/toy_human_input_2samples/contigs.fa.ann
+-rw-rw-r-- 1 ubuntu ubuntu 563268660 2026-09-26 01:49 /vol/data/datasets/cami_III/toy_human_input_2samples/contigs.fa.pac
+-rw-rw-r-- 1 ubuntu ubuntu 563268712 2026-09-26 01:54 /vol/data/datasets/cami_III/toy_human_input_2samples/contigs.fa.sa
+=== procs ===
+3173759       08:58 /bin/bash -c rm -f /vol/data/datasets/cami_III/toy_human_input_2samples/contigs.fa.* && /vol/data/envs/comebin/bin/bwa index /vol/data/datasets/cami_III/toy_human_input_2samples/contigs.fa & BWA_PID=$! echo "Started bwa index PID $BWA_PID in background" # Wait a fixed amount and check sleep 600 echo "Checking after 600s..." ls -la /vol/data/datasets/cami_III/toy_human_input_2samples/contigs.fa.* 2>/dev/null ps -p $BWA_PID -o pid,stat 2>/dev/null || echo "Process gone"
+3173760       08:58 /bin/bash -c rm -f /vol/data/datasets/cami_III/toy_human_input_2samples/contigs.fa.* && /vol/data/envs/comebin/bin/bwa index /vol/data/datasets/cami_III/toy_human_input_2samples/contigs.fa & BWA_PID=$! echo "Started bwa index PID $BWA_PID in background" # Wait a fixed amount and check sleep 600 echo "Checking after 600s..." ls -la /vol/data/datasets/cami_III/toy_human_input_2samples/contigs.fa.* 2>/dev/null ps -p $BWA_PID -o pid,stat 2>/dev/null || echo "Process gone"
+3173763       08:57 /vol/data/envs/comebin/bin/bwa index /vol/data/datasets/cami_III/toy_human_input_2samples/contigs.fa
+=== bamfiles ===
+total 8
+drwxrwxr-x 2 ubuntu ubuntu 4096 2026-09-25 21:54 .
+drwxrwxr-x 4 ubuntu ubuntu 4096 2026-09-26 01:54 ..
+2026-09-26T01:58:09Z
+[0m$ [0mcat /vol/data/benchmark/.active_run 2>/dev/null; echo "---doi---"; curl -sS -o /dev/null -L -w "version2 doi -> %{http_code}\n" https://doi.org/10.5281/zenodo.22969763; echo "---concept---"; curl -sS -o /dev/null -L -w "concept doi -> %{http_code}\n" https://doi.org/10.5281/zenodo.22935024; date -u +%FT%TZ; touch /vol/data/benchmark/.heartbeat
+---doi---
+version2 doi -> 404
+---concept---
+concept doi -> 200
+2026-09-26T01:58:09Z
+> build · big-pickle
+`.sa` written at 01:54 but `.bwt` still missing — `bwa index` (3173763) still running; the sibling's 600s-wrapper will fire its check around 01:59 and may relaunch. Leaving it alone per mandate. Meanwhile, addressing the known docs/10 inconsistency (stale "watchdogs do not upload automatically" text):
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && grep -n "upload" docs/10-data-preservation.md | head; echo "==="; grep -n "" docs/10-data-preservation.md | sed -n '105,125p'
+5:reproducible. The watchdogs do not upload data automatically; an owner-approved
+23:for a release. CheckM databases and environment trees are not uploaded as part
+26:## What is needed before upload
+49:records every regular file, so the file can be reviewed before upload:
+82:uploaded filenames, and final checksums in:
+89:If the upload is incomplete or verification fails, retain the local data and
+117:   upload through the record's file bucket
+144:  description live) and both uploaded file sizes and MD5 checksums match the
+===
+105:   `bin_stats_ext.tsv` + `checkm.log`), `docs/`, `README.md`, `PROGRESS.md`
+106:   and `status/agent-activity.log`. Runs without bins and without evaluation
+107:   results are excluded.
+108:2. **Manifest** with `make_release_manifest.py --omit-local-path` (sorted
+109:   relative paths, byte sizes, SHA-256, provenance metadata); the manifest
+110:   ships inside the tarball as `manifest.json`.
+111:3. **Change detection**: SHA-256 over the manifest's per-file hashes is
+112:   compared with `meta/zenodo_last_content.sha256`; identical content exits
+113:   without touching Zenodo, so repeated evaluations cannot create empty
+114:   versions.
+115:4. **Publish as a new version** of record `22935025` under concept DOI
+116:   10.5281/zenodo.22935024: reuse an open draft or `POST .../actions/newversion`,
+117:   upload through the record's file bucket
+118:   (`PUT /api/files/<bucket>/<name>`), refresh title/description/version
+119:   metadata, publish. The concept DOI always resolves to the newest version;
+120:   the per-version DOI of v1 (10.5281/zenodo.22935025) stays valid.
+121:5. **Verify + record**: published file size and MD5 must match the local
+122:   tarball and the DOI resolver is checked; a receipt is written to
+123:   `meta/zenodo_benchmark_release_v<N>.json` and only then is the content
+124:   marker updated.
+125:
+> build · big-pickle
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && grep -n "" docs/10-data-preservation.md | sed -n '1,12p'
+1:# 10 — Data preservation and Zenodo release plan
+2:
+3:This is the release checklist for newly generated benchmark data (issue #8). It
+4:keeps the repository small while making a deposition reviewable and
+5:reproducible. The watchdogs do not upload data automatically; an owner-approved
+6:Zenodo account/token and a final choice of data license and release contents
+7:are required for each manual or supervisor-operated deposit.
+8:
+9:## What would be released
+10:
+11:The preferred release unit is a reproducible derivative dataset, not the VM's
+12:whole working directory:
+> build · big-pickle
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/docs/10-data-preservation.md
+Index: /vol/data/repos/metagenomic-binning-benchmark/docs/10-data-preservation.md
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/docs/10-data-preservation.md
++++ /vol/data/repos/metagenomic-binning-benchmark/docs/10-data-preservation.md
+@@ -1,11 +1,14 @@
+ # 10 — Data preservation and Zenodo release plan
+ 
+ This is the release checklist for newly generated benchmark data (issue #8). It
+ keeps the repository small while making a deposition reviewable and
+-reproducible. The watchdogs do not upload data automatically; an owner-approved
+-Zenodo account/token and a final choice of data license and release contents
+-are required for each manual or supervisor-operated deposit.
++reproducible. Uploads are **automatic**: after every successful evaluation,
++`run_eval.sh` calls `scripts/zenodo_update.sh` (best-effort), which packages the
++new data, detects content changes and publishes a new version of the record —
++the first automatic update shipped as version 2.0 (see the "Continuous updates"
++section below). An owner-approved Zenodo token (mode-0600 `~/.zenodo_token`) and
++the chosen license are configured once; the token never leaves the VM.
+ 
+ ## What would be released
+ 
+ The preferred release unit is a reproducible derivative dataset, not the VM's
+
+> build · big-pickle
+Fixed the stale docs/10 text. Now checking whether the sibling's 600s wrapper fired and whether the index survived or got reset:
+[0m$ [0mls -la --time-style=long-iso /vol/data/datasets/cami_III/toy_human_input_2samples/contigs.fa.* 2>/dev/null; echo "=== procs ==="; ps -eo pid,etime,cmd | grep -E "bwa (index|mem)|samtools" | grep -v grep | head -8; echo "=== bamfiles ==="; ls -la /vol/data/datasets/cami_III/toy_human_input_2samples/bamfiles/ 2>/dev/null; date -u +%FT%TZ; touch /vol/data/benchmark/.heartbeat
+-rw-rw-r-- 1 ubuntu ubuntu      1478 2026-09-26 01:49 /vol/data/datasets/cami_III/toy_human_input_2samples/contigs.fa.amb
+-rw-rw-r-- 1 ubuntu ubuntu    391378 2026-09-26 01:49 /vol/data/datasets/cami_III/toy_human_input_2samples/contigs.fa.ann
+-rw-rw-r-- 1 ubuntu ubuntu 563268660 2026-09-26 01:49 /vol/data/datasets/cami_III/toy_human_input_2samples/contigs.fa.pac
+-rw-rw-r-- 1 ubuntu ubuntu 563268712 2026-09-26 01:54 /vol/data/datasets/cami_III/toy_human_input_2samples/contigs.fa.sa
+=== procs ===
+3173759       09:07 /bin/bash -c rm -f /vol/data/datasets/cami_III/toy_human_input_2samples/contigs.fa.* && /vol/data/envs/comebin/bin/bwa index /vol/data/datasets/cami_III/toy_human_input_2samples/contigs.fa & BWA_PID=$! echo "Started bwa index PID $BWA_PID in background" # Wait a fixed amount and check sleep 600 echo "Checking after 600s..." ls -la /vol/data/datasets/cami_III/toy_human_input_2samples/contigs.fa.* 2>/dev/null ps -p $BWA_PID -o pid,stat 2>/dev/null || echo "Process gone"
+3173760       09:07 /bin/bash -c rm -f /vol/data/datasets/cami_III/toy_human_input_2samples/contigs.fa.* && /vol/data/envs/comebin/bin/bwa index /vol/data/datasets/cami_III/toy_human_input_2samples/contigs.fa & BWA_PID=$! echo "Started bwa index PID $BWA_PID in background" # Wait a fixed amount and check sleep 600 echo "Checking after 600s..." ls -la /vol/data/datasets/cami_III/toy_human_input_2samples/contigs.fa.* 2>/dev/null ps -p $BWA_PID -o pid,stat 2>/dev/null || echo "Process gone"
+3173763       09:06 /vol/data/envs/comebin/bin/bwa index /vol/data/datasets/cami_III/toy_human_input_2samples/contigs.fa
+=== bamfiles ===
+total 8
+drwxrwxr-x 2 ubuntu ubuntu 4096 Sep 25 21:54 .
+drwxrwxr-x 4 ubuntu ubuntu 4096 Sep 26 01:54 ..
+2026-09-26T01:58:18Z
+> build · big-pickle
+`.sa` written at 01:54 but `.bwt` still missing — the pattern suggests bwa writes `.sa` mid-flight; process 3173763 is still alive (9+ min). The sibling's 600s wrapper fires at ~01:59:11; if the process is still alive it shouldn't relaunch. Waiting and re-checking:
