@@ -3,8 +3,8 @@
 | | |
 |---|---|
 | Status | 🟢 `running` |
-| ⏱ Updated (Europe/Berlin) | `2026-09-26T10:08 CEST` |
-| 🏃 Last benchmark (not active) | `cami3_v11_20260926_rerun` — last observed **epoch 199/200** (log 7863s old) |
+| ⏱ Updated (Europe/Berlin) | `2026-09-26T10:10 CEST` |
+| 🏃 Last benchmark (not active) | `cami3_v11_20260926_rerun` — last observed **epoch 199/200** (log 7982s old) |
 | 🧠 Model (last turn) | `big-pickle` (watchdog rotates to free models on quota) |
 | 📌 Agent note · **1 min old** | 2026-09-25T12:16:00Z | marine_v11_20260925 active: epoch 147/200, COMEBin-v11@95f5ea8, cami2 mode; heartbeat touched; PROGRESS synced
 2026-09-25T15:34:55Z | issues triaged: #12 reporting auto-plots confirmed complete; #8 Zenodo record active with continuous-update workflow; marine run completed; no active run
@@ -49,10 +49,11 @@
 2026-09-26T08:00:26Z zenodo-v3-version-doi-recheck attempt 3 -> HTTP 404 (waiting)
 2026-09-26T08:02:27Z zenodo-v3-version-doi-recheck attempt 4 -> HTTP 404 (waiting)
 2026-09-26T08:04:27Z zenodo-v3-version-doi-recheck attempt 5 -> HTTP 404 (waiting)
-2026-09-26T08:06:27Z zenodo-v3-version-doi-recheck attempt 6 -> HTTP 404 (waiting) |
-| ⚙️ Load · uptime | `0.01 0.07 1.21` · 2 days, 18 hours, 32 minutes — 32 cores, 62 GiB, no GPU |
-| 💾 RAM used/total | `2161/64295 MB` |
+2026-09-26T08:06:27Z zenodo-v3-version-doi-recheck attempt 6 -> HTTP 404 (waiting)
+2026-09-26T08:08:27Z zenodo-v3-version-doi-recheck attempt 7 -> HTTP 404 (waiting) |
+| ⚙️ Load · uptime | `0.03 0.06 1.07` · 2 days, 18 hours, 34 minutes — 32 cores, 62 GiB, no GPU |
+| 💾 RAM used/total | `2149/64295 MB` |
 | 🔗 Session | `ses_f31799c77ffeTq9gcYgqc4hBhg` |
-| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `10f25edc status: yes — cami3_v11_20260926_rerun epoch 199/200 loss 1.408849954` |
+| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `550389e9 status: yes — cami3_v11_20260926_rerun epoch 199/200 loss 1.408849954` |
 | 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `7651157 B` — every run, command & tool result |
 | 📈 Timeline | [status/status.log](status/status.log) |
