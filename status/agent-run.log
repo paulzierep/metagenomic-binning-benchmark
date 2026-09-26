@@ -72606,3 +72606,31 @@ Date:   Sat Sep 26 02:00:03 2026 +0000
     2026-09-26T00:50:20Z marine-eval-launche
 > build · big-pickle
 Clean push (9ebf99f was just auto heartbeat commits from the status-heartbeat cron). Continuing to monitor the index — the sibling's 600s check fires ~02:12:
+[0m$ [0msleep 300; ls -la --time-style=long-iso /vol/data/datasets/cami_III/toy_human_input_2samples/contigs.fa.* 2>/dev/null; echo "=== procs ==="; ps -eo pid,ppid,etime,cmd | grep -E "bwa (index|mem)|samtools" | grep -v grep | head -8; echo "=== bamfiles ==="; ls -la /vol/data/datasets/cami_III/toy_human_input_2samples/bamfiles/ 2>/dev/null; date -u +%FT%TZ; touch /vol/data/benchmark/.heartbeat
+-rw-rw-r-- 1 ubuntu ubuntu      1478 2026-09-26 02:03 /vol/data/datasets/cami_III/toy_human_input_2samples/contigs.fa.amb
+-rw-rw-r-- 1 ubuntu ubuntu    391378 2026-09-26 02:03 /vol/data/datasets/cami_III/toy_human_input_2samples/contigs.fa.ann
+-rw-rw-r-- 1 ubuntu ubuntu 563268660 2026-09-26 02:03 /vol/data/datasets/cami_III/toy_human_input_2samples/contigs.fa.pac
+=== procs ===
+3178745    5551       05:39 /bin/bash -c /vol/data/envs/comebin/bin/bwa index /vol/data/datasets/cami_III/toy_human_input_2samples/contigs.fa & BWA_PID=$! echo "Started bwa index PID $BWA_PID" # Wait a long time for it to complete sleep 600 echo "Checking after 600s..." ls -la /vol/data/datasets/cami_III/toy_human_input_2samples/contigs.fa.* 2>/dev/null ps -p $BWA_PID -o pid,stat 2>/dev/null || echo "Process gone"
+3179314    5551       04:43 /bin/bash -c /vol/data/tools/bin/micromamba run -p /vol/data/envs/comebin bwa index /vol/data/datasets/cami_III/toy_human_input_2samples/contigs.fa && ls /vol/data/datasets/cami_III/toy_human_input_2samples/contigs.fa.*
+3179315 3179314       04:43 /vol/data/tools/bin/micromamba run -p /vol/data/envs/comebin bwa index /vol/data/datasets/cami_III/toy_human_input_2samples/contigs.fa
+3179317 3179315       04:43 bwa index /vol/data/datasets/cami_III/toy_human_input_2samples/contigs.fa
+=== bamfiles ===
+total 8
+drwxrwxr-x 2 ubuntu ubuntu 4096 Sep 25 21:54 .
+drwxrwxr-x 4 ubuntu ubuntu 4096 Sep 26 02:02 ..
+2026-09-26T02:07:39Z
+> build · big-pickle
+Three concurrent `bwa index` builds are now running (sibling session launched parallel attempts). Not mine to disturb — I'll keep watching for the completion signal (`.bwt` + `.sa`). Let me review exactly what "prep complete" looks like per the script so I know when to launch:
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && grep -n "quickcheck\|samtools\|\.bam\b\|bamfiles\|bwa mem\|bwa index\|done\|complete" scripts/prep_cami3_toy.sh | sed -n '1,40p'
+14:#   - coverage BAM: bwa mem -p (interleaved short+long reads) over ALL reads.
+32:mkdir -p "$OUT/bamfiles" "$OUT/logs"
+93:# 3. For each sample: build coverage BAM with bwa mem
+123:        if [ ! -f "$OUT/bamfiles/sample_${SAMPLE}_bam.bam" ] || [ -z "$READS_CANDIDATE" ]; then
+157:        "$MM" run -p "$ENV" bwa index "$OUT/contigs.fa" 2>&1 | tail -2
+158:        "$MM" run -p "$ENV" bash -c "bwa mem -p -t $THREADS '$OUT/contigs.fa' '$READS_CANDIDATE' 2>'$OUT/logs/sample_${SAMPLE}/bwa.log' | samtools view -b -F 4 | samtools sort -@ $THREADS -o '$OUT/bamfiles/sample_${SAMPLE}_bam.bam' -"
+159:        "$MM" run -p "$ENV" samtools index "$OUT/bamfiles/sample_${SAMPLE}_bam.bam"
+160:        "$MM" run -p "$ENV" samtools quickcheck "$OUT/bamfiles/sample_${SAMPLE}_bam.bam" && echo "bam OK for sample ${SAMPLE}"
+164:done
+> build · big-pickle
+Prep completion gate: `contigs.fa.bwt` (index) + `bamfiles/sample_{0,1}_bam.bam` + `.bai` + quickcheck OK. `bamfiles/` still empty — prep is at the index stage. Continuing to monitor:

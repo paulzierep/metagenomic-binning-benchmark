@@ -55761,3 +55761,404 @@ EXISTS  PROGRESS.md
 MISSING docs
 MISSING status
 MISSING results/main_runs_table.md
+> build · big-pickle
+This bug has already caused real damage (a stray `results/small_test_v4.csv` in the wrong tree). Let me fix the repo-root resolution in every helper.
+[0m→ [0mRead /vol/data/repos/metagenomic-binning-benchmark/scripts/make_per_bin_plots.py [90m[limit=14, offset=18][0m
+[0m→ [0mRead /vol/data/repos/metagenomic-binning-benchmark/scripts/make_per_bin_csv.py [90m[limit=14, offset=65][0m
+> build · big-pickle
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/scripts/make_combined_bar_plot.py
+Index: /vol/data/repos/metagenomic-binning-benchmark/scripts/make_combined_bar_plot.py
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/scripts/make_combined_bar_plot.py
++++ /vol/data/repos/metagenomic-binning-benchmark/scripts/make_combined_bar_plot.py
+@@ -34,9 +34,28 @@
+ import subprocess
+ import sys
+ 
+ HERE = os.path.dirname(os.path.abspath(__file__))
+-REPO = os.path.normpath(os.path.join(HERE, ".."))
++
++
++def _repo_root():
++    """Locate the repository root.
++
++    This helper is also installed as a standalone copy in
++    /vol/data/benchmark/bin/, where `dirname(__file__)/..` is the benchmark data
++    dir rather than the repo, so the figure and stats table would be generated
++    into a different tree than the one README.md embeds and git tracks.
++    Validate candidates instead of assuming; BENCH_REPO overrides.
++    """
++    for cand in (os.environ.get("BENCH_REPO", "").strip(),
++                 os.path.normpath(os.path.join(HERE, ".."))):
++        if cand and os.path.isfile(os.path.join(cand, "README.md")) \
++                and os.path.isdir(os.path.join(cand, "results")):
++            return cand
++    return "/vol/data/repos/metagenomic-binning-benchmark"
++
++
++REPO = _repo_root()
+ RUNS = os.path.join(REPO, "runs")
+ RESULTS = os.path.join(REPO, "results")
+ FIGDIR = os.path.join(RESULTS, "figures")
+ 
+
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/scripts/make_per_bin_plots.py
+Index: /vol/data/repos/metagenomic-binning-benchmark/scripts/make_per_bin_plots.py
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/scripts/make_per_bin_plots.py
++++ /vol/data/repos/metagenomic-binning-benchmark/scripts/make_per_bin_plots.py
+@@ -21,11 +21,30 @@
+ import os
+ import sys
+ 
+ HERE = os.path.dirname(os.path.abspath(__file__))
+-REPO = os.path.normpath(os.path.join(HERE, ".."))
+ 
+ 
++def _repo_root():
++    """Locate the repository root.
++
++    This helper is also installed as a standalone copy in
++    /vol/data/benchmark/bin/, where `dirname(__file__)/..` is the benchmark data
++    dir rather than the repo, so figures would be written into a different tree
++    than the one README.md and git track. Validate candidates instead of
++    assuming; BENCH_REPO overrides.
++    """
++    for cand in (os.environ.get("BENCH_REPO", "").strip(),
++                 os.path.normpath(os.path.join(HERE, ".."))):
++        if cand and os.path.isfile(os.path.join(cand, "README.md")) \
++                and os.path.isdir(os.path.join(cand, "results")):
++            return cand
++    return "/vol/data/repos/metagenomic-binning-benchmark"
++
++
++REPO = _repo_root()
++
++
+ def load_per_bin(run_dir, name):
+     path = os.path.join(run_dir, "per_bin_results.csv")
+     if not os.path.exists(path):
+         return None
+
+> build · big-pickle
+[0m→ [0mRead /vol/data/repos/metagenomic-binning-benchmark/scripts/make_results_csv.py [90m[limit=16, offset=10][0m
+[0m→ [0mRead /vol/data/repos/metagenomic-binning-benchmark/scripts/make_per_bin_csv.py [90m[limit=14, offset=1][0m
+> build · big-pickle
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/scripts/make_per_bin_csv.py
+Index: /vol/data/repos/metagenomic-binning-benchmark/scripts/make_per_bin_csv.py
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/scripts/make_per_bin_csv.py
++++ /vol/data/repos/metagenomic-binning-benchmark/scripts/make_per_bin_csv.py
+@@ -69,9 +69,9 @@
+         print(__doc__)
+         return 1
+     for rundir in sys.argv[1:]:
+         name = os.path.basename(rundir.rstrip("/"))
+-        out_dir = os.path.join(os.path.dirname(__file__), "..", "runs", name)
++        out_dir = os.path.join(_repo_root(), "runs", name)
+         out_dir = os.path.normpath(out_dir)
+         os.makedirs(out_dir, exist_ok=True)
+         mk2 = read_checkm2(os.path.join(rundir, "eval", "checkm2", "quality_report.tsv"))
+         mk1 = read_checkm1(
+
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/scripts/make_results_csv.py
+Index: /vol/data/repos/metagenomic-binning-benchmark/scripts/make_results_csv.py
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/scripts/make_results_csv.py
++++ /vol/data/repos/metagenomic-binning-benchmark/scripts/make_results_csv.py
+@@ -14,9 +14,28 @@
+ name = os.path.basename(run)
+ dataset = sys.argv[2] if len(sys.argv) > 2 else ""
+ threads = sys.argv[3] if len(sys.argv) > 3 else ""
+ meta = os.path.join(run, "run_meta.txt")
+-repo = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
++
++
++def _repo_root():
++    """Locate the repository root.
++
++    Also installed as a standalone copy in /vol/data/benchmark/bin/, where
++    `dirname(__file__)/..` is the benchmark data dir rather than the repo, so
++    the aggregate CSV would land outside the repo README/git track. Validate
++    candidates instead of assuming; BENCH_REPO overrides.
++    """
++    here = os.path.dirname(os.path.abspath(__file__))
++    for cand in (os.environ.get("BENCH_REPO", "").strip(),
++                 os.path.normpath(os.path.join(here, ".."))):
++        if cand and os.path.isfile(os.path.join(cand, "README.md")) \
++                and os.path.isdir(os.path.join(cand, "results")):
++            return cand
++    return "/vol/data/repos/metagenomic-binning-benchmark"
++
++
++repo = _repo_root()
+ out = os.path.join(repo, "results", f"{name}.csv")
+ 
+ def meta_val(key):
+     with open(meta) as f:
+
+> build · big-pickle
+Now add the `_repo_root()` helper to `make_per_bin_csv.py` and fix `zenodo_update.sh`:
+[0m→ [0mRead /vol/data/repos/metagenomic-binning-benchmark/scripts/make_per_bin_csv.py [90m[limit=14, offset=14][0m
+> build · big-pickle
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/scripts/make_per_bin_csv.py
+Index: /vol/data/repos/metagenomic-binning-benchmark/scripts/make_per_bin_csv.py
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/scripts/make_per_bin_csv.py
++++ /vol/data/repos/metagenomic-binning-benchmark/scripts/make_per_bin_csv.py
+@@ -17,8 +17,26 @@
+ import os
+ import sys
+ 
+ 
++def _repo_root():
++    """Locate the repository root.
++
++    This helper is also installed as a standalone copy in
++    /vol/data/benchmark/bin/, where `dirname(__file__)/..` is the benchmark data
++    dir rather than the repo, so per_bin_results.csv would be written into a
++    tree that git and the README never see. Validate candidates instead of
++    assuming; BENCH_REPO overrides.
++    """
++    here = os.path.dirname(os.path.abspath(__file__))
++    for cand in (os.environ.get("BENCH_REPO", "").strip(),
++                 os.path.normpath(os.path.join(here, ".."))):
++        if cand and os.path.isfile(os.path.join(cand, "README.md")) \
++                and os.path.isdir(os.path.join(cand, "results")):
++            return cand
++    return "/vol/data/repos/metagenomic-binning-benchmark"
++
++
+ def read_checkm2(path):
+     """Return {bin_id: dict} from a CheckM2 quality_report.tsv."""
+     out = {}
+     if not os.path.exists(path):
+
+> build · big-pickle
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/scripts/zenodo_update.sh
+Index: /vol/data/repos/metagenomic-binning-benchmark/scripts/zenodo_update.sh
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/scripts/zenodo_update.sh
++++ /vol/data/repos/metagenomic-binning-benchmark/scripts/zenodo_update.sh
+@@ -28,9 +28,20 @@
+ # Env: ZENODO_TOKEN_FILE (default: ~/.zenodo_token), ZENODO_RECORD (default
+ # 22935025), ZENODO_UPDATE=0 disables the script entirely.
+ set -euo pipefail
+ 
+-REPO=$(cd "$(dirname "$0")/.." && pwd)
++REPO=${BENCH_REPO:-}
++if [ -z "$REPO" ] || [ ! -f "$REPO/README.md" ]; then
++  # Also installed as a standalone copy in $BENCH/bin/, where
++  # `dirname $0/..` is the benchmark data dir rather than the repo, so the
++  # package would be built from the wrong tree (no docs/, status/, README.md).
++  # Validate candidates instead of assuming.
++  _here=$(cd "$(dirname "$0")" && pwd)
++  for _cand in "$_here/.." /vol/data/repos/metagenomic-binning-benchmark; do
++    if [ -f "$_cand/README.md" ] && [ -d "$_cand/results" ]; then REPO=$(cd "$_cand" && pwd); break; fi
++  done
++fi
++[ -n "$REPO" ] || die "cannot locate repository root (set BENCH_REPO)"
+ RUNS_ROOT=${RUNS_ROOT:-/vol/data/benchmark/runs}
+ RELEASES=${RELEASES:-/vol/data/benchmark/releases}
+ META=${META:-/vol/data/benchmark/meta}
+ TOKEN_FILE=${ZENODO_TOKEN_FILE:-$HOME/.zenodo_token}
+
+> build · big-pickle
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && for f in scripts/make_per_bin_plots.py scripts/make_per_bin_csv.py scripts/make_results_csv.py scripts/make_combined_bar_plot.py; do python3 -c "import ast,sys; ast.parse(open('$f').read())" && echo "OK  $f" || echo "FAIL $f"; done; bash -n scripts/zenodo_update.sh && echo "OK  scripts/zenodo_update.sh"
+OK  scripts/make_per_bin_plots.py
+OK  scripts/make_per_bin_csv.py
+OK  scripts/make_results_csv.py
+OK  scripts/make_combined_bar_plot.py
+OK  scripts/zenodo_update.sh
+> build · big-pickle
+Now redeploy and verify the resolution works from the installed location:
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark
+for src in scripts/*; do
+  [ -f "$src" ] || continue
+  job=$(basename "$src"); case "$job" in __pycache__|*.pyc|*.pyo) continue ;; esac
+  dst="/vol/data/benchmark/bin/$job"
+  cmp -s "$src" "$dst" && continue
+  tmp="/vol/data/benchmark/bin/.$job.deploy-new"; cp "$src" "$tmp"
+  case "$job" in *.sh) chmod 755 "$tmp" ;; *) chmod 644 "$tmp" ;; esac
+  mv "$tmp" "$dst" && echo "REDEPLOYED: $job"
+done
+echo "--- REPO resolution from the DEPLOYED copy (must be the git repo) ---"
+for f in make_per_bin_plots.py make_combined_bar_plot.py; do
+  python3 -c "
+import importlib.util,sys
+spec=importlib.util.spec_from_file_location('m','/vol/data/benchmark/bin/$f')
+m=importlib.util.module_from_spec(spec)
+sys.argv=['x','--help']
+try: spec.loader.exec_module(m)
+except SystemExit: pass
+except Exception as e: pass
+print('$f -> REPO =', m.REPO)
+"
+done
+REDEPLOYED: make_combined_bar_plot.py
+REDEPLOYED: make_per_bin_csv.py
+REDEPLOYED: make_per_bin_plots.py
+REDEPLOYED: make_results_csv.py
+REDEPLOYED: zenodo_update.sh
+--- REPO resolution from the DEPLOYED copy (must be the git repo) ---
+make_per_bin_plots.py -> REPO = /vol/data/repos/metagenomic-binning-benchmark
+make_combined_bar_plot.py -> REPO = /vol/data/repos/metagenomic-binning-benchmark
+> build · big-pickle
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && git stash list; md5sum results/figures/combined_bar_plot.png results/main_runs_table.md > /tmp/opencode/pre_gen.md5 && echo "--- running DEPLOYED generator (no network, repo-only) ---" && MAMBA_ROOT_PREFIX=/vol/data/envs/.mamba /vol/data/tools/bin/micromamba run -p /vol/data/envs/comebin python3 /vol/data/benchmark/bin/make_combined_bar_plot.py 2>&1 | tail -20
+--- running DEPLOYED generator (no network, repo-only) ---
+wrote /vol/data/repos/metagenomic-binning-benchmark/results/figures/combined_bar_plot.png
+wrote /vol/data/repos/metagenomic-binning-benchmark/results/main_runs_table.md
+| Run | Dataset | COMEBin version | Seed | Wall time | Bins | CheckM2 comp / cont | CheckM2 HQ / MQ | CheckM v1 comp / cont | CheckM v1 HQ / MQ |
+|---|---|---|---|---|---|---|---|---|---|
+| `baseline_rerun_autorestart1` | COMEBin demo (29,434 contigs) | `904f649` (master) | - | 6h45m | 60 | 25.01 / 2.98 | 0 / 7 | 21.23 / 3.40 | 0 / 9 |
+| `fix_v11_20260924` | COMEBin demo (29,434 contigs) | `95f5ea8` (comebin-optimizations-v11) | 42 | 6h52m | 71 | 24.38 / 3.78 | 1 / 6 | 21.62 / 5.18 | 0 / 8 |
+| `human_v11_20260925` | CAMI II human (4,900 contigs) | `95f5ea8` (comebin-optimizations-v11) | 42 | 1h21m | 107 | 35.31 / 5.13 | 20 / 29 | 32.64 / 4.65 | 21 / 29 |
+| `marine_v11_20260925` | CAMI II marine (41,988 contigs) | `95f5ea8` (comebin-optimizations-v11) | 42 | 8h43m | 152 | 50.60 / 4.10 | 35 / 60 | 46.36 / 5.09 | 37 / 60 |
+> build · big-pickle
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && echo "=== determinism check (regenerated vs committed) ===" && md5sum -c /tmp/opencode/pre_gen.md5 2>&1; echo "=== git status (figures must be unchanged) ==="; git status --porcelain results/; echo "=== no stray output in bench root ==="; ls -la /vol/data/benchmark/results/; echo "=== deployed zenodo_update.sh resolves REPO ==="; BENODO_REPO_TEST=1 bash -c 'sed -n "/^REPO=/,/^\[ -n ..REPO/p" /vol/data/benchmark/bin/zenodo_update.sh' | head -12
+=== determinism check (regenerated vs committed) ===
+results/figures/combined_bar_plot.png: OK
+results/main_runs_table.md: OK
+=== git status (figures must be unchanged) ===
+ M results/figures/combined_bar_plot.svg
+=== no stray output in bench root ===
+total 12
+drwxrwxr-x  2 ubuntu ubuntu 4096 Sep 24 09:01 .
+drwxrwxr-x 12 ubuntu ubuntu 4096 Sep 26 01:48 ..
+-rw-rw-r--  1 ubuntu ubuntu  309 Sep 24 09:01 small_test_v4.csv
+=== deployed zenodo_update.sh resolves REPO ===
+REPO=${BENCH_REPO:-}
+if [ -z "$REPO" ] || [ ! -f "$REPO/README.md" ]; then
+  # Also installed as a standalone copy in $BENCH/bin/, where
+  # `dirname $0/..` is the benchmark data dir rather than the repo, so the
+  # package would be built from the wrong tree (no docs/, status/, README.md).
+  # Validate candidates instead of assuming.
+  _here=$(cd "$(dirname "$0")" && pwd)
+  for _cand in "$_here/.." /vol/data/repos/metagenomic-binning-benchmark; do
+    if [ -f "$_cand/README.md" ] && [ -d "$_cand/results" ]; then REPO=$(cd "$_cand" && pwd); break; fi
+  done
+fi
+[ -n "$REPO" ] || die "cannot locate repository root (set BENCH_REPO)"
+> build · big-pickle
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && git diff --stat results/figures/combined_bar_plot.svg && echo "--- nature of diff ---" && git diff results/figures/combined_bar_plot.svg | grep -E "^[+-]" | grep -v "^[+-][+-]" | head -10
+results/figures/combined_bar_plot.svg | 154 +++++++++++++++++-----------------
+ 1 file changed, 77 insertions(+), 77 deletions(-)
+--- nature of diff ---
+-    <dc:date>2026-09-26T01:36:45.628532</dc:date>
++    <dc:date>2026-09-26T02:07:12.480850</dc:date>
+-" clip-path="url(#p1376ba48af)" style="fill: #004c4c"/>
++" clip-path="url(#p9ac22b9ebd)" style="fill: #004c4c"/>
+-" clip-path="url(#p1376ba48af)" style="fill: #004c4c"/>
++" clip-path="url(#p9ac22b9ebd)" style="fill: #004c4c"/>
+-" clip-path="url(#p1376ba48af)" style="fill: #006666"/>
++" clip-path="url(#p9ac22b9ebd)" style="fill: #006666"/>
+-" clip-path="url(#p1376ba48af)" style="fill: #006666"/>
++" clip-path="url(#p9ac22b9ebd)" style="fill: #006666"/>
+> build · big-pickle
+The SVG churns on every regeneration (timestamp + random clip-path IDs), polluting the auto-update commits. Let me make it deterministic:
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && grep -n "savefig\|rcParams\|matplotlib\|metadata" scripts/make_combined_bar_plot.py
+27:Run inside the comebin env (only env with matplotlib):
+239:        import matplotlib
+240:        matplotlib.use("Agg")
+241:        import matplotlib.pyplot as plt
+244:        sys.exit("ERROR: matplotlib/numpy missing — run inside the comebin env "
+310:    fig.savefig(args.png, dpi=300, bbox_inches="tight")
+311:    fig.savefig(os.path.splitext(args.png)[0] + ".svg", dpi=300,
+> build · big-pickle
+[0m→ [0mRead /vol/data/repos/metagenomic-binning-benchmark/scripts/make_combined_bar_plot.py [90m[limit=10, offset=308][0m
+> build · big-pickle
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/scripts/make_combined_bar_plot.py
+Index: /vol/data/repos/metagenomic-binning-benchmark/scripts/make_combined_bar_plot.py
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/scripts/make_combined_bar_plot.py
++++ /vol/data/repos/metagenomic-binning-benchmark/scripts/make_combined_bar_plot.py
+@@ -307,10 +307,18 @@
+                  fontsize=16, y=1.0)
+     fig.tight_layout(rect=(0, 0, 1, 0.97))
+     os.makedirs(os.path.dirname(args.png), exist_ok=True)
+     fig.savefig(args.png, dpi=300, bbox_inches="tight")
++    # Deterministic SVG: a fixed hashsalt plus a pinned metadata date keeps the
++    # element ids stable and drops the "now" timestamp, so an unchanged figure
++    # regenerates byte-identically and the automatic post-eval commit only
++    # contains a real change instead of timestamp/id churn.
++    try:
++        matplotlib.rcParams["svg.hashsalt"] = "metagenomic-binning-benchmark"
++    except Exception:
++        pass
+     fig.savefig(os.path.splitext(args.png)[0] + ".svg", dpi=300,
+-                bbox_inches="tight")
++                bbox_inches="tight", metadata={"Date": None})
+     print(f"wrote {args.png}")
+ 
+     table = make_table(ordered_runs, load_aggregates())
+     os.makedirs(os.path.dirname(args.table), exist_ok=True)
+
+> build · big-pickle
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && git checkout -- results/figures/combined_bar_plot.svg && cp scripts/make_combined_bar_plot.py /vol/data/benchmark/bin/.m.deploy-new && chmod 644 /vol/data/benchmark/bin/.m.deploy-new && mv /vol/data/benchmark/bin/.m.deploy-new /vol/data/benchmark/bin/make_combined_bar_plot.py && echo "deployed" && echo "--- run 1 ---" && MAMBA_ROOT_PREFIX=/vol/data/envs/.mamba /vol/data/tools/bin/micromamba run -p /vol/data/envs/comebin python3 /vol/data/benchmark/bin/make_combined_bar_plot.py 2>&1 | grep wrote && md5sum results/figures/combined_bar_plot.svg results/figures/combined_bar_plot.png && sleep 1 && echo "--- run 2 ---" && MAMBA_ROOT_PREFIX=/vol/data/envs/.mamba /vol/data/tools/bin/micromamba run -p /vol/data/envs/comebin python3 /vol/data/benchmark/bin/make_combined_bar_plot.py 2>&1 | grep wrote && md5sum results/figures/combined_bar_plot.svg results/figures/combined_bar_plot.png
+deployed
+--- run 1 ---
+wrote /vol/data/repos/metagenomic-binning-benchmark/results/figures/combined_bar_plot.png
+wrote /vol/data/repos/metagenomic-binning-benchmark/results/main_runs_table.md
+14115d0be74d2d674474670fc798ade2  results/figures/combined_bar_plot.svg
+3d97638fba97fd02d72122c040ea8805  results/figures/combined_bar_plot.png
+--- run 2 ---
+wrote /vol/data/repos/metagenomic-binning-benchmark/results/figures/combined_bar_plot.png
+wrote /vol/data/repos/metagenomic-binning-benchmark/results/main_runs_table.md
+14115d0be74d2d674474670fc798ade2  results/figures/combined_bar_plot.svg
+3d97638fba97fd02d72122c040ea8805  results/figures/combined_bar_plot.png
+> build · big-pickle
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && md5sum -c /tmp/opencode/pre_gen.md5 2>&1; echo "=== git status ==="; git status --porcelain; echo "=== svg diff now (should be id/date only, stable) ==="; git diff --stat results/figures/combined_bar_plot.svg; git diff results/figures/combined_bar_plot.svg | grep -E "^[+-]" | grep -v "^[+-][+-]" | head -4
+results/figures/combined_bar_plot.png: OK
+results/main_runs_table.md: OK
+=== git status ===
+ M results/figures/combined_bar_plot.svg
+ M scripts/make_combined_bar_plot.py
+ M scripts/make_per_bin_csv.py
+ M scripts/make_per_bin_plots.py
+ M scripts/make_results_csv.py
+ M scripts/meta-watchdog.sh
+ M scripts/prep_cami3_toy.sh
+ M scripts/zenodo_update.sh
+=== svg diff now (should be id/date only, stable) ===
+ results/figures/combined_bar_plot.svg | 153 +++++++++++++++++-----------------
+ 1 file changed, 76 insertions(+), 77 deletions(-)
+-    <dc:date>2026-09-26T01:36:45.628532</dc:date>
+-" clip-path="url(#p1376ba48af)" style="fill: #004c4c"/>
++" clip-path="url(#p1544a9c842)" style="fill: #004c4c"/>
+-" clip-path="url(#p1376ba48af)" style="fill: #004c4c"/>
+> build · big-pickle
+[0m✗ [0mcd /vol/data/repos/metagenomic-binning-benchmark && echo "=== consumers of /vol/data/benchmark/results ==="; grep -rn "benchmark/results" --include=*.sh --include=*.py --include=*.md . scripts/ 2>/dev/null | grep -v "^./.git" | head; echo "(end)"; echo "=== is small_test_v4.csv duplicated in repo? ==="; cmp -s /vol/data/benchmark/results/small_test_v4.csv results/small_test_v4.csv && echo "identical duplicate -> safe to remove" || echo "DIFFERENT content -> inspect" failed
+[91m[1mError: [0mNo tool named "bash" is currently available. Please use a tool from the available tool list.
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && echo "=== C1b: run meta-watchdog health checks without launching an LLM ===" && META_WATCHDOG_NO_LLM=1 timeout 300 /vol/data/benchmark/bin/meta-watchdog.sh; echo "rc=$?"; echo "=== checks.tsv ==="; cat /vol/data/benchmark/meta/checks.tsv
+=== C1b: run meta-watchdog health checks without launching an LLM ===
+rc=0
+=== checks.tsv ===
+C1_cron	ok	4 exact jobs; cron active; installed/source scripts identical + executable
+C2_service	ok	pid 5551; service status + /api/info healthy
+C3_agent	ok	run_alive=1 driver=1 hb=24s transcript=23s
+C4_ratelimit	ok	failed-launch markers=1 in 360min window
+C5_github	ok	HEAD=remote after concurrent publisher; worktree edits=1
+C6_benchmark	ok	no active run; last benchmark failure recorded (2026-09-25T01:45:01+00:00	/vol/data/benchmark/runs/tiny_test_n100	run_meta exit_code=1); no retry loop
+C7_disk	ok	338 GiB free
+C8_issues	broken	new/updated: #12 (Improve reporting) updated=2026-09-26T01:46:41Z #8 (Add benchmark data to zenodo) updated=2026-09-26T01:46:47Z
+C8b_issue_close	ok	no issues marked addressed
+C9_repo_publish	ok	meta artifacts committed and HEAD=remote main
+> build · big-pickle
+C1b didn't appear — let me check why:
+[0m$ [0mecho "=== installed meta-watchdog has C1b? ==="; grep -c "C1b_deploy" /vol/data/benchmark/bin/meta-watchdog.sh; echo "=== identical to repo? ==="; cmp -s /vol/data/repos/metagenomic-binning-benchmark/scripts/meta-watchdog.sh /vol/data/benchmark/bin/meta-watchdog.sh && echo identical || echo DRIFT; echo "=== checks.tsv mtime (02:03 = stale, not rewritten) ==="; stat -c '%y %n' /vol/data/benchmark/meta/checks.tsv; date -Is; echo "=== lock holders ==="; ls -la /tmp/meta-watchdog.lock /tmp/agent-watchdog.lock 2>&1; fuser -v /tmp/meta-watchdog.lock 2>&1 | head; echo "=== TASK_COMPLETE present? ==="; ls -la /vol/data/benchmark/TASK_COMPLETE 2>&1
+=== installed meta-watchdog has C1b? ===
+3
+=== identical to repo? ===
+identical
+=== checks.tsv mtime (02:03 = stale, not rewritten) ===
+2026-09-26 02:03:10.556000000 +0000 /vol/data/benchmark/meta/checks.tsv
+2026-09-26T02:07:52+00:00
+=== lock holders ===
+-rw-rw-r-- 1 ubuntu ubuntu 0 Sep 26 02:05 /tmp/agent-watchdog.lock
+-rw-rw-r-- 1 ubuntu ubuntu 0 Sep 26 02:07 /tmp/meta-watchdog.lock
+                     USER        PID ACCESS COMMAND
+/tmp/meta-watchdog.lock:
+                     ubuntu    3179328 F.... bash
+=== TASK_COMPLETE present? ===
+ls: cannot access '/vol/data/benchmark/TASK_COMPLETE': No such file or directory
+> build · big-pickle
