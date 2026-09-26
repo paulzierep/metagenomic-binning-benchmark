@@ -74886,3 +74886,55 @@ Watchdog triaged cleanly at 04:40:01 — `.active_run` cleared, terminal markers
 > build · mimo-v2.6-flash-free
 [0m→ [0mRead /vol/data/tmp_preflight.txt 
 > build · mimo-v2.6-flash-free
+All green. Cleaning the 777 MB of unheld ENOSPC garbage, then launching the fresh retry run:
+[0m$ [0m# 1) remove orphaned /tmp hmm garbage from crashed workers (none held open — verified)
+n=0; for f in /tmp/[0-9a-f]*; do [ -f "$f" ] || continue; o=0; for fd in /proc/[0-9]*/fd/*; do [ "$(readlink "$fd" 2>/dev/null)" = "$f" ] && { o=1; break; }; done; [ "$o" = 0 ] && { rm -f "$f"; n=$((n+1)); }; done; echo "removed $n orphaned files"; df -h / | tail -1
+# 2) launch fresh retry run detached (fresh run dir, watchdog owns handoff)
+cd /vol/data/repos/metagenomic-binning-benchmark
+MODE=cami3 CONTIGS=/vol/data/datasets/cami_III/toy_human_input_2samples/contigs.fa BAMDIR=/vol/data/datasets/cami_III/toy_human_input_2samples/bamfiles SEED=42 \
+  nohup setsid bash -c 'exec /vol/data/repos/metagenomic-binning-benchmark/scripts/run_comebin_fix.sh /vol/data/benchmark/runs/cami3_v11_20260926_rerun' \
+  > /vol/data/benchmark/logs/cami3_rerun.launch.log 2>&1 &
+echo "launched bg pid=$!"; sleep 8; date -u +%FT%TZ; echo "=== active_run ==="; cat /vol/data/benchmark/.active_run 2>/dev/null || echo "NOT_YET"; touch /vol/data/benchmark/.heartbeat
+removed 68 orphaned files
+/dev/vda1        19G  5.1G   14G  28% /
+launched bg pid=3727084
+2026-09-26T04:48:32Z
+=== active_run ===
+3727084 3727084 /vol/data/benchmark/runs/cami3_v11_20260926_rerun/comebin_run.log /vol/data/benchmark/runs/cami3_v11_20260926_rerun 1790398104 cami3 /vol/data/repos/COMEBin-v11 /vol/data/datasets/cami_III/toy_human_input_2samples/contigs.fa /vol/data/datasets/cami_III/toy_human_input_2samples/bamfiles
+> build · mimo-v2.6-flash-free
+Registered: pid 3727084, mode=cami3, fresh dir `cami3_v11_20260926_rerun`. Verifying startup (run_meta written, augmentation skip → training):
+[0m$ [0msleep 30; date -u +%FT%TZ; echo "=== launch log ==="; cat /vol/data/benchmark/logs/cami3_rerun.launch.log 2>/dev/null | head -5; echo "=== run_meta head ==="; head -6 /vol/data/benchmark/runs/cami3_v11_20260926_rerun/run_meta.txt 2>/dev/null; echo "=== run log ==="; tail -c 400 /vol/data/benchmark/runs/cami3_v11_20260926_rerun/comebin_run.log 2>/dev/null | tr '\r' '\n' | tail -4; echo "=== procs ==="; pgrep -af "run_comebin.sh|main.py" | head -3; touch /vol/data/benchmark/.heartbeat
+2026-09-26T04:49:10Z
+=== launch log ===
+source: /vol/data/repos/COMEBin-v11 (branch comebin-optimizations-v11) commit: 95f5ea820f9a4e76f5c2911c0b5ed507ab67b015 (dirty files: 0)
+run:        /vol/data/benchmark/runs/cami3_v11_20260926_rerun
+source:     /vol/data/repos/COMEBin-v11 (branch comebin-optimizations-v11)
+date:       2026-09-26T04:48:24+00:00
+commit:     95f5ea820f9a4e76f5c2911c0b5ed507ab67b015
+=== run_meta head ===
+run:        /vol/data/benchmark/runs/cami3_v11_20260926_rerun
+source:     /vol/data/repos/COMEBin-v11 (branch comebin-optimizations-v11)
+date:       2026-09-26T04:48:24+00:00
+commit:     95f5ea820f9a4e76f5c2911c0b5ed507ab67b015
+contigs:    /vol/data/datasets/cami_III/toy_human_input_2samples/contigs.fa
+bamdir:     /vol/data/datasets/cami_III/toy_human_input_2samples/bamfiles
+=== run log ===
+2026-09-26 04:48:27,929 - Generate augmentation view 2/5 with seed 44.
+2026-09-26 04:48:27,929 - Generate augmentation view 3/5 with seed 45.
+2026-09-26 04:48:27,929 - Generate augmentation view 4/5 with seed 46.
+2026-09-26 04:48:27,929 - Generate augmentation view 5/5 with seed 47.
+=== procs ===
+3727118 /vol/data/tools/bin/micromamba run -p /vol/data/envs/comebin bash run_comebin.sh -a /vol/data/datasets/cami_III/toy_human_input_2samples/contigs.fa -p /vol/data/datasets/cami_III/toy_human_input_2samples/bamfiles -o /vol/data/benchmark/runs/cami3_v11_20260926_rerun/comebin_out -n 6 -t 32 -d cpu -s 42
+3727121 bash run_comebin.sh -a /vol/data/datasets/cami_III/toy_human_input_2samples/contigs.fa -p /vol/data/datasets/cami_III/toy_human_input_2samples/bamfiles -o /vol/data/benchmark/runs/cami3_v11_20260926_rerun/comebin_out -n 6 -t 32 -d cpu -s 42
+3727140 python /vol/data/repos/COMEBin-v11/COMEBin/main.py generate_aug_data --contig_file /vol/data/datasets/cami_III/toy_human_input_2samples/contigs.fa --out_augdata_path /vol/data/benchmark/runs/cami3_v11_20260926_rerun/comebin_out/data_augmentation --n_views 6 --bam_file_path /vol/data/datasets/cami_III/toy_human_input_2samples/bamfiles --num_threads 32 --seed 42
+> build · mimo-v2.6-flash-free
+Run is healthy: augmentation generating (seed 42, views 42-47), all stages alive, dirty=0. ETA ≈ 06:30 UTC (aug 3 min → train ~74 min → bin+get_result ~25 min). Now the bookkeeping — reading PROGRESS "Current state" to update it:
+[0m$ [0mgrep -n "Current state" /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md; awk '/^## Current state/,/^## [A-Z]/' /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md | head -40
+4:> verify "Current state" against what is actually on disk under `/vol/data`, and
+185:## Current state
+## Current state
+> build · mimo-v2.6-flash-free
+[0m→ [0mRead /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md [90m[limit=45, offset=185][0m
+> build · mimo-v2.6-flash-free
+[0m→ [0mRead /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md [90m[limit=50, offset=440][0m
+> build · mimo-v2.6-flash-free
