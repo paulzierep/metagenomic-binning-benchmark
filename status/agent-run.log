@@ -76168,3 +76168,72 @@ Name	Completeness	Contamination	Completeness_Model_Used	Translation_Table_Used	C
 492 /vol/data/benchmark/runs/cami3_v11_20260926_rerun/eval/checkm/out/storage/bin_stats_ext.tsv
 > build · mimo-v2.6-flash-free
 492/492 bins in both quality tables. Launching the report chain detached:
+[0m$ [0mR=/vol/data/benchmark/runs/cami3_v11_20260926_rerun; B=/vol/data/benchmark/bin; nohup setsid bash -c '
+set -x
+R=/vol/data/benchmark/runs/cami3_v11_20260926_rerun
+B=/vol/data/benchmark/bin
+MM=/vol/data/tools/bin/micromamba
+echo "checkm2_retry_rc: 0  checkm2_retry_threads: 16  note: first 32-thread attempt failed gene-calling race (protein files mismatch), output preserved as eval/checkm2.incomplete.*" >> $R/run_meta.txt
+python3 $B/make_results_csv.py $R; echo CSV_RC=$?
+python3 $B/make_per_bin_csv.py $R; echo PERBIN_RC=$?
+$MM run -p /vol/data/envs/checkm python3 $B/make_per_bin_plots.py --all $R; echo PLOTS_RC=$?
+$MM run -p /vol/data/envs/checkm python3 $B/make_combined_bar_plot.py; echo COMBINED_RC=$?
+bash $B/zenodo_update.sh; echo ZENODO_RC=$?
+echo REPORT_CHAIN_DONE
+' > $R/report_chain.log 2>&1 & echo "report chain bg pid=$!"; sleep 30; date -u +%FT%TZ; tail -c 500 $R/report_chain.log; touch /vol/data/benchmark/.heartbeat
+report chain bg pid=898915
+2026-09-26T07:38:27Z
+nodo_update.sh
+[zenodo_update] staging benchmark data -> /vol/data/benchmark/releases/stage.KdLVJM
+[zenodo_update] runs in package: baseline_rerun_autorestart1 (60 bins) cami3_v11_20260926_rerun (492 bins) fix_v11_20260924 (71 bins) human_v11_20260925 (107 bins) marine_v11_20260925 (152 bins) medium_v11_20260924 (16 bins) small_test_v4 (3 bins) tiny_test_n101 (1 bins)
+[zenodo_update] manifest: 1027 files, 1720501254 bytes
+[zenodo_update] created new version draft 22973575 (from record 22969763)
+> build · mimo-v2.6-flash-free
+CSVs/plots ran, Zenodo v3 draft created (22973575) — but the package jumped to 1.72 GB (vs v2's 168 MB). Checking the chain's step RCs and what grew:
+[0m$ [0mR=/vol/data/benchmark/runs/cami3_v11_20260926_rerun; grep -E "CSV_RC|PERBIN_RC|PLOTS_RC|COMBINED_RC|ZENODO_RC|REPORT_CHAIN_DONE|WARNING|Error|Traceback" $R/report_chain.log; echo "=== chain still running? ==="; pgrep -f "zenodo_update.sh" >/dev/null && echo ZENODO_RUNNING || echo ZENODO_NOT_RUNNING; echo "=== results csv ==="; ls -la /vol/data/repos/metagenomic-binning-benchmark/results/ | tail -12; echo "=== cami3 csv ==="; cat /vol/data/repos/metagenomic-binning-benchmark/results/cami3_v11_20260926_rerun.csv 2>/dev/null; touch /vol/data/benchmark/.heartbeat
++ echo CSV_RC=0
+CSV_RC=0
++ echo PERBIN_RC=0
+PERBIN_RC=0
++ echo PLOTS_RC=0
+PLOTS_RC=0
++ echo COMBINED_RC=0
+COMBINED_RC=0
+=== chain still running? ===
+ZENODO_RUNNING
+=== results csv ===
+drwxrwxr-x 8 ubuntu ubuntu 4096 Sep 26 07:38 ..
+-rw-rw-r-- 1 ubuntu ubuntu 1052 Sep 24 10:17 README.md
+-rw-rw-r-- 1 ubuntu ubuntu  343 Sep 24 11:06 baseline_rerun_autorestart1.csv
+-rw-rw-r-- 1 ubuntu ubuntu  325 Sep 26 07:37 cami3_v11_20260926_rerun.csv
+drwxrwxr-x 2 ubuntu ubuntu 4096 Sep 26 02:07 figures
+-rw-rw-r-- 1 ubuntu ubuntu  332 Sep 25 01:12 fix_v11_20260924.csv
+-rw-rw-r-- 1 ubuntu ubuntu  326 Sep 25 03:54 human_v11_20260925.csv
+-rw-rw-r-- 1 ubuntu ubuntu  832 Sep 26 07:38 main_runs_table.md
+-rw-rw-r-- 1 ubuntu ubuntu  329 Sep 26 02:11 marine_v11_20260925.csv
+-rw-rw-r-- 1 ubuntu ubuntu  335 Sep 24 10:13 medium_v11_20260924.csv
+-rw-rw-r-- 1 ubuntu ubuntu  307 Sep 24 09:06 small_test_v4.csv
+-rw-rw-r-- 1 ubuntu ubuntu  310 Sep 25 01:50 tiny_test_n101.csv
+=== cami3 csv ===
+run,source_commit,dataset,threads,total_time_s,n_bins,checkm2_mean_completeness,checkm2_mean_contamination,checkm2_HQ,checkm2_MQ,checkm_mean_completeness,checkm_mean_contamination,checkm_HQ,checkm_MQ
+cami3_v11_20260926_rerun,95f5ea820f9a4e76f5c2911c0b5ed507ab67b015,CAMI III,32,5392,492,35.97,11.42,53,112,32.46,13.38,54,100
+> build · mimo-v2.6-flash-free
+CAMI III results CSV is correct (label **"CAMI III"**, 492 bins, CheckM2 35.97/11.42, CheckM v1 32.46/13.38). Checking what ballooned the Zenodo package to 1.72 GB:
+[0m$ [0mdu -sh /vol/data/benchmark/runs/cami3_v11_20260926_rerun/* 2>/dev/null | sort -rh | head -8; echo "=== cami3 subdir detail ==="; du -sh /vol/data/benchmark/runs/cami3_v11_20260926_rerun/comebin_out/* 2>/dev/null | sort -rh | head; echo "=== zenodo include/exclude logic ==="; grep -n "exclude\|EXCLUDE\|find\|checkpoint\|pth\|data_aug\|maxsize\|du " /vol/data/benchmark/bin/zenodo_update.sh | head -20; echo "=== other runs sizes ==="; du -sh /vol/data/benchmark/runs/marine_v11_20260925 /vol/data/benchmark/runs/fix_v11_20260924 2>/dev/null; touch /vol/data/benchmark/.heartbeat
+4.8G	/vol/data/benchmark/runs/cami3_v11_20260926_rerun/comebin_out
+2.6G	/vol/data/benchmark/runs/cami3_v11_20260926_rerun/eval
+416K	/vol/data/benchmark/runs/cami3_v11_20260926_rerun/eval_run.log
+324K	/vol/data/benchmark/runs/cami3_v11_20260926_rerun/comebin_run.log
+60K	/vol/data/benchmark/runs/cami3_v11_20260926_rerun/checkm2_retry.log
+48K	/vol/data/benchmark/runs/cami3_v11_20260926_rerun/logs
+4.0K	/vol/data/benchmark/runs/cami3_v11_20260926_rerun/run_meta.txt
+4.0K	/vol/data/benchmark/runs/cami3_v11_20260926_rerun/report_chain.log
+=== cami3 subdir detail ===
+4.8G	/vol/data/benchmark/runs/cami3_v11_20260926_rerun/comebin_out/comebin_res
+18M	/vol/data/benchmark/runs/cami3_v11_20260926_rerun/comebin_out/data_augmentation
+=== zenodo include/exclude logic ===
+91:    done < <(find -L "$bins" -maxdepth 1 -type f -size +0c 2>/dev/null)
+=== other runs sizes ===
+2.3G	/vol/data/benchmark/runs/marine_v11_20260925
+688M	/vol/data/benchmark/runs/fix_v11_20260924
+> build · mimo-v2.6-flash-free
