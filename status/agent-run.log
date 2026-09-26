@@ -74497,3 +74497,36 @@ no eval yet
 2026-09-26T03:55:35Z
 > build · big-pickle
 Epoch 189/200 at 03:55 (top1 77.1 ↑; 11 epochs → ~4.5 min to training end, then Leiden + bin output). Continuing:
+[0m$ [0msleep 600; echo "=== last epoch ==="; grep -o "epoch=[0-9]*/200, batches=[0-9]*" /vol/data/benchmark/runs/cami3_v11_20260926/comebin_run.log | tail -1; echo "=== tail ==="; tail -c 800 /vol/data/benchmark/runs/cami3_v11_20260926/comebin_run.log | tr '\r' '\n' | tail -6; echo "=== active ==="; cat /vol/data/benchmark/.active_run 2>/dev/null | awk '{print "pid="$1}'; ps -p 3200074 -o pid,etime,stat 2>/dev/null || echo "wrapper gone"; echo "=== Leiden/clustering procs ==="; ps -eo pid,etime,pcpu,cmd | grep -E "main.py|run_comebin|leiden" | grep -v grep | head -4; ls /vol/data/benchmark/runs/cami3_v11_20260926/eval 2>/dev/null || echo "no eval yet"; date -u +%FT%TZ; touch /vol/data/benchmark/.heartbeat
+{"exit":0,"truncated":false,"output":"","status":"completed"}
+> build · big-pickle
+Empty output is suspicious — re-running the check:
+[0m$ [0mdate -u +%FT%TZ; echo "=== last epoch ==="; grep -o "epoch=[0-9]*/200, batches=[0-9]*" /vol/data/benchmark/runs/cami3_v11_20260926/comebin_run.log | tail -1; echo "=== tail ==="; tail -c 800 /vol/data/benchmark/runs/cami3_v11_20260926/comebin_run.log | tr '\r' '\n' | tail -6; echo "=== active ==="; cat /vol/data/benchmark/.active_run 2>/dev/null | awk '{print "pid="$1}'; ps -p 3200074 -o pid,etime,stat 2>/dev/null || echo "wrapper gone"; echo "=== procs ==="; ps -eo pid,etime,pcpu,cmd | grep -E "main.py|checkm" | grep -v grep | head -4; ls /vol/data/benchmark/runs/cami3_v11_20260926/eval 2>/dev/null || echo "no eval dir"; touch /vol/data/benchmark/.heartbeat
+2026-09-26T04:05:42Z
+=== last epoch ===
+epoch=200/200, batches=4
+=== tail ===
+    Finished processing 37 of 247 (14.98%) bins.
+    Finished processing 38 of 247 (15.38%) bins.
+    Finished processing 39 of 247 (15.79%) bins.
+    Finished processing 40 of 247 (16.19%) bins.
+    Finished processing 41 of 247 (16.60%) bins.
+    Finished processing 42 of 247 (17.00%) bins.
+=== active ===
+pid=3200074
+    PID     ELAPSED STAT
+3200074    01:20:29 S
+=== procs ===
+3268964       03:27  1.5 python /vol/data/repos/COMEBin-v11/COMEBin/main.py get_result --contig_file /vol/data/datasets/cami_III/toy_human_input_2samples/contigs.fa --output_path /vol/data/benchmark/runs/cami3_v11_20260926/comebin_out/comebin_res --emb_file /vol/data/benchmark/runs/cami3_v11_20260926/comebin_out/comebin_res/embeddings.npy --seed_file /vol/data/datasets/cami_III/toy_human_input_2samples/contigs.fa.bacar_marker.2quarter_lencutoff_1001.seed --num_threads 32 --max_edges 100 --hmm_evalue 1e-5 --seed 42
+3268965       03:24  0.0 sh -c -- checkm analyze -t 32 -x fa /vol/data/repos/COMEBin-v11/COMEBin/scripts/checkm_ms/bacteria.ms /vol/data/benchmark/runs/cami3_v11_20260926/comebin_out/comebin_res/cluster_res/weight_seed_kmeans_k_247_result_bins /vol/data/benchmark/runs/cami3_v11_20260926/comebin_out/comebin_res/cluster_res/unitem_profile/binning_methods/weight_seed_kmeans_k_247_result.labels.npy/checkm_bac
+3268966       03:24  5.2 /vol/data/envs/comebin/bin/python /vol/data/envs/comebin/bin/checkm analyze -t 32 -x fa /vol/data/repos/COMEBin-v11/COMEBin/scripts/checkm_ms/bacteria.ms /vol/data/benchmark/runs/cami3_v11_20260926/comebin_out/comebin_res/cluster_res/weight_seed_kmeans_k_247_result_bins /vol/data/benchmark/runs/cami3_v11_20260926/comebin_out/comebin_res/cluster_res/unitem_profile/binning_methods/weight_seed_kmeans_k_247_result.labels.npy/checkm_bac
+3269068       03:13  0.1 /vol/data/envs/comebin/bin/python /vol/data/envs/comebin/bin/checkm analyze -t 32 -x fa /vol/data/repos/COMEBin-v11/COMEBin/scripts/checkm_ms/bacteria.ms /vol/data/benchmark/runs/cami3_v11_20260926/comebin_out/comebin_res/cluster_res/weight_seed_kmeans_k_247_result_bins /vol/data/benchmark/runs/cami3_v11_20260926/comebin_out/comebin_res/cluster_res/unitem_profile/binning_methods/weight_seed_kmeans_k_247_result.labels.npy/checkm_bac
+no eval dir
+> build · big-pickle
+Training reached **epoch 200/200 (full)**, now in the post-training `get_result` stage (KMeans k=247 → per-bin processing, 42/247 done at 04:05). After bins are written the run exits. Let me check whether the watchdog auto-launches the eval chain:
+[0m$ [0mgrep -n "run_eval\|eval" /vol/data/repos/metagenomic-binning-benchmark/scripts/benchmark-watchdog.sh | head; echo "=== who launches eval? search repo ==="; grep -rn "run_eval.sh" /vol/data/repos/metagenomic-binning-benchmark/scripts/*.sh | grep -v "run_eval.sh:" | head
+=== who launches eval? search repo ===
+/vol/data/repos/metagenomic-binning-benchmark/scripts/meta-watchdog.sh:144:# INSTALLED copies in $BENCH/bin (run_eval.sh calls its helpers via $(dirname $0)),
+/vol/data/repos/metagenomic-binning-benchmark/scripts/zenodo_update.sh:24:#     inside run_eval.sh's best-effort auto-reporting chain
+/vol/data/repos/metagenomic-binning-benchmark/scripts/zenodo_update.sh:25:#   - exits 1 on packaging/API errors (callers in run_eval.sh treat as warning)
+/vol/data/repos/metagenomic-binning-benchmark/scripts/zenodo_update.sh:256:    "with scripts/run_eval.sh; docs/01-datasets.md and docs/11-run-results.md "
