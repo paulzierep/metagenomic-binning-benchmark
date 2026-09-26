@@ -70615,3 +70615,104 @@ Flow fully validated. Checking the manifest schema so the script reuses it:
 EVAL_RUNNING
 2026-09-26T01:07:27Z
 > build · mimo-v2.6-flash-free
+Manifest schema confirmed (`{files:[{path,bytes,sha256}]}`, sorted; `--omit-local-path` for public use). Writing `scripts/zenodo_update.sh`:
+[0m← [0mWrite /vol/data/repos/metagenomic-binning-benchmark/scripts/zenodo_update.sh
+Created file successfully: /vol/data/repos/metagenomic-binning-benchmark/scripts/zenodo_update.sh
+> build · mimo-v2.6-flash-free
+Let me verify `make_release_manifest.py`'s exact flags, then refactor the script (single tarball build + proper cleanup trap):
+[0m$ [0msed -n '54,95p' /vol/data/repos/metagenomic-binning-benchmark/scripts/make_release_manifest.py; echo "=== bash version ==="; bash --version | head -1; pgrep -f run_eval.sh >/dev/null && echo EVAL_RUNNING || echo EVAL_DONE; tail -c 150 /vol/data/benchmark/logs/marine_eval.log; date -u +%FT%TZ
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("dataset_dir", type=Path)
+    parser.add_argument("output", type=Path)
+    parser.add_argument(
+        "--metadata",
+        action="append",
+        default=[],
+        metavar="KEY=VALUE",
+        help="provenance field to include (repeatable)",
+    )
+    parser.add_argument(
+        "--exclude",
+        action="append",
+        default=[],
+        metavar="GLOB",
+        help="relative-path glob to omit (repeatable)",
+    )
+    parser.add_argument(
+        "--omit-local-path",
+        action="store_true",
+        help="omit the machine-specific dataset_path from a public manifest",
+    )
+    parser.add_argument("--force", action="store_true", help="replace an existing manifest")
+    args = parser.parse_args()
+
+    dataset = args.dataset_dir.expanduser().resolve()
+    output = args.output.expanduser().resolve()
+    if not dataset.is_dir():
+        parser.error(f"dataset directory does not exist: {dataset}")
+    try:
+        output.relative_to(dataset)
+    except ValueError:
+        pass
+    else:
+        parser.error("manifest output must be outside the dataset directory")
+    if output.exists() and not args.force:
+        parser.error(f"output exists (use --force to replace it): {output}")
+
+    try:
+        metadata = parse_metadata(args.metadata)
+    except ValueError as exc:
+=== bash version ===
+GNU bash, version 5.2.21(1)-release (x86_64-pc-linux-gnu)
+EVAL_RUNNING
+    Finished processing 129 of 152 (84.87%) bins.    Finished processing 130 of 152 (85.53%) bins.    Finished processing 131 of 152 (86.18%) bins.2026-09-26T01:09:33Z
+> build · mimo-v2.6-flash-free
+Key catch: `make_release_manifest.py` **refuses output inside the dataset dir** — and I should build the tarball once, after the version number is known. Refactoring:
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/scripts/zenodo_update.sh
+Index: /vol/data/repos/metagenomic-binning-benchmark/scripts/zenodo_update.sh
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/scripts/zenodo_update.sh
++++ /vol/data/repos/metagenomic-binning-benchmark/scripts/zenodo_update.sh
+@@ -53,9 +53,10 @@
+ 
+ # --- Stage the package -------------------------------------------------------
+ STAMP=$(date -u +%Y%m%dT%H%M%SZ)
+ STAGE=$(mktemp -d "$RELEASES/stage.XXXXXX")
+-cleanup() { rm -rf "$STAGE"; }
++WORK=""
++cleanup() { rm -rf "$STAGE" ${WORK:+"$WORK"}; }
+ trap cleanup EXIT
+ 
+ log "staging benchmark data -> $STAGE"
+ cp -a "$REPO/results" "$REPO/runs" "$REPO/docs" "$STAGE/"
+
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/scripts/zenodo_update.sh
+Index: /vol/data/repos/metagenomic-binning-benchmark/scripts/zenodo_update.sh
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/scripts/zenodo_update.sh
++++ /vol/data/repos/metagenomic-binning-benchmark/scripts/zenodo_update.sh
+@@ -98,17 +98,20 @@
+ [ "${#RUNS_INCLUDED[@]}" -gt 0 ] || die "no evaluated runs found under $RUNS_ROOT"
+ log "runs in package: ${RUNS_INCLUDED[*]}"
+ 
+ # --- Manifest + change detection ---------------------------------------------
+-MANIFEST="$STAGE/manifest.json"
++# make_release_manifest.py refuses an output inside the dataset dir, so hash
++# outside, then copy the manifest into the stage so it ships in the tarball.
++MANIFEST="$RELEASES/manifest.$STAMP.json"
+ python3 "$REPO/scripts/make_release_manifest.py" "$STAGE" "$MANIFEST" \
+   --omit-local-path \
+   --metadata source_repo="https://github.com/paulzierep/metagenomic-binning-benchmark" \
+   --metadata source_commit="$(git -C "$REPO" rev-parse HEAD 2>/dev/null || echo unknown)" \
+   --metadata kind="benchmark-results" \
+   --metadata runs="$(IFS=,; echo "${RUNS_INCLUDED[*]}")" \
+   --metadata created_utc="$STAMP" >/dev/null
+ log "manifest: $(python3 -c "import json,sys;d=json.load(open('$MANIFEST'));print(len(d['files']),'files,',sum(f['bytes'] for f in d['files']),'bytes')")"
++cp "$MANIFEST" "$STAGE/manifest.json"
+ 
+ CONTENT_SHA=$(python3 - "$MANIFEST" <<'PY'
+ import hashlib, json, sys
+ m = json.load(open(sys.argv[1]))
+
+> build · mimo-v2.6-flash-free
