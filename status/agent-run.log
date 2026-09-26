@@ -88092,3 +88092,53 @@ No git stage/commit/push was required since there are no pending changes. The `/
 
 Since `TASK_COMPLETE` does not exist, the agent should resume work on the next unfinished step if prompted.
 [0m⚙ [0mexecute {"code":"# Final verification - check all key state files\nimport json\n\nstate = {\n    \"task_complete\": False,\n    \"heartbeat\": False,\n    \"active_run\": False,\n    \"progress_updated\": True,\n    \"activity_updated\": True,\n    \"log_updated\": True,\n}\n\n# Check TASK_COMPLETE\nimport subprocess\nresult = subprocess.run([\"ls\", \"/vol/data/benchmark/TASK_COMPLETE\"], capture_output=True)\nstate[\"task_complete\"] = result.returncode == 0\n\n# Check heartbeat\nresult = subprocess.run([\"ls\", \"/vol/data/benchmark/.heartbeat\"], capture_output=True)\nstate[\"heartbeat\"] = result.returncode == 0\n\n# Check active_run\nresult = subprocess.run([\"cat\", \"/vol/data/benchmark/.active_run\"], capture_output=True)\nstate[\"active_run\"] = result.returncode == 0 and len(result.stdout.strip()) > 0\n\nprint(json.dumps(state, indent=2))"} 
+> build · nemotron-3.5-lightning-free
+[0m$ [0mpython3 -c "
+import subprocess, json
+
+state = {}
+result = subprocess.run(['ls', '/vol/data/benchmark/TASK_COMPLETE'], capture_output=True)
+state['task_complete'] = result.returncode == 0
+
+result = subprocess.run(['ls', '/vol/data/benchmark/.heartbeat'], capture_output=True)
+state['heartbeat'] = result.returncode == 0
+
+result = subprocess.run(['cat', '/vol/data/benchmark/.active_run'], capture_output=True)
+state['active_run'] = result.returncode == 0 and len(result.stdout.strip()) > 0
+
+print(json.dumps(state, indent=2))
+"
+{
+  "task_complete": false,
+  "heartbeat": true,
+  "active_run": false
+}
+> build · nemotron-3.5-lightning-free
+Verification confirms the state:
+
+```json
+{
+  "task_complete": false,    // TASK_COMPLETE does not exist — work continues
+  "heartbeat": true,        // .heartbeat exists and was touched
+  "active_run": false       // No .active_run — no runs in progress
+}
+```
+
+All required tasks from the resumption protocol are complete:
+
+| Task | Status |
+|---|---|
+| Read PROGRESS.md | Done |
+| Check NEW/updated issues (both repos) | Done — all #26-#1 already triaged, no duplicates |
+| Triage and comment without duplicating | Done — no new comments needed |
+| Verify state on disk | Done — all runs complete, no `.active_run` |
+| Update PROGRESS.md | Done — added resume section |
+| Update `/vol/data/benchmark/.activity` | Done — timestamped entry added |
+| Touch `/vol/data/benchmark/.heartbeat` | Done — 15:50 UTC |
+| Append to agent-activity.log | Done — timestamped line added |
+| Git stage/commit/push | Not needed — no changes pending |
+| `/tmp/bench-repo.lock` | Existed but not acquired (no git commit required) |
+| TASK_COMPLETE check | Does not exist, so agent continues |
+[91m[1mError: [0mRate limit exceeded. Please try again later.
+[91m[1mError: [0mRate limit exceeded. Please try again later.
+[91m[1mError: [0mRate limit exceeded. Please try again later.
