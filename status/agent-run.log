@@ -74688,3 +74688,14 @@ Visible `/tmp` children sum to only ~213 MB yet `/tmp` totals 14.8 GB — some e
 > build · mimo-v2.6-flash-free
 [0m→ [0mRead /vol/data/tmp_du_tmp2.txt 
 [0m→ [0mRead /vol/data/tmp_ls.txt 
+> build · mimo-v2.6-flash-free
+**Found it.** `/tmp` is filled by two CAMI III prep download leftovers:
+- `/tmp/url_anonymous_reads.fq` — **9.1 GB** (02:42)
+- `/tmp/url_anonymous_reads.fq.gz` — **4.7 GB** (02:41)
+
+That's 13.8 of 19 GB — the root cause of the run's ENOSPC. Before deleting, I must verify (a) no process is writing/holding them, (b) the reads already exist in the dataset dir:
+[0m$ [0m{ echo "== dataset dir =="; ls -la /vol/data/datasets/cami_III/toy_human_input_2samples/; echo "== big files in dataset =="; find /vol/data/datasets/cami_III -type f -size +100M -exec ls -la {} \; 2>/dev/null; echo "== download procs =="; ps aux | grep -E "curl|wget|url_anon|gunzip" | grep -v grep; echo "== holders of url files =="; for p in /proc/[0-9]*/fd/*; do readlink "$p" 2>/dev/null; done | grep -E "url_anonymous" | sort -u; echo "== mtimes =="; stat -c "%y %s %n" /tmp/url_anonymous_reads.fq /tmp/url_anonymous_reads.fq.gz; } > /vol/data/tmp_verify.txt 2>&1; echo rc=$? >> /vol/data/tmp_verify.txt; touch /vol/data/benchmark/.heartbeat
+{"exit":0,"truncated":false,"output":"","status":"completed"}
+> build · mimo-v2.6-flash-free
+[0m→ [0mRead /vol/data/tmp_verify.txt 
+> build · mimo-v2.6-flash-free
