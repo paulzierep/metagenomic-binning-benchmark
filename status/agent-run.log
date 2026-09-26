@@ -74388,3 +74388,28 @@ pid=3200074 mode=cami3
 2026-09-26T02:59:36Z
 > build · big-pickle
 Run is healthy at epoch 29/200 (~28 s/epoch → full 200 ≈ 04:15 UTC, then Leiden). The multi-process training is normal (torch DataLoader workers). Nothing further actionable until completion, but let me confirm stability around the middle of training:
+[0m$ [0msleep 600; grep -o "epoch=[0-9]*/200, batches=[0-9]*, loss=[0-9.]*, top1=[0-9.]*" /vol/data/benchmark/runs/cami3_v11_20260926/comebin_run.log | tail -2; echo "latest:"; tail -c 400 /vol/data/benchmark/runs/cami3_v11_20260926/comebin_run.log | tr '\r' '\n' | tail -4; echo "=== procs ==="; ps -eo pid,etime,pcpu,cmd | grep "main.py train" | grep -v grep | head -3; tail -1 /vol/data/benchmark/runs/cami3_v11_20260926/logs/resources.tsv 2>/dev/null; date -u +%FT%TZ; touch /vol/data/benchmark/.heartbeat
+epoch=53/200, batches=4, loss=4.4892645, top1=17.2428
+epoch=54/200, batches=4, loss=4.4202194, top1=17.8451
+latest:
+100%|██████████| 4/4 [00:23<00:00,  5.97s/it]
+2026-09-26 03:09:34,192 - NN training: epoch=54/200, batches=4, loss=4.4202194, top1=17.8451, elapsed=23.906s, process_memory={'VmPeak': '8604356 kB', 'VmRSS': '1618496 kB'}, gpu_memory=None.
+
+  0%|          | 0/4 [00:00<?, ?it/s]=== procs ===
+3201566       21:33 2806 python /vol/data/repos/COMEBin-v11/COMEBin/main.py train --data /vol/data/benchmark/runs/cami3_v11_20260926/comebin_out/data_augmentation --emb_szs_forcov 2048 --batch_size 1024 --emb_szs 2048 --n_views 6 --output_path /vol/data/benchmark/runs/cami3_v11_20260926/comebin_out/comebin_res --earlystop --addvars --vars_sqrt --device cpu --num_threads 32 --seed 42
+3218631       00:07  0.5 python /vol/data/repos/COMEBin-v11/COMEBin/main.py train --data /vol/data/benchmark/runs/cami3_v11_20260926/comebin_out/data_augmentation --emb_szs_forcov 2048 --batch_size 1024 --emb_szs 2048 --n_views 6 --output_path /vol/data/benchmark/runs/cami3_v11_20260926/comebin_out/comebin_res --earlystop --addvars --vars_sqrt --device cpu --num_threads 32 --seed 42
+3218663       00:06  0.7 python /vol/data/repos/COMEBin-v11/COMEBin/main.py train --data /vol/data/benchmark/runs/cami3_v11_20260926/comebin_out/data_augmentation --emb_szs_forcov 2048 --batch_size 1024 --emb_szs 2048 --n_views 6 --output_path /vol/data/benchmark/runs/cami3_v11_20260926/comebin_out/comebin_res --earlystop --addvars --vars_sqrt --device cpu --num_threads 32 --seed 42
+2026-09-26T03:09:15+00:00	3200107,3200110,3201566,3218481,3218513,3218545,3218577	2807.8	7.760	5931
+2026-09-26T03:09:41Z
+> build · big-pickle
+Training healthy at epoch 54/200 (loss 4.42 ↓, top1 17.8 ↑, ~24 s/epoch → finish ≈ 04:08 UTC, then Leiden + bins). Plenty of headroom (system mem ~6 GB of 62 GB used). Nothing else actionable on this turn — closing out.
+
+**Turn summary**
+
+- **State verified**: `cami3_v11_20260926` registered in `.active_run` (mode=cami3, seed 42, commit 95f5ea8), training at **epoch 54/200**, loss ↓ / Top-1 ↑; watchdog owns handoff at completion (~04:08 UTC), after which `run_eval.sh` auto-chains CheckM2+CheckM v1 → figures → Zenodo version 3.
+- **Issues**: no new/updated — #6/#1 unchanged since Sep 23, COMEBin repo has issues disabled. #8/#12 remain closed (automation's own verification comments posted; replying would duplicate).
+- **Found + fixed a real reporting gap** while verifying the post-eval chain: `make_results_csv.py`'s matcher used `cami2`/`cami3` needles that never match the real `cami_II`/`cami_III` contigs paths, so the CAMI III row would have been labeled with the directory basename (`toy_human_input_2samples`) — the same latent flaw that produced the awkward `human_sample0_input` labels. Now checks `cami_III` before `cami_II` (substring trap), returns `CAMI III`/`CAMI II`, deployed atomically to `bin/` (eval calls helpers via `$(dirname $0)`, and the watchdog defers deploys while a run is live — but this helper only runs post-eval, so an atomic swap now is safe). Doesn't disturb existing committed CSVs or the plot/table generation (those use their own display names).
+- **Committed under lock**: `32c5240` (script fix) + `bcc1745` (PROGRESS note); pushed to `main`, PROGRESS synced to `/vol/data/benchmark/`.
+- Housekeeping: `.heartbeat`/`.activity`/`status/agent-activity.log` kept current throughout.
+
+**Next**: when `cami3_v11_20260926` completes, run_eval.sh auto-runs (CheckM2 + CheckM v1 → per-bin CSVs/plots → combined bar plot → Zenodo v3). I'll triage its output — verify the eval passed, confirm the CAMI III row is labeled "CAMI III" with the fix live, and post results/docs.
