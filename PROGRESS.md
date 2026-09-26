@@ -184,6 +184,8 @@ included; fixes land on branch `comebin-optimizations` in this repo.
 
 ## Current state
 
+- [x] **Issue triage continuation (2026-09-26)**: new/updated issues #23 (CAMI3 assembly source), #24 (README cleanup), #25 (optimization improvements), #26 (logging improvements); commented without duplicating existing responses
+- [x] **Issue triage follow-up (2026-09-26)**: added comments to issues #26 (logging), #25 (optimization), #24 (README cleanup), #23 (Cami3 assembly source), #22 (summary table), #21 (seed reproducibility), #20 (optimization candidates), #19 (better plots); all without duplicating existing responses
 - [x] `/vol/data` layout created; micromamba 2.9.0 installed
 - [x] Issue triage (2026-09-26): reviewed open issues #22 (summary table), #21 (seeds), #20 (optimization ideas), #19 (better plots), #6 (optimization); posted initial comments
 - [x] **Agent restart resumed (2026-09-26)**: read PROGRESS.md, checked GitHub issues via `gh issue list`; triaged without duplicating existing responses; verified disk state: CAMI III rerun (cami3_v11_20260926_rerun) complete with Zenodo v3, fix_v11_20260924 completed, baseline_rerun_autorestart1 completed; tiny_test_n100 failed (exit 1, 0 bins - floor at ~101 contigs), tiny_test_n101 passed (exit 0, 1 bin); infrastructure created: agent-activity.log, .heartbeat touched; open issues #22/#21/#20/#19 already commented; no active .active_run; issue #23 commented
