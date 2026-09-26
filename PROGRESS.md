@@ -438,6 +438,26 @@ included; fixes land on branch `comebin-optimizations` in this repo.
     run_comebin.sh --earlystop. Reported in docs/11 + README + results CSVs
     (results/marine_v11_20260925.csv, runs/marine_v11_20260925/per_bin_results.csv)._
 
+- [x] **CAMI III toy human gut: prep completed + benchmark RUNNING (2026-09-26)**
+      (scripts/prep_cami3_toy.sh created by sibling session; left uncommitted —
+      its WIP). Prep input at
+      `/vol/data/datasets/cami_III/toy_human_input_2samples/`: `contigs.fa`
+      (top-5000-longest of pooled GSA contigs, 1.1 GB), `input_meta.txt`,
+      complete bwa index (.amb/.ann/.bwt/.pac/.sa, built 02:17–02:24), and
+      both coverage BAMs mapped + indexed + quickcheck OK:
+      `bamfiles/sample_0_bam.bam` (76 MB) and `sample_1_bam.bam` (85 MB),
+      each with `.bai`. The prep-driving session exited mid-flight after
+      sample_0's BAM; remaining steps (sample_0 index, sample_1
+      extract+mapping+sort+index, both quickchecks) completed idempotently via
+      `finish_prep_cami3.sh` (nothing deleted; the earlier "sample 1 corrupted"
+      note was wrong — the long-read archive holds `anonymous_reads.fq.gz`,
+      the short-read archive only `reads_mapping.tsv.gz`).
+      **Run `cami3_v11_20260926` launched 2026-09-26 02:45 UTC** detached via
+      run_comebin_fix.sh: MODE=cami3, seed 42, 32 threads, commit 95f5ea8 /
+      comebin-optimizations-v11, registered in `.active_run`, watchdog owns
+      handoff. Eval via run_eval.sh afterwards (CheckM2 + CheckM v1 →
+      auto-report + Zenodo update).
+
 - [x] **Issue #12 plots (2026-09-24 ~10:42 UTC)**: `scripts/make_per_bin_plots.py`
       generates per-bin bar charts (`runs/<run>/per_bins.png`, CheckM2 + CheckM v1
       comp/cont per bin) and a comparison scatter
