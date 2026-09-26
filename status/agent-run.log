@@ -72553,3 +72553,56 @@ drwxrwxr-x 4 ubuntu ubuntu 4096 Sep 26 01:54 ..
 2026-09-26T01:58:18Z
 > build · big-pickle
 `.sa` written at 01:54 but `.bwt` still missing — the pattern suggests bwa writes `.sa` mid-flight; process 3173763 is still alive (9+ min). The sibling's 600s wrapper fires at ~01:59:11; if the process is still alive it shouldn't relaunch. Waiting and re-checking:
+[0m$ [0msleep 240; ls -la --time-style=long-iso /vol/data/datasets/cami_III/toy_human_input_2samples/contigs.fa.* 2>/dev/null; echo "=== procs ==="; ps -eo pid,etime,cmd | grep -E "bwa (index|mem)|samtools" | grep -v grep | head -8; echo "=== bamfiles ==="; ls -la /vol/data/datasets/cami_III/toy_human_input_2samples/bamfiles/ 2>/dev/null; date -u +%FT%TZ; touch /vol/data/benchmark/.heartbeat
+-rw-rw-r-- 1 ubuntu ubuntu      1478 2026-09-26 02:02 /vol/data/datasets/cami_III/toy_human_input_2samples/contigs.fa.amb
+-rw-rw-r-- 1 ubuntu ubuntu    391378 2026-09-26 02:02 /vol/data/datasets/cami_III/toy_human_input_2samples/contigs.fa.ann
+-rw-rw-r-- 1 ubuntu ubuntu 563268660 2026-09-26 02:02 /vol/data/datasets/cami_III/toy_human_input_2samples/contigs.fa.pac
+=== procs ===
+3178745       00:25 /bin/bash -c /vol/data/envs/comebin/bin/bwa index /vol/data/datasets/cami_III/toy_human_input_2samples/contigs.fa & BWA_PID=$! echo "Started bwa index PID $BWA_PID" # Wait a long time for it to complete sleep 600 echo "Checking after 600s..." ls -la /vol/data/datasets/cami_III/toy_human_input_2samples/contigs.fa.* 2>/dev/null ps -p $BWA_PID -o pid,stat 2>/dev/null || echo "Process gone"
+3178746       00:25 /vol/data/envs/comebin/bin/bwa index /vol/data/datasets/cami_III/toy_human_input_2samples/contigs.fa
+=== bamfiles ===
+total 8
+drwxrwxr-x 2 ubuntu ubuntu 4096 Sep 25 21:54 .
+drwxrwxr-x 4 ubuntu ubuntu 4096 Sep 26 02:02 ..
+2026-09-26T02:02:25Z
+> build · big-pickle
+The sibling relaunched `bwa index` at ~02:02 without `rm -f` this time (fresh `.pac/.amb/.ann` at 02:02). Index is single-threaded and large (~2.25 Gbp reference → `.bwt` is the long pole), so the 600s-wrapper loop will keep "checking". I'll keep monitoring but not disturb. Meanwhile, committing the docs/10 fix under lock:
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && git fetch origin 2>&1 | tail -1; git status --short | head; exec 9>/tmp/bench-repo.lock; flock -n 9 || { echo LOCK_BUSY; exit 1; }; git add docs/10-data-preservation.md && git commit -m "docs/10: fix stale 'watchdogs do not upload automatically' text — uploads are automatic via run_eval.sh -> zenodo_update.sh (v2.0 proves it)" 2>&1 | tail -2; git push origin main 2>&1 | tail -2; TS=$(date -u +%FT%TZ); echo "$TS docs/10: fix stale watchdog-upload text (manual -> automatic)" >> status/agent-activity.log; echo "$TS docs10-fix-committed" >> /vol/data/benchmark/.activity; touch /vol/data/benchmark/.heartbeat
+M docs/10-data-preservation.md
+ M scripts/prep_cami3_toy.sh
+[main b3c990c] docs/10: fix stale 'watchdogs do not upload automatically' text — uploads are automatic via run_eval.sh -> zenodo_update.sh (v2.0 proves it)
+ 1 file changed, 6 insertions(+), 3 deletions(-)
+To https://github.com/paulzierep/metagenomic-binning-benchmark
+   9ebf99f..b3c990c  main -> main
+> build · big-pickle
+Pushed (`b3c990c`). Note origin/main had moved to `9ebf99f` — let me confirm that's the sibling session's push and my commit only touched docs/10:
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && git log --oneline -5; echo "==="; git show --stat b3c990c | head -8; echo "=== what did 9ebf99f change ==="; git show --stat 9ebf99f | head -12; touch /vol/data/benchmark/.heartbeat
+b3c990c docs/10: fix stale 'watchdogs do not upload automatically' text — uploads are automatic via run_eval.sh -> zenodo_update.sh (v2.0 proves it)
+9ebf99f status: yes — marine_v11_20260925 epoch 158/200 loss 0.4026324152946472 acc 99.58332824707031 model big-pickle — 2026-09-25T12:16:00Z | marine_v11_202609 2026-09-25T15:34:55Z | issues triaged: # 2026-09-25T20:49:23Z | issues triaged: # 2026-09-25T21:11:13Z | issues #12 and #8 2026-09-25T21:24:00Z | CAMI III prep scr 2026-09-25T21:54:00Z | agent: started CA 2026-09-26T00:49:54Z marine-eval-launche 2026-09-26T00:50:20Z marine-eval-launche 2026-09-26T00:50:42Z marine-eval-launche 2026-09-26T01:14:16Z marine-eval-retry-l 2026-09-26T01:41:50Z zenodo-v2-published 2026-09-26T01:46:27Z commit: pushed mari 2026-09-26T01:46:47Z delivery-comments-p 2026-09-26T01:47:11Z progress-committed 2026-09-26T01:49:18Z progress-synced
+a8aa1e9 status: yes — marine_v11_20260925 epoch 158/200 loss 0.4026324152946472 acc 99.58332824707031 model big-pickle — 2026-09-25T12:16:00Z | marine_v11_202609 2026-09-25T15:34:55Z | issues triaged: # 2026-09-25T20:49:23Z | issues triaged: # 2026-09-25T21:11:13Z | issues #12 and #8 2026-09-25T21:24:00Z | CAMI III prep scr 2026-09-25T21:54:00Z | agent: started CA 2026-09-26T00:49:54Z marine-eval-launche 2026-09-26T00:50:20Z marine-eval-launche 2026-09-26T00:50:42Z marine-eval-launche 2026-09-26T01:14:16Z marine-eval-retry-l 2026-09-26T01:41:50Z zenodo-v2-published 2026-09-26T01:46:27Z commit: pushed mari 2026-09-26T01:46:47Z delivery-comments-p 2026-09-26T01:47:11Z progress-committed 2026-09-26T01:49:18Z progress-synced
+6a7c6a2 status: yes — marine_v11_20260925 epoch 158/200 loss 0.4026324152946472 acc 99.58332824707031 model big-pickle — 2026-09-25T12:16:00Z | marine_v11_202609 2026-09-25T15:34:55Z | issues triaged: # 2026-09-25T20:49:23Z | issues triaged: # 2026-09-25T21:11:13Z | issues #12 and #8 2026-09-25T21:24:00Z | CAMI III prep scr 2026-09-25T21:54:00Z | agent: started CA 2026-09-26T00:49:54Z marine-eval-launche 2026-09-26T00:50:20Z marine-eval-launche 2026-09-26T00:50:42Z marine-eval-launche 2026-09-26T01:14:16Z marine-eval-retry-l 2026-09-26T01:41:50Z zenodo-v2-published 2026-09-26T01:46:27Z commit: pushed mari 2026-09-26T01:46:47Z delivery-comments-p 2026-09-26T01:47:11Z progress-committed 2026-09-26T01:49:18Z progress-synced
+8d530c2 meta: supervise tick 2026-09-26T01:53:01Z — 0 fix(es)
+===
+commit b3c990c9db6686da50a18718b8c071b114a7c4ce
+Author: paulzierep <paulzierep@users.noreply.github.com>
+Date:   Sat Sep 26 02:02:34 2026 +0000
+
+    docs/10: fix stale 'watchdogs do not upload automatically' text — uploads are automatic via run_eval.sh -> zenodo_update.sh (v2.0 proves it)
+
+ docs/10-data-preservation.md | 9 ++++++---
+ 1 file changed, 6 insertions(+), 3 deletions(-)
+=== what did 9ebf99f change ===
+commit 9ebf99f9276069d142c193f98912ef79b6f01cbd
+Author: paulzierep <paulzierep@users.noreply.github.com>
+Date:   Sat Sep 26 02:00:03 2026 +0000
+
+    status: yes — marine_v11_20260925 epoch 158/200 loss 0.4026324152946472 acc 99.58332824707031 model big-pickle — 2026-09-25T12:16:00Z | marine_v11_202609
+    2026-09-25T15:34:55Z | issues triaged: #
+    2026-09-25T20:49:23Z | issues triaged: #
+    2026-09-25T21:11:13Z | issues #12 and #8
+    2026-09-25T21:24:00Z | CAMI III prep scr
+    2026-09-25T21:54:00Z | agent: started CA
+    2026-09-26T00:49:54Z marine-eval-launche
+    2026-09-26T00:50:20Z marine-eval-launche
+> build · big-pickle
+Clean push (9ebf99f was just auto heartbeat commits from the status-heartbeat cron). Continuing to monitor the index — the sibling's 600s check fires ~02:12:
