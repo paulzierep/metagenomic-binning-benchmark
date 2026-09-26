@@ -3,10 +3,10 @@
 | | |
 |---|---|
 | Status | 🟢 `running` |
-| ⏱ Updated (Europe/Berlin) | `2026-09-26T03:50 CEST` |
-| 🏃 Last benchmark (not active) | `marine_v11_20260925` — last observed **epoch 158/200** (log 47045s old) |
+| ⏱ Updated (Europe/Berlin) | `2026-09-26T03:56 CEST` |
+| 🏃 Last benchmark (not active) | `marine_v11_20260925` — last observed **epoch 158/200** (log 47405s old) |
 | 🧠 Model (last turn) | `big-pickle` (watchdog rotates to free models on quota) |
-| 📌 Agent note · **0 min old** | 2026-09-25T12:16:00Z | marine_v11_20260925 active: epoch 147/200, COMEBin-v11@95f5ea8, cami2 mode; heartbeat touched; PROGRESS synced
+| 📌 Agent note · **6 min old** | 2026-09-25T12:16:00Z | marine_v11_20260925 active: epoch 147/200, COMEBin-v11@95f5ea8, cami2 mode; heartbeat touched; PROGRESS synced
 2026-09-25T15:34:55Z | issues triaged: #12 reporting auto-plots confirmed complete; #8 Zenodo record active with continuous-update workflow; marine run completed; no active run
 2026-09-25T20:49:23Z | issues triaged: #12 auto-plots complete; #8 zenodo record published with continuous-update workflow; marine run completed; no active run; agent resumed for CAMI III prep
 2026-09-25T21:11:13Z | issues #12 and #8 triaged: reporting auto-plots confirmed complete and Zenodo continuous-update workflow verified; no active runs; preparing for CAMI III dataset prep
@@ -21,9 +21,9 @@
 2026-09-26T01:46:47Z delivery-comments-posted
 2026-09-26T01:47:11Z progress-committed
 2026-09-26T01:49:18Z progress-synced |
-| ⚙️ Load · uptime | `1.93 3.00 7.38` · 2 days, 12 hours, 14 minutes — 32 cores, 62 GiB, no GPU |
-| 💾 RAM used/total | `3732/64295 MB` |
+| ⚙️ Load · uptime | `1.29 2.16 5.63` · 2 days, 12 hours, 20 minutes — 32 cores, 62 GiB, no GPU |
+| 💾 RAM used/total | `2336/64295 MB` |
 | 🔗 Session | `ses_f31799c77ffeTq9gcYgqc4hBhg` |
-| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `690f427 status: yes — marine_v11_20260925 epoch 158/200 loss 0.402632415294647` |
+| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `8d530c2 meta: supervise tick 2026-09-26T01:53:01Z — 0 fix(es)` |
 | 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `7113043 B` — every run, command & tool result |
 | 📈 Timeline | [status/status.log](status/status.log) |
