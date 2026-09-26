@@ -497,6 +497,17 @@ included; fixes land on branch `comebin-optimizations` in this repo.
       `meta/zenodo_benchmark_release_v2.json`). Script hardened for Zenodo's
       async publish (HTTP 202 → poll to state=done) and excludes volatile
       status logs from the change hash.
+      *Follow-ups 2026-09-26: version DOI 10.5281/zenodo.22969763 propagation
+      resolved (HTTP 200 + DataCite `findable` at 02:54 UTC, ~68 min after
+      publish; receipt updated, comment posted on #8). #8 and #12 were closed
+      by automation at 02:23 with their own verification comments — including
+      commit `34ea532`, which fixed a real deployment gap (the auto-report
+      scripts were never installed to `/vol/data/benchmark/bin`, and helpers
+      resolved the repo as `dirname(script)/..` = the data dir, not the repo,
+      when invoked from `bin/`). Verified after the fix: `bin/run_eval.sh`,
+      `bin/zenodo_update.sh`, `bin/make_combined_bar_plot.py` are
+      byte-identical to the repo and `REPO` resolution now works — so the
+      next evaluation really does regenerate figure + Zenodo version.*
 
 ## Watchdog / restart
 

@@ -50,11 +50,17 @@ exit 0, wall **31,406 s (≈ 8.7 h)**, early stop at epoch **159/200**
 MQ 60), CheckM v1 **46.36 % / 5.09 %** (HQ 37 / MQ 60) — the **best-quality
 dataset of the benchmark so far** ([CSV](results/marine_v11_20260925.csv)).
 
-**Next (in progress):** CAMI III toy human gut — prep running (2 samples,
-short + long reads, `scripts/prep_cami3_toy.sh`), then first CAMI III run.
-Every successful evaluation now archives itself: Zenodo **version 2.0**
+**Next (in progress):** CAMI III toy human gut — **prep complete** (top-5,000
+pooled-GSA contigs, 1.1 Gbp, full bwa index, both samples' coverage BAMs
+indexed + quickcheck OK) and the first CAMI III run **`cami3_v11_20260926` is
+training** (MODE=cami3, seed 42, 32 threads, commit
+[`95f5ea8`](https://github.com/paulzierep/COMEBin/commit/95f5ea820f9a4e76f5c2911c0b5ed507ab67b015),
+launched 2026-09-26 02:45 UTC; live epoch in the banner above). Evaluation
+(CheckM2 + CheckM v1) follows automatically when it finishes. Every successful
+evaluation now archives itself: Zenodo **version 2.0**
 published 2026-09-26 (concept DOI
-[10.5281/zenodo.22935024](https://doi.org/10.5281/zenodo.22935024), all run
+[10.5281/zenodo.22935024](https://doi.org/10.5281/zenodo.22935024), version DOI
+[10.5281/zenodo.22969763](https://doi.org/10.5281/zenodo.22969763), all run
 outputs + metrics + figures + docs; automatic via
 [`scripts/zenodo_update.sh`](scripts/zenodo_update.sh), issue #8).
 Per-run table + full history: [`docs/11-run-results.md`](docs/11-run-results.md).
