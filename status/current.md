@@ -3,10 +3,10 @@
 | | |
 |---|---|
 | Status | 🟢 `running` |
-| ⏱ Updated (Europe/Berlin) | `2026-09-26T04:46 CEST` |
+| ⏱ Updated (Europe/Berlin) | `2026-09-26T04:48 CEST` |
 | 🏃 Benchmark | no active run |
 | 🧠 Model (last turn) | `big-pickle` (watchdog rotates to free models on quota) |
-| 📌 Agent note · **0 min old** | 2026-09-25T12:16:00Z | marine_v11_20260925 active: epoch 147/200, COMEBin-v11@95f5ea8, cami2 mode; heartbeat touched; PROGRESS synced
+| 📌 Agent note · **2 min old** | 2026-09-25T12:16:00Z | marine_v11_20260925 active: epoch 147/200, COMEBin-v11@95f5ea8, cami2 mode; heartbeat touched; PROGRESS synced
 2026-09-25T15:34:55Z | issues triaged: #12 reporting auto-plots confirmed complete; #8 Zenodo record active with continuous-update workflow; marine run completed; no active run
 2026-09-25T20:49:23Z | issues triaged: #12 auto-plots complete; #8 zenodo record published with continuous-update workflow; marine run completed; no active run; agent resumed for CAMI III prep
 2026-09-25T21:11:13Z | issues #12 and #8 triaged: reporting auto-plots confirmed complete and Zenodo continuous-update workflow verified; no active runs; preparing for CAMI III dataset prep
@@ -25,9 +25,9 @@
 2026-09-26T02:41:03Z finish-prep-launched
 2026-09-26T02:45:37Z cami3-run-launched
 2026-09-26T02:45:58Z cami3-progress-committed |
-| ⚙️ Load · uptime | `1.35 1.62 1.52` · 2 days, 13 hours, 10 minutes — 32 cores, 62 GiB, no GPU |
-| 💾 RAM used/total | `2556/64295 MB` |
+| ⚙️ Load · uptime | `2.32 1.88 1.63` · 2 days, 13 hours, 12 minutes — 32 cores, 62 GiB, no GPU |
+| 💾 RAM used/total | `2534/64295 MB` |
 | 🔗 Session | `ses_f31799c77ffeTq9gcYgqc4hBhg` |
-| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `3faa008 PROGRESS: CAMI III prep complete (both BAMs indexed+verified), cami3_v11` |
-| 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `7179988 B` — every run, command & tool result |
+| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `939950f status: yes — cami3_v11_20260926 epoch —/200 loss — acc — model ` |
+| 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `7182482 B` — every run, command & tool result |
 | 📈 Timeline | [status/status.log](status/status.log) |

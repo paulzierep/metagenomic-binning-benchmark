@@ -73141,3 +73141,19 @@ pid=3200074 mode=cami3 src=/vol/data/repos/COMEBin-v11
 version2 doi -> 404
 2026-09-26T02:46:00Z
 > build · big-pickle
+Run log hasn't advanced past augmentation views in ~45 s — checking the actual worker processes:
+[0m$ [0mps -eo pid,ppid,etime,pcpu,rss,cmd | grep -iE "python|main.py|micromamba run|frag|hmmer|prodigal" | grep -v grep | grep -v "opencode" | head -10; echo "=== full proc tree of run ==="; ps -eo pid,ppid,cmd | awk '$1==3200074 || $2==3200074 || $1==3200100 || $2==3200100 {print $0}'; echo "=== log size/age ==="; ls -la --time-style=long-iso /vol/data/benchmark/runs/cami3_v11_20260926/comebin_run.log; tail -2 /vol/data/benchmark/runs/cami3_v11_20260926/comebin_run.log; touch /vol/data/benchmark/.heartbeat
+3200107 3200074       00:49  0.0 12868 /vol/data/tools/bin/micromamba run -p /vol/data/envs/comebin bash run_comebin.sh -a /vol/data/datasets/cami_III/toy_human_input_2samples/contigs.fa -p /vol/data/datasets/cami_III/toy_human_input_2samples/bamfiles -o /vol/data/benchmark/runs/cami3_v11_20260926/comebin_out -n 6 -t 32 -d cpu -s 42
+3200129 3200110       00:49 99.8 488484 python /vol/data/repos/COMEBin-v11/COMEBin/main.py generate_aug_data --contig_file /vol/data/datasets/cami_III/toy_human_input_2samples/contigs.fa --out_augdata_path /vol/data/benchmark/runs/cami3_v11_20260926/comebin_out/data_augmentation --n_views 6 --bam_file_path /vol/data/datasets/cami_III/toy_human_input_2samples/bamfiles --num_threads 32 --seed 42
+=== full proc tree of run ===
+3200074 3200072 bash scripts/run_comebin_fix.sh /vol/data/benchmark/runs/cami3_v11_20260926
+3200100 3200074 bash scripts/run_comebin_fix.sh /vol/data/benchmark/runs/cami3_v11_20260926
+3200107 3200074 /vol/data/tools/bin/micromamba run -p /vol/data/envs/comebin bash run_comebin.sh -a /vol/data/datasets/cami_III/toy_human_input_2samples/contigs.fa -p /vol/data/datasets/cami_III/toy_human_input_2samples/bamfiles -o /vol/data/benchmark/runs/cami3_v11_20260926/comebin_out -n 6 -t 32 -d cpu -s 42
+3200108 3200074 tee /vol/data/benchmark/runs/cami3_v11_20260926/comebin_run.log
+3200235 3200100 sleep 30
+=== log size/age ===
+-rw-rw-r-- 1 ubuntu ubuntu 835 2026-09-26 02:45 /vol/data/benchmark/runs/cami3_v11_20260926/comebin_run.log
+2026-09-26 02:45:16,848 - Generate augmentation view 4/5 with seed 46.
+2026-09-26 02:45:16,848 - Generate augmentation view 5/5 with seed 47.
+> build · big-pickle
+Run is healthy: `main.py generate_aug_data` at ~100% CPU, 488 MB RSS, seed 42, correct args (bamdir, `-n 6 -t 32 -d cpu -s 42`). Watchdog owns handoff. Let me confirm it advances past augmentation before resting this turn:
