@@ -73225,3 +73225,275 @@ Date:   Sat Sep 26 02:10:43 2026 +0000
 2581eb07d50df9d5e357583ef118da14655a2341
 2581eb07d50df9d5e357583ef118da14655a2341
 > build · mimo-v2.6-flash-free
+`34ea532` exists but isn't in the last 8 commits — let me see where it sits and review the full fix, then verify the claimed runtime state on disk:
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && git log --oneline --all | grep -n 34ea532; git log --oneline 34ea532 -1; git merge-base --is-ancestor 34ea532 HEAD && echo "IS ancestor of HEAD" || echo "NOT ancestor"; echo "=== full stat ==="; git show --stat 34ea532 | tail -25; touch /vol/data/benchmark/.heartbeat
+25:34ea532 Fix reporting/Zenodo auto-update pipeline that was never actually deployed
+34ea532 Fix reporting/Zenodo auto-update pipeline that was never actually deployed
+IS ancestor of HEAD
+=== full stat ===
+      feature. It self-heals, reports broken rather than lying if the deploy fails,
+      and defers while a benchmark run is live so a script is never swapped out from
+      under a running evaluation. C1's cron-job set and reinstall path are unchanged.
+    - make_combined_bar_plot.py: deterministic SVG (fixed hashsalt, Date metadata
+      suppressed) so an unchanged figure regenerates byte-identically and automatic
+      post-eval commits carry only real changes instead of timestamp/id churn.
+    - prep_cami3_toy.sh: fall back to the long-read archive when no short-read .fq
+      is found (previously the sample was skipped with a warning).
+    
+    Verified: deployed copies resolve REPO to the git repo; the installed
+    make_combined_bar_plot.py regenerates combined_bar_plot.png and
+    main_runs_table.md byte-identically and the SVG is now stable across runs;
+    C1b self-heal verified for missing/stale/in-sync/unwritable/live-run cases.
+
+ PROGRESS.md                           |   2 +-
+ docs/00-setup.md                      |   2 +-
+ results/figures/combined_bar_plot.svg | 153 +++++++++++++++++-----------------
+ scripts/make_combined_bar_plot.py     |  31 ++++++-
+ scripts/make_per_bin_csv.py           |  20 ++++-
+ scripts/make_per_bin_plots.py         |  21 ++++-
+ scripts/make_results_csv.py           |  21 ++++-
+ scripts/meta-watchdog.sh              |  65 +++++++++++++++
+ scripts/prep_cami3_toy.sh             |  61 ++++++++++----
+ scripts/zenodo_update.sh              |  13 ++-
+ 10 files changed, 287 insertions(+), 102 deletions(-)
+> build · mimo-v2.6-flash-free
+`34ea532` (02:10, by the automation session) is an ancestor of HEAD — it fixed repo-root resolution, deployed scripts to `/vol/data/benchmark/bin`, added a self-heal watchdog, and committed the `prep_cami3_toy.sh` WIP. Tree is now clean. Verifying the deployed runtime it claims:
+[0m$ [0mls -la --time-style=long-iso /vol/data/benchmark/bin/ | head -20; echo "=== bin/run_eval.sh has auto-report? ==="; grep -n "make_combined_bar_plot\|zenodo_update" /vol/data/benchmark/bin/run_eval.sh | head; echo "=== REPO resolution in deployed zenodo_update.sh ==="; grep -n "REPO=" /vol/data/benchmark/bin/zenodo_update.sh | head -3; echo "=== deployed copies match repo? ==="; for f in run_eval.sh zenodo_update.sh make_combined_bar_plot.py; do a=$(md5sum /vol/data/benchmark/bin/$f 2>/dev/null | cut -d' ' -f1); b=$(md5sum /vol/data/repos/metagenomic-binning-benchmark/scripts/$f 2>/dev/null | cut -d' ' -f1); [ "$a" = "$b" ] && echo "$f: MATCH" || echo "$f: DIFF bin=$a repo=$b"; done; touch /vol/data/benchmark/.heartbeat
+total 244
+drwxrwxr-x  3 ubuntu ubuntu  4096 2026-09-26 02:08 .
+drwxrwxr-x 11 ubuntu ubuntu  4096 2026-09-26 02:48 ..
+drwxrwxr-x  2 ubuntu ubuntu  4096 2026-09-26 02:07 __pycache__
+-rwxr-xr-x  1 ubuntu ubuntu 13123 2026-09-24 10:31 agent-watchdog.sh
+-rwxr-xr-x  1 ubuntu ubuntu 12963 2026-09-24 10:23 benchmark-watchdog.sh
+-rwxr-xr-x  1 ubuntu ubuntu  5033 2026-09-25 04:54 issue-closer.sh
+-rw-r--r--  1 ubuntu ubuntu 12669 2026-09-26 02:07 make_combined_bar_plot.py
+-rwxr-xr-x  1 ubuntu ubuntu  3979 2026-09-24 09:18 make_medium_dataset.sh
+-rw-r--r--  1 ubuntu ubuntu  4539 2026-09-26 02:07 make_per_bin_csv.py
+-rw-r--r--  1 ubuntu ubuntu  8652 2026-09-26 02:07 make_per_bin_plots.py
+-rwxr-xr-x  1 ubuntu ubuntu  4404 2026-09-24 08:51 make_release_manifest.py
+-rw-r--r--  1 ubuntu ubuntu  5567 2026-09-26 02:07 make_results_csv.py
+-rwxr-xr-x  1 ubuntu ubuntu  2499 2026-09-24 08:51 make_small_dataset.sh
+-rwxr-xr-x  1 ubuntu ubuntu 27373 2026-09-26 02:08 meta-watchdog.sh
+-rwxr-xr-x  1 ubuntu ubuntu  3067 2026-09-24 09:02 parse_eval.py
+-rwxr-xr-x  1 ubuntu ubuntu  4375 2026-09-25 03:04 prep_cami2_human.sh
+-rwxr-xr-x  1 ubuntu ubuntu  3070 2026-09-24 08:51 prep_cami2_marine.sh
+-rwxr-xr-x  1 ubuntu ubuntu  8208 2026-09-26 02:05 prep_cami3_toy.sh
+-rwxr-xr-x  1 ubuntu ubuntu  9905 2026-09-24 09:19 run_comebin_baseline.sh
+=== bin/run_eval.sh has auto-report? ===
+116:  "$MM" run -p "$CHECKM_ENV" python3 "$(dirname "$0")/make_combined_bar_plot.py" 9>&- \
+117:    || echo "WARNING: make_combined_bar_plot.py failed (rc=$?)" >&2
+120:  bash "$(dirname "$0")/zenodo_update.sh" 9>&- \
+121:    || echo "WARNING: zenodo_update.sh failed (rc=$?)" >&2
+=== REPO resolution in deployed zenodo_update.sh ===
+32:REPO=${BENCH_REPO:-}
+40:    if [ -f "$_cand/README.md" ] && [ -d "$_cand/results" ]; then REPO=$(cd "$_cand" && pwd); break; fi
+=== deployed copies match repo? ===
+run_eval.sh: MATCH
+zenodo_update.sh: MATCH
+make_combined_bar_plot.py: MATCH
+> build · mimo-v2.6-flash-free
+Deployed runtime now matches repo exactly, REPO resolution fixed — the automation's fix is genuine, and both issues were closed with its own verification comments (no reply needed from me; would duplicate). Now verifying PROGRESS "Current state" vs disk:
+[0m$ [0msed -n '185,250p' /vol/data/benchmark/PROGRESS.md; date -u +%FT%TZ; touch /vol/data/benchmark/.heartbeat
+## Current state
+
+- [x] `/vol/data` layout created; micromamba 2.9.0 installed
+- [x] COMEBin test dataset downloaded (5.58 GB) **and extracted** (6.4 GB; 29,434 contigs)
+- [x] Full COMEBin source review (findings above)
+- [x] Base env `/vol/data/envs/comebin` installed (python3.10, numpy1.23, sklearn1.1,
+      biopython1.81, pytorch-cpu, samtools/bwa/bedtools/hmmer/FragGeneScan/prodigal,
+      hnswlib/igraph/leidenalg; scanpy/numba NOT needed — never imported)
+- [x] Eval envs built: `/vol/data/envs/checkm2` (CheckM2 v1.1.0) + `/vol/data/envs/checkm`
+      (checkm v1; repaired with `setuptools<81` → `pkg_resources` on py3.14)
+- [x] Docs written & pushed to `main` (README, PROGRESS, docs/00–06, scripts/, .gitignore)
+- [x] gh CLI 2.45.0 installed + authenticated; idea-inbox issue #1 created
+- [x] Standing permissions configured (`~/.config/opencode/opencode.json`)
+- [x] Watchdogs installed (cron `*/5` agent + `*/5` benchmark-hang + `*/2` status-heartbeat)
+- [x] Per-run detailed logs mirrored into repo `runs/<run>/` (run_meta, comebin_run.log,
+      resources.tsv, comebin_res/*) — baseline row already live on GitHub
+- [x] Command lines documented: `docs/06-benchmark-commands.md`; per-run `run_meta.txt`
+      records `cmd_wrapper:` / `cmd_train_py:` / `cmd_from_log:`
+- [x] Status heartbeat live: German-time (Europe/Berlin) banner on README line 1 +
+      `status/current.md` (mem+load) + `status/status.log` + verbose
+      `status/agent-activity.log` — pushed every 2 min. Now embeds a **live epoch
+      probe** from the active run (banner shows `epoch N/200 · x/28 batches`), so
+      status never looks frozen.
+- [x] Issue #3 "I think comebin is stuck" — answered 2026-09-23 16:33 UTC with
+      live evidence (main.py ~3120% CPU on 32 cores, loss 3.33→3.16, Top1→94%,
+      46/200 epochs, ETA ~6 h worst case): run is healthy; the frozen look was a
+      stale banner snapshot → fixed with the live probe above.
+- [x] Binaries verified: run_FragGeneScan.pl, hmmsearch, bedtools, bwa, samtools, checkm
+- [x] BAM indexed (`SRR5720343.bam.bai`)
+- [x] Small benchmark dataset (issue #2): 300 top-length contigs + real overlapping reads
+      → `/vol/data/datasets/comebin_small` (94 MB); functional test runner ready
+      (`scripts/run_small_test.sh`). `small_test_v4` passed end-to-end on 2026-09-24
+      (30 epochs, 3 non-empty bins, wall 122 s); CheckM2 mean 26.07% completeness /
+      2.02% contamination and CheckM v1 mean 29.08% / 0.71%. Results:
+      `results/small_test_v4.csv`.
+- [x] CAMI II marine assemblies downloaded + **md5 verified** (`1c054a45…`), 9.42 GB;
+      extraction running; marine short-reads URL recorded (docs/01)
+- [x] CAMI II marine sample 0 (short-read): reads archive downloaded (5.2 G, 2026-09-23)
+      + extracted → `reads_0/…/reads/anonymous_reads.fq.gz` (**interleaved paired-end**,
+      35.25 M reads ≈ 17.6 M pairs) + `reads_mapping.tsv.gz` (maps reads → **genome**,
+      not contig). **Input decision** (docs/01): contigs = `anonymous_gsa.fasta.gz`
+      subset ≥2,000 bp (**41,988 contigs**; full set 1.48 M is not COMEBin-feasible),
+      reads = all → `bwa mem -p` single BAM; ground truth = `binning_gs.tsv` subset.
+      `scripts/prep_cami2_marine.sh` + env-overridable `run_comebin_fix.sh`
+      (CONTIGS/BAMDIR/MODE=`cami2`) ready; prep is CPU-bound → runs post-baseline
+- [x] checkm2 reference DB downloaded + extracted (`/vol/data/benchmark/checkm2db/`,
+      `uniref100.KO.1.dmnd` 3.08 GB); **checkm v1 reference data INSTALLED + verified**:
+      official tarball `checkm_data_2015_01_16.tar.gz` (288,590,617 B, `gzip -t` OK)
+      → extracted to `/vol/data/benchmark/checkm_ref/`, `checkm data setRoot` done,
+      CheckM v1.1.3 `taxon_list` loads markers OK (commands in docs/06)
+- [x] **Fix batch 1 (original) committed + pushed to fork** (branch
+      `comebin-optimizations`, commit `03670d6a`, worktree
+      `/vol/data/repos/COMEBin-opt`): sequential bin numbering + float coverage
+      depth (gen_cov.py + gen_var.py) — see `docs/07-fix-batches.md`
+- [x] **Fork updated by user (issue #5)**: origin/master → `1b476a4` (v1.1.0:
+      gen_cov.py float64/Welford rewrite — coverage fix now upstream; gen_var.py
+      removed; new flags `-w -m -d cpu -s seed -E -V`). Rebased fix work onto it:
+      branch **`comebin-optimizations-v11`** @ `95f5ea8` (worktree
+      `/vol/data/repos/COMEBin-v11`): sequential bin numbering + no-empty-bins
+      re-applied; py_compile + synthetic functional test PASS; pushed
+- [x] **Issue #4 "why agent often broken" — root cause found + fixed**: watchdog
+      log showed 17:35–18:41 outage = crash-loop rate limit hit by the OLD
+      one-shot-per-cron design. Persistent driver loop now keeps the agent on
+      the SAME session turn-after-turn; crash-guard markers only count FAILED
+      launches; **model in use is now logged** (watchdog.log `model=…` per turn;
+      status/current.md + status.log `model=` from the transcript; supervisor
+2026-09-26T02:53:05Z
+> build · mimo-v2.6-flash-free
+[0m$ [0msed -n '250,300p' /vol/data/benchmark/PROGRESS.md
+status/current.md + status.log `model=` from the transcript; supervisor
+      meta-watchdog layer added). All committed @ `ec41276`
+- [x] **Supervisor hardening follow-up**: owner-scoped primary liveness,
+      successful-turn-only crash reset, 1 h agent/30 min supervisor timeouts,
+      child lock-FD closure, official service/API + actual remote-SHA checks,
+      source/installed checksum enforcement, safe benchmark PID/PGID/start
+      validation and atomic mode/source handoff, retryable issue markers with
+      before/after comment IDs, and shared repo locks. Small/fix/eval launchers
+      refuse overlap; small test now records its promised resource timeline.
+- [x] **Issue #2 directives recorded** (docs/08): (a) functional tests start
+      on the 94 MB small real-data set; (b) only after that end-to-end run
+      passes, build a medium derived set (target 3,000 contigs, hard cap 5 GB);
+      (c) large benchmarks only after major commits; (d) dataset/space plan
+      includes human host-associated CAMI II (Multisample HMP / Toy Human
+      Microbiome), 391 GB free, planned data ≤ ~105 GB. Replies posted.
+- [x] **COMPLETE: baseline rerun + evaluation (2026-09-24)** — registered watchdog run
+      `baseline_rerun_autorestart1`, exit_code 0, wall_s 24,327 (~6.75 h), 200/200
+      epochs, 99.19% Top1. CheckM2: 60 bins, 25.01% mean completeness, 2.98%
+      mean contamination; CheckM v1 lineage workflow completed with the Python
+      3.10-compatible environment (60 bins; 21.23% mean completeness / 3.40%
+      mean contamination). Evidence: `runs/baseline_rerun_autorestart1/`
+      and `eval/checkm2/quality_report.tsv`. No benchmark was active when this
+      evaluation completed; the medium run is tracked separately below.
+- [x] **Long-run launch safety guard (2026-09-24)** — multi-hour baseline/fix
+      runs must be launched detached in a fresh run directory, then verified via
+      `.active_run` and handed off to `benchmark-watchdog.sh`; never run them in
+      a foreground tool call, delete an existing run directory, or overwrite its
+      evidence. The primary-agent prompts now enforce this on future turns.
+- [x] **C6 snapshot identity remediation (2026-09-24)** — benchmark-watchdog and
+      meta-watchdog now accept only an existing immutable snapshot tied to the
+      registered run family plus the exact registered run directory; unrelated
+      live PIDs still fail closed. Source and installed copies were syntax-checked
+      and the active snapshot was verified without a restart.
+- [x] **Issue #2 small-data fix validated end-to-end** — the observed
+      `aug0_datacoverage_mean.tsv` contained 29,434 BAM-header references while
+      the reduced assembly had 300. COMEBin branch `comebin-small-fix` commits
+      `5c77bc8` (producer/consumer alignment), `a0be243` (30-epoch functional-test
+      option), and `c8f22e4` (sklearn KMeans compatibility) are pushed. Dataset
+      builders emit explicit BED intervals and use `samtools -L`; the full-header
+      BAM was preserved after the reheader experiment. `small_test_v4` is the
+      verified passing gate. `run_small_test.sh` now rejects a masked zero-bin
+      success, and `run_eval.sh` validates both evaluation artifacts.
+- [x] **Supervisor C6 remediation (2026-09-23 21:42 UTC)**: deterministic terminal
+      failures are recorded and cleared instead of retried; replacement runners
+      use committed immutable snapshots; baseline wrapper failures now persist
+      `exit_code`; status labels cleared runs as not active. Fix commit: `2d61909`
+      (status truthfulness follow-up: `73aa0dd`).
+- [x] **Issues #6/#7/#8 triaged (20:55 UTC)**: #6 optimization → strategy doc;
+      #7 optimization plan → `docs/09-optimization-strategy.md` + README link
+      (flowchart, decision gate, adaptive-param ideas); #8 zenodo data archiving →
+      reply posted with proposed package/prep + what I need (token or manual upload)
+> build · mimo-v2.6-flash-free
+[0m$ [0mawk '/^## Current state/{f=1} f&&/^## /&&!/Current state/{exit} f' /vol/data/benchmark/PROGRESS.md | tail -40; echo "=== section line range ==="; grep -n "^## " /vol/data/benchmark/PROGRESS.md | head -12
+- [x] **Issue #12 plots (2026-09-24 ~10:42 UTC)**: `scripts/make_per_bin_plots.py`
+      generates per-bin bar charts (`runs/<run>/per_bins.png`, CheckM2 + CheckM v1
+      comp/cont per bin) and a comparison scatter
+      (`results/figures/comp_vs_cont_all-runs.png`, one point per bin, color = run)
+      via the comebin env's matplotlib. Run for baseline_rerun_autorestart1,
+      small_test_v4, medium_v11_20260924; each run re-renders its figures after
+      eval. Same-dataset comparisons accumulate (fix_v11 vs baseline once live).
+
+- [x] **Issues #7/#15/#16 triaged (2026-09-24 10:26–10:44 UTC)**: #7 — the
+      optimization flowchart is now rendered live in the README (colored mermaid,
+      fuller Current/Next text; `docs/09` synced). #15 — per-bin results for ALL
+      evaluated runs stored under `runs/<run>/per_bin_results.csv` (generator
+      `scripts/make_per_bin_csv.py`); root-level `medium_v11_20260924_checkm2_stats.csv`
+      moved to `runs/medium_v11_20260924/checkm2_per_bin.csv`. #16 — watchdog now
+      defaults to `opencode/big-pickle` (`c42fa84`), rotation only on quota.
+      Commits: `869754a` (per-bin + README), `c42fa84` (watchdog big-pickle).
+
+- [x] **Issue #12 combined bar plot + stats table (2026-09-26, commit `3328a96`)**:
+      `scripts/make_combined_bar_plot.py` renders the FAIRyMAGs-style
+      `results/figures/combined_bar_plot.png` (+ `.svg`): 2 rows (contamination
+      <5% / <10%) × 3 columns, one subplot per main dataset (demo 29,434 /
+      human 4,900 / marine 41,988 contigs), bars labelled run + COMEBin commit
+      + branch (e.g. `fix_v11_20260924 · 95f5ea8 · comebin-optimizations-v11`).
+      Auto-regenerated by `run_eval.sh` after every successful eval; README
+      shows the figure with the run stats table
+      (`results/main_runs_table.md`) directly underneath. Interpretation of
+      "focus only on 3": demo/human/marine; stated in the #12 delivery comment
+      so the owner can correct it.
+
+- [x] **Issue #8 Zenodo continuous updates (2026-09-26, commit `3328a96`)**:
+      `scripts/zenodo_update.sh` (package → SHA-256 manifest → content-hash
+      change detection → new version of concept 10.5281/zenodo.22935024 →
+      md5/size + DOI verification → receipt) is wired into `run_eval.sh`
+      auto-reporting. **Version 2.0 published** automatically by the marine
+      eval: record 22969763 (`comebin_benchmark_release_v2_20260926.tar.gz`,
+      168,110,629 B, md5 verified; 7 runs / 410 bins / 522 files; receipt
+      `meta/zenodo_benchmark_release_v2.json`). Script hardened for Zenodo's
+      async publish (HTTP 202 → poll to state=done) and excludes volatile
+      status logs from the change hash.
+
+=== section line range ===
+9:## Task definition
+25:## Standing authorizations (user-confirmed 2026-09-23 — do NOT re-ask)
+42:## Run logging — where everything is (per run: `runs/<run>/`)
+71:## Run logging — how to read phases
+76:## Resource policy (user: max resources for the benchmark, keep some for the agent, don't break anything)
+88:## Issues workflow (user-facing)
+99:## Decisions (confirmed by user)
+110:## Directory layout (authoritative)
+127:## Environment facts
+139:## COMEBin demo dataset
+148:## Known COMEBin bugs / perf issues (candidates for fix batches)
+185:## Current state
+> build · mimo-v2.6-flash-free
+[0m$ [0mgrep -n "^## \|^### " /vol/data/benchmark/PROGRESS.md | awk -F: '$1>185' | head -6; echo "==="; sed -n '/Issue #8 Zenodo continuous updates/,/^## /p' /vol/data/benchmark/PROGRESS.md | tail -12; touch /vol/data/benchmark/.heartbeat
+501:## Watchdog / restart
+===
+- [x] **Issue #8 Zenodo continuous updates (2026-09-26, commit `3328a96`)**:
+      `scripts/zenodo_update.sh` (package → SHA-256 manifest → content-hash
+      change detection → new version of concept 10.5281/zenodo.22935024 →
+      md5/size + DOI verification → receipt) is wired into `run_eval.sh`
+      auto-reporting. **Version 2.0 published** automatically by the marine
+      eval: record 22969763 (`comebin_benchmark_release_v2_20260926.tar.gz`,
+      168,110,629 B, md5 verified; 7 runs / 410 bins / 522 files; receipt
+      `meta/zenodo_benchmark_release_v2.json`). Script hardened for Zenodo's
+      async publish (HTTP 202 → poll to state=done) and excludes volatile
+      status logs from the change hash.
+
+## Watchdog / restart
+> build · mimo-v2.6-flash-free
+[0m$ [0mgrep -n "cami3_v11_20260926\|CAMI III toy human gut: prep completed" /vol/data/benchmark/PROGRESS.md | head; echo "=== Next section? ==="; grep -n "^\*\*Next\|^## Next\|Next:" /vol/data/benchmark/PROGRESS.md | head -5; echo "=== run health ==="; grep -o "epoch=[0-9]*/200[^,]*" /vol/data/benchmark/runs/cami3_v11_20260926/comebin_run.log | tail -2; grep -o "top1=[0-9.]*" /vol/data/benchmark/runs/cami3_v11_20260926/comebin_run.log | tail -3; touch /vol/data/benchmark/.heartbeat
+441:- [x] **CAMI III toy human gut: prep completed + benchmark RUNNING (2026-09-26)**
+455:      **Run `cami3_v11_20260926` launched 2026-09-26 02:45 UTC** detached via
+=== Next section? ===
+384:      Next: **CAMI II marine sample_0** — prep **COMPLETE** (2026-09-25
+=== run health ===
+epoch=13/200
+epoch=14/200
+top1=4.1211
+top1=5.0293
+top1=4.9154
