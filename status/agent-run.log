@@ -71020,3 +71020,148 @@ Other sessions under `opencode serve` own the CAMI III bwa work — leaving it t
 2026-09-26T01:17:45Z
 /dev/vda1        19G  7.8G   11G  43% /
 > build · mimo-v2.6-flash-free
+[0m$ [0msleep 150; grep -E "checkm2_rc|quality_report|No space|ERROR" /vol/data/benchmark/logs/marine_eval_retry.log | tail -5; echo "---"; tail -c 300 /vol/data/benchmark/logs/marine_eval_retry.log; date -u +%FT%TZ; touch /vol/data/benchmark/.heartbeat
+checkm2_rc: 0 checkm2_wall_s: 356
+checkm2 report: /vol/data/benchmark/runs/marine_v11_20260925/eval/checkm2/quality_report.tsv
+---
+ning 42 of 43 (97.67%) marker genes.    Finished aligning 43 of 43 (100.00%) marker genes.
+[2026-09-26 01:20:14] INFO: Reading marker alignment files.
+[2026-09-26 01:20:14] INFO: Concatenating alignments.
+[2026-09-26 01:20:14] INFO: Placing 152 bins into the genome tree with pplacer (be patient).
+2026-09-26T01:20:26Z
+> build · mimo-v2.6-flash-free
+CheckM2 retry: **rc=0 (356 s)** ✓ — now CheckM v1 (~20 min, pplacer running). Computing marine CheckM2 quality from the fresh report:
+[0m$ [0m/vol/data/tools/bin/micromamba run -p /vol/data/envs/comebin python3 - <<'EOF'
+import csv
+p="/vol/data/benchmark/runs/marine_v11_20260925/eval/checkm2/quality_report.tsv"
+rows=list(csv.DictReader(open(p), delimiter="\t"))
+comp=[float(r["Completeness"]) for r in rows]; cont=[float(r["Contamination"]) for r in rows]
+hq=sum(1 for c,t in zip(comp,cont) if c>=90 and t<5)
+mq=sum(1 for c,t in zip(comp,cont) if c>=50 and t<10) - hq
+print(f"bins={len(rows)} checkm2 mean_comp={sum(comp)/len(comp):.2f} mean_cont={sum(cont)/len(cont):.2f} HQ={hq} MQ={mq}")
+EOF
+grep -n "HQ\|MQ" /vol/data/repos/metagenomic-binning-benchmark/scripts/make_results_csv.py | head -8; date -u +%FT%TZ
+bins=152 checkm2 mean_comp=50.60 mean_cont=4.10 HQ=35 MQ=25
+5:#   checkm2_mean_completeness,checkm2_mean_contamination,checkm2_HQ,checkm2_MQ,
+6:#   checkm_mean_completeness,checkm_mean_contamination,checkm_HQ,checkm_MQ
+7:# MIMAG thresholds: HQ = compl>90 & cont<5 ; MQ = compl>=50 & cont<10.
+107:          "checkm2_mean_completeness", "checkm2_mean_contamination", "checkm2_HQ", "checkm2_MQ",
+108:          "checkm_mean_completeness", "checkm_mean_contamination", "checkm_HQ", "checkm_MQ"]
+2026-09-26T01:20:44Z
+> build · mimo-v2.6-flash-free
+Marine CheckM2: **152 bins, 50.60 % / 4.10 %, HQ 35 / MQ 25** — strongest dataset so far. Now wiring the Zenodo updater into `run_eval.sh`'s auto-chain (so the retry eval performs the first continuous upload), plus documenting it in docs/10:
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/scripts/run_eval.sh
+Index: /vol/data/repos/metagenomic-binning-benchmark/scripts/run_eval.sh
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/scripts/run_eval.sh
++++ /vol/data/repos/metagenomic-binning-benchmark/scripts/run_eval.sh
+@@ -114,8 +114,12 @@
+   # Issue #12: combined bar plot for the three main datasets + its stats table
+   # (README embeds both; regenerated after every successful eval).
+   "$MM" run -p "$CHECKM_ENV" python3 "$(dirname "$0")/make_combined_bar_plot.py" 9>&- \
+     || echo "WARNING: make_combined_bar_plot.py failed (rc=$?)" >&2
++  # Issue #8: continuously store the newly generated benchmark data as a new
++  # version of the same Zenodo record (no-op when content is unchanged).
++  bash "$(dirname "$0")/zenodo_update.sh" 9>&- \
++    || echo "WARNING: zenodo_update.sh failed (rc=$?)" >&2
+ fi
+ echo "done (checkm2 rc=$rc2, checkm rc=$rc1)"
+ if [ "$rc2" -ne 0 ] || [ "$rc1" -ne 0 ]; then
+   exit 1
+
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/docs/10-data-preservation.md
+Index: /vol/data/repos/metagenomic-binning-benchmark/docs/10-data-preservation.md
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/docs/10-data-preservation.md
++++ /vol/data/repos/metagenomic-binning-benchmark/docs/10-data-preservation.md
+@@ -88,8 +88,49 @@
+ 
+ If the upload is incomplete or verification fails, retain the local data and
+ report the failure; do not claim that preservation is complete.
+ 
++## Continuous updates — `scripts/zenodo_update.sh` (issue #8)
++
++Owner requirement (2026-09-25): *store all benchmark data in the same record,
++update continously when new benchmark data is made* — restricted (09:04) to
++data that is **newly generated and not publicly available otherwise**.
++`scripts/zenodo_update.sh` implements this end to end:
++
++1. **Package** the newly generated benchmark data into a staging directory:
++   `results/` (aggregate CSVs + all figures), the `runs/` mirrors
++   (`run_meta.txt`, `comebin_run.log`, `per_bin_results.csv`,
++   `per_bins.png`), every run's bin FASTAs
++   (`comebin_res/comebin_res_bins/`, symlinks dereferenced, non-empty only),
++   the key evaluation reports (CheckM2 `quality_report.tsv`, CheckM v1
++   `bin_stats_ext.tsv` + `checkm.log`), `docs/`, `README.md`, `PROGRESS.md`
++   and `status/agent-activity.log`. Runs without bins and without evaluation
++   results are excluded.
++2. **Manifest** with `make_release_manifest.py --omit-local-path` (sorted
++   relative paths, byte sizes, SHA-256, provenance metadata); the manifest
++   ships inside the tarball as `manifest.json`.
++3. **Change detection**: SHA-256 over the manifest's per-file hashes is
++   compared with `meta/zenodo_last_content.sha256`; identical content exits
++   without touching Zenodo, so repeated evaluations cannot create empty
++   versions.
++4. **Publish as a new version** of record `22935025` under concept DOI
++   10.5281/zenodo.22935024: reuse an open draft or `POST .../actions/newversion`,
++   upload through the record's file bucket
++   (`PUT /api/files/<bucket>/<name>`), refresh title/description/version
++   metadata, publish. The concept DOI always resolves to the newest version;
++   the per-version DOI of v1 (10.5281/zenodo.22935025) stays valid.
++5. **Verify + record**: published file size and MD5 must match the local
++   tarball and the DOI resolver is checked; a receipt is written to
++   `meta/zenodo_benchmark_release_v<N>.json` and only then is the content
++   marker updated.
++
++`run_eval.sh` calls the script best-effort in its auto-reporting block after
++**every successful evaluation**, so each newly evaluated run lands in the
++record without manual steps. `ZENODO_UPDATE=0` disables it,
++`--dry-run` packages everything without any network call, and a missing token
++file is a silent skip (the token itself lives only in the mode-0600
++`~/.zenodo_token`; never commit or log it).
++
+ ## Current status
+ 
+ - The small derived dataset exists locally at `/vol/data/datasets/comebin_small`
+   and its real COMEBin/CheckM2/CheckM gate is complete (`small_test_v4`).
+
+> build · mimo-v2.6-flash-free
+While CheckM v1 runs, gathering all marine run facts for docs/11 + README + the #18 comment:
+[0m$ [0mcat /vol/data/benchmark/runs/marine_v11_20260925/run_meta.txt; echo "=== run log: final epoch/top1/leiden ==="; grep -oE "epoch=[0-9]+/200[^ ]*.*" /vol/data/benchmark/runs/marine_v11_20260925/comebin_run.log | tail -2; grep -iE "leiden|early stop|earlystop|total time|Max memory|max_rss|GB" /vol/data/benchmark/runs/marine_v11_20260925/comebin_run.log | tail -8; echo "=== peak mem? ==="; grep -iE "rss|memory|mem" /vol/data/benchmark/runs/marine_v11_20260925/run_meta.txt | head
+run:        /vol/data/benchmark/runs/marine_v11_20260925
+source:     /vol/data/repos/COMEBin-v11 (branch comebin-optimizations-v11)
+date:       2026-09-25T04:14:49+00:00
+commit:     95f5ea820f9a4e76f5c2911c0b5ed507ab67b015
+contigs:    /vol/data/datasets/cami_II/marine_sample0_input/contigs.fa
+bamdir:     /vol/data/datasets/cami_II/marine_sample0_input/bamfiles
+threads:    32
+seed:       42
+host:       32 cores, 62G RAM, gpu=none
+cmd_wrapper: /vol/data/tools/bin/micromamba run -p /vol/data/envs/comebin bash run_comebin.sh -a /vol/data/datasets/cami_II/marine_sample0_input/contigs.fa -p /vol/data/datasets/cami_II/marine_sample0_input/bamfiles -o /vol/data/benchmark/runs/marine_v11_20260925/comebin_out -n 6 -t 32 -d cpu -s 42 
+exit_code:  0
+wall_s:     31406
+finished:   2026-09-25T12:58:15+00:00
+bins:       152  -> /vol/data/benchmark/runs/marine_v11_20260925/comebin_out/comebin_res/comebin_res_bins
+cmd_from_log: 2026-09-25 12:46:01,262 - Marker tools: FragGeneScan=/vol/data/envs/comebin/bin/FragGeneScan, wrapper=/vol/data/envs/comebin/bin/run_FragGeneScan.pl, hmmsearch=/vol/data/envs/comebin/bin/hmmsearch, perl=/vol/data/envs/comebin/bin/perl, marker_script=/vol/data/repos/COMEBin-v11/auxiliary/test_getmarker_2quarter.pl, marker_hmm=/vol/data/repos/COMEBin-v11/auxiliary/bacar_marker.hmm.
+cmd_from_log: 2026-09-25 12:47:35,855 - HMMsearch command: /vol/data/envs/comebin/bin/hmmsearch --domtblout /vol/data/datasets/cami_II/marine_sample0_input/.contigs.fa.bacar_marker.hmmout.2018231.2fwfgpzp.tmp -E 1e-05 --cpu 32 /vol/data/repos/COMEBin-v11/auxiliary/bacar_marker.hmm /vol/data/datasets/cami_II/marine_sample0_input/contigs.fa.frag.faa
+cmd_checkm2: /vol/data/tools/bin/micromamba run -p /vol/data/envs/checkm2 checkm2 predict --threads 32 --database_path /vol/data/benchmark/checkm2db/CheckM2_database/uniref100.KO.1.dmnd --input /vol/data/benchmark/runs/marine_v11_20260925/comebin_out/comebin_res/comebin_res_bins --output-directory /vol/data/benchmark/runs/marine_v11_20260925/eval/checkm2 -x fa --force
+checkm2_rc: 1 checkm2_wall_s: 202
+cmd_checkm: LD_LIBRARY_PATH=/vol/data/envs/checkm/lib:/vol/data/envs/comebin/lib /vol/data/tools/bin/micromamba run -p /vol/data/envs/comebin checkm lineage_wf -x fa -t 32 --tmpdir /vol/data/benchmark/runs/marine_v11_20260925/eval/checkm/tmp /vol/data/benchmark/runs/marine_v11_20260925/comebin_out/comebin_res/comebin_res_bins /vol/data/benchmark/runs/marine_v11_20260925/eval/checkm/out
+checkm_rc: 0 checkm_wall_s: 1133
+checkm_bins: 152 checkm_compl_mean: 46.36 checkm_cont_mean: 5.09
+cmd_checkm2: /vol/data/tools/bin/micromamba run -p /vol/data/envs/checkm2 checkm2 predict --threads 32 --database_path /vol/data/benchmark/checkm2db/CheckM2_database/uniref100.KO.1.dmnd --input /vol/data/benchmark/runs/marine_v11_20260925/comebin_out/comebin_res/comebin_res_bins --output-directory /vol/data/benchmark/runs/marine_v11_20260925/eval/checkm2 -x fa --force
+checkm2_rc: 0 checkm2_wall_s: 356
+cmd_checkm: LD_LIBRARY_PATH=/vol/data/envs/checkm/lib:/vol/data/envs/comebin/lib /vol/data/tools/bin/micromamba run -p /vol/data/envs/comebin checkm lineage_wf -x fa -t 32 --tmpdir /vol/data/benchmark/runs/marine_v11_20260925/eval/checkm/tmp /vol/data/benchmark/runs/marine_v11_20260925/comebin_out/comebin_res/comebin_res_bins /vol/data/benchmark/runs/marine_v11_20260925/eval/checkm/out
+=== run log: final epoch/top1/leiden ===
+epoch=158/200, batches=41, loss=0.41766915, top1=99.3099, elapsed=188.495s, process_memory={'VmPeak': '8725480 kB', 'VmRSS': '1769168 kB'}, gpu_memory=None.
+epoch=159/200, batches=41, loss=0.40263242, top1=99.5833, elapsed=187.901s, process_memory={'VmPeak': '8725480 kB', 'VmRSS': '1707768 kB'}, gpu_memory=None.
+2026-09-25 12:50:52,753 - Leiden completed 119/120: ratio=80, bandwidth=0.2, resolution=110, improvement=17118.2997593, elapsed=32.860s, rows=41988, worker_pid=2062982, worker_rss_mib=776.7, worker_pss_mib=243.7, output=/vol/data/benchmark/runs/marine_v11_20260925/comebin_out/comebin_res/cluster_res/Leiden_bandwidth_0.2_res_maxedges100respara_110_partgraph_ratio_80.labels.npy.
+2026-09-25 12:51:00,432 - Leiden completed 120/120: ratio=80, bandwidth=0.15, resolution=110, improvement=8761.21376553, elapsed=44.198s, rows=41988, worker_pid=2062956, worker_rss_mib=735.7, worker_pss_mib=202.7, output=/vol/data/benchmark/runs/marine_v11_20260925/comebin_out/comebin_res/cluster_res/Leiden_bandwidth_0.15_res_maxedges100respara_110_partgraph_ratio_80.labels.npy.
+2026-09-25 12:51:00,727 - Leiden pool completed: completed=120/120, elapsed=99.726s.
+2026-09-25 12:51:00,966 - Leiden pool released: parent_rss_mib=805.5, parent_pss_mib=802.9, available_memory_mib=61928.1.
+2026-09-25 12:51:01,002 - Validated complete Leiden result grid: max_edges=100, files=120, rows_per_file=41988.
+2026-09-25 12:51:05,507 - Validated complete Leiden result grid before final selection: format=binary-labels, max_edges=100, files=120, rows_per_file=41988.
+2026-09-25 12:58:13,308 - Final result:	/vol/data/benchmark/runs/marine_v11_20260925/comebin_out/comebin_res/cluster_res/Leiden_bandwidth_0.15_res_maxedges100respara_5_partgraph_ratio_50.labels.npy
+2026-09-25 12:58:13,308 - Stream winning Leiden bins from /vol/data/datasets/cami_II/marine_sample0_input/contigs.fa.
+=== peak mem? ===
+> build · mimo-v2.6-flash-free
