@@ -74413,3 +74413,52 @@ Training healthy at epoch 54/200 (loss 4.42 ↓, top1 17.8 ↑, ~24 s/epoch → 
 - Housekeeping: `.heartbeat`/`.activity`/`status/agent-activity.log` kept current throughout.
 
 **Next**: when `cami3_v11_20260926` completes, run_eval.sh auto-runs (CheckM2 + CheckM v1 → per-bin CSVs/plots → combined bar plot → Zenodo v3). I'll triage its output — verify the eval passed, confirm the CAMI III row is labeled "CAMI III" with the fix live, and post results/docs.
+[0m
+> build · big-pickle
+Starting this turn per protocol — TASK_COMPLETE check, run status, issues:
+[0m$ [0mls /vol/data/benchmark/TASK_COMPLETE 2>/dev/null && echo TASK_COMPLETE_EXISTS || echo NO_TASK_COMPLETE; echo "=== active_run ==="; cat /vol/data/benchmark/.active_run 2>/dev/null; echo; echo "=== run log tail ==="; tail -c 600 /vol/data/benchmark/runs/cami3_v11_20260926/comebin_run.log | tr '\r' '\n' | tail -8; echo "=== run_meta ==="; grep -E "exit_code|wall_s|bins" /vol/data/benchmark/runs/cami3_v11_20260926/run_meta.txt 2>/dev/null; date -u +%FT%TZ; touch /vol/data/benchmark/.heartbeat
+NO_TASK_COMPLETE
+=== active_run ===
+3200074 3200071 /vol/data/benchmark/runs/cami3_v11_20260926/comebin_run.log /vol/data/benchmark/runs/cami3_v11_20260926 1790390713 cami3 /vol/data/repos/COMEBin-v11 /vol/data/datasets/cami_III/toy_human_input_2samples/contigs.fa /vol/data/datasets/cami_III/toy_human_input_2samples/bamfiles
+
+=== run log tail ===
+100%|██████████| 4/4 [00:23<00:00,  5.76s/it]
+100%|██████████| 4/4 [00:24<00:00,  6.06s/it]
+2026-09-26 03:09:58,460 - NN training: epoch=55/200, batches=4, loss=4.4055905, top1=17.4512, elapsed=24.268s, process_memory={'VmPeak': '8604356 kB', 'VmRSS': '1615424 kB'}, gpu_memory=None.
+
+  0%|          | 0/4 [00:00<?, ?it/s]
+ 25%|██▌       | 1/4 [00:07<00:22,  7.47s/it]
+ 50%|█████     | 2/4 [00:13<00:12,  6.43s/it]
+ 75%|███████▌  | 3/4 [00:18<00:05,  5.83s/it]=== run_meta ===
+2026-09-26T03:10:19Z
+[0m$ [0mgh issue list -R paulzierep/metagenomic-binning-benchmark --state open --json number,title,updatedAt 2>&1; echo "=== COMEBin ==="; gh issue list -R paulzierep/COMEBin --state open --json number,title,updatedAt 2>&1 | head -3; date -u +%FT%TZ; touch /vol/data/benchmark/.heartbeat
+[{"number":6,"title":"Optimization","updatedAt":"2026-09-23T20:56:21Z"},{"number":1,"title":"Idea inbox: benchmark ideas, COMEBin fixes, dataset requests","updatedAt":"2026-09-23T14:53:13Z"}]
+=== COMEBin ===
+the 'paulzierep/COMEBin' repository has disabled issues
+2026-09-26T03:10:20Z
+> build · big-pickle
+No new issues; run still training at epoch 55/200 (~24 s/epoch → finish ≈ 04:10 UTC). Verifying PROGRESS "Current state" vs disk and bin/ sync while waiting:
+[0m$ [0mecho "=== bin sync ==="; cd /vol/data/repos/metagenomic-binning-benchmark && for f in run_eval.sh zenodo_update.sh make_combined_bar_plot.py make_results_csv.py make_per_bin_csv.py make_per_bin_plots.py parse_eval.py; do a=$(md5sum /vol/data/benchmark/bin/$f 2>/dev/null | cut -d' ' -f1); b=$(md5sum scripts/$f 2>/dev/null | cut -d' ' -f1); [ "$a" = "$b" ] && echo "$f MATCH" || echo "$f DIFF"; done; echo "=== run dir contents ==="; ls /vol/data/benchmark/runs/cami3_v11_20260926/; ls /vol/data/benchmark/runs/cami3_v11_20260926/comebin_out/ 2>/dev/null; echo "=== repo mirror for cami3 ==="; ls /vol/data/repos/metagenomic-binning-benchmark/runs/cami3_v11_20260926/ 2>/dev/null | head; echo "=== git status ==="; git status --short | head; touch /vol/data/benchmark/.heartbeat
+=== bin sync ===
+run_eval.sh MATCH
+zenodo_update.sh MATCH
+make_combined_bar_plot.py MATCH
+make_results_csv.py MATCH
+make_per_bin_csv.py MATCH
+make_per_bin_plots.py MATCH
+parse_eval.py MATCH
+=== run dir contents ===
+comebin_out
+comebin_run.log
+logs
+run_meta.txt
+comebin_res
+data_augmentation
+=== repo mirror for cami3 ===
+comebin_res
+comebin_run.log
+logs
+run_meta.txt
+=== git status ===
+> build · big-pickle
+bin/ fully in sync; repo mirror correct; git clean. Monitoring the run through completion:
