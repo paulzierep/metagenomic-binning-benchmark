@@ -73602,3 +73602,135 @@ outputs + metrics + figures + docs; automatic via
 Per-run table + full history: [`docs/11-run-results.md`](docs/11-run-results.md).
 
 ## Optimization workflow (issue #7)
+> build · mimo-v2.6-flash-free
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/README.md
+Index: /vol/data/repos/metagenomic-binning-benchmark/README.md
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/README.md
++++ /vol/data/repos/metagenomic-binning-benchmark/README.md
+@@ -49,13 +49,19 @@
+ (Top-1 99.58 % × 3), **152 bins**, CheckM2 **50.60 % / 4.10 %** (HQ 35 /
+ MQ 60), CheckM v1 **46.36 % / 5.09 %** (HQ 37 / MQ 60) — the **best-quality
+ dataset of the benchmark so far** ([CSV](results/marine_v11_20260925.csv)).
+ 
+-**Next (in progress):** CAMI III toy human gut — prep running (2 samples,
+-short + long reads, `scripts/prep_cami3_toy.sh`), then first CAMI III run.
+-Every successful evaluation now archives itself: Zenodo **version 2.0**
++**Next (in progress):** CAMI III toy human gut — **prep complete** (top-5,000
++pooled-GSA contigs, 1.1 Gbp, full bwa index, both samples' coverage BAMs
++indexed + quickcheck OK) and the first CAMI III run **`cami3_v11_20260926` is
++training** (MODE=cami3, seed 42, 32 threads, commit
++[`95f5ea8`](https://github.com/paulzierep/COMEBin/commit/95f5ea820f9a4e76f5c2911c0b5ed507ab67b015),
++launched 2026-09-26 02:45 UTC; live epoch in the banner above). Evaluation
++(CheckM2 + CheckM v1) follows automatically when it finishes. Every successful
++evaluation now archives itself: Zenodo **version 2.0**
+ published 2026-09-26 (concept DOI
+-[10.5281/zenodo.22935024](https://doi.org/10.5281/zenodo.22935024), all run
++[10.5281/zenodo.22935024](https://doi.org/10.5281/zenodo.22935024), version DOI
++[10.5281/zenodo.22969763](https://doi.org/10.5281/zenodo.22969763), all run
+ outputs + metrics + figures + docs; automatic via
+ [`scripts/zenodo_update.sh`](scripts/zenodo_update.sh), issue #8).
+ Per-run table + full history: [`docs/11-run-results.md`](docs/11-run-results.md).
+ 
+
+> build · mimo-v2.6-flash-free
+Adding a PROGRESS note on the DOI resolution to the #8 entry:
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md
+Index: /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md
++++ /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md
+@@ -496,8 +496,19 @@
+       168,110,629 B, md5 verified; 7 runs / 410 bins / 522 files; receipt
+       `meta/zenodo_benchmark_release_v2.json`). Script hardened for Zenodo's
+       async publish (HTTP 202 → poll to state=done) and excludes volatile
+       status logs from the change hash.
++      *Follow-ups 2026-09-26: version DOI 10.5281/zenodo.22969763 propagation
++      resolved (HTTP 200 + DataCite `findable` at 02:54 UTC, ~68 min after
++      publish; receipt updated, comment posted on #8). #8 and #12 were closed
++      by automation at 02:23 with their own verification comments — including
++      commit `34ea532`, which fixed a real deployment gap (the auto-report
++      scripts were never installed to `/vol/data/benchmark/bin`, and helpers
++      resolved the repo as `dirname(script)/..` = the data dir, not the repo,
++      when invoked from `bin/`). Verified after the fix: `bin/run_eval.sh`,
++      `bin/zenodo_update.sh`, `bin/make_combined_bar_plot.py` are
++      byte-identical to the repo and `REPO` resolution now works — so the
++      next evaluation really does regenerate figure + Zenodo version.*
+ 
+ ## Watchdog / restart
+ 
+ `scripts/agent-watchdog.sh` (installed at `/vol/data/benchmark/bin/`, cron `*/5 * * * *`):
+
+> build · mimo-v2.6-flash-free
+Committing under lock (README + PROGRESS + activity log only):
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && git fetch origin 2>&1 | tail -1; git status --short; exec 9>/tmp/bench-repo.lock; flock -n 9 || { echo LOCK_BUSY; exit 1; }; git add README.md PROGRESS.md status/agent-activity.log && git status --short; TS=$(date -u +%FT%TZ); echo "$TS docs: README Next -> cami3 run training + version DOI link; PROGRESS #8 DOI-verified + 34ea532 deployment-gap note" >> status/agent-activity.log; git add status/agent-activity.log; git commit -m "README/PROGRESS: CAMI III run training status, version DOI verified (200/DataCite findable), 34ea532 deployment-gap verification" 2>&1 | tail -2; git push origin main 2>&1 | tail -2; echo "$TS progress-committed" >> /vol/data/benchmark/.activity; touch /vol/data/benchmark/.heartbeat
+M PROGRESS.md
+ M README.md
+M  PROGRESS.md
+M  README.md
+[main cd9743c] README/PROGRESS: CAMI III run training status, version DOI verified (200/DataCite findable), 34ea532 deployment-gap verification
+ 3 files changed, 22 insertions(+), 4 deletions(-)
+To https://github.com/paulzierep/metagenomic-binning-benchmark
+   547f461..cd9743c  main -> main
+> build · mimo-v2.6-flash-free
+Pushed (`cd9743c`). Syncing PROGRESS copy and final run health check:
+[0m$ [0mcp /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md /vol/data/benchmark/PROGRESS.md && echo progress-synced; echo "=== active_run ==="; cat /vol/data/benchmark/.active_run | awk '{print "pid="$1" mode="$6}'; echo "=== latest epoch ==="; grep -o "epoch=[0-9]*/200, batches=[0-9]*, loss=[0-9.]*, top1=[0-9.]*" /vol/data/benchmark/runs/cami3_v11_20260926/comebin_run.log | tail -2; echo "=== resources ==="; tail -2 /vol/data/benchmark/runs/cami3_v11_20260926/logs/resources.tsv 2>/dev/null; echo "=== mem ==="; free -g | awk '/Mem:/{print $7"G avail"}'; date -u +%FT%TZ; touch /vol/data/benchmark/.heartbeat
+progress-synced
+=== active_run ===
+pid=3200074 mode=cami3
+=== latest epoch ===
+epoch=21/200, batches=4, loss=5.7486148, top1=7.2038
+epoch=22/200, batches=4, loss=5.6304598, top1=7.9590
+=== resources ===
+2026-09-26T02:56:14+00:00	3200107,3200110,3201566,3207770,3207802,3207834,3207866	2857.9	8.854	6753
+2026-09-26T02:56:44+00:00	3200107,3200110,3201566,3208395,3208427,3208459,3208491	2855.8	8.950	6977
+=== mem ===
+56G avail
+2026-09-26T02:56:52Z
+> build · mimo-v2.6-flash-free
+Run is healthy: epoch 22/200, loss 5.63 ↓, top1 7.96 ↑, CPU ~2858%, RSS 8.9 GB, 56 GB avail. One leftover from the prior plan — the dry-run tarball (not a run dir, safe to remove):
+[0m$ [0mls -la /vol/data/benchmark/releases/ 2>/dev/null; df -h /vol/data | tail -1
+total 328660
+drwxrwxr-x  3 ubuntu ubuntu      4096 Sep 26 02:13 .
+drwxrwxr-x 11 ubuntu ubuntu      4096 Sep 26 02:48 ..
+-rw-rw-r--  1 ubuntu ubuntu 168108947 Sep 26 02:13 comebin_benchmark_release_dryrun_20260926.tar.gz
+-rw-rw-r--  1 ubuntu ubuntu 168110629 Sep 26 01:38 comebin_benchmark_release_v2_20260926.tar.gz
+drwxrwxr-x  4 ubuntu ubuntu      4096 Sep 24 09:27 comebin_small_20260924
+-rw-rw-r--  1 ubuntu ubuntu    100579 Sep 26 01:11 manifest.20260926T011057Z.json
+-rw-rw-r--  1 ubuntu ubuntu    101492 Sep 26 01:36 manifest.20260926T013645Z.json
+-rw-rw-r--  1 ubuntu ubuntu    101492 Sep 26 02:11 manifest.20260926T021113Z.json
+/dev/vdb        492G  132G  335G  29% /vol/data
+> build · mimo-v2.6-flash-free
+Dry-run tarball (02:13, from the automation's fix verification at 02:11) is a throwaway build artifact — removing it per plan (keeping the v2 tarball, which the receipt's md5 references):
+[0m$ [0mmd5sum /vol/data/benchmark/releases/comebin_benchmark_release_v2_20260926.tar.gz | cut -c1-32; rm /vol/data/benchmark/releases/comebin_benchmark_release_dryrun_20260926.tar.gz && echo dryrun-deleted; ls -la /vol/data/benchmark/releases/; df -h /vol/data | tail -1; TS=$(date -u +%FT%TZ); R=/vol/data/repos/metagenomic-binning-benchmark; echo "$TS cleanup: deleted dry-run release tarball (168 MB, kept v2 artifact)" >> $R/status/agent-activity.log; echo "$TS dryrun-tarball-deleted" >> /vol/data/benchmark/.activity; touch /vol/data/benchmark/.heartbeat
+114459d4e728e70b2aefb70e1d8f620e
+dryrun-deleted
+total 164488
+drwxrwxr-x  3 ubuntu ubuntu      4096 Sep 26 02:57 .
+drwxrwxr-x 11 ubuntu ubuntu      4096 Sep 26 02:48 ..
+-rw-rw-r--  1 ubuntu ubuntu 168110629 Sep 26 01:38 comebin_benchmark_release_v2_20260926.tar.gz
+drwxrwxr-x  4 ubuntu ubuntu      4096 Sep 24 09:27 comebin_small_20260924
+-rw-rw-r--  1 ubuntu ubuntu    100579 Sep 26 01:11 manifest.20260926T011057Z.json
+-rw-rw-r--  1 ubuntu ubuntu    101492 Sep 26 01:36 manifest.20260926T013645Z.json
+-rw-rw-r--  1 ubuntu ubuntu    101492 Sep 26 02:11 manifest.20260926T021113Z.json
+/dev/vdb        492G  132G  335G  29% /vol/data
+> build · mimo-v2.6-flash-free
+Turn complete. Summary:
+
+**State verified vs disk**
+- **CAMI III run `cami3_v11_20260926` is training and healthy**: epoch 22/200 at 02:56 UTC (launched 02:45), loss 5.63 ↓, Top-1 7.96 ↑, CPU ~2858%, RSS 8.9 GB / 56 GB avail; registered in `.active_run` (mode=cami3, pid 3200074); watchdog owns handoff. ETA ≈ 80 min at ~24 s/epoch (early stop may cut it).
+- PROGRESS "Current state" matches disk (CAMI III entry line 441; run dir, logs, resources.tsv all present).
+
+**Issue triage (no duplicates)**
+- **#8 + #12 were closed by automation at 02:23** with their own verification comments — no reply from me (would duplicate). Notably that automation landed **`34ea532`**, fixing a real gap I'd missed: the auto-report scripts were never deployed to `/vol/data/benchmark/bin`, and helpers resolved the repo as `dirname(script)/..` → the *data* dir when invoked from `bin/`. **I verified the fix**: `bin/run_eval.sh` / `zenodo_update.sh` / `make_combined_bar_plot.py` are now byte-identical to the repo and `REPO` resolution works — so the next evaluation genuinely regenerates the figure + a Zenodo version.
+- #6, #1 unchanged since Sep 23; COMEBin repo has issues disabled.
+
+**Watch items closed**
+- **Version DOI resolved**: `10.5281/zenodo.22969763` → HTTP 200, DataCite `findable` (registered 02:46:23Z, ~68 min after publish — same lag v1 showed). Receipt `meta/zenodo_benchmark_release_v2.json` updated to `version_doi_resolver_http: 200` and a factual follow-up posted on #8 ([comment](https://github.com/paulzierep/metagenomic-binning-benchmark/issues/8#issuecomment-5842559445)).
+
+**Docs pushed (`cd9743c`, under lock)**
+- README "Next" now reflects prep complete + run training + both DOIs; PROGRESS #8 entry records the DOI verification and the `34ea532` deployment-gap note; PROGRESS synced to `/vol/data/benchmark/`.
+
+**Housekeeping**: deleted the 168 MB dry-run release tarball (kept the v2 artifact — its md5 `114459d4…` re-verified against the receipt); activity appended to `agent-activity.log` + `.activity`, heartbeat touched throughout.
+
+**Next**: when `cami3_v11_20260926` finishes, `run_eval.sh` auto-chains CheckM2 + CheckM v1 → figures/table → Zenodo version 3.0 (now actually deployed). I'll pick up there on the next turn.
