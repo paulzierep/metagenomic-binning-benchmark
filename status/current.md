@@ -2,14 +2,42 @@
 
 | | |
 |---|---|
-| Status | 🔴 `stopped (watchdog will restart)` |
-| ⏱ Updated (Europe/Berlin) | `2026-09-26T07:22 CEST` |
-| 🏃 Live benchmark | `cami3_v11_20260926_rerun` — **epoch 93/200** · loss `3.1025607585906982` · top1 acc `33.41796875` (log 11s fresh) |
-| 🧠 Model (last turn) | `mimo-v2.6-flash-free` (watchdog rotates to free models on quota) |
-| 📌 Agent note · **31 min old** | heartbeat stale 1131s — agent dead/idle, watchdog should restart within ~5 min |
-| ⚙️ Load · uptime | `31.60 30.31 26.86` · 2 days, 15 hours, 46 minutes — 32 cores, 62 GiB, no GPU |
-| 💾 RAM used/total | `6917/64295 MB` |
+| Status | 🟢 `running` |
+| ⏱ Updated (Europe/Berlin) | `2026-09-26T07:24 CEST` |
+| 🏃 Live benchmark | `cami3_v11_20260926_rerun` — **epoch 99/200** · loss `2.9551353454589844` · top1 acc `36.07747268676758` (log 12s fresh) |
+| 🧠 Model (last turn) | `muse-spark-1.3-contributor-free` (watchdog rotates to free models on quota) |
+| 📌 Agent note · **0 min old** | 2026-09-25T12:16:00Z | marine_v11_20260925 active: epoch 147/200, COMEBin-v11@95f5ea8, cami2 mode; heartbeat touched; PROGRESS synced
+2026-09-25T15:34:55Z | issues triaged: #12 reporting auto-plots confirmed complete; #8 Zenodo record active with continuous-update workflow; marine run completed; no active run
+2026-09-25T20:49:23Z | issues triaged: #12 auto-plots complete; #8 zenodo record published with continuous-update workflow; marine run completed; no active run; agent resumed for CAMI III prep
+2026-09-25T21:11:13Z | issues #12 and #8 triaged: reporting auto-plots confirmed complete and Zenodo continuous-update workflow verified; no active runs; preparing for CAMI III dataset prep
+2026-09-25T21:24:00Z | CAMI III prep script created: scripts/prep_cami3_toy.sh; dataset not yet on disk (≈17 GB for 2 samples); script ready for when CAMI III data arrives at /vol/data/datasets/cami_III/; PROGRESS.md updated
+2026-09-25T21:54:00Z | agent: started CAMI III dataset preparation; downloaded prep script; dataset not on disk; will download from cami-challenge.org and run prep_cami3_toy.sh
+2026-09-26T00:49:54Z marine-eval-launched
+2026-09-26T00:50:20Z marine-eval-launched
+2026-09-26T00:50:42Z marine-eval-launched
+2026-09-26T01:14:16Z marine-eval-retry-launched
+2026-09-26T01:41:50Z zenodo-v2-published
+2026-09-26T01:46:27Z commit: pushed marine-eval + #12/#8 delivery (prep_cami3_toy.sh excluded)
+2026-09-26T01:46:47Z delivery-comments-posted
+2026-09-26T01:47:11Z progress-committed
+2026-09-26T01:49:18Z progress-synced
+2026-09-26T02:02:36Z docs10-fix-committed
+2026-09-26T02:41:03Z finish-prep-launched
+2026-09-26T02:45:37Z cami3-run-launched
+2026-09-26T02:45:58Z cami3-progress-committed
+2026-09-26T02:54:43Z version-doi-verified-200
+2026-09-26T02:55:42Z doi-followup-commented
+2026-09-26T02:56:38Z progress-committed
+2026-09-26T02:57:25Z dryrun-tarball-deleted
+2026-09-26T02:59:24Z results-csv-label-fix-committed
+2026-09-26T02:59:32Z progress-committed
+2026-09-26T04:22:06Z
+2026-09-26T04:26:43Z disk-full-incident-freed-13.8G-in-tmp
+2026-09-26T04:50:51Z rerun-launched-pid3727084
+2026-09-26T05:23:51Z rerun-on-track-epoch99 |
+| ⚙️ Load · uptime | `32.26 30.46 27.30` · 2 days, 15 hours, 48 minutes — 32 cores, 62 GiB, no GPU |
+| 💾 RAM used/total | `8594/64295 MB` |
 | 🔗 Session | `ses_f31799c77ffeTq9gcYgqc4hBhg` |
-| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `d747660 status: no — cami3_v11_20260926_rerun epoch 87/200 loss 3.386219501495` |
-| 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `7343366 B` — every run, command & tool result |
+| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `413eae1 meta: supervise tick 2026-09-26T05:23:01Z — 0 fix(es)` |
+| 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `7347797 B` — every run, command & tool result |
 | 📈 Timeline | [status/status.log](status/status.log) |
