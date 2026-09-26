@@ -57212,3 +57212,479 @@ This bug had already caused damage: a stray `/vol/data/benchmark/results/small_t
 **One honest limitation:** the v2 *version* DOI `10.5281/zenodo.22969763` is still 404 at doi.org (upstream DataCite propagation lag, not locally actionable) while the record itself serves 200. I recorded the re-check in the receipt rather than re-flagging it; the concept DOI is the stable citable link.
 
 Both issues were left **open** — I wrote `.issues_done/12` and `/8` (trimmed to ≤400 B so the closer won't truncate its public comment) and let the deterministic closer handle them next tick. Pushed `34ea532` under the repo lock with an explicit pathspec (10 expected files, nothing pre-staged); `HEAD=origin/main`, worktree clean, no restarts, no run touched.
+[0m
+> build · big-pickle
+I'll start by getting oriented — reading the diagnostics carefully and inspecting the actual state on disk before touching anything.
+[0m$ [0mls -la /vol/data/repos/metagenomic-binning-benchmark 2>&1 | head -50
+total 100
+drwxrwxr-x  8 ubuntu ubuntu  4096 Sep 26 08:02 .
+drwxrwxr-x  7 ubuntu ubuntu  4096 Sep 24 00:59 ..
+drwxrwxr-x  8 ubuntu ubuntu  4096 Sep 26 08:03 .git
+-rw-rw-r--  1 ubuntu ubuntu   791 Sep 23 15:08 .gitignore
+-rw-rw-r--  1 ubuntu ubuntu 10641 Sep 23 21:50 CHANGELOG.md
+-rw-rw-r--  1 ubuntu ubuntu 40198 Sep 26 07:58 PROGRESS.md
+-rw-rw-r--  1 ubuntu ubuntu  9116 Sep 26 08:02 README.md
+drwxrwxr-x  2 ubuntu ubuntu  4096 Sep 24 09:49 docs
+drwxrwxr-x  3 ubuntu ubuntu  4096 Sep 26 07:37 results
+drwxrwxr-x 17 ubuntu ubuntu  4096 Sep 26 04:50 runs
+drwxrwxr-x  3 ubuntu ubuntu  4096 Sep 26 01:08 scripts
+drwxrwxr-x  3 ubuntu ubuntu  4096 Sep 23 18:59 status
+[0m$ [0mls -la /vol/data/benchmark 2>&1 | head -50; echo "--- bin ---"; ls -la /vol/data/benchmark/bin 2>&1 | head -50
+total 282404
+drwxrwxr-x 11 ubuntu ubuntu      4096 Sep 26 07:57 .
+drwxr-xr-x  9 ubuntu ubuntu      4096 Sep 26 04:47 ..
+-rw-rw-r--  1 ubuntu ubuntu      2884 Sep 26 08:02 .activity
+-rw-rw-r--  1 ubuntu ubuntu         0 Sep 24 00:30 .hang_restarts.baseline_rerun.1790209801
+-rw-rw-r--  1 ubuntu ubuntu         0 Sep 26 08:02 .heartbeat
+-rw-rw-r--  1 ubuntu ubuntu        91 Sep 26 04:40 .last_benchmark_failure
+drwxrwxr-x  2 ubuntu ubuntu      4096 Sep 24 00:30 .runner-snapshots
+-rw-rw-r--  1 ubuntu ubuntu      2976 Sep 26 08:02 .status_sig
+drwxrwxr-x  2 ubuntu ubuntu      4096 Sep 26 06:13 .watchdog_attempts
+-rw-rw-r--  1 ubuntu ubuntu         4 Sep 26 06:10 .watchdog_last_status
+-rw-rw-r--  1 ubuntu ubuntu         2 Sep 26 07:57 .watchdog_model_ix
+-rw-rw-r--  1 ubuntu ubuntu     40198 Sep 26 07:58 PROGRESS.md
+-rw-rw-r--  1 ubuntu ubuntu     25588 Sep 24 10:37 PROGRESS.md.bak
+drwxrwxr-x  3 ubuntu ubuntu      4096 Sep 26 07:48 bin
+drwxrwxr-x  3 ubuntu ubuntu      4096 Sep 23 15:40 checkm2db
+-rw-rw-r--  1 ubuntu ubuntu 288590617 Jan 16  2015 checkm_data_2015_01_16.tar.gz
+drwxrwxr-x  9 ubuntu ubuntu      4096 Jan 16  2015 checkm_ref
+-rw-rw-r--  1 ubuntu ubuntu    439039 Sep 24 17:29 fix_v11_launch.out
+drwxrwxr-x  2 ubuntu ubuntu      4096 Sep 26 07:56 logs
+-rw-rw-r--  1 ubuntu ubuntu        72 Sep 23 15:35 marine.md5
+drwxrwxr-x  8 ubuntu ubuntu      4096 Sep 26 08:03 meta
+drwxrwxr-x  3 ubuntu ubuntu      4096 Sep 26 07:44 releases
+drwxrwxr-x 17 ubuntu ubuntu      4096 Sep 26 04:48 runs
+--- bin ---
+total 244
+drwxrwxr-x  3 ubuntu ubuntu  4096 Sep 26 07:48 .
+drwxrwxr-x 11 ubuntu ubuntu  4096 Sep 26 07:57 ..
+drwxrwxr-x  2 ubuntu ubuntu  4096 Sep 26 02:07 __pycache__
+-rwxr-xr-x  1 ubuntu ubuntu 13123 Sep 24 10:31 agent-watchdog.sh
+-rwxr-xr-x  1 ubuntu ubuntu 12963 Sep 24 10:23 benchmark-watchdog.sh
+-rwxr-xr-x  1 ubuntu ubuntu  5033 Sep 25 04:54 issue-closer.sh
+-rw-r--r--  1 ubuntu ubuntu 12669 Sep 26 02:07 make_combined_bar_plot.py
+-rwxr-xr-x  1 ubuntu ubuntu  3979 Sep 24 09:18 make_medium_dataset.sh
+-rw-r--r--  1 ubuntu ubuntu  4539 Sep 26 02:07 make_per_bin_csv.py
+-rw-r--r--  1 ubuntu ubuntu  8652 Sep 26 02:07 make_per_bin_plots.py
+-rwxr-xr-x  1 ubuntu ubuntu  4404 Sep 24 08:51 make_release_manifest.py
+-rwxr-xr-x  1 ubuntu ubuntu  5709 Sep 26 02:59 make_results_csv.py
+-rwxr-xr-x  1 ubuntu ubuntu  2499 Sep 24 08:51 make_small_dataset.sh
+-rwxr-xr-x  1 ubuntu ubuntu 27373 Sep 26 02:08 meta-watchdog.sh
+-rwxr-xr-x  1 ubuntu ubuntu  3067 Sep 24 09:02 parse_eval.py
+-rwxr-xr-x  1 ubuntu ubuntu  4375 Sep 25 03:04 prep_cami2_human.sh
+-rwxr-xr-x  1 ubuntu ubuntu  3070 Sep 24 08:51 prep_cami2_marine.sh
+-rwxr-xr-x  1 ubuntu ubuntu  8208 Sep 26 02:05 prep_cami3_toy.sh
+-rwxr-xr-x  1 ubuntu ubuntu  9905 Sep 24 09:19 run_comebin_baseline.sh
+-rwxr-xr-x  1 ubuntu ubuntu  6303 Sep 24 09:17 run_comebin_fix.sh
+-rwxr-xr-x  1 ubuntu ubuntu  6501 Sep 26 02:05 run_eval.sh
+-rwxr-xr-x  1 ubuntu ubuntu  8956 Sep 25 01:36 run_small_test.sh
+-rwxr-xr-x  1 ubuntu ubuntu 14795 Sep 24 10:23 status-heartbeat.sh
+-rwxr-xr-x  1 ubuntu ubuntu  3254 Sep 24 08:51 test_batch1.py
+-rw-rw-r--  1 ubuntu ubuntu 15881 Sep 26 07:48 zenodo_update.sh
+> build · big-pickle
+Only C8_issues is `broken`. Let me understand what C8 actually validates, since the issue body is untrusted data.
+[0m$ [0mls -la /vol/data/benchmark/meta 2>&1; echo "--- issues_done ---"; ls -la /vol/data/benchmark/meta/.issues_done 2>&1; echo "--- logs ---"; ls -la /vol/data/benchmark/logs 2>&1
+total 820
+drwxrwxr-x  8 ubuntu ubuntu  4096 Sep 26 08:03 .
+drwxrwxr-x 11 ubuntu ubuntu  4096 Sep 26 07:57 ..
+drwxrwxr-x  2 ubuntu ubuntu  4096 Sep 26 08:03 .escalations
+drwxrwxr-x  2 ubuntu ubuntu  4096 Sep 24 16:53 .issue_comments_before
+drwxrwxr-x  2 ubuntu ubuntu  4096 Sep 25 04:03 .issues_closed
+drwxrwxr-x  2 ubuntu ubuntu  4096 Sep 26 02:23 .issues_done
+drwxrwxr-x  2 ubuntu ubuntu  4096 Sep 25 01:40 .issues_seen
+-rw-rw-r--  1 ubuntu ubuntu   777 Sep 26 08:03 checks.tsv
+-rw-rw-r--  1 ubuntu ubuntu  1279 Sep 26 02:23 close-log.txt
+-rw-rw-r--  1 ubuntu ubuntu  2335 Sep 23 18:53 escalate-1790189584.txt
+-rw-rw-r--  1 ubuntu ubuntu  3882 Sep 23 20:53 escalate-1790196787.txt
+-rw-rw-r--  1 ubuntu ubuntu  2822 Sep 23 21:33 escalate-1790199188.txt
+-rw-rw-r--  1 ubuntu ubuntu 10403 Sep 24 00:53 escalate-1790211186.txt
+-rw-rw-r--  1 ubuntu ubuntu  4909 Sep 24 04:43 escalate-1790224989.txt
+-rw-rw-r--  1 ubuntu ubuntu  8161 Sep 24 07:23 escalate-1790234586.txt
+-rw-rw-r--  1 ubuntu ubuntu 22848 Sep 24 08:43 escalate-1790239386.txt
+-rw-rw-r--  1 ubuntu ubuntu 45612 Sep 24 10:43 escalate-1790246590.txt
+-rw-rw-r--  1 ubuntu ubuntu 33995 Sep 24 13:23 escalate-1790256189.txt
+-rw-rw-r--  1 ubuntu ubuntu 33661 Sep 24 14:43 escalate-1790260993.txt
+-rw-rw-r--  1 ubuntu ubuntu 34231 Sep 24 16:53 escalate-1790268789.txt
+-rw-rw-r--  1 ubuntu ubuntu 39278 Sep 24 19:33 escalate-1790278388.txt
+-rw-rw-r--  1 ubuntu ubuntu 39039 Sep 24 20:53 escalate-1790283187.txt
+-rw-rw-r--  1 ubuntu ubuntu 39039 Sep 24 23:03 escalate-1790290987.txt
+-rw-rw-r--  1 ubuntu ubuntu 41458 Sep 25 01:33 escalate-1790299989.txt
+-rw-rw-r--  1 ubuntu ubuntu  8011 Sep 25 03:03 escalate-1790305387.txt
+-rw-rw-r--  1 ubuntu ubuntu 20038 Sep 25 07:53 escalate-1790322786.txt
+-rw-rw-r--  1 ubuntu ubuntu 20305 Sep 25 08:13 escalate-1790323986.txt
+-rw-rw-r--  1 ubuntu ubuntu 28578 Sep 25 09:13 escalate-1790327591.txt
+-rw-rw-r--  1 ubuntu ubuntu 33505 Sep 25 13:53 escalate-1790344386.txt
+-rw-rw-r--  1 ubuntu ubuntu 33692 Sep 25 14:23 escalate-1790346188.txt
+-rw-rw-r--  1 ubuntu ubuntu 36567 Sep 25 15:23 escalate-1790349786.txt
+-rw-rw-r--  1 ubuntu ubuntu 40617 Sep 25 19:53 escalate-1790365988.txt
+-rw-rw-r--  1 ubuntu ubuntu 40617 Sep 25 20:33 escalate-1790368388.txt
+-rw-rw-r--  1 ubuntu ubuntu 44963 Sep 25 21:23 escalate-1790371386.txt
+-rw-rw-r--  1 ubuntu ubuntu 48715 Sep 26 02:03 escalate-1790388190.txt
+-rw-rw-r--  1 ubuntu ubuntu  7746 Sep 26 08:03 escalate-1790409786.txt
+-rw-rw-r--  1 ubuntu ubuntu   120 Sep 26 08:03 issues.tsv
+-rw-rw-r--  1 ubuntu ubuntu  5893 Sep 26 02:23 issues_closed.tsv
+-rw-rw-r--  1 ubuntu ubuntu  1583 Sep 26 08:03 last.txt
+drwxrwxr-x  2 ubuntu ubuntu  4096 Sep 24 07:25 release_manifests
+-rw-rw-r--  1 ubuntu ubuntu  1613 Sep 26 02:54 zenodo_benchmark_release_v2.json
+-rw-rw-r--  1 ubuntu ubuntu  1867 Sep 26 07:47 zenodo_benchmark_release_v3.json
+-rw-r--r--  1 ubuntu ubuntu  2040 Sep 24 11:04 zenodo_comebin_small.json
+-rw-rw-r--  1 ubuntu ubuntu    65 Sep 26 07:47 zenodo_last_content.sha256
+--- issues_done ---
+total 8
+drwxrwxr-x 2 ubuntu ubuntu 4096 Sep 26 02:23 .
+drwxrwxr-x 8 ubuntu ubuntu 4096 Sep 26 08:03 ..
+--- logs ---
+total 18916
+drwxrwxr-x  2 ubuntu ubuntu    4096 Sep 26 07:56 .
+drwxrwxr-x 11 ubuntu ubuntu    4096 Sep 26 07:57 ..
+-rw-rw-r--  1 ubuntu ubuntu 7645723 Sep 26 07:58 agent-run.log
+-rw-rw-r--  1 ubuntu ubuntu  331572 Sep 24 07:15 baseline_rerun_autorestart1.launch.log
+-rw-rw-r--  1 ubuntu ubuntu     134 Sep 23 21:33 baseline_unmodified_autorestart1.launch.log
+-rw-rw-r--  1 ubuntu ubuntu     134 Sep 23 21:35 baseline_unmodified_autorestart2.launch.log
+-rw-rw-r--  1 ubuntu ubuntu     134 Sep 23 21:40 baseline_unmodified_autorestart3.launch.log
+-rw-rw-r--  1 ubuntu ubuntu    3416 Sep 26 04:40 benchmark-watchdog.log
+-rw-rw-r--  1 ubuntu ubuntu  328060 Sep 26 06:18 cami3_rerun.launch.log
+-rw-rw-r--  1 ubuntu ubuntu  330234 Sep 26 04:36 cami3_v11_20260926_launch.log
+-rw-rw-r--  1 ubuntu ubuntu       0 Sep 26 07:56 doi_recheck_v3.log
+-rw-rw-r--  1 ubuntu ubuntu     795 Sep 26 02:41 finish_prep_cami3.log
+-rw-rw-r--  1 ubuntu ubuntu     873 Sep 26 02:41 finish_prep_cami3.out
+-rwxrwxr-x  1 ubuntu ubuntu    2713 Sep 26 02:41 finish_prep_cami3.sh
+-rw-rw-r--  1 ubuntu ubuntu   71818 Sep 25 01:12 fix_v11_eval_20260925T010438Z.log
+-rw-rw-r--  1 ubuntu ubuntu  104188 Sep 25 03:54 human_eval_20260925T033937Z.log
+-rw-rw-r--  1 ubuntu ubuntu     927 Sep 25 01:49 human_extract.log
+-rw-rw-r--  1 ubuntu ubuntu    1404 Sep 25 02:12 human_prep_20260925T015532Z.log
+-rw-rw-r--  1 ubuntu ubuntu    8819 Sep 25 01:45 human_sample0_download.log
+-rw-rw-r--  1 ubuntu ubuntu      75 Sep 25 03:42 human_v11_eval.log
+-rw-rw-r--  1 ubuntu ubuntu  200037 Sep 25 03:39 human_v11_launch.log
+-rw-rw-r--  1 ubuntu ubuntu    7961 Sep 26 02:23 issue-closer.log
+-rw-rw-r--  1 ubuntu ubuntu     795 Sep 24 09:25 make_medium_20260924T092505Z.log
+-rw-rw-r--  1 ubuntu ubuntu  143825 Sep 26 01:12 marine_eval.log
+-rw-rw-r--  1 ubuntu ubuntu  146598 Sep 26 01:38 marine_eval_retry.log
+-rw-rw-r--  1 ubuntu ubuntu    1139 Sep 25 04:13 marine_prep.log
+-rw-rw-r--  1 ubuntu ubuntu  546912 Sep 25 12:58 marine_v11_launch.log
+-rw-rw-r--  1 ubuntu ubuntu  155320 Sep 24 10:04 medium_v11_20260924_launch.log
+-rw-rw-r--  1 ubuntu ubuntu   67365 Sep 26 08:03 meta-watchdog.log
+-rw-rw-r--  1 ubuntu ubuntu     630 Sep 25 22:46 prep_cami3_toy.log
+-rw-rw-r--  1 ubuntu ubuntu   24087 Sep 24 08:46 small_test_v3.launch.log
+-rw-rw-r--  1 ubuntu ubuntu   12995 Sep 24 09:00 small_test_v4.eval-final.log
+-rw-rw-r--  1 ubuntu ubuntu   14429 Sep 24 08:53 small_test_v4.eval-retry.log
+-rw-rw-r--  1 ubuntu ubuntu     787 Sep 24 08:51 small_test_v4.eval.log
+-rw-rw-r--  1 ubuntu ubuntu   44343 Sep 24 08:50 small_test_v4.launch.log
+-rw-rw-r--  1 ubuntu ubuntu       0 Sep 24 09:02 status-heartbeat-supervisor-rerun.log
+-rw-rw-r--  1 ubuntu ubuntu  198382 Sep 26 08:02 status-heartbeat.log
+-rw-rw-r--  1 ubuntu ubuntu   10018 Sep 26 02:14 supervisor-actions.log
+-rw-rw-r--  1 ubuntu ubuntu 8369514 Sep 26 08:03 supervisor-run.log
+-rw-rw-r--  1 ubuntu ubuntu   25406 Sep 25 01:43 tiny_test_n100.launch.log
+-rw-rw-r--  1 ubuntu ubuntu   45599 Sep 25 01:47 tiny_test_n101.launch.log
+-rw-rw-r--  1 ubuntu ubuntu   11952 Sep 25 01:50 tiny_test_n101_eval.log
+-rw-rw-r--  1 ubuntu ubuntu     198 Sep 23 20:32 watchdog-launch.out
+-rw-rw-r--  1 ubuntu ubuntu       0 Sep 23 21:46 watchdog-relaunch.out
+-rw-rw-r--  1 ubuntu ubuntu  336557 Sep 26 08:00 watchdog.log
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && git status --porcelain=v1 2>&1 | head -30; echo "--- branch ---"; git rev-parse --abbrev-ref HEAD; echo "--- log ---"; git log --oneline -8
+--- branch ---
+main
+--- log ---
+b28165f4 meta: supervise tick 2026-09-26T08:03:01Z — 0 fix(es)
+bb75e21c status: yes — cami3_v11_20260926_rerun epoch 199/200 loss 1.4088499546051025 acc 74.94791412353516 model big-pickle — 2026-09-25T12:16:00Z | marine_v11_202609 2026-09-25T15:34:55Z | issues triaged: # 2026-09-25T20:49:23Z | issues triaged: # 2026-09-25T21:11:13Z | issues #12 and #8 2026-09-25T21:24:00Z | CAMI III prep scr 2026-09-25T21:54:00Z | agent: started CA 2026-09-26T00:49:54Z marine-eval-launche 2026-09-26T00:50:20Z marine-eval-launche 2026-09-26T00:50:42Z marine-eval-launche 2026-09-26T01:14:16Z marine-eval-retry-l 2026-09-26T01:41:50Z zenodo-v2-published 2026-09-26T01:46:27Z commit: pushed mari 2026-09-26T01:46:47Z delivery-comments-p 2026-09-26T01:47:11Z progress-committed 2026-09-26T01:49:18Z progress-synced 2026-09-26T02:02:36Z docs10-fix-committe 2026-09-26T02:41:03Z finish-prep-launche 2026-09-26T02:45:37Z cami3-run-launched 2026-09-26T02:45:58Z cami3-progress-comm 2026-09-26T02:54:43Z version-doi-verifie 2026-09-26T02:55:42Z doi-followup-commen 2026-09-26T02:56:38Z progress-committed 2026-09-26T02:57:25Z dryrun-tarball-dele 2026-09-26T02:59:24Z results-csv-label-f 2026-09-26T02:59:32Z progress-committed 2026-09-26T04:22:06Z 2026-09-26T04:26:43Z disk-full-incident- 2026-09-26T04:50:51Z rerun-launched-pid3 2026-09-26T05:23:51Z rerun-on-track-epoc 2026-09-26T06:19:21Z rerun-done-eval-run 2026-09-26T06:19:27Z eval started cami3_ 2026-09-26T06:41:54Z eval-checkm-v1-ppla 2026-09-26T07:10:51Z checkm2-retry-16t 2026-09-26T07:47:33Z zenodo-v3-published 2026-09-26T07:52:47Z docs-cami3-delivere 2026-09-26T07:56:10Z issue6-comment-cami 2026-09-26T07:56:26Z zenodo-v3-version-d 2026-09-26T07:56:48Z turn-activity docs+ 2026-09-26T07:58:24Z progress-finalized 2026-09-26T07:58:26Z zenodo-v3-version-d 2026-09-26T08:00:26Z zenodo-v3-version-d
+da9786bc status: yes — cami3_v11_20260926_rerun epoch 199/200 loss 1.4088499546051025 acc 74.94791412353516 model big-pickle — 2026-09-25T12:16:00Z | marine_v11_202609 2026-09-25T15:34:55Z | issues triaged: # 2026-09-25T20:49:23Z | issues triaged: # 2026-09-25T21:11:13Z | issues #12 and #8 2026-09-25T21:24:00Z | CAMI III prep scr 2026-09-25T21:54:00Z | agent: started CA 2026-09-26T00:49:54Z marine-eval-launche 2026-09-26T00:50:20Z marine-eval-launche 2026-09-26T00:50:42Z marine-eval-launche 2026-09-26T01:14:16Z marine-eval-retry-l 2026-09-26T01:41:50Z zenodo-v2-published 2026-09-26T01:46:27Z commit: pushed mari 2026-09-26T01:46:47Z delivery-comments-p 2026-09-26T01:47:11Z progress-committed 2026-09-26T01:49:18Z progress-synced 2026-09-26T02:02:36Z docs10-fix-committe 2026-09-26T02:41:03Z finish-prep-launche 2026-09-26T02:45:37Z cami3-run-launched 2026-09-26T02:45:58Z cami3-progress-comm 2026-09-26T02:54:43Z version-doi-verifie 2026-09-26T02:55:42Z doi-followup-commen 2026-09-26T02:56:38Z progress-committed 2026-09-26T02:57:25Z dryrun-tarball-dele 2026-09-26T02:59:24Z results-csv-label-f 2026-09-26T02:59:32Z progress-committed 2026-09-26T04:22:06Z 2026-09-26T04:26:43Z disk-full-incident- 2026-09-26T04:50:51Z rerun-launched-pid3 2026-09-26T05:23:51Z rerun-on-track-epoc 2026-09-26T06:19:21Z rerun-done-eval-run 2026-09-26T06:19:27Z eval started cami3_ 2026-09-26T06:41:54Z eval-checkm-v1-ppla 2026-09-26T07:10:51Z checkm2-retry-16t 2026-09-26T07:47:33Z zenodo-v3-published 2026-09-26T07:52:47Z docs-cami3-delivere 2026-09-26T07:56:10Z issue6-comment-cami 2026-09-26T07:56:26Z zenodo-v3-version-d 2026-09-26T07:56:48Z turn-activity docs+ 2026-09-26T07:58:24Z progress-finalized 2026-09-26T07:58:26Z zenodo-v3-version-d
+5df75ec3 PROGRESS: CAMI III entry — mark issue #6 comment posted, DOI recheck poller noted
+a4172297 status: yes — cami3_v11_20260926_rerun epoch 199/200 loss 1.4088499546051025 acc 74.94791412353516 model mimo-v2.6-flash-free — 2026-09-25T12:16:00Z | marine_v11_202609 2026-09-25T15:34:55Z | issues triaged: # 2026-09-25T20:49:23Z | issues triaged: # 2026-09-25T21:11:13Z | issues #12 and #8 2026-09-25T21:24:00Z | CAMI III prep scr 2026-09-25T21:54:00Z | agent: started CA 2026-09-26T00:49:54Z marine-eval-launche 2026-09-26T00:50:20Z marine-eval-launche 2026-09-26T00:50:42Z marine-eval-launche 2026-09-26T01:14:16Z marine-eval-retry-l 2026-09-26T01:41:50Z zenodo-v2-published 2026-09-26T01:46:27Z commit: pushed mari 2026-09-26T01:46:47Z delivery-comments-p 2026-09-26T01:47:11Z progress-committed 2026-09-26T01:49:18Z progress-synced 2026-09-26T02:02:36Z docs10-fix-committe 2026-09-26T02:41:03Z finish-prep-launche 2026-09-26T02:45:37Z cami3-run-launched 2026-09-26T02:45:58Z cami3-progress-comm 2026-09-26T02:54:43Z version-doi-verifie 2026-09-26T02:55:42Z doi-followup-commen 2026-09-26T02:56:38Z progress-committed 2026-09-26T02:57:25Z dryrun-tarball-dele 2026-09-26T02:59:24Z results-csv-label-f 2026-09-26T02:59:32Z progress-committed 2026-09-26T04:22:06Z 2026-09-26T04:26:43Z disk-full-incident- 2026-09-26T04:50:51Z rerun-launched-pid3 2026-09-26T05:23:51Z rerun-on-track-epoc 2026-09-26T06:19:21Z rerun-done-eval-run 2026-09-26T06:19:27Z eval started cami3_ 2026-09-26T06:41:54Z eval-checkm-v1-ppla 2026-09-26T07:10:51Z checkm2-retry-16t 2026-09-26T07:47:33Z zenodo-v3-published 2026-09-26T07:52:47Z docs-cami3-delivere 2026-09-26T07:56:10Z issue6-comment-cami 2026-09-26T07:56:26Z zenodo-v3-version-d 2026-09-26T07:56:48Z turn-activity docs+
+2430e422 PROGRESS: CAMI III entry finalized (run+eval+docs+Zenodo v3 done; heading stale-RUNNING fixed, v3 publish record)
+2e88ce1d status: yes — cami3_v11_20260926_rerun epoch 199/200 loss 1.4088499546051025 acc 74.94791412353516 model mimo-v2.6-flash-free — 2026-09-25T12:16:00Z | marine_v11_202609 2026-09-25T15:34:55Z | issues triaged: # 2026-09-25T20:49:23Z | issues triaged: # 2026-09-25T21:11:13Z | issues #12 and #8 2026-09-25T21:24:00Z | CAMI III prep scr 2026-09-25T21:54:00Z | agent: started CA 2026-09-26T00:49:54Z marine-eval-launche 2026-09-26T00:50:20Z marine-eval-launche 2026-09-26T00:50:42Z marine-eval-launche 2026-09-26T01:14:16Z marine-eval-retry-l 2026-09-26T01:41:50Z zenodo-v2-published 2026-09-26T01:46:27Z commit: pushed mari 2026-09-26T01:46:47Z delivery-comments-p 2026-09-26T01:47:11Z progress-committed 2026-09-26T01:49:18Z progress-synced 2026-09-26T02:02:36Z docs10-fix-committe 2026-09-26T02:41:03Z finish-prep-launche 2026-09-26T02:45:37Z cami3-run-launched 2026-09-26T02:45:58Z cami3-progress-comm 2026-09-26T02:54:43Z version-doi-verifie 2026-09-26T02:55:42Z doi-followup-commen 2026-09-26T02:56:38Z progress-committed 2026-09-26T02:57:25Z dryrun-tarball-dele 2026-09-26T02:59:24Z results-csv-label-f 2026-09-26T02:59:32Z progress-committed 2026-09-26T04:22:06Z 2026-09-26T04:26:43Z disk-full-incident- 2026-09-26T04:50:51Z rerun-launched-pid3 2026-09-26T05:23:51Z rerun-on-track-epoc 2026-09-26T06:19:21Z rerun-done-eval-run 2026-09-26T06:19:27Z eval started cami3_ 2026-09-26T06:41:54Z eval-checkm-v1-ppla 2026-09-26T07:10:51Z checkm2-retry-16t 2026-09-26T07:47:33Z zenodo-v3-published 2026-09-26T07:52:47Z docs-cami3-delivere
+d34d2f48 status: yes — cami3_v11_20260926_rerun epoch 199/200 loss 1.4088499546051025 acc 74.94791412353516 model mimo-v2.6-flash-free — 2026-09-25T12:16:00Z | marine_v11_202609 2026-09-25T15:34:55Z | issues triaged: # 2026-09-25T20:49:23Z | issues triaged: # 2026-09-25T21:11:13Z | issues #12 and #8 2026-09-25T21:24:00Z | CAMI III prep scr 2026-09-25T21:54:00Z | agent: started CA 2026-09-26T00:49:54Z marine-eval-launche 2026-09-26T00:50:20Z marine-eval-launche 2026-09-26T00:50:42Z marine-eval-launche 2026-09-26T01:14:16Z marine-eval-retry-l 2026-09-26T01:41:50Z zenodo-v2-published 2026-09-26T01:46:27Z commit: pushed mari 2026-09-26T01:46:47Z delivery-comments-p 2026-09-26T01:47:11Z progress-committed 2026-09-26T01:49:18Z progress-synced 2026-09-26T02:02:36Z docs10-fix-committe 2026-09-26T02:41:03Z finish-prep-launche 2026-09-26T02:45:37Z cami3-run-launched 2026-09-26T02:45:58Z cami3-progress-comm 2026-09-26T02:54:43Z version-doi-verifie 2026-09-26T02:55:42Z doi-followup-commen 2026-09-26T02:56:38Z progress-committed 2026-09-26T02:57:25Z dryrun-tarball-dele 2026-09-26T02:59:24Z results-csv-label-f 2026-09-26T02:59:32Z progress-committed 2026-09-26T04:22:06Z 2026-09-26T04:26:43Z disk-full-incident- 2026-09-26T04:50:51Z rerun-launched-pid3 2026-09-26T05:23:51Z rerun-on-track-epoc 2026-09-26T06:19:21Z rerun-done-eval-run 2026-09-26T06:19:27Z eval started cami3_ 2026-09-26T06:41:54Z eval-checkm-v1-ppla 2026-09-26T07:10:51Z checkm2-retry-16t 2026-09-26T07:47:33Z zenodo-v3-published 2026-09-26T07:52:47Z docs-cami3-delivere
+> build · big-pickle
+Repo worktree is clean. Now let me read the C8 check logic in the meta-watchdog to see exactly what "broken" means.
+[0m$ [0mcat /vol/data/benchmark/meta/checks.tsv; echo "=== issues.tsv ==="; cat /vol/data/benchmark/meta/issues.tsv; echo "=== last.txt ==="; cat /vol/data/benchmark/meta/last.txt
+C1_cron	ok	4 exact jobs; cron active; installed/source scripts identical + executable
+C1b_deploy	ok	installed pipeline scripts identical to repo source
+C2_service	ok	pid 5551; service status + /api/info healthy
+C3_agent	ok	run_alive=1 driver=1 hb=34s transcript=274s
+C4_ratelimit	ok	failed-launch markers=1 in 360min window
+C5_github	ok	HEAD=remote after concurrent publisher; worktree edits=0
+C6_benchmark	ok	no active run; last benchmark failure recorded (2026-09-26T04:40:01+00:00	/vol/data/benchmark/runs/cami3_v11_20260926	run_meta exit_code=1); no retry loop
+C7_disk	ok	315 GiB free
+C8_issues	broken	new/updated: #6 (Optimization) updated=2026-09-26T07:56:10Z
+C8b_issue_close	ok	no issues marked addressed
+C9_repo_publish	ok	meta artifacts committed and HEAD=remote main
+=== issues.tsv ===
+6	Optimization	2026-09-26T07:56:10Z
+1	Idea inbox: benchmark ideas, COMEBin fixes, dataset requests	2026-09-23T14:53:13Z
+=== last.txt ===
+# Meta-supervisor check — 2026-09-26T08:03:01Z — 0 auto-fix(es) applied
+
+C1_cron          ok      4 exact jobs; cron active; installed/source scripts identical + executable                                               
+C1b_deploy       ok      installed pipeline scripts identical to repo source                                                                      
+C2_service       ok      pid 5551; service status + /api/info healthy                                                                             
+C3_agent         ok      run_alive=1 driver=1 hb=34s transcript=274s                                                                              
+C4_ratelimit     ok      failed-launch markers=1 in 360min window                                                                                 
+C5_github        ok      HEAD=remote bb75e21c6ac7; status clean; worktree edits=0; last commit 59s                                                
+C6_benchmark     ok      no active run; last benchmark failure recorded (2026-09-26T04:40:01+00:00   /vol/data/benchmark/runs/cami3_v11_20260926  run_meta exit_code=1); no retry loop
+C7_disk          ok      315 GiB free                                                                                                             
+C8_issues        broken  new/updated: #6 (Optimization) updated=2026-09-26T07:56:10Z                                                              
+C8b_issue_close  ok      no issues marked addressed
+[0m$ [0mcd /vol/data/benchmark/bin && grep -n "C8" meta-watchdog.sh | head -60
+4:# status/meta, closes issues marked as addressed (C8b), and escalates
+387:# ---- C8: GitHub issues (new/updated; markers advance only after triage) ----- #
+411:  check C8_issues broken "gh issue list failed; update state unknown"
+413:  check C8_issues broken "new/updated:$new_issue"
+415:  check C8_issues ok "$(wc -l < "$META/issues.tsv") open, none new"
+418:# ---- C8b: close GitHub issues marked as addressed (deterministic closer) --- #
+424:    check C8b_issue_close ok "addressed-issue markers processed"
+426:    check C8b_issue_close broken "issue-closer failed (see logs/issue-closer.log)"
+429:  check C8b_issue_close ok "no issues marked addressed"
+> build · big-pickle
+[0m→ [0mRead /vol/data/benchmark/bin/meta-watchdog.sh [90m[offset=380, limit=60][0m
+> build · big-pickle
+[0m$ [0mcat /vol/data/benchmark/meta/close-log.txt; echo "=== issues_closed.tsv (tail) ==="; tail -20 /vol/data/benchmark/meta/issues_closed.tsv
+2026-09-23T19:25:50Z	closed #3 (I think comebin is stuck)
+2026-09-23T19:25:53Z	closed #4 (Why agent often broken)
+2026-09-23T19:25:57Z	closed #5 (I updated the comebin fork)
+2026-09-23T20:57:43Z	closed #7 (Optimization plan)
+2026-09-24T04:58:45Z	closed #9 (No idea whag happened to the runs)
+2026-09-24T05:02:39Z	closed #10 (Try less epoches)
+2026-09-24T11:12:42Z	closed #11 (Baseline zero-bins failure chain: hmmer 3.4 vs pinned 3.1b2 poisons marker seed, unguarded cluster.py:368 read, wrapper )
+2026-09-24T11:12:45Z	closed #12 (Improve reporting)
+2026-09-24T11:12:48Z	closed #13 (CheckM v1: rc=0.)
+2026-09-24T11:12:52Z	closed #15 (Improve results)
+2026-09-24T11:12:56Z	closed #16 (Model choice)
+2026-09-24T11:13:05Z	closed #8 (Add benchmark data to zenodo)
+2026-09-25T01:43:11Z	closed #12 (Improve reporting)
+2026-09-25T01:43:14Z	closed #14 (Improve the readme)
+2026-09-25T01:43:17Z	closed #17 (Only perform big benchmark runs when fixes wored on the small datasets)
+2026-09-25T01:43:20Z	closed #2 (Can you try to create a small benchmark dataset for comebin ?)
+2026-09-25T04:03:10Z	closed #18 (Benchmark size)
+2026-09-25T05:03:07Z	closed #7 (Optimization plan)
+2026-09-26T02:23:06Z	closed #12 (Improve reporting)
+2026-09-26T02:23:09Z	closed #8 (Add benchmark data to zenodo)
+=== issues_closed.tsv (tail) ===
+2026-09-23T19:25:50Z	3	I think comebin is stuck	Verified healthy — training advancing normally (epoch 100+, loss falling), no restart needed; live epoch now shown in README banner so it never looks frozen again.
+2026-09-23T19:25:53Z	4	Why agent often broken	Root cause fixed: opencode run --auto is single-turn in v2; watchdog now drives a persistent turn-loop on one session (crash-loop halved). Documented in docs/05 + CHANGELOG.
+2026-09-23T19:25:57Z	5	I updated the comebin fork	Rebased onto user v1.1.0 fork (origin/master 1b476a4); baseline + evaluation scripts updated; verified via marine small-test prep.
+2026-09-23T20:57:43Z	7	Optimization plan	Verified complete — optimization decision flowchart, commit-selection gates, metrics, and README link are committed in f8dd2e4; issue comment 5802797931 records delivery.
+2026-09-24T04:58:45Z	9	No idea whag happened to the runs	README run history now accounts for all 7 COMEBin-executing attempts and 12 grouped guard-only launches with verified causes and next steps; empty mirror directories were removed and status sync no longer recreates them. 
+2026-09-24T05:02:39Z	10	Try less epoches	EPOCHS passthrough is committed/pushed in COMEBin a0be243; the installed small-test runner defaults to 30, honors custom/legacy CLIs, and releases the launch lock promptly. 
+2026-09-24T11:12:42Z	11	Baseline zero-bins failure chain: hmmer 3.4 vs pinned 3.1b2 poisons marker seed, unguarded cluster.py:368 read, wrapper 	RCA complete in issue body: hmmer 3.1b2 pin + seed regeneration + unguarded cluster.py:368 read + wrapper exit masking; fixed and verified end-to-end via baseline_rerun_autorestart1 (200/200 epochs, 60 bins). 
+2026-09-24T11:12:45Z	12	Improve reporting	Plots auto-generated (per-bin bar runs/<run>/per_bins.png + all-runs scatter results/figures/comp_vs_cont_all-runs.png, 3 PNGs committed 7c0d4bd); make_per_bin_plots.py --all wired into run_eval.sh (2524e12) to regenerate after every evaluated run. 
+2026-09-24T11:12:48Z	13	CheckM v1: rc=0.	rc=0 removed from README/docs/results; CheckM v1 means parsed (baseline 21.23/3.40); results/<run>.csv carries all four means + HQ/MQ counts; rc values kept only in run_meta.txt provenance. 
+2026-09-24T11:12:52Z	15	Improve results	Per-bin results for every evaluated run under runs/<run>/per_bin_results.csv (baseline 60, medium 16, small 3 rows), joined CheckM2 + CheckM v1; generator scripts/make_per_bin_csv.py wired into run_eval.sh (2524e12). 
+2026-09-24T11:12:56Z	16	Model choice	Model choice: DEFAULT_MODEL=opencode/big-pickle committed (c42fa84) at scripts/agent-watchdog.sh:52 and verified deployed; rotation only on big-pickle quota, resets to big-pickle after healthy runs. 
+2026-09-24T11:13:05Z	8	Add benchmark data to zenodo	Zenodo record 22935025 metadata edited in place to MIT with expanded description (no new version); DOI + public API verified HTTP 200; docs/01,10,11 updated (2524e12). 
+2026-09-25T01:43:11Z	12	Improve reporting	Per-dataset comparison subplot figure results/figures/comp_vs_cont_by_dataset.png auto-generated after every evaluated run and embedded in the README (commit 53a4b25); regenerated after fix_v11 evaluation with all 4 runs. 
+2026-09-25T01:43:14Z	14	Improve the readme	README restructured per request (commits 869754a/7c0d4bd/2524e12): top shows Current/Next summary and major achievements; Results section is slim with links only; full run table and history moved to docs/11-run-results.md. 
+2026-09-25T01:43:17Z	17	Only perform big benchmark runs when fixes wored on the small datasets	Gate rule implemented and enforced: full-large benchmark runs launch only after small+medium validation (README + docs/09, commit 2524e12); the fix_v11_20260924 run referenced in the issue completed exit 0 (71 bins) and is published in docs/11 + results/. 
+2026-09-25T01:43:20Z	2	Can you try to create a small benchmark dataset for comebin ?	Small benchmark dataset comebin_small (300 contigs, 94 MB) built and end-to-end validated (small_test_v4: 3 non-empty bins, 122 s, CheckM2 26.07%); medium 3,000-contig dataset built and ran (16 bins); dataset/disk plan incl. human host-associated CAMI II documented in docs/08. 
+2026-09-25T04:03:10Z	18	Benchmark size	issue #18 complete: smallest functional dataset found and measured (floor = 101 contigs: tiny_test_n100 fails with HNSW k=101>N, tiny_test_n101 passes end-to-end, results/tiny_test_n101.csv) AND CAMI II human host-associated ~1/6 set built (4,900 contigs/166 Mbp, reads re-mapped), benchmarked (runs/human_v11_20260925: exit 0, 4,912 s, 107 bins, CheckM2 35.31/5.13 HQ20/MQ29, CheckM v1 32.64/4.65 HQ
+2026-09-25T05:03:07Z	7	Optimization plan	Flowchart redesigned as a straight 4-stage pipeline (small → medium → large → keep/revert, no back-edges) in README + docs/09 per the "different logic" request; rendering confirmed in place, delivery comment 5825268901, marked DONE in PROGRESS. (Re-delivery after the 2026-09-23 close was reopened for this follow-up.) 
+2026-09-26T02:23:06Z	12	Improve reporting	Combined bar plot + stats table verified: results/figures/combined_bar_plot.png is 2x3 (contamination <5%/<10% rows x COMEBin demo / CAMI II human / marine columns), each bar labelled run + COMEBin commit + branch, stats table under it in README; rows match run_meta.txt. Also fixed why "automatic" was false: generator was never deployed to bin/, helpers resolved the wrong repo root. (34ea532) 
+2026-09-26T02:23:09Z	8	Add benchmark data to zenodo	One-record continuous Zenodo archiving verified: v2.0 (record 22969763, MIT) under concept DOI 10.5281/zenodo.22935024 resolves to v2; public API confirms 168,110,629 bytes / MD5 114459d4e728e70b2aefb70e1d8f620e matching the local tarball, 410 bins, 522-file manifest. Fixed why "continuous" was false at runtime: zenodo_update.sh never deployed to bin/ and resolved the wrong repo root. (34ea532)
+[0m$ [0mls -la /vol/data/benchmark/meta/.issues_seen/; echo "=== contents ==="; for f in /vol/data/benchmark/meta/.issues_seen/*; do echo "$f: $(cat $f)"; done
+total 80
+drwxrwxr-x 2 ubuntu ubuntu 4096 Sep 25 01:40 .
+drwxrwxr-x 8 ubuntu ubuntu 4096 Sep 26 08:03 ..
+-rw-rw-r-- 1 ubuntu ubuntu   11 Sep 23 18:45 1
+-rw-rw-r-- 1 ubuntu ubuntu   11 Sep 24 05:02 10
+-rw-rw-r-- 1 ubuntu ubuntu   11 Sep 24 11:12 11
+-rw-rw-r-- 1 ubuntu ubuntu   11 Sep 26 02:23 12
+-rw-rw-r-- 1 ubuntu ubuntu   11 Sep 24 11:12 13
+-rw-rw-r-- 1 ubuntu ubuntu   11 Sep 25 01:43 14
+-rw-rw-r-- 1 ubuntu ubuntu   11 Sep 24 11:12 15
+-rw-rw-r-- 1 ubuntu ubuntu   11 Sep 24 11:12 16
+-rw-rw-r-- 1 ubuntu ubuntu   11 Sep 25 01:43 17
+-rw-rw-r-- 1 ubuntu ubuntu   11 Sep 25 04:03 18
+-rw-rw-r-- 1 ubuntu ubuntu   11 Sep 25 01:43 2
+-rw-rw-r-- 1 ubuntu ubuntu   11 Sep 23 19:25 3
+-rw-rw-r-- 1 ubuntu ubuntu   11 Sep 23 19:25 4
+-rw-rw-r-- 1 ubuntu ubuntu   11 Sep 23 19:25 5
+-rw-rw-r-- 1 ubuntu ubuntu   11 Sep 23 21:03 6
+-rw-rw-r-- 1 ubuntu ubuntu   11 Sep 25 05:03 7
+-rw-rw-r-- 1 ubuntu ubuntu   11 Sep 26 02:23 8
+-rw-rw-r-- 1 ubuntu ubuntu   11 Sep 24 05:05 9
+=== contents ===
+/vol/data/benchmark/meta/.issues_seen/1: 1790175193
+/vol/data/benchmark/meta/.issues_seen/10: 1790226159
+/vol/data/benchmark/meta/.issues_seen/11: 1790248362
+/vol/data/benchmark/meta/.issues_seen/12: 1790389386
+/vol/data/benchmark/meta/.issues_seen/13: 1790248368
+/vol/data/benchmark/meta/.issues_seen/14: 1790300594
+/vol/data/benchmark/meta/.issues_seen/15: 1790248372
+/vol/data/benchmark/meta/.issues_seen/16: 1790248376
+/vol/data/benchmark/meta/.issues_seen/17: 1790300597
+/vol/data/benchmark/meta/.issues_seen/18: 1790308990
+/vol/data/benchmark/meta/.issues_seen/2: 1790300600
+/vol/data/benchmark/meta/.issues_seen/3: 1790191550
+/vol/data/benchmark/meta/.issues_seen/4: 1790191553
+/vol/data/benchmark/meta/.issues_seen/5: 1790191557
+/vol/data/benchmark/meta/.issues_seen/6: 1790196981
+/vol/data/benchmark/meta/.issues_seen/7: 1790312587
+/vol/data/benchmark/meta/.issues_seen/8: 1790389389
+/vol/data/benchmark/meta/.issues_seen/9: 1790225924
+> build · big-pickle
+Now let me verify the claims in issue #6's newest comment (untrusted data) and check overall system state.
+[0m$ [0mcat /vol/data/benchmark/meta/zenodo_benchmark_release_v3.json; echo "=== last content sha ==="; cat /vol/data/benchmark/meta/zenodo_last_content.sha256
+{
+  "bytes": 520343638,
+  "concept_doi": "10.5281/zenodo.22935024",
+  "concept_doi_resolver_http": 200,
+  "concept_doi_resolver_target": "https://zenodo.org/records/22973575 (already resolves to v3)",
+  "content_sha256": "eea303263357a63f3d51cee8576e1a09565244458ed5ae7a81aaa269e08823e2",
+  "doi": "10.5281/zenodo.22973575",
+  "doi_resolver_http": 404,
+  "file_verified": "public size+md5 match local tarball (API record state=done, 2026-09-26T07:47Z)",
+  "filename": "comebin_benchmark_release_v3_20260926.tar.gz",
+  "license": "MIT",
+  "md5": "b8b1b6471288b2bad43cdcd8627e3c27",
+  "published_at_utc": "2026-09-26T07:45:00+00:00",
+  "receipt_path": "/vol/data/benchmark/meta/zenodo_benchmark_release_v3.json",
+  "record_id": 22973575,
+  "recovery_note": "Auto-chain crashed post-publish (zenodo_update.sh assumed Zenodo API files dict; record returned list -> AttributeError 'list' object has no attribute 'get'), so receipt+marker were written by the agent; publish itself succeeded and was verified via API.",
+  "runs": "baseline_rerun_autorestart1 (60 bins),cami3_v11_20260926_rerun (492 bins),fix_v11_20260924 (71 bins),human_v11_20260925 (107 bins),marine_v11_20260925 (152 bins),medium_v11_20260924 (16 bins),small_test_v4 (3 bins),tiny_test_n101 (1 bins)",
+  "state": "published_verified",
+  "title": "COMEBin metagenomic binning benchmark \u2014 datasets and run results",
+  "upload_path": "run_eval.sh auto-reporting chain -> scripts/zenodo_update.sh (first continuous update)",
+  "version": "3.0",
+  "version_doi_note": "Known DataCite propagation lag: at 2026-09-26T07:47Z (2 min post-publish) doi.org/10.5281/zenodo.22973575 returned 404 while the concept DOI already resolved to the new record; v2 showed the same pattern (findable ~68 min after publish). Recheck recorded below.",
+  "version_doi_recheck_http": null,
+  "version_doi_recheck_utc": null
+}=== last content sha ===
+eea303263357a63f3d51cee8576e1a09565244458ed5ae7a81aaa269e08823e2
+[0m$ [0mls -la /vol/data/benchmark/releases/ 2>&1; echo "=== results dir ==="; ls -la /vol/data/repos/metagenomic-binning-benchmark/results/ | head -30
+total 672844
+drwxrwxr-x  3 ubuntu ubuntu      4096 Sep 26 07:44 .
+drwxrwxr-x 11 ubuntu ubuntu      4096 Sep 26 07:57 ..
+-rw-rw-r--  1 ubuntu ubuntu 168110629 Sep 26 01:38 comebin_benchmark_release_v2_20260926.tar.gz
+-rw-rw-r--  1 ubuntu ubuntu 520343638 Sep 26 07:43 comebin_benchmark_release_v3_20260926.tar.gz
+drwxrwxr-x  4 ubuntu ubuntu      4096 Sep 24 09:27 comebin_small_20260924
+-rw-rw-r--  1 ubuntu ubuntu    100579 Sep 26 01:11 manifest.20260926T011057Z.json
+-rw-rw-r--  1 ubuntu ubuntu    101492 Sep 26 01:36 manifest.20260926T013645Z.json
+-rw-rw-r--  1 ubuntu ubuntu    101492 Sep 26 02:11 manifest.20260926T021113Z.json
+-rw-rw-r--  1 ubuntu ubuntu    203694 Sep 26 07:38 manifest.20260926T073806Z.json
+=== results dir ===
+total 52
+drwxrwxr-x 3 ubuntu ubuntu 4096 Sep 26 07:37 .
+drwxrwxr-x 8 ubuntu ubuntu 4096 Sep 26 08:02 ..
+-rw-rw-r-- 1 ubuntu ubuntu 1052 Sep 24 10:17 README.md
+-rw-rw-r-- 1 ubuntu ubuntu  343 Sep 24 11:06 baseline_rerun_autorestart1.csv
+-rw-rw-r-- 1 ubuntu ubuntu  325 Sep 26 07:37 cami3_v11_20260926_rerun.csv
+drwxrwxr-x 2 ubuntu ubuntu 4096 Sep 26 02:07 figures
+-rw-rw-r-- 1 ubuntu ubuntu  332 Sep 25 01:12 fix_v11_20260924.csv
+-rw-rw-r-- 1 ubuntu ubuntu  326 Sep 25 03:54 human_v11_20260925.csv
+-rw-rw-r-- 1 ubuntu ubuntu  832 Sep 26 07:38 main_runs_table.md
+-rw-rw-r-- 1 ubuntu ubuntu  329 Sep 26 02:11 marine_v11_20260925.csv
+-rw-rw-r-- 1 ubuntu ubuntu  335 Sep 24 10:13 medium_v11_20260924.csv
+-rw-rw-r-- 1 ubuntu ubuntu  307 Sep 24 09:06 small_test_v4.csv
+-rw-rw-r-- 1 ubuntu ubuntu  310 Sep 25 01:50 tiny_test_n101.csv
+> build · big-pickle
+[0m$ [0mls -la /vol/data/repos/metagenomic-binning-benchmark/scripts/; echo "=== cami3 csv ==="; cat /vol/data/repos/metagenomic-binning-benchmark/results/cami3_v11_20260926_rerun.csv
+total 244
+drwxrwxr-x 3 ubuntu ubuntu  4096 Sep 26 01:08 .
+drwxrwxr-x 8 ubuntu ubuntu  4096 Sep 26 08:02 ..
+drwxrwxr-x 2 ubuntu ubuntu  4096 Sep 26 02:58 __pycache__
+-rwxrwxr-x 1 ubuntu ubuntu 13123 Sep 24 10:30 agent-watchdog.sh
+-rwxr-xr-x 1 ubuntu ubuntu 12963 Sep 24 00:55 benchmark-watchdog.sh
+-rwxrwxr-x 1 ubuntu ubuntu  5033 Sep 25 04:54 issue-closer.sh
+-rw-rw-r-- 1 ubuntu ubuntu 12669 Sep 26 02:07 make_combined_bar_plot.py
+-rwxrwxr-x 1 ubuntu ubuntu  3979 Sep 24 09:18 make_medium_dataset.sh
+-rw-rw-r-- 1 ubuntu ubuntu  4539 Sep 26 02:06 make_per_bin_csv.py
+-rw-rw-r-- 1 ubuntu ubuntu  8652 Sep 26 02:06 make_per_bin_plots.py
+-rwxr-xr-x 1 ubuntu ubuntu  4404 Sep 23 21:02 make_release_manifest.py
+-rw-rw-r-- 1 ubuntu ubuntu  5709 Sep 26 02:59 make_results_csv.py
+-rwxr-xr-x 1 ubuntu ubuntu  2499 Sep 24 01:00 make_small_dataset.sh
+-rwxr-xr-x 1 ubuntu ubuntu 27373 Sep 26 02:08 meta-watchdog.sh
+-rw-rw-r-- 1 ubuntu ubuntu  3067 Sep 24 09:02 parse_eval.py
+-rw-rw-r-- 1 ubuntu ubuntu  4375 Sep 25 01:55 prep_cami2_human.sh
+-rw-rw-r-- 1 ubuntu ubuntu  3070 Sep 23 19:19 prep_cami2_marine.sh
+-rwxrwxr-x 1 ubuntu ubuntu  8208 Sep 25 23:48 prep_cami3_toy.sh
+-rwxr-xr-x 1 ubuntu ubuntu  9905 Sep 24 09:19 run_comebin_baseline.sh
+-rwxrwxr-x 1 ubuntu ubuntu  6303 Sep 24 09:17 run_comebin_fix.sh
+-rwxrwxr-x 1 ubuntu ubuntu  6501 Sep 26 01:21 run_eval.sh
+-rwxrwxr-x 1 ubuntu ubuntu  8956 Sep 25 01:10 run_small_test.sh
+-rwxrwxr-x 1 ubuntu ubuntu 14795 Sep 24 04:54 status-heartbeat.sh
+-rw-rw-r-- 1 ubuntu ubuntu  3254 Sep 23 16:09 test_batch1.py
+-rw-rw-r-- 1 ubuntu ubuntu 15881 Sep 26 07:47 zenodo_update.sh
+=== cami3 csv ===
+run,source_commit,dataset,threads,total_time_s,n_bins,checkm2_mean_completeness,checkm2_mean_contamination,checkm2_HQ,checkm2_MQ,checkm_mean_completeness,checkm_mean_contamination,checkm_HQ,checkm_MQ
+cami3_v11_20260926_rerun,95f5ea820f9a4e76f5c2911c0b5ed507ab67b015,CAMI III,32,5392,492,35.97,11.42,53,112,32.46,13.38,54,100
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && for f in scripts/*; do b=$(basename "$f"); if [ -f "/vol/data/benchmark/bin/$b" ]; then if cmp -s "$f" "/vol/data/benchmark/bin/$b"; then echo "SAME  $b"; else echo "DIFF  $b"; fi; else echo "MISSING-IN-BIN $b"; fi; done
+MISSING-IN-BIN __pycache__
+SAME  agent-watchdog.sh
+SAME  benchmark-watchdog.sh
+SAME  issue-closer.sh
+SAME  make_combined_bar_plot.py
+SAME  make_medium_dataset.sh
+SAME  make_per_bin_csv.py
+SAME  make_per_bin_plots.py
+SAME  make_release_manifest.py
+SAME  make_results_csv.py
+SAME  make_small_dataset.sh
+SAME  meta-watchdog.sh
+SAME  parse_eval.py
+SAME  prep_cami2_human.sh
+SAME  prep_cami2_marine.sh
+SAME  prep_cami3_toy.sh
+SAME  run_comebin_baseline.sh
+SAME  run_comebin_fix.sh
+SAME  run_eval.sh
+SAME  run_small_test.sh
+SAME  status-heartbeat.sh
+SAME  test_batch1.py
+SAME  zenodo_update.sh
+> build · big-pickle
+Deploy is in sync and the CAMI III CSV matches the comment's claims exactly. Now let me verify the two concrete bugs the comment admits to.
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && grep -n "\.get(" scripts/zenodo_update.sh
+171:    if str(d.get("conceptrecid")) == "22935024" and d.get("state") == "unsubmitted":
+230:md = draft.get("metadata", {})
+275:NEW_ID=$(python3 -c "import json;print(json.load(open('$WORK/resp.json')).get('id') or '$DRAFT_ID')")
+277:import json;d=json.load(open('$WORK/resp.json'));print(d.get('doi') or d.get('metadata',{}).get('doi') or '')")
+281:  STATE=$(python3 -c "import json;print(json.load(open('$WORK/resp.json')).get('state',''))")
+296:raw = rec.get("files", {})
+298:    files = raw.get("entries", {}) or raw
+300:    files = {f.get("key") or f.get("filename"): f for f in raw}
+301:entry = files.get(fname)
+304:est = entry.get("checksum", "")
+307:if int(entry.get("size", entry.get("bytes", -1))) != size:
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && grep -n "checkm2\|threads\|THREADS" scripts/run_eval.sh | head -40
+2:# run_eval.sh <rundir> [threads] — CheckM2 + CheckM v1 bin-quality evaluation for a
+7:CHECKM2_ENV=${CHECKM2_ENV:-/vol/data/envs/checkm2}
+17:RUN=${1:?usage: run_eval.sh <rundir> [threads]}
+18:THREADS=${2:-32}
+45:CK2DB=${CHECKM2DB:-/vol/data/benchmark/checkm2db/CheckM2_database/uniref100.KO.1.dmnd}
+46:[ -f "$CK2DB" ] || { echo "WARNING: checkm2 db not found at $CK2DB (set CHECKM2DB)"; }
+47:CHECKM2_OUT="$RUN/eval/checkm2"
+55:CMD2="$MM run -p $CHECKM2_ENV checkm2 predict --threads $THREADS --database_path $CK2DB --input $BINS --output-directory $CHECKM2_OUT -x $BIN_EXT --force"
+56:echo "cmd_checkm2: $CMD2" | tee -a "$RUN/run_meta.txt"
+67:echo "checkm2_rc: $rc2 checkm2_wall_s: $(( $(date +%s) - T ))" | tee -a "$RUN/run_meta.txt"
+68:[ -f "$CHECKM2_OUT/quality_report.tsv" ] && echo "checkm2 report: $CHECKM2_OUT/quality_report.tsv"
+80:CMD1="LD_LIBRARY_PATH=$CHECKM_LD_LIBRARY_PATH $MM run -p $CHECKM_ENV checkm lineage_wf -x $BIN_EXT -t $THREADS --tmpdir $CHECKM_TMP $BINS $CHECKM_OUT"
+123:echo "done (checkm2 rc=$rc2, checkm rc=$rc1)"
+> build · big-pickle
+[0m→ [0mRead /vol/data/repos/metagenomic-binning-benchmark/scripts/zenodo_update.sh [90m[limit=40, offset=283][0m
+> build · big-pickle
+The files-shape bug is already fixed in source. Let me check the DOI propagation status and git history of the fixes.
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && git log --oneline -6 -- scripts/zenodo_update.sh; echo "=== diff stat last commits touching scripts ==="; git log --oneline -3 --stat | head -40
+a057f021 docs: CAMI III run results (rerun 492 bins, CheckM2 35.97/11.42, CheckM 32.46/13.38) + Zenodo v3 + zenodo_update files-shape fix
+34ea5329 Fix reporting/Zenodo auto-update pipeline that was never actually deployed
+3328a96d Marine eval complete (CheckM2 50.60/4.10, CheckM v1 46.36/5.09) + #12 combined bar plot/stats table in README + #8 Zenodo v2.0 continuous update
+=== diff stat last commits touching scripts ===
+b28165f4 meta: supervise tick 2026-09-26T08:03:01Z — 0 fix(es)
+ status/meta/issues.tsv |  2 +-
+ status/meta/last.txt   | 22 +++++++++++-----------
+ 2 files changed, 12 insertions(+), 12 deletions(-)
+bb75e21c status: yes — cami3_v11_20260926_rerun epoch 199/200 loss 1.4088499546051025 acc 74.94791412353516 model big-pickle — 2026-09-25T12:16:00Z | marine_v11_202609 2026-09-25T15:34:55Z | issues triaged: # 2026-09-25T20:49:23Z | issues triaged: # 2026-09-25T21:11:13Z | issues #12 and #8 2026-09-25T21:24:00Z | CAMI III prep scr 2026-09-25T21:54:00Z | agent: started CA 2026-09-26T00:49:54Z marine-eval-launche 2026-09-26T00:50:20Z marine-eval-launche 2026-09-26T00:50:42Z marine-eval-launche 2026-09-26T01:14:16Z marine-eval-retry-l 2026-09-26T01:41:50Z zenodo-v2-published 2026-09-26T01:46:27Z commit: pushed mari 2026-09-26T01:46:47Z delivery-comments-p 2026-09-26T01:47:11Z progress-committed 2026-09-26T01:49:18Z progress-synced 2026-09-26T02:02:36Z docs10-fix-committe 2026-09-26T02:41:03Z finish-prep-launche 2026-09-26T02:45:37Z cami3-run-launched 2026-09-26T02:45:58Z cami3-progress-comm 2026-09-26T02:54:43Z version-doi-verifie 2026-09-26T02:55:42Z doi-followup-commen 2026-09-26T02:56:38Z progress-committed 2026-09-26T02:57:25Z dryrun-tarball-dele 2026-09-26T02:59:24Z results-csv-label-f 2026-09-26T02:59:32Z progress-committed 2026-09-26T04:22:06Z 2026-09-26T04:26:43Z disk-full-incident- 2026-09-26T04:50:51Z rerun-launched-pid3 2026-09-26T05:23:51Z rerun-on-track-epoc 2026-09-26T06:19:21Z rerun-done-eval-run 2026-09-26T06:19:27Z eval started cami3_ 2026-09-26T06:41:54Z eval-checkm-v1-ppla 2026-09-26T07:10:51Z checkm2-retry-16t 2026-09-26T07:47:33Z zenodo-v3-published 2026-09-26T07:52:47Z docs-cami3-delivere 2026-09-26T07:56:10Z issue6-comment-cami 2026-09-26T07:56:26Z zenodo-v3-version-d 2026-09-26T07:56:48Z turn-activity docs+ 2026-09-26T07:58:24Z progress-finalized 2026-09-26T07:58:26Z zenodo-v3-version-d 2026-09-26T08:00:26Z zenodo-v3-version-d
+ README.md         |  2 +-
+ status/current.md | 13 +++++++------
+ status/status.log | 41 +++++++++++++++++++++++++++++++++++++++++
+ 3 files changed, 49 insertions(+), 7 deletions(-)
+da9786bc status: yes — cami3_v11_20260926_rerun epoch 199/200 loss 1.4088499546051025 acc 74.94791412353516 model big-pickle — 2026-09-25T12:16:00Z | marine_v11_202609 2026-09-25T15:34:55Z | issues triaged: # 2026-09-25T20:49:23Z | issues triaged: # 2026-09-25T21:11:13Z | issues #12 and #8 2026-09-25T21:24:00Z | CAMI III prep scr 2026-09-25T21:54:00Z | agent: started CA 2026-09-26T00:49:54Z marine-eval-launche 2026-09-26T00:50:20Z marine-eval-launche 2026-09-26T00:50:42Z marine-eval-launche 2026-09-26T01:14:16Z marine-eval-retry-l 2026-09-26T01:41:50Z zenodo-v2-published 2026-09-26T01:46:27Z commit: pushed mari 2026-09-26T01:46:47Z delivery-comments-p 2026-09-26T01:47:11Z progress-committed 2026-09-26T01:49:18Z progress-synced 2026-09-26T02:02:36Z docs10-fix-committe 2026-09-26T02:41:03Z finish-prep-launche 2026-09-26T02:45:37Z cami3-run-launched 2026-09-26T02:45:58Z cami3-progress-comm 2026-09-26T02:54:43Z version-doi-verifie 2026-09-26T02:55:42Z doi-followup-commen 2026-09-26T02:56:38Z progress-committed 2026-09-26T02:57:25Z dryrun-tarball-dele 2026-09-26T02:59:24Z results-csv-label-f 2026-09-26T02:59:32Z progress-committed 2026-09-26T04:22:06Z 2026-09-26T04:26:43Z disk-full-incident- 2026-09-26T04:50:51Z rerun-launched-pid3 2026-09-26T05:23:51Z rerun-on-track-epoc 2026-09-26T06:19:21Z rerun-done-eval-run 2026-09-26T06:19:27Z eval started cami3_ 2026-09-26T06:41:54Z eval-checkm-v1-ppla 2026-09-26T07:10:51Z checkm2-retry-16t 2026-09-26T07:47:33Z zenodo-v3-published 2026-09-26T07:52:47Z docs-cami3-delivere 2026-09-26T07:56:10Z issue6-comment-cami 2026-09-26T07:56:26Z zenodo-v3-version-d 2026-09-26T07:56:48Z turn-activity docs+ 2026-09-26T07:58:24Z progress-finalized 2026-09-26T07:58:26Z zenodo-v3-version-d
+ README.md                 |   2 +-
+ status/agent-activity.log |   1 +
+ status/agent-run.log      | 165 ++++++++++++++++++++++++++++++++++++++++++++++
+ status/current.md         |  18 ++---
+ status/status.log         |  40 +++++++++++
+ status/watchdog.log       |   2 +
+ 6 files changed, 219 insertions(+), 9 deletions(-)
+[0m$ [0mecho "=== version DOI 10.5281/zenodo.22973575 ==="; curl -sS -o /dev/null -w 'http=%{http_code} url=%{url_effective}\n' -L --max-time 30 "https://doi.org/10.5281/zenodo.22973575" 2>&1; echo "=== concept DOI 10.5281/zenodo.22935024 ==="; curl -sS -o /dev/null -w 'http=%{http_code} url=%{url_effective}\n' -L --max-time 30 "https://doi.org/10.5281/zenodo.22935024" 2>&1
+=== version DOI 10.5281/zenodo.22973575 ===
+http=404 url=https://doi.org/10.5281/zenodo.22973575
+=== concept DOI 10.5281/zenodo.22935024 ===
+http=200 url=https://zenodo.org/records/22973575
+> build · big-pickle
