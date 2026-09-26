@@ -457,6 +457,14 @@ included; fixes land on branch `comebin-optimizations` in this repo.
       comebin-optimizations-v11, registered in `.active_run`, watchdog owns
       handoff. Eval via run_eval.sh afterwards (CheckM2 + CheckM v1 →
       auto-report + Zenodo update).
+      *2026-09-26 03:00: made `make_results_csv.py` label the run correctly —
+      its `cami3`/`cami2` needles never matched the real `cami_III`/`cami_II`
+      contigs paths, so the CAMI III row would have fallen back to a directory
+      basename (same gap that made the human/marine rows read
+      `human_sample0_input`/`marine_sample0_input`). Matcher now checks
+      `cami_III` before `cami_II` (substring!); fix `32c5240` committed +
+      deployed atomically to `bin/` so post-eval regeneration labels it
+      "CAMI III".*
 
 - [x] **Issue #12 plots (2026-09-24 ~10:42 UTC)**: `scripts/make_per_bin_plots.py`
       generates per-bin bar charts (`runs/<run>/per_bins.png`, CheckM2 + CheckM v1
