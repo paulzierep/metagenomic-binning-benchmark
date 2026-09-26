@@ -69759,3 +69759,249 @@ Eval still on CheckM v1. I have everything I need — writing `scripts/make_comb
 Created file successfully: /vol/data/repos/metagenomic-binning-benchmark/scripts/make_combined_bar_plot.py
 > build · mimo-v2.6-flash-free
 Testing the script with available runs (marine per-bin CSV comes after eval), and checking eval progress:
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && /vol/data/tools/bin/micromamba run -p /vol/data/envs/comebin python3 scripts/make_combined_bar_plot.py 2>&1 | tail -20; echo "=== eval status ==="; tail -c 300 /vol/data/benchmark/logs/marine_eval.log; pgrep -f "run_eval.sh" >/dev/null && echo "eval RUNNING" || echo "eval DONE"; date -u +%FT%TZ; touch /vol/data/benchmark/.heartbeat
+Traceback (most recent call last):
+  File "/vol/data/repos/metagenomic-binning-benchmark/scripts/make_combined_bar_plot.py", line 291, in <module>
+    main()
+  File "/vol/data/repos/metagenomic-binning-benchmark/scripts/make_combined_bar_plot.py", line 261, in main
+    ax.set_xlim(0, max(left.max(), 1) * 1.25)
+  File "/vol/data/envs/comebin/lib/python3.10/site-packages/numpy/core/_methods.py", line 40, in _amax
+    return umr_maximum(a, axis, None, out, keepdims, initial, where)
+ValueError: zero-size array to reduction operation maximum which has no identity
+=== eval status ===
+ning 42 of 43 (97.67%) marker genes.    Finished aligning 43 of 43 (100.00%) marker genes.
+[2026-09-26 00:56:09] INFO: Reading marker alignment files.
+[2026-09-26 00:56:09] INFO: Concatenating alignments.
+[2026-09-26 00:56:09] INFO: Placing 152 bins into the genome tree with pplacer (be patient).
+eval RUNNING
+2026-09-26T00:58:02Z
+> build · mimo-v2.6-flash-free
+Fixing the empty-subplot crash (marine isn't evaluated yet — guard needed):
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/scripts/make_combined_bar_plot.py
+Index: /vol/data/repos/metagenomic-binning-benchmark/scripts/make_combined_bar_plot.py
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/scripts/make_combined_bar_plot.py
++++ /vol/data/repos/metagenomic-binning-benchmark/scripts/make_combined_bar_plot.py
+@@ -239,19 +239,22 @@
+     for row_i, (cutoff, row_title) in enumerate(CUTOFFS):
+         for col_i, key in enumerate(wanted):
+             ax = axs[row_i][col_i]
+             runs = found[key]
++            ax.set_title(f"{DATASETS[key][1]}\n{row_title}",
++                         fontsize=14 if ncol > 1 else 16)
++            if not runs:
++                ax.text(0.5, 0.5, "no evaluated run yet",
++                        transform=ax.transAxes, ha="center", va="center",
++                        fontsize=13, color="#666666")
++                ax.set_yticks([])
++                continue
+             names = [f"{r['name']} · {r['commit7']} · {r['branch']}"
+                      for r in runs]
+             y = np.arange(len(runs))
+             left = np.zeros(len(runs))
+-            totals = np.zeros(len(runs))
+             for t_i, thr in enumerate(THRESHOLDS):
+-                values = []
+-                for r in runs:
+-                    seg, total = counts(r["rows"], cutoff)
+-                    values.append(seg[thr])
+-                    totals[list(runs).index(r)] = total
++                values = [counts(r["rows"], cutoff)[0][thr] for r in runs]
+                 ax.barh(y, values, left=left, color=COLORS[t_i],
+                         label=thr, height=0.6)
+                 left = left + np.array(values, dtype=float)
+             for i in range(len(runs)):
+
+> build · mimo-v2.6-flash-free
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/scripts/make_combined_bar_plot.py
+Index: /vol/data/repos/metagenomic-binning-benchmark/scripts/make_combined_bar_plot.py
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/scripts/make_combined_bar_plot.py
++++ /vol/data/repos/metagenomic-binning-benchmark/scripts/make_combined_bar_plot.py
+@@ -264,10 +264,8 @@
+             ax.set_xlim(0, max(left.max(), 1) * 1.25)
+             ax.set_yticks(y)
+             ax.set_yticklabels(names, fontsize=11)
+             ax.set_xlabel("#MAGs", fontsize=13)
+-            ax.set_title(f"{DATASETS[key][1]}\n{row_title}",
+-                         fontsize=14 if ncol > 1 else 16)
+             ax.tick_params(axis="x", labelsize=12)
+             if row_i == 0 and col_i == ncol - 1:
+                 ax.legend(title="Completeness", loc="upper right",
+                           fontsize=12, title_fontsize=13)
+
+> build · mimo-v2.6-flash-free
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/scripts/make_combined_bar_plot.py
+Index: /vol/data/repos/metagenomic-binning-benchmark/scripts/make_combined_bar_plot.py
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/scripts/make_combined_bar_plot.py
++++ /vol/data/repos/metagenomic-binning-benchmark/scripts/make_combined_bar_plot.py
+@@ -269,8 +269,24 @@
+             if row_i == 0 and col_i == ncol - 1:
+                 ax.legend(title="Completeness", loc="upper right",
+                           fontsize=12, title_fontsize=13)
+ 
++    # Legend: prefer the top-right subplot; fall back to the first subplot
++    # that has data (top-right may be an unevaluated dataset).
++    handles, labels = axs[0][ncol - 1].get_legend_handles_labels()
++    if not handles:
++        for ax_row in axs:
++            for ax in ax_row:
++                handles, labels = ax.get_legend_handles_labels()
++                if handles:
++                    break
++            if handles:
++                break
++    if handles:
++        axs[0][ncol - 1].legend(handles, labels, title="Completeness",
++                                loc="upper right", fontsize=12,
++                                title_fontsize=13)
++
+     fig.suptitle("COMEBin benchmark — bins per completeness threshold "
+                  "(CheckM2), by run and COMEBin version",
+                  fontsize=16, y=1.0)
+     fig.tight_layout(rect=(0, 0, 1, 0.97))
+
+> build · mimo-v2.6-flash-free
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/scripts/make_combined_bar_plot.py
+Index: /vol/data/repos/metagenomic-binning-benchmark/scripts/make_combined_bar_plot.py
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/scripts/make_combined_bar_plot.py
++++ /vol/data/repos/metagenomic-binning-benchmark/scripts/make_combined_bar_plot.py
+@@ -265,11 +265,8 @@
+             ax.set_yticks(y)
+             ax.set_yticklabels(names, fontsize=11)
+             ax.set_xlabel("#MAGs", fontsize=13)
+             ax.tick_params(axis="x", labelsize=12)
+-            if row_i == 0 and col_i == ncol - 1:
+-                ax.legend(title="Completeness", loc="upper right",
+-                          fontsize=12, title_fontsize=13)
+ 
+     # Legend: prefer the top-right subplot; fall back to the first subplot
+     # that has data (top-right may be an unevaluated dataset).
+     handles, labels = axs[0][ncol - 1].get_legend_handles_labels()
+
+> build · mimo-v2.6-flash-free
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && /vol/data/tools/bin/micromamba run -p /vol/data/envs/comebin python3 scripts/make_combined_bar_plot.py 2>&1 | tail -15; ls -la results/figures/combined_bar_plot.png 2>/dev/null; date -u +%FT%TZ
+wrote /vol/data/repos/metagenomic-binning-benchmark/results/figures/combined_bar_plot.png
+wrote /vol/data/repos/metagenomic-binning-benchmark/results/main_runs_table.md
+| Run | Dataset | COMEBin version | Seed | Wall time | Bins | CheckM2 comp / cont | CheckM2 HQ / MQ | CheckM v1 comp / cont | CheckM v1 HQ / MQ |
+|---|---|---|---|---|---|---|---|---|---|
+| `baseline_rerun_autorestart1` | COMEBin demo (29,434 contigs) | `904f649` (master) | - | 6h45m | 60 | 25.01 / 2.98 | 0 / 7 | 21.23 / 3.40 | 0 / 9 |
+| `fix_v11_20260924` | COMEBin demo (29,434 contigs) | `95f5ea8` (comebin-optimizations-v11) | 42 | 6h52m | 71 | 24.38 / 3.78 | 1 / 6 | 21.62 / 5.18 | 0 / 8 |
+| `human_v11_20260925` | CAMI II human (4,900 contigs) | `95f5ea8` (comebin-optimizations-v11) | 42 | 1h21m | 107 | 35.31 / 5.13 | 20 / 29 | 32.64 / 4.65 | 21 / 29 |
+
+-rw-rw-r-- 1 ubuntu ubuntu 424244 Sep 26 00:58 results/figures/combined_bar_plot.png
+2026-09-26T00:58:54Z
+> build · mimo-v2.6-flash-free
+Working. Let me inspect the figure visually:
+[0m✗ [0mbrowser.preview {"path":"/vol/data/repos/metagenomic-binning-benchmark/results/figures/combined_bar_plot.png"} failed
+[91m[1mError: [0mNo tool named "browser.preview" is currently available. Please use a tool from the available tool list.
+> build · mimo-v2.6-flash-free
+[0m⚙ [0mexecute {"code":"const r = await tools.browser.preview({path: \"/vol/data/repos/metagenomic-binning-benchmark/results/figures/combined_bar_plot.png\"});\nreturn r;"} 
+> build · mimo-v2.6-flash-free
+No browser connected — I'll validate the image programmatically instead:
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && /vol/data/tools/bin/micromamba run -p /vol/data/envs/comebin python3 -c "
+from PIL import Image
+im = Image.open('results/figures/combined_bar_plot.png')
+print('size:', im.size, 'dpi:', im.info.get('dpi'))
+" 2>&1 | tail -3; echo "=== eval ==="; pgrep -f "run_eval.sh" >/dev/null && echo RUNNING || echo DONE; grep -c "" /vol/data/benchmark/logs/marine_eval.log; tail -c 400 /vol/data/benchmark/logs/marine_eval.log; date -u +%FT%TZ
+size: (5941, 3135) dpi: (299.9994, 299.9994)
+=== eval ===
+RUNNING
+39
+of 43 (93.02%) marker genes.    Finished aligning 41 of 43 (95.35%) marker genes.    Finished aligning 42 of 43 (97.67%) marker genes.    Finished aligning 43 of 43 (100.00%) marker genes.
+[2026-09-26 00:56:09] INFO: Reading marker alignment files.
+[2026-09-26 00:56:09] INFO: Concatenating alignments.
+[2026-09-26 00:56:09] INFO: Placing 152 bins into the genome tree with pplacer (be patient).
+2026-09-26T00:59:12Z
+> build · mimo-v2.6-flash-free
+Image validates (5941×3135 @300dpi). Now wiring the plot into `run_eval.sh` auto-reporting, and studying the existing Zenodo upload flow for #8:
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/scripts/run_eval.sh
+Index: /vol/data/repos/metagenomic-binning-benchmark/scripts/run_eval.sh
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/scripts/run_eval.sh
++++ /vol/data/repos/metagenomic-binning-benchmark/scripts/run_eval.sh
+@@ -110,8 +110,12 @@
+   python3 "$(dirname "$0")/make_per_bin_csv.py" "$RUN" 9>&- \
+     || echo "WARNING: make_per_bin_csv.py failed (rc=$?)" >&2
+   "$MM" run -p "$CHECKM_ENV" python3 "$(dirname "$0")/make_per_bin_plots.py" --all "$RUN" 9>&- \
+     || echo "WARNING: make_per_bin_plots.py failed (rc=$?)" >&2
++  # Issue #12: combined bar plot for the three main datasets + its stats table
++  # (README embeds both; regenerated after every successful eval).
++  "$MM" run -p "$CHECKM_ENV" python3 "$(dirname "$0")/make_combined_bar_plot.py" 9>&- \
++    || echo "WARNING: make_combined_bar_plot.py failed (rc=$?)" >&2
+ fi
+ echo "done (checkm2 rc=$rc2, checkm rc=$rc1)"
+ if [ "$rc2" -ne 0 ] || [ "$rc1" -ne 0 ]; then
+   exit 1
+
+[0m$ [0mpython3 -c "
+import json
+d=json.load(open('/vol/data/benchmark/meta/zenodo_comebin_small.json'))
+print(json.dumps(d, indent=1)[:2000])" 2>&1; echo "=== docs/10 zenodo flow ==="; grep -n -A6 "curl\|API\|newversion\|deposition" /vol/data/repos/metagenomic-binning-benchmark/docs/10-data-preservation.md | head -50
+{
+ "created_at_utc": "2026-09-24T09:26:38.685282+00:00",
+ "dataset": "comebin_small",
+ "doi": "10.5281/zenodo.22935025",
+ "doi_resolver_check": {
+  "final_url": "https://doi.org/10.5281/zenodo.22935025",
+  "http_status": 200,
+  "checked_at_utc": "2026-09-24T11:04:00.968678Z"
+ },
+ "doi_url": "https://doi.org/10.5281/zenodo.22935025",
+ "files": [
+  {
+   "bytes": 95216539,
+   "md5": "e37e24b1053e61ca2769f3cc94070e61",
+   "name": "comebin_small_release_v1.tar.gz",
+   "sha256": "0c698d208639f4fadd4ac4477a67074320c975528b23dd61743c83ad1658b6d2"
+  },
+  {
+   "bytes": 3650,
+   "md5": "8cc6b7fb4d77f6f460f44687c163a618",
+   "name": "comebin_small.release.public.json",
+   "sha256": "84131ae359d07a78db7ae7ca2005758f4f0ec9df67a33ec62f8af50ac1702f1b"
+  }
+ ],
+ "license": "MIT",
+ "record_api_url": "https://zenodo.org/api/records/22935025",
+ "record_url": "https://zenodo.org/records/22935025",
+ "release_version": 1,
+ "schema_version": 2,
+ "state": "published_verified",
+ "title": "COMEBin metagenomic binning benchmark dataset \u2014 small test set (300 contigs, 94 MB)",
+ "transfer_mode": "single-archive",
+ "unauthenticated_record_http_status": 200,
+ "verified_at_utc": "2026-09-24T11:04:00.968740Z",
+ "zenodo_deposition_id": 22935025,
+ "zenodo_record_id": 22935025,
+ "description": "Small functional-test gate of the metagenomic-binning-benchmark harness (https://github.com/paulzierep/metagenomic-binning-benchmark): 300 longest contigs (>=1001 bp) of BATS_SAMN07137077_METAG plus overlapping reads, COMEBin v1.1.0 outputs (3 bins), CheckM2 and CheckM v1 quality metrics, provenance, and SHA-256 public manifest. Used to validate COMEBin fixes/parameter changes before medium and large benchmarks. How to run and full metadata: docs/01-datasets.md, docs/10-data-preservation.md, docs/11-run-results.md in the repo.",
+ "description_updated_utc": "2026-09-24T11:04:00.968752Z",
+ "license_changed_via": "in-place metadata edit on published record (no new version, per owner request)"
+}
+=== docs/10 zenodo flow ===
+4:keeps the repository small while making a deposition reviewable and
+5-reproducible. The watchdogs do not upload data automatically; an owner-approved
+6-Zenodo account/token and a final choice of data license and release contents
+7-are required for each manual or supervisor-operated deposit.
+8-
+9-## What would be released
+10-
+--
+29:   create a deposition (normally an owner or authorized account), and a token
+30-   supplied through a secret environment variable or secret store. Never put a
+31-   token in this Git repository, a log, a command transcript, or an issue.
+32-2. **Deposit metadata:** title, authors/creators and ORCIDs where available,
+33-   abstract, keywords, related DOI/repository URL, and a citation suggestion.
+34-3. **Licensing:** an explicit data license (for example CC BY 4.0 when
+35-   appropriate), plus the code license and any third-party restrictions. CAMI
+--
+81:with a fresh unauthenticated request. Save the DOI, deposition URL, version,
+82-uploaded filenames, and final checksums in:
+83-
+84-- `docs/01-datasets.md` (dataset provenance and citation);
+85-- the relevant issue comment;
+86-- `results/` or `status/meta/` only as small text/CSV artifacts, never as a
+87-  substitute for the DOI.
+> build · mimo-v2.6-flash-free
