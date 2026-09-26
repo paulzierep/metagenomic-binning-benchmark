@@ -3,13 +3,13 @@
 | | |
 |---|---|
 | Status | 🟢 `running` |
-| ⏱ Updated (Europe/Berlin) | `2026-09-26T02:24 CEST` |
-| 🏃 Last benchmark (not active) | `marine_v11_20260925` — last observed **epoch 158/200** (log 41885s old) |
+| ⏱ Updated (Europe/Berlin) | `2026-09-26T02:26 CEST` |
+| 🏃 Last benchmark (not active) | `marine_v11_20260925` — last observed **epoch 158/200** (log 42005s old) |
 | 🧠 Model (last turn) | `nemotron-3.5-lightning-free` (watchdog rotates to free models on quota) |
-| 📌 Agent note · **149 min old** | agent driver alive; transcript fresh (143s) while heartbeat is stale (8879s) |
-| ⚙️ Load · uptime | `2.00 1.93 1.80` · 2 days, 10 hours, 48 minutes — 32 cores, 62 GiB, no GPU |
-| 💾 RAM used/total | `2697/64295 MB` |
+| 📌 Agent note · **151 min old** | agent driver alive; transcript fresh (263s) while heartbeat is stale (8999s) |
+| ⚙️ Load · uptime | `2.15 2.01 1.85` · 2 days, 10 hours, 50 minutes — 32 cores, 62 GiB, no GPU |
+| 💾 RAM used/total | `2842/64295 MB` |
 | 🔗 Session | `ses_f31799c77ffeTq9gcYgqc4hBhg` |
-| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `4634f07 meta: supervise tick 2026-09-26T00:23:01Z — 0 fix(es)` |
+| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `77cd2bd status: yes — marine_v11_20260925 epoch 158/200 loss 0.402632415294647` |
 | 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `6780273 B` — every run, command & tool result |
 | 📈 Timeline | [status/status.log](status/status.log) |
