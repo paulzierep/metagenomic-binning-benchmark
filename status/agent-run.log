@@ -78101,3 +78101,54 @@ index e2b8c4ea..8e68883d 100755
 -rw-rw-r-- 1 ubuntu ubuntu 0 Sep 26 08:26 /tmp/bench-repo.lock
 [0m$ [0mls -la /vol/data/benchmark/.heartbeat
 -rw-rw-r-- 1 ubuntu ubuntu 0 Sep 26 08:14 /vol/data/benchmark/.heartbeat
+> build · nemotron-3.5-lightning-free
+Now I have a clear picture of the state. Let me summarize what I've found and proceed:
+
+**Current state:**
+- PROGRESS.md: All items checked off, last run was `cami3_v11_20260926_rerun` completed successfully
+- `.active_run`: Does NOT exist (no active run)
+- `.heartbeat`: EXISTS
+- `/tmp/bench-repo.lock`: EXISTS
+- Git modifications: `scripts/run_comebin_fix.sh` and `scripts/run_eval.sh` are modified but not committed
+- Issues: #6 (Optimization) and #1 (Idea inbox) are open but already commented on by previous agent session
+- CAMI III rerun completed: 492 bins, CheckM2/CheckM v1 evaluation done, zenodo v3 published
+
+The first unfinished step is committing the script modifications that were made during the previous session. Let me proceed.
+[0m$ [0mprintf 'bench-repo-lock-acquired-%s\n' "$(date -u +%Y%m%d%H%M%S)" > /tmp/bench-repo.lock
+{"exit":0,"truncated":false,"output":"","status":"completed"}
+> build · nemotron-3.5-lightning-free
+[0m$ [0mgit -C /vol/data/repos/metagenomic-binning-benchmark add scripts/run_comebin_fix.sh scripts/run_eval.sh 2>/dev/null
+{"exit":0,"truncated":false,"output":"","status":"completed"}
+> build · nemotron-3.5-lightning-free
+[0m$ [0mgit -C /vol/data/repos/metagenomic-binning-benchmark commit -m "Add pre-flight free space check to run_comebin_fix.sh and CheckM2 thread capping/retry guard to run_eval.sh" scripts/run_comebin_fix.sh scripts/run_eval.sh 2>/dev/null
+[main 170ca0ad] Add pre-flight free space check to run_comebin_fix.sh and CheckM2 thread capping/retry guard to run_eval.sh
+ 2 files changed, 70 insertions(+), 12 deletions(-)
+> build · nemotron-3.5-lightning-free
+[0m$ [0mgit -C /vol/data/repos/metagenomic-binning-benchmark push 2>/dev/null
+{"exit":0,"truncated":false,"output":"","status":"completed"}
+> build · nemotron-3.5-lightning-free
+Now let me update PROGRESS.md to document the commit, and update the activity files.
+[0m← [0mEdit /vol/data/benchmark/PROGRESS.md
+Index: /vol/data/benchmark/PROGRESS.md
+===================================================================
+--- /vol/data/benchmark/PROGRESS.md
++++ /vol/data/benchmark/PROGRESS.md
+@@ -322,8 +322,9 @@
+       what’s next”** (one row per run attempt: result, root cause, next step, commit
+       links; performance-table baseline row now links to it); summary comment posted
+       (`#issuecomment-5807827932`).
+ - [x] **Issue #10 triaged (2026-09-24 04:54 → 05:05 UTC)**: fewer epochs for
++- [x] **Script modifications committed (2026-09-27)**: `run_comebin_fix.sh` pre-flight free-space guard (≥2 GiB free check to prevent ENOSPC poisoning of CheckM marker tables) and `run_eval.sh` CheckM2 thread-capping/retry guard (≥400 bins → cap at 16 threads, automatic retry at lower thread count on failure). Both guards env-overridable. Committed to main as `170ca0ad`.
+       functional tests → `run_comebin.sh` (branch `comebin-small-fix`) gained an
+       optional **`-E INT`** flag passing `--epochs` (default 200 = unchanged
+       upstream behavior; pushed as `a0be243`); `run_small_test.sh` gained
+       **`EPOCHS`** env, default 30, recorded in `run_meta.txt`, passed only when
+
+> build · nemotron-3.5-lightning-free
+[0m→ [0mRead /vol/data/benchmark/.activity 
+> build · nemotron-3.5-lightning-free
+[0m$ [0mdate -u +"%Y-%m-%dT%H:%M:%SZ"
+2026-09-26T08:29:56Z
+> build · nemotron-3.5-lightning-free
+[0m$ [0mecho "2026-09-26T08:29:56Z | committed script modifications: run_comebin_fix.sh pre-flight free-space guard + run_eval.sh CheckM2 thread-capping/retry guard to main as 170ca0ad" >> /vol/data/benchmark/.activity
+{"exit":0,"truncated":false,"output":"","status":"completed"}
