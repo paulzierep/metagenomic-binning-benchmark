@@ -3,10 +3,10 @@
 | | |
 |---|---|
 | Status | 🟢 `running` |
-| ⏱ Updated (Europe/Berlin) | `2026-09-26T09:30 CEST` |
-| 🏃 Last benchmark (not active) | `cami3_v11_20260926_rerun` — last observed **epoch 199/200** (log 5582s old) |
+| ⏱ Updated (Europe/Berlin) | `2026-09-26T09:36 CEST` |
+| 🏃 Last benchmark (not active) | `cami3_v11_20260926_rerun` — last observed **epoch 199/200** (log 5942s old) |
 | 🧠 Model (last turn) | `mimo-v2.6-flash-free` (watchdog rotates to free models on quota) |
-| 📌 Agent note · **19 min old** | 2026-09-25T12:16:00Z | marine_v11_20260925 active: epoch 147/200, COMEBin-v11@95f5ea8, cami2 mode; heartbeat touched; PROGRESS synced
+| 📌 Agent note · **25 min old** | 2026-09-25T12:16:00Z | marine_v11_20260925 active: epoch 147/200, COMEBin-v11@95f5ea8, cami2 mode; heartbeat touched; PROGRESS synced
 2026-09-25T15:34:55Z | issues triaged: #12 reporting auto-plots confirmed complete; #8 Zenodo record active with continuous-update workflow; marine run completed; no active run
 2026-09-25T20:49:23Z | issues triaged: #12 auto-plots complete; #8 zenodo record published with continuous-update workflow; marine run completed; no active run; agent resumed for CAMI III prep
 2026-09-25T21:11:13Z | issues #12 and #8 triaged: reporting auto-plots confirmed complete and Zenodo continuous-update workflow verified; no active runs; preparing for CAMI III dataset prep
@@ -39,9 +39,9 @@
 2026-09-26T06:19:27Z eval started cami3_v11_20260926_rerun
 2026-09-26T06:41:54Z eval-checkm-v1-pplacer
 2026-09-26T07:10:51Z checkm2-retry-16t |
-| ⚙️ Load · uptime | `7.40 11.31 12.90` · 2 days, 17 hours, 54 minutes — 32 cores, 62 GiB, no GPU |
-| 💾 RAM used/total | `2128/64295 MB` |
+| ⚙️ Load · uptime | `0.08 3.46 8.78` · 2 days, 18 hours, 0 minutes — 32 cores, 62 GiB, no GPU |
+| 💾 RAM used/total | `2122/64295 MB` |
 | 🔗 Session | `ses_f31799c77ffeTq9gcYgqc4hBhg` |
-| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `9de2ce60 status: yes — cami3_v11_20260926_rerun epoch 199/200 loss 1.408849954` |
+| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `2e3b02a5 meta: supervise tick 2026-09-26T07:33:01Z — 0 fix(es)` |
 | 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `7515989 B` — every run, command & tool result |
 | 📈 Timeline | [status/status.log](status/status.log) |
