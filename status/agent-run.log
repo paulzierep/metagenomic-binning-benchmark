@@ -74718,3 +74718,27 @@ Verification passed: **no process holds or writes the URL files**, and both read
 === bins ===
 0
 > build · mimo-v2.6-flash-free
+Shell output restored. Run at 203/247 (82%) of `get_result`. Now quantifying the ENOSPC damage (the run itself may write per-bin HMM files to `/tmp` — need to see if failures stopped after my cleanup):
+[0m$ [0mL=/vol/data/benchmark/runs/cami3_v11_20260926/comebin_run.log; echo "fatal_hmmer=$(grep -ac 'Fatal exception' $L)"; echo "enospc=$(grep -ac 'No space left' $L)"; echo "traceback=$(grep -ac 'Traceback' $L)"; echo "=== recent fatal lines (byte offset) ==="; grep -aob 'Fatal exception' $L | tail -3; echo "=== file size ==="; stat -c %s $L; echo "=== df ==="; df -h / | tail -1; echo "=== /tmp uuid hmm files (count/size) ==="; ls /tmp | grep -E '^[0-9a-f]{8}-' | wc -l; du -sh /tmp 2>/dev/null; date -u +%FT%TZ; touch /vol/data/benchmark/.heartbeat
+fatal_hmmer=21
+enospc=24
+traceback=3
+=== recent fatal lines (byte offset) ===
+168864:Fatal exception
+168974:Fatal exception
+170594:Fatal exception
+=== file size ===
+188480
+=== df ===
+/dev/vda1        19G  5.8G   13G  32% /
+=== /tmp uuid hmm files (count/size) ===
+50
+1.4G	/tmp
+2026-09-26T04:24:39Z
+> build · mimo-v2.6-flash-free
+Reconstructing whether ENOSPC failures continued past my cleanup — extracting log context around the last fatal (offset 170,594 of 188,480):
+[0m$ [0mL=/vol/data/benchmark/runs/cami3_v11_20260926/comebin_run.log; { echo "== all fatal offsets =="; grep -aob 'Fatal exception' $L; echo "== all enospc offsets =="; grep -aob 'No space left' $L; echo "== last progress offsets =="; grep -aob 'Finished processing' $L | tail -8; echo "== context around last fatal =="; dd if=$L bs=1 skip=169900 count=1400 2>/dev/null | tr '\r' '\n'; } > /vol/data/tmp_ctx.txt 2>&1; echo rc=$? >> /vol/data/tmp_ctx.txt; touch /vol/data/benchmark/.heartbeat
+{"exit":0,"truncated":false,"output":"","status":"completed"}
+> build · mimo-v2.6-flash-free
+[0m→ [0mRead /vol/data/tmp_ctx.txt 
+> build · mimo-v2.6-flash-free
