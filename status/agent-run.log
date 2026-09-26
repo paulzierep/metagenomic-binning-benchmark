@@ -78493,3 +78493,94 @@ https://github.com/paulzierep/metagenomic-binning-benchmark/issues/22#issuecomme
 [0m$ [0mls -la /vol/data/benchmark/.active_run 2>&1
 ls: cannot access '/vol/data/benchmark/.active_run': No such file or directory
 > build · nemotron-3.5-lightning-free
+[0m$ [0mtail -30 /vol/data/benchmark/PROGRESS.md
+`scripts/zenodo_update.sh` (package → SHA-256 manifest → content-hash
+      change detection → new version of concept 10.5281/zenodo.22935024 →
+      md5/size + DOI verification → receipt) is wired into `run_eval.sh`
+      auto-reporting. **Version 2.0 published** automatically by the marine
+      eval: record 22969763 (`comebin_benchmark_release_v2_20260926.tar.gz`,
+      168,110,629 B, md5 verified; 7 runs / 410 bins / 522 files; receipt
+      `meta/zenodo_benchmark_release_v2.json`). Script hardened for Zenodo's
+      async publish (HTTP 202 → poll to state=done) and excludes volatile
+      status logs from the change hash.
+      *Follow-ups 2026-09-26: version DOI 10.5281/zenodo.22969763 propagation
+      resolved (HTTP 200 + DataCite `findable` at 02:54 UTC, ~68 min after
+      publish; receipt updated, comment posted on #8). #8 and #12 were closed
+      by automation at 02:23 with their own verification comments — including
+      commit `34ea532`, which fixed a real deployment gap (the auto-report
+      scripts were never installed to `/vol/data/benchmark/bin`, and helpers
+      resolved the repo as `dirname(script)/..` = the data dir, not the repo,
+      when invoked from `bin/`). Verified after the fix: `bin/run_eval.sh`,
+      `bin/zenodo_update.sh`, `bin/make_combined_bar_plot.py` are
+      byte-identical to the repo and `REPO` resolution now works — so the
+      next evaluation really does regenerate figure + Zenodo version.*
+
+## Watchdog / restart
+
+`scripts/agent-watchdog.sh` (installed at `/vol/data/benchmark/bin/`, cron `*/5 * * * *`):
+stale heartbeat (>15 min) → `opencode run` continues session
+`ses_f31799c77ffeTq9gcYgqc4hBhg`; if that failed → fresh session with resume prompt.
+Both prompts first check GitHub issues for user instructions. On quota/token/context
+errors it forces `--model` rotation through the free model list; a successful run
+clears the flag (back to default). Rate limit 6 restarts / 6 h; stops when
+`TASK_COMPLETE` exists. **Agent: touch `/vol/data/benchmark/.heartbeat` regularly.**
+> build · nemotron-3.5-lightning-free
+Let me verify the issue comment status and then continue with updating the status files.
+[0m$ [0mgh issue view 20 --json number,title,state,closedAt --repo paulzierep/metagenomic-binning-benchmark 2>&1
+{"closedAt":null,"number":20,"state":"OPEN","title":"what are your ideas for further optimization ?"}
+[0m$ [0mgh issue view 21 --json number,title,state,closedAt --repo paulzierep/metagenomic-binning-benchmark 2>&1
+{"closedAt":null,"number":21,"state":"OPEN","title":"use a seed for all runs"}
+[0m$ [0mgh issue view 6 --json number,title,state,closedAt --repo paulzierep/metagenomic-binning-benchmark 2>&1
+{"closedAt":null,"number":6,"state":"OPEN","title":"Optimization"}
+[0m$ [0mgh issue view 22 --json number,title,state,closedAt --repo paulzierep/metagenomic-binning-benchmark 2>&1
+{"closedAt":null,"number":22,"state":"OPEN","title":"is there a summary table for all runs"}
+[0m$ [0mgh issue view 19 --json number,title,state,closedAt --repo paulzierep/metagenomic-binning-benchmark 2>&1
+{"closedAt":null,"number":19,"state":"OPEN","title":"better plots"}
+> build · nemotron-3.5-lightning-free
+All issues are confirmed OPEN. Now let me update the status files. First, let me update PROGRESS.md to document the issue triage:
+[0m← [0mEdit /vol/data/benchmark/PROGRESS.md
+Index: /vol/data/benchmark/PROGRESS.md
+===================================================================
+--- /vol/data/benchmark/PROGRESS.md
++++ /vol/data/benchmark/PROGRESS.md
+@@ -184,8 +184,9 @@
+ 
+ ## Current state
+ 
+ - [x] `/vol/data` layout created; micromamba 2.9.0 installed
++- [x] Issue triage (2026-09-26): reviewed open issues #22 (summary table), #21 (seeds), #20 (optimization ideas), #19 (better plots), #6 (optimization); posted initial comments
+ - [x] COMEBin test dataset downloaded (5.58 GB) **and extracted** (6.4 GB; 29,434 contigs)
+ - [x] Full COMEBin source review (findings above)
+ - [x] Base env `/vol/data/envs/comebin` installed (python3.10, numpy1.23, sklearn1.1,
+       biopython1.81, pytorch-cpu, samtools/bwa/bedtools/hmmer/FragGeneScan/prodigal,
+
+> build · nemotron-3.5-lightning-free
+[0m$ [0mdate -u +"%Y-%m-%dT%H:%M:%SZ"
+2026-09-26T09:02:54Z
+> build · nemotron-3.5-lightning-free
+[0m✗ [0mEdit /vol/data/benchmark/.activity failed
+[91m[1mError: [0mCould not find oldString in /vol/data/benchmark/.activity. It must match exactly, including whitespace and indentation.
+> build · nemotron-3.5-lightning-free
+[0m→ [0mRead /vol/data/benchmark/.activity 
+> build · nemotron-3.5-lightning-free
+[0m$ [0mecho '2026-09-26T09:02:54Z | issue triage: reviewed open issues #22 (summary table for all runs), #21 (use a seed for all runs), #20 (optimization ideas), #19 (better plots), #6 (optimization); posted initial comments to each issue' >> /vol/data/benchmark/.activity
+{"exit":0,"truncated":false,"output":"","status":"completed"}
+> build · nemotron-3.5-lightning-free
+[0m$ [0mtouch /vol/data/benchmark/.heartbeat
+{"exit":0,"truncated":false,"output":"","status":"completed"}
+[0m$ [0mdate -u +"%Y-%m-%dT%H:%M:%SZ | issue triage: reviewed open issues #22 (summary table for all runs), #21 (use a seed for all runs), #20 (optimization ideas), #19 (better plots), #6 (optimization); posted initial comments to each issue" >> /vol/data/repos/metagenomic-binning-benchmark/status/agent-activity.log
+{"exit":0,"truncated":false,"output":"","status":"completed"}
+> build · nemotron-3.5-lightning-free
+[0m$ [0mcat /vol/data/benchmark/.heartbeat
+{"exit":0,"truncated":false,"output":"","status":"completed"}
+[0m$ [0mtail -5 /vol/data/benchmark/.activity
+2026-09-26T08:10:27Z zenodo-v3-version-doi-recheck attempt 8 -> HTTP 404 (waiting)
+2026-09-26T08:12:27Z zenodo-v3-version-doi-recheck attempt 9 -> HTTP 404 (waiting)
+2026-09-26T08:14:28Z doi-recheck-200
+2026-09-26T08:29:56Z | committed script modifications: run_comebin_fix.sh pre-flight free-space guard + run_eval.sh CheckM2 thread-capping/retry guard to main as 170ca0ad
+2026-09-26T09:02:54Z | issue triage: reviewed open issues #22 (summary table for all runs), #21 (use a seed for all runs), #20 (optimization ideas), #19 (better plots), #6 (optimization); posted initial comments to each issue
+[0m$ [0mtail -3 /vol/data/repos/metagenomic-binning-benchmark/status/agent-activity.log
+2026-09-26T08:14:28Z zenodo-v3-version-doi-resolves-200 (after DataCite lag)
+2026-09-26T08:30:00Z | resumed agent: committed script modifications (run_comebin_fix.sh free-space guard, run_eval.sh CheckM2 thread guard), pushed to main, updated PROGRESS.md and .activity
+2026-09-26T09:03:18Z | issue triage: reviewed open issues #22 (summary table for all runs), #21 (use a seed for all runs), #20 (optimization ideas), #19 (better plots), #6 (optimization); posted initial comments to each issue
+> build · nemotron-3.5-lightning-free
