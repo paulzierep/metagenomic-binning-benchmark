@@ -56997,3 +56997,147 @@ fi
 316:python3 - "$RECEIPT" "$VERSION" "$NEW_ID" "$NEW_DOI" "$FNAME" \
 > build · big-pickle
 `--dry-run` exits before the receipt write — safe. Running the deployed copy end-to-end (packaging only, no network):
+[0m$ [0mcd /tmp && timeout 900 bash /vol/data/benchmark/bin/zenodo_update.sh --dry-run 2>&1 | tail -15; echo "rc=${PIPESTATUS[0]}"
+[zenodo_update] staging benchmark data -> /vol/data/benchmark/releases/stage.HYpCLN
+[zenodo_update] runs in package: baseline_rerun_autorestart1 (60 bins) fix_v11_20260924 (71 bins) human_v11_20260925 (107 bins) marine_v11_20260925 (152 bins) medium_v11_20260924 (16 bins) small_test_v4 (3 bins) tiny_test_n101 (1 bins)
+[zenodo_update] manifest: 522 files, 577480505 bytes
+[zenodo_update] package: /vol/data/benchmark/releases/comebin_benchmark_release_dryrun_20260926.tar.gz (168108947 bytes, md5 091b741c650e4250089e1e9dbdf9cfa2)
+[zenodo_update] dry-run: stopping before any network call
+rc=0
+> build · big-pickle
+Deployed path works: 522 files — exactly matching published v2.0. Let me confirm the content genuinely changed (so the next eval correctly publishes v3.0):
+[0m$ [0mcd /vol/data/benchmark/releases && echo "=== published v2.0 manifest totals ==="; tar -xzOf comebin_benchmark_release_v2_20260926.tar.gz ./manifest.json | python3 -c "
+import json,sys; d=json.load(sys.stdin)
+print('file_count:', d['file_count']); print('total_bytes:', d['total_bytes']); print('generated:', d['generated_at_utc'])"
+echo "=== newly packaged totals (this dry-run) ==="
+python3 -c "print('file_count: 522'); print('total_bytes: 577480505')"
+echo
+echo "=== so content DID change (my fix commit) -> next eval publishes v3.0 automatically ==="
+echo "=== last published content hash (for the no-op baseline) ==="; cat /vol/data/benchmark/meta/zenodo_last_content.sha256
+echo "=== published v2 archive still intact as md5 source of truth? ==="; md5sum comebin_benchmark_release_v2_20260926.tar.gz
+=== published v2.0 manifest totals ===
+file_count: 522
+total_bytes: 577472717
+generated: 2026-09-26T01:36:48+00:00
+=== newly packaged totals (this dry-run) ===
+file_count: 522
+total_bytes: 577480505
+
+=== so content DID change (my fix commit) -> next eval publishes v3.0 automatically ===
+=== last published content hash (for the no-op baseline) ===
+7b80d8362d0eaa0152c2c41234dbaebeab200116a2e53c349123d6b44a735b94
+=== published v2 archive still intact as md5 source of truth? ===
+114459d4e728e70b2aefb70e1d8f620e  comebin_benchmark_release_v2_20260926.tar.gz
+> build · big-pickle
+Final consolidated verification:
+[0m$ [0mexport HOME=/home/ubuntu; export PATH=/home/ubuntu/.opencode/bin:$PATH
+echo "=== DEPLOYED run_eval.sh now carries the #8/#12 chain ==="
+grep -nE "make_combined_bar_plot|zenodo_update" /vol/data/benchmark/bin/run_eval.sh
+echo
+echo "=== markers written for the deterministic closer ==="
+for f in /vol/data/benchmark/meta/.issues_done/*; do printf '%s -> %s bytes, %s...\n' "$(basename $f)" "$(stat -c%s $f)" "$(head -c 90 $f)"; done
+echo
+echo "=== C2 service ==="; timeout 20s opencode service status >/dev/null 2>&1 && echo "service status OK" || echo "service UNHEALTHY"
+echo "=== C3 driver/agent ==="; pgrep -f "opencode run --session" >/dev/null && echo "driver alive: $(pgrep -f 'opencode run --session' | tr '\n' ' ')" || echo "no driver"
+echo "=== C7 disk ==="; df -h /vol/data | tail -1 | awk '{print $4" free"}'
+echo "=== C9 HEAD=remote ==="; cd /vol/data/repos/metagenomic-binning-benchmark; [ "$(git rev-parse HEAD)" = "$(git rev-parse origin/main)" ] && echo "MATCH $(git rev-parse --short HEAD)" || echo MISMATCH
+echo "=== worktree ==="; git status --porcelain -uall | head; echo "(empty = clean)"
+=== DEPLOYED run_eval.sh now carries the #8/#12 chain ===
+116:  "$MM" run -p "$CHECKM_ENV" python3 "$(dirname "$0")/make_combined_bar_plot.py" 9>&- \
+117:    || echo "WARNING: make_combined_bar_plot.py failed (rc=$?)" >&2
+120:  bash "$(dirname "$0")/zenodo_update.sh" 9>&- \
+121:    || echo "WARNING: zenodo_update.sh failed (rc=$?)" >&2
+
+=== markers written for the deterministic closer ===
+12 -> 1104 bytes, FAIRyMAGs-style combined bar plot + stats table delivered and verified: results/figures/co...
+8 -> 1183 bytes, One-record continuous Zenodo archiving delivered and verified: version 2.0 (record 2296976...
+
+=== C2 service ===
+service status OK
+=== C3 driver/agent ===
+driver alive: 3180061 3180062 3185572 3185592 
+=== C7 disk ===
+339G free
+=== C9 HEAD=remote ===
+MATCH ddc45cd
+=== worktree ===
+(empty = clean)
+> build · big-pickle
+Two things to correct: the driver has committed on top (fine), but my markers exceed the closer's 400-byte reason limit, so the public closing comment would be cut mid-word. Rewriting concisely:
+[0m← [0mWrite /vol/data/benchmark/meta/.issues_done/12
+Wrote file successfully: /vol/data/benchmark/meta/.issues_done/12
+> build · big-pickle
+[0m← [0mWrite /vol/data/benchmark/meta/.issues_done/8
+Wrote file successfully: /vol/data/benchmark/meta/.issues_done/8
+> build · big-pickle
+[0m$ [0mecho "=== marker sizes (closer uses head -c 400, so each must be <= 400 to avoid truncation) ==="
+for f in /vol/data/benchmark/meta/.issues_done/*; do
+  s=$(stat -c%s "$f"); n=$(basename "$f")
+  if [ "$s" -le 400 ]; then echo "#$n: $s bytes  OK (fits closing comment)"; else echo "#$n: $s bytes  TOO LONG -> would truncate at 400"; fi
+done
+echo
+echo "=== exact text the closer will post for #12 ==="
+head -c 400 /vol/data/benchmark/meta/.issues_done/12 | tr '\n' ' '; echo
+echo
+echo "=== my commit is an ancestor of current HEAD? ==="
+cd /vol/data/repos/metagenomic-binning-benchmark
+git merge-base --is-ancestor 34ea532 HEAD && echo "YES: 34ea532 is in HEAD history" || echo "NO"
+git log --oneline -3
+=== marker sizes (closer uses head -c 400, so each must be <= 400 to avoid truncation) ===
+#12: 613 bytes  TOO LONG -> would truncate at 400
+#8: 557 bytes  TOO LONG -> would truncate at 400
+
+=== exact text the closer will post for #12 ===
+Combined bar plot + stats table delivered and verified: results/figures/combined_bar_plot.png is 2x3 (contamination <5%/<10% rows x COMEBin demo / CAMI II human / marine columns), every bar labelled run + COMEBin commit + branch, with results/main_runs_table.md directly under it in README.md; all rows match run_meta.txt. Supervisor also fixed why the "automatic" claim was false at runtime: the gen
+
+=== my commit is an ancestor of current HEAD? ===
+YES: 34ea532 is in HEAD history
+ddc45cd status: yes — marine_v11_20260925 epoch 158/200 loss 0.4026324152946472 acc 99.58332824707031 model big-pickle — 2026-09-25T12:16:00Z | marine_v11_202609 2026-09-25T15:34:55Z | issues triaged: # 2026-09-25T20:49:23Z | issues triaged: # 2026-09-25T21:11:13Z | issues #12 and #8 2026-09-25T21:24:00Z | CAMI III prep scr 2026-09-25T21:54:00Z | agent: started CA 2026-09-26T00:49:54Z marine-eval-launche 2026-09-26T00:50:20Z marine-eval-launche 2026-09-26T00:50:42Z marine-eval-launche 2026-09-26T01:14:16Z marine-eval-retry-l 2026-09-26T01:41:50Z zenodo-v2-published 2026-09-26T01:46:27Z commit: pushed mari 2026-09-26T01:46:47Z delivery-comments-p 2026-09-26T01:47:11Z progress-committed 2026-09-26T01:49:18Z progress-synced 2026-09-26T02:02:36Z docs10-fix-committe
+34ea532 Fix reporting/Zenodo auto-update pipeline that was never actually deployed
+411b5c3 status: yes — marine_v11_20260925 epoch 158/200 loss 0.4026324152946472 acc 99.58332824707031 model big-pickle — 2026-09-25T12:16:00Z | marine_v11_202609 2026-09-25T15:34:55Z | issues triaged: # 2026-09-25T20:49:23Z | issues triaged: # 2026-09-25T21:11:13Z | issues #12 and #8 2026-09-25T21:24:00Z | CAMI III prep scr 2026-09-25T21:54:00Z | agent: started CA 2026-09-26T00:49:54Z marine-eval-launche 2026-09-26T00:50:20Z marine-eval-launche 2026-09-26T00:50:42Z marine-eval-launche 2026-09-26T01:14:16Z marine-eval-retry-l 2026-09-26T01:41:50Z zenodo-v2-published 2026-09-26T01:46:27Z commit: pushed mari 2026-09-26T01:46:47Z delivery-comments-p 2026-09-26T01:47:11Z progress-committed 2026-09-26T01:49:18Z progress-synced 2026-09-26T02:02:36Z docs10-fix-committe
+> build · big-pickle
+Still too long. Trimming to fit the 400-byte budget cleanly:
+[0m← [0mWrite /vol/data/benchmark/meta/.issues_done/12
+Wrote file successfully: /vol/data/benchmark/meta/.issues_done/12
+> build · big-pickle
+[0m← [0mWrite /vol/data/benchmark/meta/.issues_done/8
+Wrote file successfully: /vol/data/benchmark/meta/.issues_done/8
+> build · big-pickle
+[0m$ [0mfor f in /vol/data/benchmark/meta/.issues_done/*; do s=$(stat -c%s "$f"); n=$(basename "$f")
+  [ "$s" -le 400 ] && echo "#$n: $s bytes  FITS" || echo "#$n: $s bytes  STILL TOO LONG"; done
+echo
+echo "=== exact closing comment text that will be posted ==="
+for n in 12 8; do echo "--- #$n ---"; echo "Closed by automation — addressed: $(head -c 400 /vol/data/benchmark/meta/.issues_done/$n | tr '\n' ' ')"; done
+#12: 420 bytes  STILL TOO LONG
+#8: 398 bytes  FITS
+
+=== exact closing comment text that will be posted ===
+--- #12 ---
+Closed by automation — addressed: Combined bar plot + stats table delivered and verified: results/figures/combined_bar_plot.png is 2x3 (contamination <5%/<10% rows x COMEBin demo / CAMI II human / marine columns), each bar labelled run + COMEBin commit + branch, stats table under it in README; rows match run_meta.txt. Also fixed why "automatic" was false at runtime: generator never deployed to bin/ and helpers resolved the wrong r
+--- #8 ---
+Closed by automation — addressed: One-record continuous Zenodo archiving verified: v2.0 (record 22969763, MIT) under concept DOI 10.5281/zenodo.22935024 resolves to v2; public API confirms 168,110,629 bytes / MD5 114459d4e728e70b2aefb70e1d8f620e matching the local tarball, 410 bins, 522-file manifest. Fixed why "continuous" was false at runtime: zenodo_update.sh never deployed to bin/ and resolved the wrong repo root. (34ea532)
+> build · big-pickle
+[0m← [0mWrite /vol/data/benchmark/meta/.issues_done/12
+Wrote file successfully: /vol/data/benchmark/meta/.issues_done/12
+> build · big-pickle
+[0m$ [0mfor f in /vol/data/benchmark/meta/.issues_done/*; do s=$(stat -c%s "$f"); n=$(basename "$f")
+  [ "$s" -le 400 ] && echo "#$n: $s bytes  FITS (no truncation)" || echo "#$n: $s bytes  TOO LONG"; done
+echo; echo "=== final #12 closing comment ==="; echo "Closed by automation — addressed: $(head -c 400 /vol/data/benchmark/meta/.issues_done/12 | tr '\n' ' ')"
+#12: 417 bytes  TOO LONG
+#8: 398 bytes  FITS (no truncation)
+
+=== final #12 closing comment ===
+Closed by automation — addressed: Combined bar plot + stats table delivered and verified: results/figures/combined_bar_plot.png is 2x3 (contamination <5%/<10% rows x COMEBin demo / CAMI II human / marine columns), each bar labelled run + COMEBin commit + branch, stats table under it in README; rows match run_meta.txt. Also fixed why "automatic" was false at runtime: generator never deployed to bin/, helpers resolved the wrong repo
+> build · big-pickle
+[0m← [0mWrite /vol/data/benchmark/meta/.issues_done/12
+Wrote file successfully: /vol/data/benchmark/meta/.issues_done/12
+> build · big-pickle
+[0m$ [0mfor f in /vol/data/benchmark/meta/.issues_done/*; do s=$(stat -c%s "$f"); n=$(basename "$f")
+  [ "$s" -le 400 ] && echo "#$n: $s bytes  FITS (no truncation)" || echo "#$n: $s bytes  TOO LONG"; done
+echo; echo "=== final #12 closing comment ==="; echo "Closed by automation — addressed: $(head -c 400 /vol/data/benchmark/meta/.issues_done/12 | tr '\n' ' ')"
+#12: 396 bytes  FITS (no truncation)
+#8: 398 bytes  FITS (no truncation)
+
+=== final #12 closing comment ===
+Closed by automation — addressed: Combined bar plot + stats table verified: results/figures/combined_bar_plot.png is 2x3 (contamination <5%/<10% rows x COMEBin demo / CAMI II human / marine columns), each bar labelled run + COMEBin commit + branch, stats table under it in README; rows match run_meta.txt. Also fixed why "automatic" was false: generator was never deployed to bin/, helpers resolved the wrong repo root. (34ea532)
+> build · big-pickle
