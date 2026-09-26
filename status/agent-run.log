@@ -77637,3 +77637,37 @@ doi recheck: None None
 the 'paulzierep/COMEBin' repository has disabled issues
 > build · big-pickle
 ~30 s since the last turn ended — poller still on attempts, DOI not yet propagated (published 07:45; v2 flipped ~68 min in → expected ~08:53). No new issues. Verifying Current state vs disk, then giving the poller a bounded wait window:
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark
+echo "=== git/progress sync ==="
+git status --porcelain
+git rev-parse HEAD origin/main | uniq -c
+cmp -s PROGRESS.md /vol/data/benchmark/PROGRESS.md && echo PROGRESS_SYNCED || echo PROGRESS_DIFFERS
+echo "=== key artifacts ==="
+R=/vol/data/benchmark/runs/cami3_v11_20260926_rerun
+ls $R/eval/checkm2/quality_report.tsv $R/eval/checkm/out/storage/bin_stats_ext.tsv results/cami3_v11_20260926_rerun.csv /vol/data/benchmark/meta/zenodo_benchmark_release_v3.json >/dev/null 2>&1 && echo ALL_PRESENT
+grep -c "cami3_v11_20260926_rerun" docs/11-run-results.md
+df -h / | tail -1
+echo "=== waiting for DOI propagation (bounded) ==="
+sleep 540
+TS=$(date -u +%FT%TZ)
+echo "now: $TS"
+pgrep -f doi_recheck >/dev/null && echo POLLER_RUNNING || echo POLLER_EXITED
+python3 -c "import json; d=json.load(open('/vol/data/benchmark/meta/zenodo_benchmark_release_v3.json')); print('doi recheck:', d.get('version_doi_recheck_http'), d.get('version_doi_recheck_utc'))"
+tail -2 /vol/data/benchmark/.activity
+touch /vol/data/benchmark/.heartbeat
+=== git/progress sync ===
+      2 580a369e003768acbe44650d16793f1aac8a4669
+PROGRESS_SYNCED
+=== key artifacts ===
+ALL_PRESENT
+3
+/dev/vda1        19G  5.1G   14G  28% /
+=== waiting for DOI propagation (bounded) ===
+now: 2026-09-26T08:13:18Z
+POLLER_RUNNING
+doi recheck: None None
+2026-09-26T08:10:27Z zenodo-v3-version-doi-recheck attempt 8 -> HTTP 404 (waiting)
+2026-09-26T08:12:27Z zenodo-v3-version-doi-recheck attempt 9 -> HTTP 404 (waiting)
+[91m[1mError: [0mRate limit exceeded. Please try again later.
+[91m[1mError: [0mRate limit exceeded. Please try again later.
+[91m[1mError: [0mRate limit exceeded. Please try again later.

@@ -1,0 +1,39 @@
+META-SUPERVISOR ESCALATION — 2026-09-26T08:13:01Z
+Automatic fixes applied this tick: 1
+
+--- health checks ---
+C1_cron          ok      4 exact jobs; cron active; installed/source scripts identical + executable                                               
+C1b_deploy       ok      re-deployed: run_comebin_fix.sh(stale) run_eval.sh(stale)                                                                
+C2_service       ok      pid 5551; service status + /api/info healthy                                                                             
+C3_agent         ok      run_alive=1 driver=1 hb=34s transcript=523s                                                                              
+C4_ratelimit     ok      failed-launch markers=1 in 360min window                                                                                 
+C5_github        ok      HEAD=remote after concurrent publisher; worktree edits=2                                                                 
+C6_benchmark     ok      no active run; last benchmark failure recorded (2026-09-26T04:40:01+00:00   /vol/data/benchmark/runs/cami3_v11_20260926  run_meta exit_code=1); no retry loop
+C7_disk          ok      315 GiB free                                                                                                             
+C8_issues        broken  new/updated: #6 (Optimization) updated=2026-09-26T07:56:10Z                                                              
+C8b_issue_close  ok      no issues marked addressed                                                                                               
+C9_repo_publish  ok      meta artifacts committed and HEAD=remote main                                                                            
+
+--- recent watchdog log ---
+2026-09-26T07:30:01+00:00 [watchdog] skipped: another driver holds the lock
+2026-09-26T07:35:01+00:00 [watchdog] skipped: another driver holds the lock
+2026-09-26T07:40:01+00:00 [watchdog] skipped: another driver holds the lock
+2026-09-26T07:45:01+00:00 [watchdog] skipped: another driver holds the lock
+2026-09-26T07:50:01+00:00 [watchdog] skipped: another driver holds the lock
+2026-09-26T07:55:01+00:00 [watchdog] skipped: another driver holds the lock
+2026-09-26T07:57:31+00:00 [watchdog] driver turn #3 exited rc=0 (transcript 7503156->7635226B)
+2026-09-26T07:57:31+00:00 [watchdog] driver turn #4 healthy; next turn in 30s
+2026-09-26T07:58:01+00:00 [watchdog] driver turn #4: model=--model opencode/big-pickle | opencode run --session ses_f31799c77ffeTq9gcYgqc4hBhg
+2026-09-26T08:00:01+00:00 [watchdog] skipped: another driver holds the lock
+2026-09-26T08:03:36+00:00 [watchdog] driver turn #4 exited rc=0 (transcript 7635226->7649492B)
+2026-09-26T08:03:36+00:00 [watchdog] driver turn #5 healthy; next turn in 30s
+2026-09-26T08:04:06+00:00 [watchdog] driver turn #5: model=--model opencode/big-pickle | opencode run --session ses_f31799c77ffeTq9gcYgqc4hBhg
+2026-09-26T08:05:01+00:00 [watchdog] skipped: another driver holds the lock
+2026-09-26T08:10:01+00:00 [watchdog] skipped: another driver holds the lock
+
+--- open issues ---
+6	Optimization	2026-09-26T07:56:10Z
+1	Idea inbox: benchmark ideas, COMEBin fixes, dataset requests	2026-09-23T14:53:13Z
+
+--- issue #6 details ---
+{"body":"Try to optimize tool and parameters to use less time and resources but aim for similar or better performane, think about good performane measured numbet of bins, contigs size, compl. Cont. F1 score check cami papers for infos \nMaybe perams can be automatically set based on input file size or contig stats","comments":[{"id":"IC_kwDOUndL2c8AAAABWd-qUg","author":{"login":"paulzierep"},"authorAssociation":"OWNER","body":"Triage + plan (agent). This is exactly what the benchmark harness measures per run: wall time (per stage), peak RAM (30-s sampling), # bins, and CheckM2 + CheckM v1 completeness/contamination; CAMI-style F1 (completeness·purity) gets added once we evaluate on CAMI II/III ground truth. First optimization batch already lands on branch `comebin-optimizations-v11` (float64 coverage consistency + sequential bin numbering). 'Auto-set params from input size/contig stats' is flagged in the strategy doc as a candidate idea to prototype against the baseline curves — small-dataset validation first, per docs/08. Full criterion set + decision gate: docs/09-optimization-strategy.md (linked in README).","createdAt":"2026-09-23T20:56:21Z","includesCreatedEdit":false,"isMinimized":false,"minimizedReason":"","reactionGroups":[],"url":"https://github.com/paulzierep/metagenomic-binning-benchmark/issues/6#issuecomment-5802797650","viewerDidAuthor":true},{"id":"IC_kwDOUndL2c8AAAABXFrMdQ","author":{"login":"paulzierep"},"authorAssociation":"OWNER","body":"### CAMI III toy human gut — run complete (2026-09-26)\n\nNewest dataset results, per the run-logging protocol (full history: [docs/11-run-results.md](https://github.com/paulzierep/metagenomic-binning-benchmark/blob/main/docs/11-run-results.md)).\n\n**`cami3_v11_20260926_rerun`** — CAMI III toy human gut, top-5,000 pooled-GSA contigs (1.1 Gbp, both samples' coverage BAMs), `MODE=cami3`, seed 42, 32 threads, branch `comebin-optimizations-v11` (`95f5ea8`):\n\n| metric | value |\n|---|---|\n| wall time / peak RAM | **5,392 s (90 min)** / 10.37 GB |\n| training | 200/200 epochs (final Top-1 74.95 %, no early stop), Leiden 120/120 |\n| bins | **492** non-empty |\n| CheckM2 | **35.97 % / 11.42 %** (HQ 53, MQ 112) |\n| CheckM v1 | **32.46 % / 13.38 %** (HQ 54, MQ 100) |\n\nMost bins and most HQ/MQ bins of any run so far (marine remains best mean quality: 152 bins @ 50.60/4.10). CAMI III carries the highest mean contamination of the benchmark — strain-rich toy gut, where strain heterogeneity scores as contamination. Row CSV: [results/cami3_v11_20260926_rerun.csv](https://github.com/paulzierep/metagenomic-binning-benchmark/blob/main/results/cami3_v11_20260926_rerun.csv).\n\n**Two operational findings relevant to this issue:**\n\n1. **ENOSPC first attempt** (`cami3_v11_20260926`, exit 1 @ 6,677 s, 0 bins) was *not* a binning bug: prep-leftover downloads (13.8 GB in `/tmp`) had filled `/` to 100 %, which silently poisoned CheckM's marker tables (21 hmmfetch fatals) → final selection died on `KeyError: '110'`. Leftovers verified already staged in the dataset, deleted (`/` 100 → 28 %), and a deterministic rerun from a fresh dir completed cleanly — epoch-99 loss/accuracy bit-identical to attempt 1 (seed-42 replay confirmed). Lesson for the harness: pre-flight a free-disk check (≥ ~20 GB) before launching; the run fails *late* (at get_result) when the disk is short, not early.\n2. **CheckM2 thread race at 492 bins**: `checkm2 predict --threads 32` failed gene-calling (`cannot create protein_files/*.gff.NN` → *List of protein files does not match internal reference*); a 16-thread retry into a fresh output dir succeeded (1,137 s, failed attempt preserved as `eval/checkm2.incomplete.*`). For ≥ ~500 bins, cap CheckM2 at 16 threads.\n\n**Deliverables:** docs/11 rows (summary + both attempts), README bullet, per-bin table/plots, and **Zenodo v3** published — [10.5281/zenodo.22973575](https://doi.org/10.5281/zenodo.22973575) (520 MB incl. the 492 new bins per #8; concept DOI unchanged).\n","createdAt":"2026-09-26T07:56:10Z","includesCreatedEdit":false,"isMinimized":false,"minimizedReason":"","reactionGroups":[],"url":"https://github.com/paulzierep/metagenomic-binning-benchmark/issues/6#issuecomment-5844421749","viewerDidAuthor":true}],"number":6,"title":"Optimization","updatedAt":"2026-09-26T07:56:10Z","url":"https://github.com/paulzierep/metagenomic-binning-benchmark/issues/6"}
