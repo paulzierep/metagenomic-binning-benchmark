@@ -73157,3 +73157,71 @@ Run log hasn't advanced past augmentation views in ~45 s — checking the actual
 2026-09-26 02:45:16,848 - Generate augmentation view 5/5 with seed 47.
 > build · big-pickle
 Run is healthy: `main.py generate_aug_data` at ~100% CPU, 488 MB RSS, seed 42, correct args (bamdir, `-n 6 -t 32 -d cpu -s 42`). Watchdog owns handoff. Let me confirm it advances past augmentation before resting this turn:
+[0m
+> build · mimo-v2.6-flash-free
+Starting this turn per protocol — TASK_COMPLETE check, PROGRESS read, issue lists:
+[0m$ [0mls /vol/data/benchmark/TASK_COMPLETE 2>/dev/null && echo TASK_COMPLETE_EXISTS || echo NO_TASK_COMPLETE; echo "=== active_run ==="; cat /vol/data/benchmark/.active_run 2>/dev/null; echo; echo "=== run log tail ==="; tail -3 /vol/data/benchmark/runs/cami3_v11_20260926/comebin_run.log 2>/dev/null; echo "=== epoch progress ==="; grep -o "epoch=[0-9]*/200" /vol/data/benchmark/runs/cami3_v11_20260926/comebin_run.log 2>/dev/null | tail -1; date -u +%FT%TZ; touch /vol/data/benchmark/.heartbeat
+NO_TASK_COMPLETE
+=== active_run ===
+3200074 3200071 /vol/data/benchmark/runs/cami3_v11_20260926/comebin_run.log /vol/data/benchmark/runs/cami3_v11_20260926 1790390713 cami3 /vol/data/repos/COMEBin-v11 /vol/data/datasets/cami_III/toy_human_input_2samples/contigs.fa /vol/data/datasets/cami_III/toy_human_input_2samples/bamfiles
+
+=== run log tail ===
+  0%|          | 0/4 [00:00<?, ?it/s] 25%|██▌       | 1/4 [00:07<00:22,  7.51s/it] 50%|█████     | 2/4 [00:13<00:12,  6.39s/it] 75%|███████▌  | 3/4 [00:18<00:05,  5.90s/it]100%|██████████| 4/4 [00:23<00:00,  5.76s/it]100%|██████████| 4/4 [00:24<00:00,  6.05s/it]
+2026-09-26 02:50:55,216 - NN training: epoch=7/200, batches=4, loss=7.377439, top1=1.3118, elapsed=24.245s, process_memory={'VmPeak': '8604356 kB', 'VmRSS': '1602016 kB'}, gpu_memory=None.
+  0%|          | 0/4 [00:00<?, ?it/s] 25%|██▌       | 1/4 [00:07<00:21,  7.33s/it] 50%|█████     | 2/4 [00:13<00:12,  6.37s/it] 75%|███████▌  | 3/4 [00:18<00:05,  5.98s/it]=== epoch progress ===
+epoch=7/200
+2026-09-26T02:51:17Z
+[0m$ [0mgh issue list -R paulzierep/metagenomic-binning-benchmark --state open --json number,title,updatedAt 2>&1; echo "=== COMEBin ==="; gh issue list -R paulzierep/COMEBin --state open --json number,title,updatedAt 2>&1 | head -3
+[{"number":6,"title":"Optimization","updatedAt":"2026-09-23T20:56:21Z"},{"number":1,"title":"Idea inbox: benchmark ideas, COMEBin fixes, dataset requests","updatedAt":"2026-09-23T14:53:13Z"}]
+=== COMEBin ===
+the 'paulzierep/COMEBin' repository has disabled issues
+> build · mimo-v2.6-flash-free
+Notable: **#12 and #8 no longer appear in the open list** — likely closed after my delivery comments. Let me verify their state and check for owner replies:
+[0m$ [0mfor n in 8 12 18; do echo "=== issue $n ==="; gh api repos/paulzierep/metagenomic-binning-benchmark/issues/$n --jq '{state, state_reason, closed_at, title}' 2>&1; done; echo "=== comments after my delivery (01:46) ==="; for n in 8 12; do echo "-- $n:"; gh api repos/paulzierep/metagenomic-binning-benchmark/issues/$n/comments --jq '.[] | select(.created_at > "2026-09-26T01:47:00Z") | {createdAt: .created_at, author: .user.login, body: (.body[0:600])}' 2>&1; done; touch /vol/data/benchmark/.heartbeat
+=== issue 8 ===
+{"closed_at":"2026-09-26T02:23:09Z","state":"closed","state_reason":"completed","title":"Add benchmark data to zenodo"}
+=== issue 12 ===
+{"closed_at":"2026-09-26T02:23:06Z","state":"closed","state_reason":"completed","title":"Improve reporting"}
+=== issue 18 ===
+{"closed_at":"2026-09-25T04:03:10Z","state":"closed","state_reason":"completed","title":"Benchmark size"}
+=== comments after my delivery (01:46) ===
+-- 8:
+{"author":"paulzierep","body":"Closed by automation — addressed: One-record continuous Zenodo archiving verified: v2.0 (record 22969763, MIT) under concept DOI 10.5281/zenodo.22935024 resolves to v2; public API confirms 168,110,629 bytes / MD5 114459d4e728e70b2aefb70e1d8f620e matching the local tarball, 410 bins, 522-file manifest. Fixed why \"continuous\" was false at runtime: zenodo_update.sh never deployed to bin/ and resolved the wrong repo root. (34ea532) ","createdAt":"2026-09-26T02:23:08Z"}
+-- 12:
+{"author":"paulzierep","body":"Closed by automation — addressed: Combined bar plot + stats table verified: results/figures/combined_bar_plot.png is 2x3 (contamination \u003c5%/\u003c10% rows x COMEBin demo / CAMI II human / marine columns), each bar labelled run + COMEBin commit + branch, stats table under it in README; rows match run_meta.txt. Also fixed why \"automatic\" was false: generator was never deployed to bin/, helpers resolved the wrong repo root. (34ea532) ","createdAt":"2026-09-26T02:23:05Z"}
+> build · mimo-v2.6-flash-free
+Both closed by automation at 02:23, citing a fix in commit `34ea532` ("zenodo_update.sh never deployed to bin/ and resolved the wrong repo root"). I need to verify what that changed in my scripts:
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && git fetch origin 2>&1 | tail -2; git log --oneline -8; echo "=== 34ea532 stat ==="; git show --stat 34ea532 2>/dev/null | head -20; echo "=== local status ==="; git status --short; git rev-parse HEAD; git rev-parse origin/main; touch /vol/data/benchmark/.heartbeat
+2581eb0 status: yes — cami3_v11_20260926 epoch 3/200 loss 8.0899019241333 acc 0.4134114384651184 model big-pickle — 2026-09-25T12:16:00Z | marine_v11_202609 2026-09-25T15:34:55Z | issues triaged: # 2026-09-25T20:49:23Z | issues triaged: # 2026-09-25T21:11:13Z | issues #12 and #8 2026-09-25T21:24:00Z | CAMI III prep scr 2026-09-25T21:54:00Z | agent: started CA 2026-09-26T00:49:54Z marine-eval-launche 2026-09-26T00:50:20Z marine-eval-launche 2026-09-26T00:50:42Z marine-eval-launche 2026-09-26T01:14:16Z marine-eval-retry-l 2026-09-26T01:41:50Z zenodo-v2-published 2026-09-26T01:46:27Z commit: pushed mari 2026-09-26T01:46:47Z delivery-comments-p 2026-09-26T01:47:11Z progress-committed 2026-09-26T01:49:18Z progress-synced 2026-09-26T02:02:36Z docs10-fix-committe 2026-09-26T02:41:03Z finish-prep-launche 2026-09-26T02:45:37Z cami3-run-launched 2026-09-26T02:45:58Z cami3-progress-comm
+4e536bf status: yes — cami3_v11_20260926 epoch —/200 loss — acc — model big-pickle — 2026-09-25T12:16:00Z | marine_v11_202609 2026-09-25T15:34:55Z | issues triaged: # 2026-09-25T20:49:23Z | issues triaged: # 2026-09-25T21:11:13Z | issues #12 and #8 2026-09-25T21:24:00Z | CAMI III prep scr 2026-09-25T21:54:00Z | agent: started CA 2026-09-26T00:49:54Z marine-eval-launche 2026-09-26T00:50:20Z marine-eval-launche 2026-09-26T00:50:42Z marine-eval-launche 2026-09-26T01:14:16Z marine-eval-retry-l 2026-09-26T01:41:50Z zenodo-v2-published 2026-09-26T01:46:27Z commit: pushed mari 2026-09-26T01:46:47Z delivery-comments-p 2026-09-26T01:47:11Z progress-committed 2026-09-26T01:49:18Z progress-synced 2026-09-26T02:02:36Z docs10-fix-committe 2026-09-26T02:41:03Z finish-prep-launche 2026-09-26T02:45:37Z cami3-run-launched 2026-09-26T02:45:58Z cami3-progress-comm
+939950f status: yes — cami3_v11_20260926 epoch —/200 loss — acc — model big-pickle — 2026-09-25T12:16:00Z | marine_v11_202609 2026-09-25T15:34:55Z | issues triaged: # 2026-09-25T20:49:23Z | issues triaged: # 2026-09-25T21:11:13Z | issues #12 and #8 2026-09-25T21:24:00Z | CAMI III prep scr 2026-09-25T21:54:00Z | agent: started CA 2026-09-26T00:49:54Z marine-eval-launche 2026-09-26T00:50:20Z marine-eval-launche 2026-09-26T00:50:42Z marine-eval-launche 2026-09-26T01:14:16Z marine-eval-retry-l 2026-09-26T01:41:50Z zenodo-v2-published 2026-09-26T01:46:27Z commit: pushed mari 2026-09-26T01:46:47Z delivery-comments-p 2026-09-26T01:47:11Z progress-committed 2026-09-26T01:49:18Z progress-synced 2026-09-26T02:02:36Z docs10-fix-committe 2026-09-26T02:41:03Z finish-prep-launche 2026-09-26T02:45:37Z cami3-run-launched 2026-09-26T02:45:58Z cami3-progress-comm
+3faa008 PROGRESS: CAMI III prep complete (both BAMs indexed+verified), cami3_v11_20260926 run launched (MODE=cami3, seed 42)
+23c16da meta: supervise tick 2026-09-26T02:43:01Z — 0 fix(es)
+3655603 status: yes — marine_v11_20260925 epoch 158/200 loss 0.4026324152946472 acc 99.58332824707031 model big-pickle — 2026-09-25T12:16:00Z | marine_v11_202609 2026-09-25T15:34:55Z | issues triaged: # 2026-09-25T20:49:23Z | issues triaged: # 2026-09-25T21:11:13Z | issues #12 and #8 2026-09-25T21:24:00Z | CAMI III prep scr 2026-09-25T21:54:00Z | agent: started CA 2026-09-26T00:49:54Z marine-eval-launche 2026-09-26T00:50:20Z marine-eval-launche 2026-09-26T00:50:42Z marine-eval-launche 2026-09-26T01:14:16Z marine-eval-retry-l 2026-09-26T01:41:50Z zenodo-v2-published 2026-09-26T01:46:27Z commit: pushed mari 2026-09-26T01:46:47Z delivery-comments-p 2026-09-26T01:47:11Z progress-committed 2026-09-26T01:49:18Z progress-synced 2026-09-26T02:02:36Z docs10-fix-committe 2026-09-26T02:41:03Z finish-prep-launche
+ba083e4 status: yes — marine_v11_20260925 epoch 158/200 loss 0.4026324152946472 acc 99.58332824707031 model big-pickle — 2026-09-25T12:16:00Z | marine_v11_202609 2026-09-25T15:34:55Z | issues triaged: # 2026-09-25T20:49:23Z | issues triaged: # 2026-09-25T21:11:13Z | issues #12 and #8 2026-09-25T21:24:00Z | CAMI III prep scr 2026-09-25T21:54:00Z | agent: started CA 2026-09-26T00:49:54Z marine-eval-launche 2026-09-26T00:50:20Z marine-eval-launche 2026-09-26T00:50:42Z marine-eval-launche 2026-09-26T01:14:16Z marine-eval-retry-l 2026-09-26T01:41:50Z zenodo-v2-published 2026-09-26T01:46:27Z commit: pushed mari 2026-09-26T01:46:47Z delivery-comments-p 2026-09-26T01:47:11Z progress-committed 2026-09-26T01:49:18Z progress-synced 2026-09-26T02:02:36Z docs10-fix-committe
+d9eacc4 status: yes — marine_v11_20260925 epoch 158/200 loss 0.4026324152946472 acc 99.58332824707031 model big-pickle — 2026-09-25T12:16:00Z | marine_v11_202609 2026-09-25T15:34:55Z | issues triaged: # 2026-09-25T20:49:23Z | issues triaged: # 2026-09-25T21:11:13Z | issues #12 and #8 2026-09-25T21:24:00Z | CAMI III prep scr 2026-09-25T21:54:00Z | agent: started CA 2026-09-26T00:49:54Z marine-eval-launche 2026-09-26T00:50:20Z marine-eval-launche 2026-09-26T00:50:42Z marine-eval-launche 2026-09-26T01:14:16Z marine-eval-retry-l 2026-09-26T01:41:50Z zenodo-v2-published 2026-09-26T01:46:27Z commit: pushed mari 2026-09-26T01:46:47Z delivery-comments-p 2026-09-26T01:47:11Z progress-committed 2026-09-26T01:49:18Z progress-synced 2026-09-26T02:02:36Z docs10-fix-committe
+=== 34ea532 stat ===
+commit 34ea5329180e288167c5c0f1413cfc8c5067d316
+Author: paulzierep <paulzierep@users.noreply.github.com>
+Date:   Sat Sep 26 02:10:43 2026 +0000
+
+    Fix reporting/Zenodo auto-update pipeline that was never actually deployed
+    
+    The #12 and #8 delivery comments claimed the combined bar plot and the
+    continuous Zenodo version were regenerated automatically after every
+    evaluated run. That was true in the repo but false in the installed
+    runtime, and two defects would have kept it false:
+    
+    - make_combined_bar_plot.py and zenodo_update.sh were never installed to
+      /vol/data/benchmark/bin, and bin/run_eval.sh was the pre-feature version,
+      so the next evaluation would have produced neither figure nor Zenodo version.
+    - Every reporting helper resolved the repo as dirname(script)/.., which is
+      the benchmark data dir rather than the repo when invoked from bin/ (its
+      helpers are called via $(dirname $0)). Figures/CSVs/tables would have been
+      written outside git and README, and zenodo_update.sh would have packaged an
+      incomplete release with no docs/, status/ or README.md. A stale artifact from
+      this bug (bench-root results/small_test_v4.csv, superseded CheckM v1 values)
+=== local status ===
+2581eb07d50df9d5e357583ef118da14655a2341
+2581eb07d50df9d5e357583ef118da14655a2341
+> build · mimo-v2.6-flash-free
