@@ -70795,3 +70795,182 @@ Index: /vol/data/repos/metagenomic-binning-benchmark/scripts/zenodo_update.sh
 
 > build · mimo-v2.6-flash-free
 Now a dry-run test (packages current data, no network):
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && bash scripts/zenodo_update.sh --dry-run 2>&1 | tail -20; echo "rc=$?"; pgrep -f run_eval.sh >/dev/null && echo EVAL_RUNNING || echo EVAL_DONE; date -u +%FT%TZ; touch /vol/data/benchmark/.heartbeat
+[zenodo_update] staging benchmark data -> /vol/data/benchmark/releases/stage.k0GZ22
+[zenodo_update] runs in package: baseline_rerun_autorestart1 (60 bins) fix_v11_20260924 (71 bins) human_v11_20260925 (107 bins) marine_v11_20260925 (152 bins) medium_v11_20260924 (16 bins) small_test_v4 (3 bins) tiny_test_n101 (1 bins)
+[zenodo_update] manifest: 517 files, 576653402 bytes
+[zenodo_update] package: /vol/data/benchmark/releases/comebin_benchmark_release_dryrun_20260926.tar.gz (167867973 bytes, md5 3583924f0b60b4d9a0f9359317611c44)
+[zenodo_update] dry-run: stopping before any network call
+rc=0
+EVAL_RUNNING
+2026-09-26T01:12:49Z
+> build · mimo-v2.6-flash-free
+Dry-run package verified: 7 runs, 517 files, 576 MB raw → **168 MB tarball**. While CheckM v1 finishes, let me look at the PROGRESS marine entry (which contains bogus eval numbers copied from `fix_v11`):
+[0m$ [0mgrep -n "marine\|71 bins\|24.38" /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md | head -30; echo "=== exact current-state marine block ==="; grep -n -A16 "CAMI II marine sample 0 benchmark run" /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md | head -40; pgrep -f run_eval.sh >/dev/null && echo EVAL_RUNNING || echo EVAL_DONE; date -u +%FT%TZ
+220:- [x] CAMI II marine assemblies downloaded + **md5 verified** (`1c054a45…`), 9.42 GB;
+221:      extraction running; marine short-reads URL recorded (docs/01)
+222:- [x] CAMI II marine sample 0 (short-read): reads archive downloaded (5.2 G, 2026-09-23)
+228:      `scripts/prep_cami2_marine.sh` + env-overridable `run_comebin_fix.sh`
+359:      run active): **CheckM2** rc 0 / 71 s → 71 bins, 24.38 % mean completeness,
+364:      updated. Versus baseline (same data): +1.7 % wall, 60 → 71 bins,
+384:      Next: **CAMI II marine sample_0** — prep **COMPLETE** (2026-09-25
+385:      04:13Z, `prep_cami2_marine.sh 2000`: 41,988 ctgs ≥ 2000 bp → contigs.fa
+386:      md5 f108fb…, marine.bam 4.95 GB + .bai md5 94382c…, ground truth
+388:      `marine_sample0_input/`). FIX RUN **LAUNCHED 04:14Z**: `runs/marine_v11_20260925`,
+391:      ETA ~9-10 h (≈1.4× demo contig count); per docs/01 marine plan =
+392:      fix-branch run only (same as human precedent, no separate marine
+426:- [x] **CAMI II marine sample 0 benchmark run → human host-associated sample → CAMI III**
+427:  _(COMPLETE: marine_v11_20260925, exit 0, wall_s 31406 (~8.75 h), 152 non-empty bins,
+429:    CheckM2: 71 bins, 24.38% mean completeness, 3.78% contamination (HQ 1, MQ 6).
+430:    CheckM v1: 71 bins, 21.62% mean completeness, 5.18% contamination (HQ 0, MQ 8).
+=== exact current-state marine block ===
+426:- [x] **CAMI II marine sample 0 benchmark run → human host-associated sample → CAMI III**
+427-  _(COMPLETE: marine_v11_20260925, exit 0, wall_s 31406 (~8.75 h), 152 non-empty bins,
+428-    COMEBin-v11@95f5ea8, cami2 mode; finished 2026-09-25T12:58Z).
+429-    CheckM2: 71 bins, 24.38% mean completeness, 3.78% contamination (HQ 1, MQ 6).
+430-    CheckM v1: 71 bins, 21.62% mean completeness, 5.18% contamination (HQ 0, MQ 8).
+431-    Epoch 158/200 reached with Top-1 ≈ 99.58%; early stopped after 3 consecutive
+432-    epochs >99% Top-1. Evaluation via run_eval.sh → report + docs/11 row → CAMI III
+433-    (disk budget ≤ 30 GB, 351 GB free)._
+434-
+435-- [x] **Issue #12 plots (2026-09-24 ~10:42 UTC)**: `scripts/make_per_bin_plots.py`
+436-      generates per-bin bar charts (`runs/<run>/per_bins.png`, CheckM2 + CheckM v1
+437-      comp/cont per bin) and a comparison scatter
+438-      (`results/figures/comp_vs_cont_all-runs.png`, one point per bin, color = run)
+439-      via the comebin env's matplotlib. Run for baseline_rerun_autorestart1,
+440-      small_test_v4, medium_v11_20260924; each run re-renders its figures after
+441-      eval. Same-dataset comparisons accumulate (fix_v11 vs baseline once live).
+442-
+EVAL_RUNNING
+2026-09-26T01:13:25Z
+> build · mimo-v2.6-flash-free
+PROGRESS lines 429–430 indeed carry `fix_v11`'s numbers as marine eval results — I'll correct them with real values. Meanwhile, let me document the new continuous-update workflow in docs/10:
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && grep -n "" docs/10-data-preservation.md | sed -n '1,100p'
+1:# 10 — Data preservation and Zenodo release plan
+2:
+3:This is the release checklist for newly generated benchmark data (issue #8). It
+4:keeps the repository small while making a deposition reviewable and
+5:reproducible. The watchdogs do not upload data automatically; an owner-approved
+6:Zenodo account/token and a final choice of data license and release contents
+7:are required for each manual or supervisor-operated deposit.
+8:
+9:## What would be released
+10:
+11:The preferred release unit is a reproducible derivative dataset, not the VM's
+12:whole working directory:
+13:
+14:- `comebin_small` and, after its end-to-end run passes, `comebin_medium`:
+15:  contigs, selected-read BAM, indexes, provenance, and the release manifest;
+16:- selected CAMI II samples when their licensing, storage cost, and provenance
+17:  have been reviewed;
+18:- result tables and the exact COMEBin commit/parameters needed to regenerate
+19:  them.
+20:
+21:Raw source archives, temporary extraction directories, model checkpoints, and
+22:large intermediate augmentation files remain local unless explicitly selected
+23:for a release. CheckM databases and environment trees are not uploaded as part
+24:of a dataset record; their versions and checksums are documented instead.
+25:
+26:## What is needed before upload
+27:
+28:1. **Owner approval and account access:** a Zenodo account with permission to
+29:   create a deposition (normally an owner or authorized account), and a token
+30:   supplied through a secret environment variable or secret store. Never put a
+31:   token in this Git repository, a log, a command transcript, or an issue.
+32:2. **Deposit metadata:** title, authors/creators and ORCIDs where available,
+33:   abstract, keywords, related DOI/repository URL, and a citation suggestion.
+34:3. **Licensing:** an explicit data license (for example CC BY 4.0 when
+35:   appropriate), plus the code license and any third-party restrictions. CAMI
+36:   terms and any human-host-associated restrictions must be checked before
+37:   redistribution.
+38:4. **Release contents and size:** confirm which samples/files are in scope,
+39:   whether raw reads are included, and the expected compressed size. The current
+40:   disk plan keeps the small set permanently and caps the derived medium set at
+41:   5 GB; future human/CAMI additions are budgeted separately.
+42:5. **Provenance:** source URLs/DOIs and checksums, generation commands, source
+43:   repository commit, environment/tool versions, parameters, and the manifest
+44:   SHA-256.
+45:
+46:## Manifest first
+47:
+48:Generate a manifest outside the dataset directory. It streams SHA-256 hashes and
+49:records every regular file, so the file can be reviewed before upload:
+50:
+51:```bash
+52:python3 scripts/make_release_manifest.py \
+53:  /vol/data/datasets/comebin_small \
+54:  /vol/data/benchmark/meta/release_manifests/comebin_small.json \
+55:  --metadata source_commit=<comebin-commit> \
+56:  --metadata dataset=comebin_small
+57:```
+58:
+59:For a public copy, add `--omit-local-path` so the VM-specific `dataset_path`
+60:field is not exposed. The JSON contains sorted relative paths, byte sizes, and
+61:SHA-256 values. Add `--exclude` for intentionally omitted files, and use
+62:`--force` only when replacing a manifest deliberately. Keep the manifest and
+63:its own checksum with the release metadata. The same procedure applies to
+64:`comebin_medium` and any CAMI sample selected for publication.
+65:
+66:Before depositing, verify that:
+67:
+68:- the manifest has no absolute source paths in the public metadata (the local
+69:  `dataset_path` field should be removed or rewritten in the public copy);
+70:- every selected file is present and readable after extraction from a clean
+71:  temporary directory;
+72:- BAM/FASTA indexes and checksums are included where required;
+73:- no credentials, personal data, or unreviewed third-party material are present;
+74:- the repository documentation names the Zenodo DOI and release version.
+75:
+76:## Deposit and verification
+77:
+78:After owner approval, create a **new version** rather than overwriting a prior
+79:record. Upload the selected archive/files and the public manifest/provenance,
+80:wait for Zenodo's checksum processing, and verify the returned record and DOI
+81:with a fresh unauthenticated request. Save the DOI, deposition URL, version,
+82:uploaded filenames, and final checksums in:
+83:
+84:- `docs/01-datasets.md` (dataset provenance and citation);
+85:- the relevant issue comment;
+86:- `results/` or `status/meta/` only as small text/CSV artifacts, never as a
+87:  substitute for the DOI.
+88:
+89:If the upload is incomplete or verification fails, retain the local data and
+90:report the failure; do not claim that preservation is complete.
+91:
+92:## Current status
+93:
+94:- The small derived dataset exists locally at `/vol/data/datasets/comebin_small`
+95:  and its real COMEBin/CheckM2/CheckM gate is complete (`small_test_v4`).
+96:- **Production Zenodo record:** [10.5281/zenodo.22935025](https://doi.org/10.5281/zenodo.22935025),
+97:  version 1, **MIT** since 2026-09-24. The owner asked for MIT plus a much
+98:  richer description (what the benchmark is used for, how to run, project
+99:  links); Zenodo allows license edits as plain metadata, so the record was
+100:  edited in place and re-published **without creating a new version** (still
+> build · mimo-v2.6-flash-free
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && grep -n "" docs/10-data-preservation.md | sed -n '100,140p'; pgrep -f run_eval.sh >/dev/null && echo EVAL_RUNNING || echo EVAL_DONE; tail -c 200 /vol/data/benchmark/logs/marine_eval.log; date -u +%FT%TZ
+100:  edited in place and re-published **without creating a new version** (still
+101:  1.0). The public record was re-checked through a fresh unauthenticated
+102:  `GET /api/records/22935025` (HTTP 200, license `mit-license`, expanded
+103:  description live) and both uploaded file sizes and MD5 checksums match the
+104:  local release; the DOI resolver check now returns HTTP 200.
+105:- Uploaded files: `comebin_small_release_v1.tar.gz` (95,216,539 bytes,
+106:  SHA-256 `0c698d208639f4fadd4ac4477a67074320c975528b23dd61743c83ad1658b6d2`)
+107:  and `comebin_small.release.public.json` (3,650 bytes, SHA-256
+108:  `84131ae359d07a78db7ae7ca2005758f4f0ec9df67a33ec62f8af50ac1702f1b`).
+109:  The archive extraction and all 18 public-manifest entries were independently
+110:  verified; the token remains only in the mode-0600 local secret file.
+111:- The medium derivative is built and verified locally (3,000 contigs,
+112:  421,631,278 bytes; `PROVENANCE.txt` and MD5s recorded). Its timed v1.1.0 run
+113:  `medium_v11_20260924` completed with 16 bins and verified CheckM2/CheckM
+114:  results; the parsed row is
+115:  [`results/medium_v11_20260924.csv`](../results/medium_v11_20260924.csv).
+116:  It is not deposited separately until the owner confirms the release license
+117:  and metadata. Future releases repeat this manifest, license, provenance, and
+118:  DOI-verification checklist.
+EVAL_RUNNING
+vol/data/benchmark/runs/marine_v11_20260925/eval/checkm/out/storage/bin_stats_ext.tsv
+=== summary ===
+checkm_bins: 152 checkm_compl_mean: 46.36 checkm_cont_mean: 5.09
+done (checkm2 rc=1, checkm rc=0)
+2026-09-26T01:13:41Z
+> build · mimo-v2.6-flash-free
