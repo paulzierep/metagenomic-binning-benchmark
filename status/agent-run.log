@@ -77252,3 +77252,148 @@ Index: /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md
        comp/cont per bin) and a comparison scatter
 
 > build · mimo-v2.6-flash-free
+PROGRESS tail fixed. Now posting the CAMI III results report on issue #6 (no prior results comment there — my only comment is the 09-23 triage):
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark
+cat > /tmp/issue6_cami3.md <<'EOF'
+### CAMI III toy human gut — run complete (2026-09-26)
+
+Newest dataset results, per the run-logging protocol (full history: [docs/11-run-results.md](https://github.com/paulzierep/metagenomic-binning-benchmark/blob/main/docs/11-run-results.md)).
+
+**`cami3_v11_20260926_rerun`** — CAMI III toy human gut, top-5,000 pooled-GSA contigs (1.1 Gbp, both samples' coverage BAMs), `MODE=cami3`, seed 42, 32 threads, branch `comebin-optimizations-v11` (`95f5ea8`):
+
+| metric | value |
+|---|---|
+| wall time / peak RAM | **5,392 s (90 min)** / 10.37 GB |
+| training | 200/200 epochs (final Top-1 74.95 %, no early stop), Leiden 120/120 |
+| bins | **492** non-empty |
+| CheckM2 | **35.97 % / 11.42 %** (HQ 53, MQ 112) |
+| CheckM v1 | **32.46 % / 13.38 %** (HQ 54, MQ 100) |
+
+Most bins and most HQ/MQ bins of any run so far (marine remains best mean quality: 152 bins @ 50.60/4.10). CAMI III carries the highest mean contamination of the benchmark — strain-rich toy gut, where strain heterogeneity scores as contamination. Row CSV: [results/cami3_v11_20260926_rerun.csv](https://github.com/paulzierep/metagenomic-binning-benchmark/blob/main/results/cami3_v11_20260926_rerun.csv).
+
+**Two operational findings relevant to this issue:**
+
+1. **ENOSPC first attempt** (`cami3_v11_20260926`, exit 1 @ 6,677 s, 0 bins) was *not* a binning bug: prep-leftover downloads (13.8 GB in `/tmp`) had filled `/` to 100 %, which silently poisoned CheckM's marker tables (21 hmmfetch fatals) → final selection died on `KeyError: '110'`. Leftovers verified already staged in the dataset, deleted (`/` 100 → 28 %), and a deterministic rerun from a fresh dir completed cleanly — epoch-99 loss/accuracy bit-identical to attempt 1 (seed-42 replay confirmed). Lesson for the harness: pre-flight a free-disk check (≥ ~20 GB) before launching; the run fails *late* (at get_result) when the disk is short, not early.
+2. **CheckM2 thread race at 492 bins**: `checkm2 predict --threads 32` failed gene-calling (`cannot create protein_files/*.gff.NN` → *List of protein files does not match internal reference*); a 16-thread retry into a fresh output dir succeeded (1,137 s, failed attempt preserved as `eval/checkm2.incomplete.*`). For ≥ ~500 bins, cap CheckM2 at 16 threads.
+
+**Deliverables:** docs/11 rows (summary + both attempts), README bullet, per-bin table/plots, and **Zenodo v3** published — [10.5281/zenodo.22973575](https://doi.org/10.5281/zenodo.22973575) (520 MB incl. the 492 new bins per #8; concept DOI unchanged).
+EOF
+gh issue comment 6 -R paulzierep/metagenomic-binning-benchmark -F /tmp/issue6_cami3.md 2>&1 | tail -1
+TS=$(date -u +%FT%TZ)
+echo "$TS issue6-cami3-results-comment-posted" >> status/agent-activity.log
+echo "$TS issue6-comment-cami3" >> /vol/data/benchmark/.activity
+touch /vol/data/benchmark/.heartbeat
+https://github.com/paulzierep/metagenomic-binning-benchmark/issues/6#issuecomment-5844421749
+> build · mimo-v2.6-flash-free
+Comment posted. Launching a detached DOI recheck poller (updates the receipt when DataCite propagates), then committing the PROGRESS finalization:
+[0m$ [0mnohup setsid bash -c '
+F=/vol/data/benchmark/meta/zenodo_benchmark_release_v3.json
+for i in $(seq 1 50); do
+  CODE=$(curl -sS -o /dev/null -w "%{http_code}" -L --max-time 30 https://doi.org/10.5281/zenodo.22973575 || echo 000)
+  TS=$(date -u +%FT%TZ)
+  if [ "$CODE" = "200" ]; then
+    python3 - "$F" "$TS" <<PY
+import json, sys, datetime
+p, ts = sys.argv[1], sys.argv[2]
+d = json.load(open(p))
+d["version_doi_recheck_http"] = 200
+d["version_doi_recheck_utc"] = ts
+d["version_doi_note"] += f" Rechecked {ts}: doi.org/10.5281/zenodo.22973575 HTTP 200 - DataCite propagation complete."
+json.dump(d, open(p, "w"), indent=2, sort_keys=True)
+PY
+    echo "$TS zenodo-v3-version-doi-resolves-200 (after DataCite lag)" >> /vol/data/repos/metagenomic-binning-benchmark/status/agent-activity.log
+    echo "$TS doi-recheck-200" >> /vol/data/benchmark/.activity
+    touch /vol/data/benchmark/.heartbeat
+    exit 0
+  fi
+  echo "$TS zenodo-v3-version-doi-recheck attempt $i -> HTTP $CODE (waiting)" >> /vol/data/benchmark/.activity
+  touch /vol/data/benchmark/.heartbeat
+  sleep 120
+done
+echo "$(date -u +%FT%TZ) zenodo-v3-version-doi-still-404-after-100min" >> /vol/data/repos/metagenomic-binning-benchmark/status/agent-activity.log
+' > /vol/data/benchmark/logs/doi_recheck_v3.log 2>&1 &
+echo "doi poller bg pid=$!"
+sleep 5
+curl -sS -o /dev/null -w "current doi http: %{http_code}\n" -L --max-time 30 https://doi.org/10.5281/zenodo.22973575 || true
+touch /vol/data/benchmark/.heartbeat
+doi poller bg pid=909572
+current doi http: 404
+> build · mimo-v2.6-flash-free
+Poller running (DOI still 404 as expected). Syncing PROGRESS and committing the finalization edits:
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark
+cp PROGRESS.md /vol/data/benchmark/PROGRESS.md && cmp -s PROGRESS.md /vol/data/benchmark/PROGRESS.md && echo PROGRESS_SYNCED
+exec 9>/tmp/bench-repo.lock && flock -w 120 9 || { echo LOCK_FAILED; exit 1; }
+git fetch origin -q
+git add PROGRESS.md status/agent-activity.log
+git status --porcelain | head
+git commit -q -m "PROGRESS: CAMI III entry finalized (run+eval+docs+Zenodo v3 done; heading stale-RUNNING fixed, v3 publish record)" 2>&1 | tail -2
+git pull --rebase -q origin 2>&1 | tail -1
+git push -q origin HEAD && echo PUSH_OK
+git log --oneline -1 | cut -c1-80
+TS=$(date -u +%FT%TZ)
+echo "$TS progress-cami3-finalized-committed-pushed" >> status/agent-activity.log
+echo "$TS turn-activity docs+progress+issue6-done" >> /vol/data/benchmark/.activity
+touch /vol/data/benchmark/.heartbeat
+echo "=== final issue check ==="
+gh issue list -R paulzierep/metagenomic-binning-benchmark --state open --json number,title,updatedAt --jq '.[] | "\(.number) \(.title) \(.updatedAt)"'
+PROGRESS_SYNCED
+M  PROGRESS.md
+M  status/agent-activity.log
+PUSH_OK
+2430e422 PROGRESS: CAMI III entry finalized (run+eval+docs+Zenodo v3 done; headi
+=== final issue check ===
+6 Optimization 2026-09-26T07:56:10Z
+1 Idea inbox: benchmark ideas, COMEBin fixes, dataset requests 2026-09-23T14:53:13Z
+> build · mimo-v2.6-flash-free
+Pushed `2430e422`; #6's only update is my own comment, #1 unchanged. Final state verification:
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark
+echo "=== active run / processes ==="
+ls /vol/data/benchmark/.active_run 2>/dev/null || echo "no active_run (clear)"
+pgrep -f "run_comebin_fix.sh|run_eval.sh|checkm2 predict|zenodo_update.sh" | grep -v $$ | head -3 || echo "no benchmark/eval processes"
+echo "=== git ==="
+git status --porcelain
+git rev-parse HEAD origin/main | uniq -c | head -2
+echo "=== deliverables ==="
+ls -la results/cami3_v11_20260926_rerun.csv /vol/data/benchmark/meta/zenodo_benchmark_release_v3.json
+cat /vol/data/benchmark/meta/zenodo_last_content.sha256
+grep -c "cami3_v11_20260926_rerun" docs/11-run-results.md
+df -h / | tail -1
+date -u +%FT%TZ
+touch /vol/data/benchmark/.heartbeat
+=== active run / processes ===
+no active_run (clear)
+=== git ===
+ M status/agent-activity.log
+      2 2430e4226a448e4065b32c280f7b54f017ee2c8c
+=== deliverables ===
+-rw-rw-r-- 1 ubuntu ubuntu 1867 Sep 26 07:47 /vol/data/benchmark/meta/zenodo_benchmark_release_v3.json
+-rw-rw-r-- 1 ubuntu ubuntu  325 Sep 26 07:37 results/cami3_v11_20260926_rerun.csv
+eea303263357a63f3d51cee8576e1a09565244458ed5ae7a81aaa269e08823e2
+3
+/dev/vda1        19G  5.1G   14G  28% /
+2026-09-26T07:57:10Z
+> build · mimo-v2.6-flash-free
+Everything verified. This turn is complete:
+
+## Turn summary (2026-09-26, 07:27–07:57 UTC)
+
+**Resumed at first unfinished step — CAMI III eval:**
+- **CheckM2 16-thread retry succeeded** (`CHECKM2_RETRY_RC=0`, 07:29:45) after the 32-thread gene-calling race on the 492-bin set; `quality_report.tsv` = 492/492 rows, failed attempt preserved as `eval/checkm2.incomplete.*`, retry noted in `run_meta.txt`.
+
+**Manual gated report chain — all steps rc=0:**
+| step | result |
+|---|---|
+| `make_results_csv.py` | `results/cami3_v11_20260926_rerun.csv`, dataset label **"CAMI III"** (matcher fix `32c5240` confirmed working) |
+| `make_per_bin_csv.py` + plots | 493-row per-bin table, `per_bins.png` |
+| `make_combined_bar_plot.py` | 3 main datasets unchanged (CAMI III excluded per #12) |
+| `zenodo_update.sh` | **Zenodo v3 published** — record 22973575, DOI [10.5281/zenodo.22973575](https://doi.org/10.5281/zenodo.22973575), 520 MB incl. the 492 new bins (per #8) |
+
+**Final CAMI III numbers:** 492 bins, wall 5,392 s (90 min), peak RSS 10.37 GB, 200/200 epochs (Top-1 74.95 %) — CheckM2 **35.97 / 11.42** (HQ 53, MQ 112), CheckM v1 **32.46 / 13.38** (HQ 54, MQ 100): most bins + most HQ/MQ of any run.
+
+**Post-publish recovery:** the auto-chain crashed after publish (`zenodo_update.sh` assumed API `files` dict, record returned list → `AttributeError`), skipping receipt + marker. I verified the published file via API (size 520,343,638 + md5 match), wrote `meta/zenodo_benchmark_release_v3.json`, advanced `zenodo_last_content.sha256` (blocks a duplicate v4), and fixed + byte-identical deployed the script. A detached poller updates the receipt when the version DOI resolves (404 → known DataCite lag; concept DOI already serves v3).
+
+**Delivered + pushed (under `/tmp/bench-repo.lock`):** `a057f021` (docs/11 summary + both attempt rows incl. the ENOSPC-failure history, README completed-run bullet with v3 DOI, results CSV + 4 figures, script fix) and `2430e422` (PROGRESS entry finalized: heading, publish record, outstanding items). PROGRESS synced to `/vol/data/benchmark/`.
+
+**Issues:** #6/#1 unchanged from owner (09-23); posted one non-duplicative results report on **#6** covering the run, the ENOSPC incident + deterministic rerun, and the CheckM2 16-thread lesson. COMEBin issues disabled.
+
+**State:** no active run, no eval processes, disk 28 %, HEAD = origin `2430e422`, TASK_COMPLETE absent. Only `status/agent-activity.log` lines remain uncommitted — the heartbeat sweeps those within 2 min.

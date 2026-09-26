@@ -3,10 +3,10 @@
 | | |
 |---|---|
 | Status | 🟢 `running` |
-| ⏱ Updated (Europe/Berlin) | `2026-09-26T09:56 CEST` |
-| 🏃 Last benchmark (not active) | `cami3_v11_20260926_rerun` — last observed **epoch 199/200** (log 7142s old) |
+| ⏱ Updated (Europe/Berlin) | `2026-09-26T09:58 CEST` |
+| 🏃 Last benchmark (not active) | `cami3_v11_20260926_rerun` — last observed **epoch 199/200** (log 7262s old) |
 | 🧠 Model (last turn) | `mimo-v2.6-flash-free` (watchdog rotates to free models on quota) |
-| 📌 Agent note · **3 min old** | 2026-09-25T12:16:00Z | marine_v11_20260925 active: epoch 147/200, COMEBin-v11@95f5ea8, cami2 mode; heartbeat touched; PROGRESS synced
+| 📌 Agent note · **1 min old** | 2026-09-25T12:16:00Z | marine_v11_20260925 active: epoch 147/200, COMEBin-v11@95f5ea8, cami2 mode; heartbeat touched; PROGRESS synced
 2026-09-25T15:34:55Z | issues triaged: #12 reporting auto-plots confirmed complete; #8 Zenodo record active with continuous-update workflow; marine run completed; no active run
 2026-09-25T20:49:23Z | issues triaged: #12 auto-plots complete; #8 zenodo record published with continuous-update workflow; marine run completed; no active run; agent resumed for CAMI III prep
 2026-09-25T21:11:13Z | issues #12 and #8 triaged: reporting auto-plots confirmed complete and Zenodo continuous-update workflow verified; no active runs; preparing for CAMI III dataset prep
@@ -40,10 +40,13 @@
 2026-09-26T06:41:54Z eval-checkm-v1-pplacer
 2026-09-26T07:10:51Z checkm2-retry-16t
 2026-09-26T07:47:33Z zenodo-v3-published
-2026-09-26T07:52:47Z docs-cami3-delivered |
-| ⚙️ Load · uptime | `0.16 0.23 2.60` · 2 days, 18 hours, 20 minutes — 32 cores, 62 GiB, no GPU |
-| 💾 RAM used/total | `2150/64295 MB` |
+2026-09-26T07:52:47Z docs-cami3-delivered
+2026-09-26T07:56:10Z issue6-comment-cami3
+2026-09-26T07:56:26Z zenodo-v3-version-doi-recheck attempt 1 -> HTTP 404 (waiting)
+2026-09-26T07:56:48Z turn-activity docs+progress+issue6-done |
+| ⚙️ Load · uptime | `0.07 0.16 2.28` · 2 days, 18 hours, 22 minutes — 32 cores, 62 GiB, no GPU |
+| 💾 RAM used/total | `2097/64295 MB` |
 | 🔗 Session | `ses_f31799c77ffeTq9gcYgqc4hBhg` |
-| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `d34d2f48 status: yes — cami3_v11_20260926_rerun epoch 199/200 loss 1.408849954` |
-| 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `7625032 B` — every run, command & tool result |
+| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `2430e422 PROGRESS: CAMI III entry finalized (run+eval+docs+Zenodo v3 done; headi` |
+| 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `7635226 B` — every run, command & tool result |
 | 📈 Timeline | [status/status.log](status/status.log) |
