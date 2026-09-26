@@ -51,20 +51,60 @@ CHECKM_TMP="$CHECKM_ROOT/tmp"
 mkdir -p "$CHECKM2_OUT" "$CHECKM_TMP"
 
 # CheckM2 ---------------------------------------------------------------------
-echo "=== CheckM2 (predict; extension=$BIN_EXT; bins=$BIN_COUNT) ==="
-CMD2="$MM run -p $CHECKM2_ENV checkm2 predict --threads $THREADS --database_path $CK2DB --input $BINS --output-directory $CHECKM2_OUT -x $BIN_EXT --force"
-echo "cmd_checkm2: $CMD2" | tee -a "$RUN/run_meta.txt"
-T=$(date +%s)
-set +e
-bash -c "$CMD2" 9>&-
-rc2=$?
-set -e
-if [ "$rc2" -eq 0 ] && [ ! -s "$CHECKM2_OUT/quality_report.tsv" ]; then
-  echo "ERROR: CheckM2 returned 0 but quality_report.tsv is missing/empty; recording failure" \
+# CheckM2 1.1.0 has a parallel gene-calling race that scales with bin count:
+# on cami3_v11_20260926_rerun (492 bins) `predict --threads 32` died after 343 s
+# with "cannot create protein_files/*.gff.NN" followed by "List of protein files
+# does not match internal reference", while the same 492 bins succeeded at 16
+# threads (1,137 s).  Smaller sets (marine 152 bins, human ~40) never hit it.
+# Two guards: cap threads once the bin count reaches the observed-bad range, and
+# retry once at a lower thread count into a fresh output directory so a single
+# race never costs the whole evaluation.  Both thresholds are env-overridable.
+CK2_BIN_THRESHOLD=${CHECKM2_BIN_THREAD_THRESHOLD:-400}
+CK2_MAX_THREADS=${CHECKM2_MAX_THREADS:-16}
+CK2_RETRY_THREADS=${CHECKM2_RETRY_THREADS:-16}
+CK2_THREADS=$THREADS
+if [ "$BIN_COUNT" -ge "$CK2_BIN_THRESHOLD" ] && [ "$CK2_THREADS" -gt "$CK2_MAX_THREADS" ]; then
+  CK2_THREADS=$CK2_MAX_THREADS
+  echo "checkm2_thread_cap: bins=$BIN_COUNT >= $CK2_BIN_THRESHOLD -> threads $THREADS capped to $CK2_THREADS (gene-calling race guard)" \
     | tee -a "$RUN/run_meta.txt"
-  rc2=1
 fi
-echo "checkm2_rc: $rc2 checkm2_wall_s: $(( $(date +%s) - T ))" | tee -a "$RUN/run_meta.txt"
+
+run_checkm2() {  # $1 = thread count; sets rc2
+  local th=$1 r=0
+  CMD2="$MM run -p $CHECKM2_ENV checkm2 predict --threads $th --database_path $CK2DB --input $BINS --output-directory $CHECKM2_OUT -x $BIN_EXT --force"
+  echo "cmd_checkm2: $CMD2" | tee -a "$RUN/run_meta.txt"
+  T=$(date +%s)
+  bash -c "$CMD2" 9>&- || r=$?
+  if [ "$r" -eq 0 ] && [ ! -s "$CHECKM2_OUT/quality_report.tsv" ]; then
+    echo "ERROR: CheckM2 returned 0 but quality_report.tsv is missing/empty; recording failure" \
+      | tee -a "$RUN/run_meta.txt"
+    r=1
+  fi
+  echo "checkm2_rc: $r checkm2_wall_s: $(( $(date +%s) - T )) checkm2_threads: $th" | tee -a "$RUN/run_meta.txt"
+  rc2=$r
+}
+
+echo "=== CheckM2 (predict; extension=$BIN_EXT; bins=$BIN_COUNT; threads=$CK2_THREADS) ==="
+run_checkm2 "$CK2_THREADS"
+
+# One automatic retry at a genuinely lower thread count.  The failed output is
+# preserved (same convention as the CheckM v1 block below) so the evidence of
+# the race is never overwritten by its own retry.
+if [ "$rc2" -ne 0 ]; then
+  CK2_RETRY_T=$CK2_RETRY_THREADS
+  [ "$CK2_RETRY_T" -ge "$CK2_THREADS" ] && CK2_RETRY_T=$(( CK2_THREADS / 2 ))
+  [ "$CK2_RETRY_T" -lt 1 ] && CK2_RETRY_T=1
+  stale_ck2="$RUN/eval/checkm2.incomplete.$(date +%s)"
+  if [ -e "$CHECKM2_OUT" ]; then
+    mv "$CHECKM2_OUT" "$stale_ck2" 2>/dev/null || rm -rf "$CHECKM2_OUT"
+    echo "preserved failed CheckM2 output: $stale_ck2" | tee -a "$RUN/run_meta.txt"
+  fi
+  mkdir -p "$CHECKM2_OUT"
+  echo "checkm2_retry: rc=$rc2 at $CK2_THREADS threads -> retrying once at $CK2_RETRY_T threads (gene-calling race guard)" \
+    | tee -a "$RUN/run_meta.txt"
+  run_checkm2 "$CK2_RETRY_T"
+  echo "checkm2_retry_rc: $rc2  checkm2_retry_threads: $CK2_RETRY_T" | tee -a "$RUN/run_meta.txt"
+fi
 [ -f "$CHECKM2_OUT/quality_report.tsv" ] && echo "checkm2 report: $CHECKM2_OUT/quality_report.tsv"
 
 # CheckM v1 -------------------------------------------------------------------

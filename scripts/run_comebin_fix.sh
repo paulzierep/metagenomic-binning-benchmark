@@ -38,6 +38,24 @@ if [ -f "$RUNDIR/run_meta.txt" ] || [ -d "$RUNDIR/comebin_out" ]; then
   exit 1
 fi
 
+# Pre-flight free space.  A full filesystem does not fail at launch: it silently
+# poisons CheckM's marker tables and then kills get_result hours later.
+# cami3_v11_20260926 burned 6,677 s and produced 0 bins because prep leftovers
+# (13.8 GB in /tmp) had filled / to 100%.  Fail fast, before the run starts.
+# Placed before the .active_run registration, so a refusal cannot be mistaken by
+# benchmark-watchdog for a crashed run and restarted.
+MIN_FREE_GB=${MIN_FREE_GB:-2}
+RUN_FS=$(df -Pk "$(dirname "$RUNDIR")" 2>/dev/null | awk 'NR==2{print int($4/1048576)}')
+TMP_FS=$(df -Pk /tmp 2>/dev/null | awk 'NR==2{print int($4/1048576)}')
+echo "preflight_free_gb: run_fs=${RUN_FS:-unknown} tmp_fs=${TMP_FS:-unknown} floor=${MIN_FREE_GB}"
+for fs_avail in "$RUN_FS" "$TMP_FS"; do
+  if [ -n "$fs_avail" ] && [ "$fs_avail" -lt "$MIN_FREE_GB" ]; then
+    echo "ERROR: only ${fs_avail} GiB free, need >= ${MIN_FREE_GB} GiB (stale prep leftovers in /tmp are the usual cause)"
+    echo "Free space first, or override deliberately with MIN_FREE_GB=0"
+    exit 1
+  fi
+done
+
 mkdir -p "$RUNDIR/logs"
 COMMIT=$(git -C "$SRC" rev-parse HEAD)
 DIRTY=$(git -C "$SRC" status --porcelain --untracked-files=no | wc -l)
