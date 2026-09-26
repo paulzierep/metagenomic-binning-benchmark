@@ -3,10 +3,10 @@
 | | |
 |---|---|
 | Status | 🟢 `running` |
-| ⏱ Updated (Europe/Berlin) | `2026-09-26T04:26 CEST` |
-| 🏃 Last benchmark (not active) | `marine_v11_20260925` — last observed **epoch 158/200** (log 49205s old) |
+| ⏱ Updated (Europe/Berlin) | `2026-09-26T04:28 CEST` |
+| 🏃 Last benchmark (not active) | `marine_v11_20260925` — last observed **epoch 158/200** (log 49325s old) |
 | 🧠 Model (last turn) | `big-pickle` (watchdog rotates to free models on quota) |
-| 📌 Agent note · **23 min old** | 2026-09-25T12:16:00Z | marine_v11_20260925 active: epoch 147/200, COMEBin-v11@95f5ea8, cami2 mode; heartbeat touched; PROGRESS synced
+| 📌 Agent note · **25 min old** | 2026-09-25T12:16:00Z | marine_v11_20260925 active: epoch 147/200, COMEBin-v11@95f5ea8, cami2 mode; heartbeat touched; PROGRESS synced
 2026-09-25T15:34:55Z | issues triaged: #12 reporting auto-plots confirmed complete; #8 Zenodo record active with continuous-update workflow; marine run completed; no active run
 2026-09-25T20:49:23Z | issues triaged: #12 auto-plots complete; #8 zenodo record published with continuous-update workflow; marine run completed; no active run; agent resumed for CAMI III prep
 2026-09-25T21:11:13Z | issues #12 and #8 triaged: reporting auto-plots confirmed complete and Zenodo continuous-update workflow verified; no active runs; preparing for CAMI III dataset prep
@@ -22,9 +22,9 @@
 2026-09-26T01:47:11Z progress-committed
 2026-09-26T01:49:18Z progress-synced
 2026-09-26T02:02:36Z docs10-fix-committed |
-| ⚙️ Load · uptime | `0.25 0.82 1.66` · 2 days, 12 hours, 50 minutes — 32 cores, 62 GiB, no GPU |
-| 💾 RAM used/total | `2115/64295 MB` |
+| ⚙️ Load · uptime | `5.24 2.07 1.98` · 2 days, 12 hours, 52 minutes — 32 cores, 62 GiB, no GPU |
+| 💾 RAM used/total | `2211/64295 MB` |
 | 🔗 Session | `ses_f31799c77ffeTq9gcYgqc4hBhg` |
-| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `5e74df6 status: yes — marine_v11_20260925 epoch 158/200 loss 0.402632415294647` |
-| 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `7137200 B` — every run, command & tool result |
+| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `bba5ff6 status: yes — marine_v11_20260925 epoch 158/200 loss 0.402632415294647` |
+| 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `7139963 B` — every run, command & tool result |
 | 📈 Timeline | [status/status.log](status/status.log) |
