@@ -1,6 +1,6 @@
 <!--AGENT-STATUS-->
 
-> 🟢 **Agent status:** `running` · ⏱ `2026-09-26T05:24 CEST` · 🏃 train cami3_v11_20260926: epoch 94/200 · loss 3.0636045932769775 · top1 34.140625 · 🧠 `big-pickle` · [status.log](status/status.log)
+> 🟢 **Agent status:** `running` · ⏱ `2026-09-26T05:26 CEST` · 🏃 train cami3_v11_20260926: epoch 100/200 · loss 2.885791540145874 · top1 37.545570373535156 · 🧠 `big-pickle` · [status.log](status/status.log)
 
 # Metagenomic binning benchmark
 
