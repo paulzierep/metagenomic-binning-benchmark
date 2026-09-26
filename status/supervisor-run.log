@@ -57873,3 +57873,180 @@ run_small_test.sh:27:RUNDIR=$(realpath -m "${1:-/vol/data/benchmark/runs/small_t
 run_small_test.sh:52:  old_rc=$(grep -m1 '^exit_code:' "${active_dir:-/nonexistent}/run_meta.txt" 2>/dev/null | awk '{print $2}' || true)
 run_small_test.sh:62:if [ -f "$RUNDIR/run_meta.txt" ] || [ -d "$RUNDIR/comebin_out" ]; then
 run_small_test.sh:63:  echo "ERROR: refusing to overwrite an existing run directory: $RUNDIR"
+> build · big-pickle
+[0m→ [0mRead /vol/data/repos/metagenomic-binning-benchmark/scripts/run_comebin_baseline.sh [90m[limit=30, offset=56][0m
+[0m→ [0mRead /vol/data/repos/metagenomic-binning-benchmark/scripts/run_small_test.sh [90m[limit=22, offset=60][0m
+> build · big-pickle
+Before adding a refusing guard, I must confirm the watchdog won't turn a pre-flight refusal into a restart loop.
+[0m→ [0mRead /vol/data/benchmark/bin/benchmark-watchdog.sh [90m[limit=60, offset=200][0m
+> build · big-pickle
+[0m→ [0mRead /vol/data/benchmark/bin/meta-watchdog.sh [90m[limit=22, offset=293][0m
+[0m$ [0mcd /vol/data/benchmark/bin && sed -n '95,125p' benchmark-watchdog.sh
+;;
+      "$rundir") rundir_ok=1 ;;
+    esac
+  done
+  [ "$snapshot_ok" -eq 1 ] && [ "$rundir_ok" -eq 1 ]
+}
+
+clear_active() {
+  if active_matches; then
+    rm -f "$ACTIVE"
+    return 0
+  fi
+  log "$name registration changed while watchdog was inspecting it; leaving current state untouched"
+  return 1
+}
+
+# A terminal failure is deliberately not treated as a transient crash.  This is
+# important for deterministic COMEBin/data/dependency errors: retrying them
+# wastes hours and can overwrite the only useful diagnostics.
+record_terminal_failure() {
+  local reason=$1 stamp
+  stamp=$(date -Is)
+  reason=$(printf '%s' "$reason" | tr '\r\n\t' '   ' | cut -c1-400)
+  if [ -f "$rundir/run_meta.txt" ]; then
+    printf 'watchdog_terminal: %s\n' "$stamp $reason" >> "$rundir/run_meta.txt" 2>/dev/null || true
+  fi
+  printf '%s\n' "$stamp $reason" > "$rundir/.watchdog_terminal" 2>/dev/null || true
+  printf '%s\t%s\t%s\n' "$stamp" "$rundir" "$reason" > "$BENCH/.last_benchmark_failure" 2>/dev/null || true
+  if clear_active; then
+    # A terminal failure consumes no retry budget.  Remove only markers for
+    # this stable run family, and only after the registered process is gone.
+> build · big-pickle
+[0m$ [0mcd /vol/data/benchmark/bin && sed -n '1,60p' benchmark-watchdog.sh | grep -n "ACTIVE\|exit 0\|no active" 
+2:# benchmark-watchdog.sh — keep the ACTIVE benchmark run alive INDEPENDENTLY of the
+20:ACTIVE="$BENCH/.active_run"        # pid pgid logfile rundir start_ts mode source [contigs bamdir]
+31:flock -n 9 || exit 0
+32:[ -f "$BENCH/TASK_COMPLETE" ] && exit 0
+33:[ -f "$ACTIVE" ] || exit 0
+36:read -r pid pgid logfile rundir start mode source contigs bamdir < "$ACTIVE"
+41:[[ "$name" =~ ^[A-Za-z0-9._-]+$ ]] || { log "unsafe active-run directory '${rundir:-}'; refusing state change"; exit 0; }
+44:  *) log "active-run directory is outside $BENCH/runs: $rundir; refusing state change"; exit 0 ;;
+46:[[ "$mode" =~ ^[A-Za-z0-9._-]+$ ]] || { log "unsafe active-run mode '$mode'; refusing state change"; exit 0; }
+49:  exit 0
+53:  *[!0-9:]*|:*|*:) log "invalid active-run pid/pgid '${pid:-}/${pgid:-}'; refusing process action"; exit 0 ;;
+55:[ "$pid" -gt 0 ] && [ "$pgid" -gt 1 ] || { log "unsafe active-run pid/pgid $pid/$pgid; refusing process action"; exit 0; }
+57:[ "$pgid" != "${own_pgid:-0}" ] || { log "registered pgid $pgid equals watchdog group; refusing process action"; exit 0; }
+> build · big-pickle
+Confirmed: no `.active_run` → watchdog exits immediately (line 33), so a fail-fast guard can't cause a restart loop. Now implementing the CheckM2 fix.
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/scripts/run_eval.sh
+Index: /vol/data/repos/metagenomic-binning-benchmark/scripts/run_eval.sh
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/scripts/run_eval.sh
++++ /vol/data/repos/metagenomic-binning-benchmark/scripts/run_eval.sh
+@@ -50,22 +50,62 @@
+ CHECKM_TMP="$CHECKM_ROOT/tmp"
+ mkdir -p "$CHECKM2_OUT" "$CHECKM_TMP"
+ 
+ # CheckM2 ---------------------------------------------------------------------
+-echo "=== CheckM2 (predict; extension=$BIN_EXT; bins=$BIN_COUNT) ==="
+-CMD2="$MM run -p $CHECKM2_ENV checkm2 predict --threads $THREADS --database_path $CK2DB --input $BINS --output-directory $CHECKM2_OUT -x $BIN_EXT --force"
+-echo "cmd_checkm2: $CMD2" | tee -a "$RUN/run_meta.txt"
+-T=$(date +%s)
+-set +e
+-bash -c "$CMD2" 9>&-
+-rc2=$?
+-set -e
+-if [ "$rc2" -eq 0 ] && [ ! -s "$CHECKM2_OUT/quality_report.tsv" ]; then
+-  echo "ERROR: CheckM2 returned 0 but quality_report.tsv is missing/empty; recording failure" \
++# CheckM2 1.1.0 has a parallel gene-calling race that scales with bin count:
++# on cami3_v11_20260926_rerun (492 bins) `predict --threads 32` died after 343 s
++# with "cannot create protein_files/*.gff.NN" followed by "List of protein files
++# does not match internal reference", while the same 492 bins succeeded at 16
++# threads (1,137 s).  Smaller sets (marine 152 bins, human ~40) never hit it.
++# Two guards: cap threads once the bin count reaches the observed-bad range, and
++# retry once at a lower thread count into a fresh output directory so a single
++# race never costs the whole evaluation.  Both thresholds are env-overridable.
++CK2_BIN_THRESHOLD=${CHECKM2_BIN_THREAD_THRESHOLD:-400}
++CK2_MAX_THREADS=${CHECKM2_MAX_THREADS:-16}
++CK2_RETRY_THREADS=${CHECKM2_RETRY_THREADS:-16}
++CK2_THREADS=$THREADS
++if [ "$BIN_COUNT" -ge "$CK2_BIN_THRESHOLD" ] && [ "$CK2_THREADS" -gt "$CK2_MAX_THREADS" ]; then
++  CK2_THREADS=$CK2_MAX_THREADS
++  echo "checkm2_thread_cap: bins=$BIN_COUNT >= $CK2_BIN_THRESHOLD -> threads $THREADS capped to $CK2_THREADS (gene-calling race guard)" \
+     | tee -a "$RUN/run_meta.txt"
+-  rc2=1
+ fi
+-echo "checkm2_rc: $rc2 checkm2_wall_s: $(( $(date +%s) - T ))" | tee -a "$RUN/run_meta.txt"
++
++run_checkm2() {  # $1 = thread count; sets rc2
++  local th=$1 r=0
++  CMD2="$MM run -p $CHECKM2_ENV checkm2 predict --threads $th --database_path $CK2DB --input $BINS --output-directory $CHECKM2_OUT -x $BIN_EXT --force"
++  echo "cmd_checkm2: $CMD2" | tee -a "$RUN/run_meta.txt"
++  T=$(date +%s)
++  bash -c "$CMD2" 9>&- || r=$?
++  if [ "$r" -eq 0 ] && [ ! -s "$CHECKM2_OUT/quality_report.tsv" ]; then
++    echo "ERROR: CheckM2 returned 0 but quality_report.tsv is missing/empty; recording failure" \
++      | tee -a "$RUN/run_meta.txt"
++    r=1
++  fi
++  echo "checkm2_rc: $r checkm2_wall_s: $(( $(date +%s) - T )) checkm2_threads: $th" | tee -a "$RUN/run_meta.txt"
++  rc2=$r
++}
++
++echo "=== CheckM2 (predict; extension=$BIN_EXT; bins=$BIN_COUNT; threads=$CK2_THREADS) ==="
++run_checkm2 "$CK2_THREADS"
++
++# One automatic retry at a genuinely lower thread count.  The failed output is
++# preserved (same convention as the CheckM v1 block below) so the evidence of
++# the race is never overwritten by its own retry.
++if [ "$rc2" -ne 0 ]; then
++  CK2_RETRY_T=$CK2_RETRY_THREADS
++  [ "$CK2_RETRY_T" -ge "$CK2_THREADS" ] && CK2_RETRY_T=$(( CK2_THREADS / 2 ))
++  [ "$CK2_RETRY_T" -lt 1 ] && CK2_RETRY_T=1
++  stale_ck2="$RUN/eval/checkm2.incomplete.$(date +%s)"
++  if [ -e "$CHECKM2_OUT" ]; then
++    mv "$CHECKM2_OUT" "$stale_ck2" 2>/dev/null || rm -rf "$CHECKM2_OUT"
++    echo "preserved failed CheckM2 output: $stale_ck2" | tee -a "$RUN/run_meta.txt"
++  fi
++  mkdir -p "$CHECKM2_OUT"
++  echo "checkm2_retry: rc=$rc2 at $CK2_THREADS threads -> retrying once at $CK2_RETRY_T threads (gene-calling race guard)" \
++    | tee -a "$RUN/run_meta.txt"
++  run_checkm2 "$CK2_RETRY_T"
++  echo "checkm2_retry_rc: $rc2  checkm2_retry_threads: $CK2_RETRY_T" | tee -a "$RUN/run_meta.txt"
++fi
+ [ -f "$CHECKM2_OUT/quality_report.tsv" ] && echo "checkm2 report: $CHECKM2_OUT/quality_report.tsv"
+ 
+ # CheckM v1 -------------------------------------------------------------------
+ # Preserve an incomplete prior output instead of overwriting evidence. This is
+
+> build · big-pickle
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark/scripts && bash -n run_eval.sh && echo "SYNTAX OK"
+SYNTAX OK
+> build · big-pickle
+Now the fail-fast disk guard in the three launchers:
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/scripts/run_comebin_fix.sh
+Index: /vol/data/repos/metagenomic-binning-benchmark/scripts/run_comebin_fix.sh
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/scripts/run_comebin_fix.sh
++++ /vol/data/repos/metagenomic-binning-benchmark/scripts/run_comebin_fix.sh
+@@ -37,8 +37,26 @@
+   echo "ERROR: refusing to overwrite existing run directory: $RUNDIR"
+   exit 1
+ fi
+ 
++# Pre-flight free space.  A full filesystem does not fail at launch: it silently
++# poisons CheckM's marker tables and then kills get_result hours later.
++# cami3_v11_20260926 burned 6,677 s and produced 0 bins because prep leftovers
++# (13.8 GB in /tmp) had filled / to 100%.  Fail fast, before the run starts.
++# Placed before the .active_run registration, so a refusal cannot be mistaken by
++# benchmark-watchdog for a crashed run and restarted.
++MIN_FREE_GB=${MIN_FREE_GB:-2}
++RUN_FS=$(df -Pk "$(dirname "$RUNDIR")" 2>/dev/null | awk 'NR==2{print int($4/1048576)}')
++TMP_FS=$(df -Pk /tmp 2>/dev/null | awk 'NR==2{print int($4/1048576)}')
++echo "preflight_free_gb: run_fs=${RUN_FS:-unknown} tmp_fs=${TMP_FS:-unknown} floor=${MIN_FREE_GB}"
++for fs_avail in "$RUN_FS" "$TMP_FS"; do
++  if [ -n "$fs_avail" ] && [ "$fs_avail" -lt "$MIN_FREE_GB" ]; then
++    echo "ERROR: only ${fs_avail} GiB free, need >= ${MIN_FREE_GB} GiB (stale prep leftovers in /tmp are the usual cause)"
++    echo "Free space first, or override deliberately with MIN_FREE_GB=0"
++    exit 1
++  fi
++done
++
+ mkdir -p "$RUNDIR/logs"
+ COMMIT=$(git -C "$SRC" rev-parse HEAD)
+ DIRTY=$(git -C "$SRC" status --porcelain --untracked-files=no | wc -l)
+ BRANCH=$(git -C "$SRC" branch --show-current)
+
+[91m[1mError: [0mRate limit exceeded. Please try again later.
