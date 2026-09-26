@@ -55402,3 +55402,362 @@ checkm_rc: 0 checkm_wall_s: 398
 checkm2_bins: 71 checkm2_compl_mean: 24.38 checkm2_cont_mean: 3.78
 checkm_bins: 71 checkm_compl_mean: 21.62 checkm_cont_mean: 5.18
 [0m⚙ [0mexecute {"code":"const out = {};\nfor (const u of [\"https://doi.org/10.5281/zenodo.22969763\",\"https://doi.org/10.5281/zenodo.22935024\",\"https://doi.org/10.5281/zenodo.22935025\"]) {\n  try {\n    const r = await fetch(u, { redirect: \"follow\" });\n    out[u] = r.status;\n  } catch (e) { out[u] = \"ERR \" + e.message; }\n}\nreturn out;"} 
+> build · big-pickle
+[0m⚙ [0mexecute {"code":"const out = {};\n// what does doi.org actually say for the v2 version DOI?\ntry {\n  const r = await fetch(\"https://doi.org/10.5281/zenodo.22969763\", { redirect: \"manual\",\n    headers: { Accept: \"application/vnd.citationstyles.csl+json\" } });\n  out.manual_status = r.status;\n  out.ctype = r.headers.get(\"content-type\");\n  out.body = (await r.text()).slice(0, 300);\n} catch (e) { out.manual_status = \"ERR \" + e.message; }\n// what URL does zenodo itself advertise for v2?\nconst rec = await (await fetch(\"https://zenodo.org/api/records/22969763\")).json();\nout.advertised = { doi_url: rec.links?.self_html || rec.links?.html, doi: rec.doi, conceptdoi: rec.conceptdoi, version: rec.metadata?.version, is_published: rec.metadata?.publication_date !== undefined ? true : false, state: rec.state };\nout.v1 = await (await fetch(\"https://zenodo.org/api/records/22935025\")).json().then(j => ({ doi: j.doi, version: j.metadata?.version, links_html: j.links?.self_html, doi_url: j.links?.doi }));\nreturn out;"} 
+> build · big-pickle
+[0m$ [0mls -la /vol/data/benchmark/releases/ 2>&1; find /vol/data/benchmark/releases -maxdepth 3 -name "*.tar.gz" -o -maxdepth 3 -name "*.json" | head; echo "=== v2 receipt via script? ==="; grep -n "version_doi_resolver_http\|re-check\|concept_doi_resolver" /vol/data/repos/metagenomic-binning-benchmark/scripts/zenodo_update.sh | head -20
+total 328328
+drwxrwxr-x  3 ubuntu ubuntu      4096 Sep 26 01:38 .
+drwxrwxr-x 12 ubuntu ubuntu      4096 Sep 26 01:48 ..
+-rw-rw-r--  1 ubuntu ubuntu 167867973 Sep 26 01:12 comebin_benchmark_release_dryrun_20260926.tar.gz
+-rw-rw-r--  1 ubuntu ubuntu 168110629 Sep 26 01:38 comebin_benchmark_release_v2_20260926.tar.gz
+drwxrwxr-x  4 ubuntu ubuntu      4096 Sep 24 09:27 comebin_small_20260924
+-rw-rw-r--  1 ubuntu ubuntu    100579 Sep 26 01:11 manifest.20260926T011057Z.json
+-rw-rw-r--  1 ubuntu ubuntu    101492 Sep 26 01:36 manifest.20260926T013645Z.json
+/vol/data/benchmark/releases/manifest.20260926T013645Z.json
+/vol/data/benchmark/releases/comebin_benchmark_release_v2_20260926.tar.gz
+/vol/data/benchmark/releases/manifest.20260926T011057Z.json
+/vol/data/benchmark/releases/comebin_small_20260924/release_metadata.json
+/vol/data/benchmark/releases/comebin_small_20260924/comebin_small.release.public.json
+/vol/data/benchmark/releases/comebin_small_20260924/comebin_small_release_v1.tar.gz
+/vol/data/benchmark/releases/comebin_benchmark_release_dryrun_20260926.tar.gz
+=== v2 receipt via script? ===
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && bash -n scripts/zenodo_update.sh && echo "zenodo_update.sh syntax OK"; python3 -c "import ast,sys; ast.parse(open('scripts/make_combined_bar_plot.py').read()); print('make_combined_bar_plot.py syntax OK')"; echo "=== prep_cami3_toy syntax ==="; bash -n scripts/prep_cami3_toy.sh && echo OK
+zenodo_update.sh syntax OK
+make_combined_bar_plot.py syntax OK
+=== prep_cami3_toy syntax ===
+OK
+> build · big-pickle
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && grep -n "resolver\|404\|http" scripts/zenodo_update.sh | head -30
+107:  --metadata source_repo="https://github.com/paulzierep/metagenomic-binning-benchmark" \
+151:  CODE=$(curl -sS -o "$WORK/resp.json" -w '%{http_code}' -X "$method" \
+155:req GET "https://zenodo.org/api/deposit/depositions"
+165:  req GET "https://zenodo.org/api/records/$RECORD/versions"
+173:  req POST "https://zenodo.org/api/deposit/depositions/$LATEST_ID/actions/newversion"
+183:req GET "https://zenodo.org/api/records/$RECORD/versions"
+199:req GET "https://zenodo.org/api/deposit/depositions/$DRAFT_ID"
+214:req GET "https://zenodo.org/api/deposit/depositions/$DRAFT_ID"
+227:    "https://github.com/paulzierep/metagenomic-binning-benchmark (setup, datasets, "
+250:req PUT "https://zenodo.org/api/deposit/depositions/$DRAFT_ID" \
+259:req POST "https://zenodo.org/api/deposit/depositions/$DRAFT_ID/actions/publish"
+268:  req GET "https://zenodo.org/api/deposit/depositions/$DRAFT_ID"
+278:req GET "https://zenodo.org/api/records/$NEW_ID"
+296:  DOI_HTTP=$(curl -sS -o /dev/null -w '%{http_code}' -L "https://doi.org/$NEW_DOI")
+309:        "md5", "content_sha256", "runs", "doi_resolver_http"]
+[0m$ [0mcd /vol/data/benchmark/releases && echo "=== md5 of v2 tarball ===" && md5sum comebin_benchmark_release_v2_20260926.tar.gz && echo "=== total entries ===" && tar -tzf comebin_benchmark_release_v2_20260926.tar.gz | wc -l && echo "=== bins ===" && tar -tzf comebin_benchmark_release_v2_20260926.tar.gz | grep -c "comebin_res_bins/.*\.fa$" && echo "=== key files present ===" && tar -tzf comebin_benchmark_release_v2_20260926.tar.gz | grep -E "manifest.json|combined_bar_plot|main_runs_table|README.md|PROGRESS.md" | head
+=== md5 of v2 tarball ===
+114459d4e728e70b2aefb70e1d8f620e  comebin_benchmark_release_v2_20260926.tar.gz
+=== total entries ===
+591
+=== bins ===
+350
+=== key files present ===
+./PROGRESS.md
+./README.md
+./manifest.json
+./results/README.md
+./results/figures/combined_bar_plot.png
+./results/figures/combined_bar_plot.svg
+./results/main_runs_table.md
+./runs/README.md
+> build · big-pickle
+[0m$ [0mcd /vol/data/benchmark/releases && echo "=== manifest.json entry count ===" && tar -xzOf comebin_benchmark_release_v2_20260926.tar.gz ./manifest.json | python3 -c "
+import json,sys
+d=json.load(sys.stdin)
+f=d.get('files',d)
+print('top keys:', list(d.keys())[:8])
+print('n entries:', len(f))
+tot=sum(int(v.get('size',0)) if isinstance(v,dict) else 0 for v in f.values()) if isinstance(f,dict) else 'n/a'
+print('total bytes:', tot)
+"
+echo "=== all bin fasta-ish files in tarball ==="
+tar -tzf comebin_benchmark_release_v2_20260926.tar.gz | grep -E "comebin_res_bins/.*\.(fa|fasta)$" | wc -l
+echo "=== per-run bin counts in tarball ==="
+tar -tzf comebin_benchmark_release_v2_20260926.tar.gz | grep -E "comebin_res_bins/.*\.(fa|fasta)$" | cut -d/ -f2 | sort | uniq -c
+=== manifest.json entry count ===
+top keys: ['dataset_name', 'file_count', 'files', 'generated_at_utc', 'metadata', 'schema_version', 'total_bytes']
+n entries: 522
+total bytes: n/a
+=== all bin fasta-ish files in tarball ===
+410
+=== per-run bin counts in tarball ===
+    410 runs
+> build · big-pickle
+[0m→ [0mRead /vol/data/repos/metagenomic-binning-benchmark/results/figures/combined_bar_plot.png 
+> build · big-pickle
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark/results/figures && echo "=== svg subplot axes (g ids) ==="; grep -o 'id="axes_[0-9]*"' combined_bar_plot.svg | sort -u; echo "=== svg titles (dataset labels) ==="; grep -oE '>[^<>]*(contig|contigs)[^<>]*</text>' combined_bar_plot.svg | sed 's/[><]//g' | sort -u | head; echo "=== comebin version labels in svg ==="; grep -oE '>[0-9a-f]{7} · [a-zA-Z0-9._-]+<' combined_bar_plot.svg | sed 's/[><]//g' | sort -u; echo "=== MAIN_DATASETS const ==="; grep -n -A12 "MAIN_DATASETS" ../../scripts/make_combined_bar_plot.py | head -25
+=== svg subplot axes (g ids) ===
+id="axes_1"
+id="axes_2"
+id="axes_3"
+id="axes_4"
+id="axes_5"
+id="axes_6"
+=== svg titles (dataset labels) ===
+=== comebin version labels in svg ===
+=== MAIN_DATASETS const ===
+> build · big-pickle
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && grep -nE "^[A-Z_]+ *=|contigs" scripts/make_combined_bar_plot.py | head -20; echo "=== svg text nodes (unique, first 40) ==="; grep -oE '<text[^>]*>[^<]+' results/figures/combined_bar_plot.svg | sed 's/.*>//' | sort -u | head -40
+7:    demo   — COMEBin demo large set (BATS, 29,434 contigs)
+8:    human  — CAMI II human host-associated (4,900 contigs)
+9:    marine — CAMI II marine (41,988 contigs)
+37:HERE = os.path.dirname(os.path.abspath(__file__))
+38:REPO = os.path.normpath(os.path.join(HERE, ".."))
+39:RUNS = os.path.join(REPO, "runs")
+40:RESULTS = os.path.join(REPO, "results")
+41:FIGDIR = os.path.join(RESULTS, "figures")
+44:# key -> (substring matched against run_meta `contigs:`, display name)
+45:DATASETS = {
+46:    "demo": ("BATS_SAMN07137077", "COMEBin demo (29,434 contigs)"),
+47:    "human": ("cami_II_human", "CAMI II human (4,900 contigs)"),
+48:    "marine": ("cami_II/marine", "CAMI II marine (41,988 contigs)"),
+50:DEFAULT_ORDER = ["demo", "human", "marine"]
+53:THRESHOLDS = [">90", ">80", ">70", ">60", ">50", "<50"]
+54:COLORS = ["#004c4c", "#006666", "#008080", "#33a3a3", "#99d6d6", "#cce6e6"]
+55:CUTOFFS = [(5, "Contamination < 5%"), (10, "Contamination < 10%")]
+67:                if key.strip() in ("source", "commit", "contigs", "seed", "wall_s"):
+72:def dataset_key(contigs):
+74:        if needle in contigs:
+=== svg text nodes (unique, first 40) ===
+> build · big-pickle
+Plot structure verified (6 axes = 2×3, 3 datasets, 2 cutoffs, 6 thresholds). Now let me examine the watchdog's deploy check to fix the root cause.
+[0m→ [0mRead /vol/data/repos/metagenomic-binning-benchmark/scripts/meta-watchdog.sh [90m[offset=80, limit=75][0m
+> build · big-pickle
+[0m→ [0mRead /vol/data/repos/metagenomic-binning-benchmark/scripts/meta-watchdog.sh [90m[limit=60, offset=1][0m
+> build · big-pickle
+Now I'll implement the fixes. First, the root-cause guard in the watchdog (new check, cron untouched):
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/scripts/meta-watchdog.sh
+Index: /vol/data/repos/metagenomic-binning-benchmark/scripts/meta-watchdog.sh
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/scripts/meta-watchdog.sh
++++ /vol/data/repos/metagenomic-binning-benchmark/scripts/meta-watchdog.sh
+@@ -138,8 +138,60 @@
+     check C1_cron broken "cron repair failed (was:$cron_bad)"
+   fi
+ fi
+ 
++# ---- C1b: installed pipeline scripts match repo source ---------------------- #
++# C1 only covers the four cron jobs. The evaluation pipeline is executed from the
++# INSTALLED copies in $BENCH/bin (run_eval.sh calls its helpers via $(dirname $0)),
++# so a helper that exists in the repo but was never deployed silently disables that
++# feature on every future run. Mirror scripts/ -> bin/ and verify byte identity.
++deploy_bad=""
++for src in "$REPO"/scripts/*; do
++  [ -f "$src" ] || continue
++  job=$(basename "$src")
++  case "$job" in __pycache__|*.pyc|*.pyo) continue ;; esac
++  dst="$BENCH/bin/$job"
++  if [ ! -f "$dst" ]; then
++    deploy_bad="$deploy_bad $job(missing)"
++  elif ! cmp -s "$src" "$dst"; then
++    deploy_bad="$deploy_bad $job(stale)"
++  fi
++done
++if [ -n "$deploy_bad" ]; then
++  for src in "$REPO"/scripts/*; do
++    [ -f "$src" ] || continue
++    job=$(basename "$src")
++    case "$job" in __pycache__|*.pyc|*.pyo) continue ;; esac
++    dst="$BENCH/bin/$job"
++    if [ ! -f "$dst" ] || ! cmp -s "$src" "$dst"; then
++      mkdir -p "$BENCH/bin"
++      cp "$src" "$BENCH/bin/.$job.deploy-new" || continue
++      case "$job" in
++        *.sh) chmod 755 "$BENCH/bin/.$job.deploy-new" ;;
++        *)    chmod 644 "$BENCH/bin/.$job.deploy-new" ;;
++      esac
++      mv "$BENCH/bin/.$job.deploy-new" "$dst" || continue
++    fi
++  done
++  # py helpers are invoked via `python3`, so they need read access but not +x.
++  chmod 755 "$BENCH/bin"/*.sh 2>/dev/null || true
++  deploy_still=""
++  for src in "$REPO"/scripts/*; do
++    [ -f "$src" ] || continue
++    job=$(basename "$src")
++    case "$job" in __pycache__|*.pyc|*.pyo) continue ;; esac
++    cmp -s "$src" "$BENCH/bin/$job" || deploy_still="$deploy_still $job(unfixed)"
++  done
++  if [ -z "$deploy_still" ]; then
++    note_fix "deployed stale/missing pipeline scripts to bin:$(printf '%s' "$deploy_bad" | tr -s ' ')"
++    check C1b_deploy ok "re-deployed:$deploy_bad"
++  else
++    check C1b_deploy broken "deploy failed, still stale:$deploy_still (was:$deploy_bad)"
++  fi
++else
++  check C1b_deploy ok "installed pipeline scripts identical to repo source"
++fi
++
+ # ---- C2: OpenCode service status + real API health -------------------------- #
+ if service_pid=$(service_pid); then
+   check C2_service ok "pid $service_pid; service status + /api/info healthy"
+ else
+
+> build · big-pickle
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && bash -n scripts/meta-watchdog.sh && echo "SYNTAX OK" && (command -v shellcheck >/dev/null && shellcheck -S error scripts/meta-watchdog.sh && echo "shellcheck clean" || echo "(shellcheck not installed)")
+SYNTAX OK
+(shellcheck not installed)
+> build · big-pickle
+Now deploying the missing/stale scripts to the runtime `bin/`:
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark
+for src in scripts/*; do
+  [ -f "$src" ] || continue
+  job=$(basename "$src")
+  case "$job" in __pycache__|*.pyc|*.pyo) continue ;; esac
+  dst="/vol/data/benchmark/bin/$job"
+  if [ ! -f "$dst" ] || ! cmp -s "$src" "$dst"; then
+    tmp="/vol/data/benchmark/bin/.$job.deploy-new"
+    cp "$src" "$tmp" || { echo "FAIL copy $job"; continue; }
+    case "$job" in *.sh) chmod 755 "$tmp" ;; *) chmod 644 "$tmp" ;; esac
+    mv "$tmp" "$dst" && echo "DEPLOYED: $job"
+  fi
+done
+chmod 755 /vol/data/benchmark/bin/*.sh 2>/dev/null || true
+echo "--- verify identity ---"
+for src in scripts/*; do
+  [ -f "$src" ] || continue
+  job=$(basename "$src")
+  case "$job" in __pycache__|*.pyc|*.pyo) continue ;; esac
+  cmp -s "$src" "/vol/data/benchmark/bin/$job" && echo "ok   $job" || echo "FAIL $job"
+done
+DEPLOYED: make_combined_bar_plot.py
+DEPLOYED: meta-watchdog.sh
+DEPLOYED: prep_cami3_toy.sh
+DEPLOYED: run_eval.sh
+DEPLOYED: zenodo_update.sh
+--- verify identity ---
+ok   agent-watchdog.sh
+ok   benchmark-watchdog.sh
+ok   issue-closer.sh
+ok   make_combined_bar_plot.py
+ok   make_medium_dataset.sh
+ok   make_per_bin_csv.py
+ok   make_per_bin_plots.py
+ok   make_release_manifest.py
+ok   make_results_csv.py
+ok   make_small_dataset.sh
+ok   meta-watchdog.sh
+ok   parse_eval.py
+ok   prep_cami2_human.sh
+ok   prep_cami2_marine.sh
+ok   prep_cami3_toy.sh
+ok   run_comebin_baseline.sh
+ok   run_comebin_fix.sh
+ok   run_eval.sh
+ok   run_small_test.sh
+ok   status-heartbeat.sh
+ok   test_batch1.py
+ok   zenodo_update.sh
+> build · big-pickle
+Now verifying the deployed pipeline actually works. Checking `zenodo_update.sh` options first:
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && sed -n '1,60p' scripts/zenodo_update.sh
+#!/usr/bin/env bash
+# zenodo_update.sh [--dry-run] — issue #8:
+# "store all benchmark data in the same record, update continously when new
+# benchmark data is made" (owner 2026-09-25; scope clarified 09:04: only data
+# that is newly generated and not publicly available otherwise).
+#
+# Packages the newly generated benchmark data
+#   - results/            aggregate CSVs + figures (all runs)
+#   - runs/               per-run mirrors (run_meta.txt, comebin_run.log,
+#                         per_bin_results.csv, per_bins.png)
+#   - runs/<r>/comebin_res/comebin_res_bins/   bin FASTAs produced by COMEBin
+#   - runs/<r>/eval/...   CheckM2 quality_report.tsv + CheckM v1
+#                         bin_stats_ext.tsv/checkm.log (key eval reports)
+#   - docs/ README.md PROGRESS.md status/agent-activity.log
+# into a deterministic release tarball with a SHA-256 manifest, then publishes
+# it as a NEW VERSION of the existing record (concept DOI
+# 10.5281/zenodo.22935024; v1 = 10.5281/zenodo.22935025). Versions accumulate
+# under the same concept record, so the concept DOI always resolves to the
+# newest package.
+#
+# Behaviour:
+#   - skips silently (exit 0) when content is unchanged since the last upload
+#   - skips silently (exit 0) when no token file is present, so it is safe
+#     inside run_eval.sh's best-effort auto-reporting chain
+#   - exits 1 on packaging/API errors (callers in run_eval.sh treat as warning)
+#   --dry-run: package + manifest + change detection, no network calls
+#
+# Env: ZENODO_TOKEN_FILE (default: ~/.zenodo_token), ZENODO_RECORD (default
+# 22935025), ZENODO_UPDATE=0 disables the script entirely.
+set -euo pipefail
+
+REPO=$(cd "$(dirname "$0")/.." && pwd)
+RUNS_ROOT=${RUNS_ROOT:-/vol/data/benchmark/runs}
+RELEASES=${RELEASES:-/vol/data/benchmark/releases}
+META=${META:-/vol/data/benchmark/meta}
+TOKEN_FILE=${ZENODO_TOKEN_FILE:-$HOME/.zenodo_token}
+RECORD=${ZENODO_RECORD:-22935025}
+DRY=0
+[ "${1:-}" = "--dry-run" ] && DRY=1
+
+log() { echo "[zenodo_update] $*"; }
+skip() { log "skip: $*"; exit 0; }
+die() { log "ERROR: $*" >&2; exit 1; }
+
+[ "${ZENODO_UPDATE:-1}" = "0" ] && skip "ZENODO_UPDATE=0"
+command -v curl >/dev/null || skip "curl not available"
+if [ "$DRY" -eq 0 ]; then
+  [ -r "$TOKEN_FILE" ] || skip "no token file at $TOKEN_FILE"
+  TOK=$(tr -d '\n' < "$TOKEN_FILE")
+fi
+command -v python3 >/dev/null || die "python3 not available"
+mkdir -p "$RELEASES" "$META"
+
+# --- Stage the package -------------------------------------------------------
+STAMP=$(date -u +%Y%m%dT%H%M%SZ)
+STAGE=$(mktemp -d "$RELEASES/stage.XXXXXX")
+WORK=""
+cleanup() { rm -rf "$STAGE" ${WORK:+"$WORK"}; }
+trap cleanup EXIT
+> build · big-pickle
+Important catch — let me check how the deployed scripts resolve the repo root, since `bin/` is not inside the repo:
+[0m✗ [0mcd /vol/data/repos/metagenomic-binning-benchmark/scripts && for f in make_per_bin_plots.py make_per_bin_csv.py make_results_csv.py make_combined_bar_plot.py parse_eval.py; do echo "=== $f ==="; grep -nE "HERE|REPO|dirname|abspath|RUNS *=|RESULTS *=" "$f" | head -8; done failed
+[91m[1mError: [0mNo tool named "bash" is currently available. Please use a tool from the available tool list.
+> build · big-pickle
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark/scripts && for f in make_per_bin_plots.py make_per_bin_csv.py make_results_csv.py make_combined_bar_plot.py parse_eval.py; do echo "=== $f ==="; grep -nE "HERE|REPO|dirname|abspath" "$f" | head -8; done
+=== make_per_bin_plots.py ===
+24:HERE = os.path.dirname(os.path.abspath(__file__))
+25:REPO = os.path.normpath(os.path.join(HERE, ".."))
+144:    figures = os.path.join(REPO, "results", "figures")
+151:        run_dir = os.path.join(REPO, "runs", name)
+166:        runs_root = os.path.join(REPO, "runs")
+184:        run_path = os.path.join(REPO, "runs", run_name)
+=== make_per_bin_csv.py ===
+73:        out_dir = os.path.join(os.path.dirname(__file__), "..", "runs", name)
+=== make_results_csv.py ===
+13:run = os.path.abspath(sys.argv[1])
+18:repo = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+43:    return os.path.basename(os.path.dirname(contigs_path))
+105:os.makedirs(os.path.dirname(out), exist_ok=True)
+=== make_combined_bar_plot.py ===
+37:HERE = os.path.dirname(os.path.abspath(__file__))
+38:REPO = os.path.normpath(os.path.join(HERE, ".."))
+39:RUNS = os.path.join(REPO, "runs")
+40:RESULTS = os.path.join(REPO, "results")
+290:    os.makedirs(os.path.dirname(args.png), exist_ok=True)
+297:    os.makedirs(os.path.dirname(args.table), exist_ok=True)
+=== parse_eval.py ===
+> build · big-pickle
+Confirmed a significant latent bug. Let me check its blast radius:
+[0m$ [0mecho "=== /vol/data/benchmark/results (wrong-tree target) ==="; ls -la /vol/data/benchmark/results/; echo "=== /vol/data/benchmark/results/figures? ==="; ls -la /vol/data/benchmark/results/figures/ 2>&1; echo; echo "=== are repo runs/ and bench runs/ the same? ==="; stat -c '%d %i %n' /vol/data/repos/metagenomic-binning-benchmark/runs /vol/data/benchmark/runs; echo "=== repo results/figures ==="; stat -c '%d %i %n' /vol/data/repos/metagenomic-binning-benchmark/results /vol/data/benchmark/results; echo "=== repo README/docs/status exist at bench root? ==="; for p in README.md PROGRESS.md docs status results/main_runs_table.md; do [ -e "/vol/data/benchmark/$p" ] && echo "EXISTS  $p" || echo "MISSING $p"; done
+=== /vol/data/benchmark/results (wrong-tree target) ===
+total 12
+drwxrwxr-x  2 ubuntu ubuntu 4096 Sep 24 09:01 .
+drwxrwxr-x 12 ubuntu ubuntu 4096 Sep 26 01:48 ..
+-rw-rw-r--  1 ubuntu ubuntu  309 Sep 24 09:01 small_test_v4.csv
+=== /vol/data/benchmark/results/figures? ===
+ls: cannot access '/vol/data/benchmark/results/figures/': No such file or directory
+
+=== are repo runs/ and bench runs/ the same? ===
+64784 5767568 /vol/data/repos/metagenomic-binning-benchmark/runs
+64784 28049412 /vol/data/benchmark/runs
+=== repo results/figures ===
+64784 5767306 /vol/data/repos/metagenomic-binning-benchmark/results
+64784 28049410 /vol/data/benchmark/results
+=== repo README/docs/status exist at bench root? ===
+MISSING README.md
+EXISTS  PROGRESS.md
+MISSING docs
+MISSING status
+MISSING results/main_runs_table.md
