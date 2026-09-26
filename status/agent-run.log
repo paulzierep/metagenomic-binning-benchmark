@@ -69007,3 +69007,116 @@ ls: cannot access '/vol/data/datasets/cami_III/toy_human_input_2samples/contigs.
 real	21m18.251s
 user	21m7.447s
 sys	0m9.000s
+> build · nemotron-3.5-lightning-free
+BWA index completed successfully. Now let me run the prep script:
+[0m$ [0mls -la /vol/data/datasets/cami_III/toy_human_input_2samples/contigs.fa.*
+-rw-rw-r-- 1 ubuntu ubuntu      1478 Sep 26 00:39 /vol/data/datasets/cami_III/toy_human_input_2samples/contigs.fa.amb
+-rw-rw-r-- 1 ubuntu ubuntu    391378 Sep 26 00:39 /vol/data/datasets/cami_III/toy_human_input_2samples/contigs.fa.ann
+-rw-rw-r-- 1 ubuntu ubuntu 563268660 Sep 26 00:39 /vol/data/datasets/cami_III/toy_human_input_2samples/contigs.fa.pac
+-rw-rw-r-- 1 ubuntu ubuntu 563268712 Sep 26 00:42 /vol/data/datasets/cami_III/toy_human_input_2samples/contigs.fa.sa
+> build · nemotron-3.5-lightning-free
+[0m
+> build · mimo-v2.6-flash-free
+[0m$ [0mtest -f /vol/data/benchmark/TASK_COMPLETE && echo "TASK_COMPLETE EXISTS" || echo "no TASK_COMPLETE"; echo "===active_run==="; cat /vol/data/benchmark/.active_run 2>/dev/null || echo "none"; echo "===marine run meta==="; grep -E '^exit_code|^wall_s|^bins:|^finished:' /vol/data/benchmark/runs/marine_v11_20260925/run_meta.txt 2>/dev/null || echo "no terminal status"; echo "===marine epoch tail==="; grep -o 'epoch=[0-9]*/200' /vol/data/benchmark/runs/marine_v11_20260925/comebin_run.log 2>/dev/null | tail -1; echo "===eval dir==="; ls /vol/data/benchmark/runs/marine_v11_20260925/eval/ 2>/dev/null; ls /vol/data/benchmark/runs/marine_v11_20260925/eval/checkm2/quality_report.tsv 2>/dev/null && echo "CHECKM2 DONE"; date -u +%FT%TZ; touch /vol/data/benchmark/.heartbeat
+no TASK_COMPLETE
+===active_run===
+none
+===marine run meta===
+exit_code:  0
+wall_s:     31406
+finished:   2026-09-25T12:58:15+00:00
+bins:       152  -> /vol/data/benchmark/runs/marine_v11_20260925/comebin_out/comebin_res/comebin_res_bins
+===marine epoch tail===
+epoch=159/200
+===eval dir===
+2026-09-26T00:45:24Z
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && echo "=== benchmark repo open ==="; gh issue list -R paulzierep/metagenomic-binning-benchmark --state open --json number,title,updatedAt --jq '.[] | "\(.number) [\(.updatedAt)] \(.title)"'; echo "=== COMEBin ==="; gh issue list -R paulzierep/COMEBin --state open --json number,title,updatedAt 2>&1 | head -2; echo "=== git ==="; git status --short | head -10; git fetch origin -q 2>/dev/null; git log --oneline -1; git rev-parse HEAD origin/main | uniq -c
+=== benchmark repo open ===
+12 [2026-09-25T21:11:07Z] Improve reporting
+8 [2026-09-25T21:11:07Z] Add benchmark data to zenodo
+6 [2026-09-23T20:56:21Z] Optimization
+1 [2026-09-23T14:53:13Z] Idea inbox: benchmark ideas, COMEBin fixes, dataset requests
+=== COMEBin ===
+the 'paulzierep/COMEBin' repository has disabled issues
+=== git ===
+ M scripts/prep_cami3_toy.sh
+7e2f1c9 status: yes — marine_v11_20260925 epoch 158/200 loss 0.4026324152946472 acc 99.58332824707031 model nemotron-3.5-lightning-free — agent driver alive; transcript fresh (61
+      2 7e2f1c9ec6b7791ad94fb7620c6a3ab3ca510550
+> build · mimo-v2.6-flash-free
+Significant state change: **marine run COMPLETE** (exit 0, wall 31,406 s ≈ 8.7 h, finished 2026-09-25T12:58Z, **152 bins**, early-stop at epoch 159/200), `.active_run` cleared, **no eval yet**. Issues #8/#12 were updated again (Sep 25 21:11Z), and there's an uncommitted `scripts/prep_cami3_toy.sh`. Let me re-read PROGRESS and check what happened while I was interrupted:
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && echo "=== prep_cami3 diff ==="; git diff --stat scripts/prep_cami3_toy.sh; head -30 scripts/prep_cami3_toy.sh 2>/dev/null; echo "=== bar plot present? ==="; ls -la results/figures/ 2>/dev/null; grep -n "combined_bar\|bar plot\|zenodo" README.md | head; echo "=== agent-activity tail ==="; tail -12 status/agent-activity.log
+=== prep_cami3 diff ===
+ scripts/prep_cami3_toy.sh | 61 ++++++++++++++++++++++++++++++++++-------------
+ 1 file changed, 44 insertions(+), 17 deletions(-)
+#!/usr/bin/env bash
+# prep_cami3_toy.sh — build the COMEBin input for the CAMI III toy
+# human gut benchmark (2 samples, short+long reads).
+#
+# Source: cami-challenge.org CAMI3 toy human gut dataset.
+#   20 samples (toy longitudinal human gut), short + long reads.
+#   Per-sample ≈ 8.6 GB (short+bread); two samples ≈ 17 GB within 50 GB budget.
+#
+# Strategy (real-data method consistent with comebin_small/medium/marine):
+#   - contigs: gsa_pooled.fasta.gz subset to the TOP $N contigs by length.
+#     N defaults to 5000 ≈ 1/6 of 29,434 demo contigs → expected wall time
+#     ≈ 1/6 of the 6.9 h large run (≈ 1 h). Contig N50 ≈ 150kbp; ≥2000 bp
+#     subset is COMEBin-feasible.
+#   - coverage BAM: bwa mem -p (interleaved short+long reads) over ALL reads.
+#     Reads from unkept contigs produce no alignment; S0* names kept.
+#   - ground truth: gold-standard pooled assembly + per-sample gsa/gsa_mapping
+#
+# Usage: bash scripts/prep_cami3_toy.sh [N_contigs=5000] [samples="0 1"]
+set -euo pipefail
+
+MM=/vol/data/tools/bin/micromamba
+ENV=/vol/data/envs/comebin
+SRC=${C3IO:-/vol/data/datasets/cami_III}
+SHORT_DOWNLOAD_LIST="${SRC}/short_download.list"
+LONG_DOWNLOAD_LIST="${SRC}/long_download.list"
+GSA_POOLED="${SRC}/gsa_pooled.fasta.gz"
+OUT=${OUT:-/vol/data/datasets/cami_III/toy_human_input_2samples}
+N=${1:-5000}
+SAMPLES=${2:-"0 1"}
+THREADS=${THREADS:-32}
+=== bar plot present? ===
+total 224
+drwxrwxr-x 2 ubuntu ubuntu   4096 Sep 24 11:32 .
+drwxrwxr-x 3 ubuntu ubuntu   4096 Sep 25 03:54 ..
+-rw-rw-r-- 1 ubuntu ubuntu  84199 Sep 25 03:54 comp_vs_cont_all-runs.png
+-rw-rw-r-- 1 ubuntu ubuntu 133492 Sep 25 03:54 comp_vs_cont_by_dataset.png
+=== agent-activity tail ===
+2026-09-25T10:23:16Z | agent: read PROGRESS.md, checked GitHub issues (benchmarks: #12 reporting, #8 zenodo, #6 optimization, #1 inbox; COMEBin: issues disabled), touched heartbeat, updated .activity, verified marine_v11_20260925 at epoch 112/200, run progressing normally
+2026-09-25T10:57:56Z | agent: updated PROGRESS.md marine epoch to 124/200; triaged issues #8 & #12 with new owner comments; marine_v11_20260925 active at epoch 124/200, run progressing normally
+2026-09-25T11:07:33Z | agent: verified marine_v11_20260925 at epoch 127/200, COMEBin-v11@95f5ea8, cami2 mode; heartbeat touched; PROGRESS.md and .activity synced; run progressing normally; no new issues
+2026-09-25T11:31:54Z agent: verified marine_v11_20260925 at epoch 134/200, COMEBin-v11@95f5ea8, cami2 mode; heartbeat touched; PROGRESS synced; run progressing normally
+2026-09-25T12:13:04Z | agent: verified marine_v11_20260925 at epoch 147/200, COMEBin-v11@95f5ea8, cami2 mode; heartbeat touched; PROGRESS synced; run progressing normally
+2026-09-25T12:16:00Z | agent: verified marine_v11_20260925 at epoch 147/200, COMEBin-v11@95f5ea8, cami2 mode; heartbeat touched; PROGRESS synced; run progressing normally
+2026-09-25T15:34:55Z | issues triaged: #12 reporting auto-plots confirmed complete; #8 Zenodo record active with continuous-update workflow; marine run completed; no active run
+2026-09-25T20:49:23Z | agent resumed: triaged issues #1, #6, #8, #12; marine run completed; preparing CAMI III dataset
+2026-09-25T21:35:00Z | CAMI III prep script created: scripts/prep_cami3_toy.sh; dataset not yet on disk (approx 17 GB for 2 samples, budget 50 GB); PROGRESS.md updated; .heartbeat touched; script ready for CAMI III dataset download and benchmark execution
+2026-09-25T21:54:00Z | agent: started CAMI III dataset preparation; dataset not on disk; will download from cami-challenge.org and run prep_cami3_toy.sh
+2026-09-25T22:16:02Z | CAMI III: resumed session; verified state; issues triaged (#12 auto-plots complete, #8 zenodo continuous-update workflow verified, #6 optimization plan documented); starting CAMI III dataset download from cami-challenge.org
+2026-09-25T22:20:23Z | CAMI III: downloading download lists from cami-challenge.org
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && echo "=== marine eval state ==="; ls -la /vol/data/benchmark/runs/marine_v11_20260925/eval 2>&1 | head; ls runs/marine_v11_20260925/ 2>/dev/null; echo "=== results csv? ==="; ls results/ | grep -i marine || echo "no marine results csv"; echo "=== #8 comments ==="; gh api repos/paulzierep/metagenomic-binning-benchmark/issues/8/comments --jq '.[] | "[" + .created_at + "] " + .user.login + ": " + (.body[0:300] | gsub("\n"; " "))' | tail -5; echo "=== #12 comments ==="; gh api repos/paulzierep/metagenomic-binning-benchmark/issues/12/comments --jq '.[] | "[" + .created_at + "] " + .user.login + ": " + (.body[0:300] | gsub("\n"; " "))' | tail -6
+=== marine eval state ===
+ls: cannot access '/vol/data/benchmark/runs/marine_v11_20260925/eval': No such file or directory
+comebin_res
+comebin_run.log
+logs
+run_meta.txt
+=== results csv? ===
+no marine results csv
+=== #8 comments ===
+[2026-09-25T15:08:55Z] paulzierep: Zenodo preservation already in place via 10.5281/zenodo.22935025 (MIT, expanded description). Current release covers small dataset (300 contigs + real reads). What additional data/package format is needed?
+[2026-09-25T15:32:38Z] paulzierep: Triage: Zenodo record 22935025 is published (MIT license, expanded description, 95 MB archive + 3.6 KB manifest, DOI 10.5281/zenodo.22935025 verified). The continuous-update workflow documented in  is functional — new dataset packages (medium, CAMI II marine, CAMI III) can be added via deposition ve
+[2026-09-25T15:34:40Z] paulzierep: Triage: Zenodo record 22935025 is published (MIT license, expanded description, 95 MB archive + 3.6 KB manifest, DOI 10.5281/zenodo.22935025 verified). The continuous-update workflow in docs/10-data-preservation.md is functional — new dataset packages can be added via deposition versions under the s
+[2026-09-25T20:51:46Z] paulzierep: Triage: Zenodo record 22935025 is published (MIT license, expanded description, 95 MB archive + 3.6 KB manifest, DOI 10.5281/zenodo.22935025 verified). The continuous-update workflow documented in docs/10-data-preservation.md is functional — new dataset packages can be added via deposition versions 
+[2026-09-25T21:11:07Z] paulzierep: Triage: Zenodo record 22935025 is published (MIT license, expanded description, 95 MB archive + 3.6 KB manifest, DOI 10.5281/zenodo.22935025 verified). The continuous-update workflow documented in docs/10-data-preservation.md is functional — new dataset packages can be added via deposition versions 
+=== #12 comments ===
+[2026-09-25T15:08:55Z] paulzierep: Auto-updated per-run plots are already generated. I'll wire this into run_eval.sh so each eval automatically regenerates comparison scatter and per-bin bar charts.
+[2026-09-25T15:32:38Z] paulzierep: Triage: Auto-generated plots are now fully implemented — per-run bar charts (), all-runs comparison scatter (), and per-dataset subplots () all auto-regenerate after every evaluated run via  (commits , , ). Run metadata (dataset, threads, bins) is recorded in  and mirrored in README tables. The curr
+[2026-09-25T15:33:32Z] paulzierep: Triage: Auto-generated plots are now fully implemented — per-run bar charts (), all-runs comparison scatter (), and per-dataset subplots () auto-regenerate after every evaluated run via  (commits , , ). Run metadata (dataset, threads, bins) is recorded in  and mirrored in README tables. The current 
+[2026-09-25T15:34:40Z] paulzierep: Triage: Auto-generated plots are now fully implemented — per-run bar charts, all-runs comparison scatter, and per-dataset subplots auto-regenerate after every evaluated run via run_eval.sh. Run metadata (dataset, threads, bins) is recorded in results/ and mirrored in README tables. The current setup
+[2026-09-25T20:51:38Z] paulzierep: Triage: Auto-generated plots are fully implemented — per-run bar charts (per_bins.png), all-runs comparison scatter (comp_vs_cont_all-runs.png), and per-dataset subplots (comp_vs_cont_by_dataset.png) all auto-regenerate after every evaluated run via run_eval.sh (commits 7c0d4bd, 53a4b25, 2524e12). R
+[2026-09-25T21:11:07Z] paulzierep: Triage: Auto-generated plots are now fully implemented — per-run bar charts (per_bins.png), all-runs comparison scatter (comp_vs_cont_all-runs.png), and per-dataset subplots (comp_vs_cont_by_dataset.png) all auto-regenerate after every evaluated run via run_eval.sh (commits 7c0d4bd, 53a4b25, 2524e12
+> build · mimo-v2.6-flash-free
