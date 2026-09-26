@@ -77609,3 +77609,31 @@ Turn complete. Summary:
 - Maintained per-turn logging (`.activity`, `.heartbeat`, `status/agent-activity.log`).
 
 **Remaining:** only the DOI recheck, running unattended; a future turn just confirms the receipt's `version_doi_recheck_http = 200`.
+[0m
+> build · big-pickle
+Checking TASK_COMPLETE, the DOI recheck poller, and issues:
+[0m$ [0mdate -u +%FT%TZ
+ls /vol/data/benchmark/TASK_COMPLETE 2>/dev/null && echo TASK_COMPLETE_EXISTS || echo NO_TASK_COMPLETE
+cat /vol/data/benchmark/.active_run 2>/dev/null || echo ACTIVE_RUN_CLEAR
+echo "=== doi recheck ==="
+pgrep -f doi_recheck >/dev/null && echo POLLER_RUNNING || echo POLLER_EXITED
+python3 -c "import json; d=json.load(open('/vol/data/benchmark/meta/zenodo_benchmark_release_v3.json')); print('doi recheck:', d.get('version_doi_recheck_http'), d.get('version_doi_recheck_utc'))"
+tail -2 /vol/data/benchmark/.activity
+echo "=== issues ==="
+gh issue list -R paulzierep/metagenomic-binning-benchmark --state open --json number,title,updatedAt --jq '.[] | "\(.number) \(.title) \(.updatedAt)"'
+gh issue list -R paulzierep/COMEBin --state open --json number,title,updatedAt 2>&1 | head -2
+touch /vol/data/benchmark/.heartbeat
+2026-09-26T08:04:09Z
+NO_TASK_COMPLETE
+ACTIVE_RUN_CLEAR
+=== doi recheck ===
+POLLER_RUNNING
+doi recheck: None None
+2026-09-26T08:00:26Z zenodo-v3-version-doi-recheck attempt 3 -> HTTP 404 (waiting)
+2026-09-26T08:02:27Z zenodo-v3-version-doi-recheck attempt 4 -> HTTP 404 (waiting)
+=== issues ===
+6 Optimization 2026-09-26T07:56:10Z
+1 Idea inbox: benchmark ideas, COMEBin fixes, dataset requests 2026-09-23T14:53:13Z
+the 'paulzierep/COMEBin' repository has disabled issues
+> build · big-pickle
+~30 s since the last turn ended — poller still on attempts, DOI not yet propagated (published 07:45; v2 flipped ~68 min in → expected ~08:53). No new issues. Verifying Current state vs disk, then giving the poller a bounded wait window:
