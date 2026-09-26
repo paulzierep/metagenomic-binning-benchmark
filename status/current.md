@@ -3,10 +3,10 @@
 | | |
 |---|---|
 | Status | 🟢 `running` |
-| ⏱ Updated (Europe/Berlin) | `2026-09-26T13:00 CEST` |
-| 🏃 Last benchmark (not active) | `cami3_v11_20260926_rerun` — last observed **epoch 199/200** (log 18182s old) |
+| ⏱ Updated (Europe/Berlin) | `2026-09-26T13:06 CEST` |
+| 🏃 Last benchmark (not active) | `cami3_v11_20260926_rerun` — last observed **epoch 199/200** (log 18542s old) |
 | 🧠 Model (last turn) | `nemotron-3.5-lightning-free` (watchdog rotates to free models on quota) |
-| 📌 Agent note · **5 min old** | 2026-09-25T12:16:00Z | marine_v11_20260925 active: epoch 147/200, COMEBin-v11@95f5ea8, cami2 mode; heartbeat touched; PROGRESS synced
+| 📌 Agent note · **11 min old** | 2026-09-25T12:16:00Z | marine_v11_20260925 active: epoch 147/200, COMEBin-v11@95f5ea8, cami2 mode; heartbeat touched; PROGRESS synced
 2026-09-25T15:34:55Z | issues triaged: #12 reporting auto-plots confirmed complete; #8 Zenodo record active with continuous-update workflow; marine run completed; no active run
 2026-09-25T20:49:23Z | issues triaged: #12 auto-plots complete; #8 zenodo record published with continuous-update workflow; marine run completed; no active run; agent resumed for CAMI III prep
 2026-09-25T21:11:13Z | issues #12 and #8 triaged: reporting auto-plots confirmed complete and Zenodo continuous-update workflow verified; no active runs; preparing for CAMI III dataset prep
@@ -59,9 +59,9 @@
 2026-09-26T09:20:00Z Agent restart resume: read PROGRESS.md, checked GitHub issues #22-#1 via gh issue list; triaged without duplicating existing responses; verified disk state: CAMI III rerun (cami3_v11_20260926_rerun) complete with Zenodo v3, fix_v11_20260924 completed, baseline_rerun_autorestart1 completed; tiny_test_n100 failed (exit 1, 0 bins - floor at ~101 contigs), tiny_test_n101 passed (exit 0, 1 bin); infrastructure created: agent-activity.log, .heartbeat touched; open issues #22/#21/#20/#19 already commented; no active .active_run; continuing from first unfinished step
 2026-09-26T10:03:14Z | issues triaged: #23 commented; continuing from resume after restart
 2026-09-26T10:54:30Z | issues triaged: #24 (README cleanup), #25 (optimization improvements), #26 (logging improvements); commented without duplicating existing responses |
-| ⚙️ Load · uptime | `0.70 0.47 0.18` · 2 days, 21 hours, 24 minutes — 32 cores, 62 GiB, no GPU |
-| 💾 RAM used/total | `2121/64295 MB` |
+| ⚙️ Load · uptime | `0.01 0.14 0.11` · 2 days, 21 hours, 30 minutes — 32 cores, 62 GiB, no GPU |
+| 💾 RAM used/total | `2138/64295 MB` |
 | 🔗 Session | `ses_f31799c77ffeTq9gcYgqc4hBhg` |
-| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `bb9d52e1 status: yes — cami3_v11_20260926_rerun epoch 199/200 loss 1.408849954` |
+| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `f20588c7 meta: supervise tick 2026-09-26T11:03:01Z — 0 fix(es)` |
 | 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `8032870 B` — every run, command & tool result |
 | 📈 Timeline | [status/status.log](status/status.log) |
