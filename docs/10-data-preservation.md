@@ -2,9 +2,12 @@
 
 This is the release checklist for newly generated benchmark data (issue #8). It
 keeps the repository small while making a deposition reviewable and
-reproducible. The watchdogs do not upload data automatically; an owner-approved
-Zenodo account/token and a final choice of data license and release contents
-are required for each manual or supervisor-operated deposit.
+reproducible. Uploads are **automatic**: after every successful evaluation,
+`run_eval.sh` calls `scripts/zenodo_update.sh` (best-effort), which packages the
+new data, detects content changes and publishes a new version of the record —
+the first automatic update shipped as version 2.0 (see the "Continuous updates"
+section below). An owner-approved Zenodo token (mode-0600 `~/.zenodo_token`) and
+the chosen license are configured once; the token never leaves the VM.
 
 ## What would be released
 
