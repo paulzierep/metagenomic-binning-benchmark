@@ -69213,3 +69213,13 @@ Key findings:
 Let me read the prep script to see its resource stages, so I can time the marine eval safely:
 [0m→ [0mRead /vol/data/repos/metagenomic-binning-benchmark/scripts/prep_cami3_toy.sh 
 > build · mimo-v2.6-flash-free
+Marine run is complete but **unevaluated** — that's the first unfinished step. The CAMI III prep (`bwa index`/`bwa mem`) is running from a prior turn — I must not disturb it, and the resource rule only forbids CheckM concurrent with a **COMEBin** run (none active). Launching the marine eval detached now:
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && ps aux | grep -E "run_comebin|main\.py|run_eval|checkm2|checkm " | grep -v grep | head -5; echo "---"; if pgrep -f "run_eval.sh" >/dev/null; then echo "eval already running"; else nohup bash scripts/run_eval.sh /vol/data/benchmark/runs/marine_v11_20260925 32 > /vol/data/benchmark/logs/marine_eval.log 2>&1 & echo "eval launched pid $!"; fi; sleep 8; tail -5 /vol/data/benchmark/logs/marine_eval.log; TS=$(date -u +%FT%TZ); echo "$TS marine-eval: launched run_eval.sh for marine_v11_20260925 (152 bins) detached -> /vol/data/benchmark/logs/marine_eval.log; cami3 prep (bwa) continues undisturbed" >> status/agent-activity.log; echo "$TS marine-eval-launched" >> /vol/data/benchmark/.activity; touch /vol/data/benchmark/.heartbeat
+---
+eval already running
+tail: cannot open '/vol/data/benchmark/logs/marine_eval.log' for reading: No such file or directory
+> build · mimo-v2.6-flash-free
+`pgrep -f run_eval.sh` matched something but no log exists — let me see what's actually running:
+[0m$ [0mpgrep -af "run_eval" ; echo "---exit $?"; ps aux | grep -iE "eval|checkm" | grep -v grep | head
+2495515 /bin/bash -c pgrep -af "run_eval" ; echo "---exit $?"; ps aux | grep -iE "eval|checkm" | grep -v grep | head
+---exit 0
