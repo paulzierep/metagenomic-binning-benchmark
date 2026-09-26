@@ -18,6 +18,24 @@ import os
 import sys
 
 
+def _repo_root():
+    """Locate the repository root.
+
+    This helper is also installed as a standalone copy in
+    /vol/data/benchmark/bin/, where `dirname(__file__)/..` is the benchmark data
+    dir rather than the repo, so per_bin_results.csv would be written into a
+    tree that git and the README never see. Validate candidates instead of
+    assuming; BENCH_REPO overrides.
+    """
+    here = os.path.dirname(os.path.abspath(__file__))
+    for cand in (os.environ.get("BENCH_REPO", "").strip(),
+                 os.path.normpath(os.path.join(here, ".."))):
+        if cand and os.path.isfile(os.path.join(cand, "README.md")) \
+                and os.path.isdir(os.path.join(cand, "results")):
+            return cand
+    return "/vol/data/repos/metagenomic-binning-benchmark"
+
+
 def read_checkm2(path):
     """Return {bin_id: dict} from a CheckM2 quality_report.tsv."""
     out = {}
@@ -70,7 +88,7 @@ def main():
         return 1
     for rundir in sys.argv[1:]:
         name = os.path.basename(rundir.rstrip("/"))
-        out_dir = os.path.join(os.path.dirname(__file__), "..", "runs", name)
+        out_dir = os.path.join(_repo_root(), "runs", name)
         out_dir = os.path.normpath(out_dir)
         os.makedirs(out_dir, exist_ok=True)
         mk2 = read_checkm2(os.path.join(rundir, "eval", "checkm2", "quality_report.tsv"))

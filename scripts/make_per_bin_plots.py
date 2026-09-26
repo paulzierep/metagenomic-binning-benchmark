@@ -22,7 +22,26 @@ import os
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-REPO = os.path.normpath(os.path.join(HERE, ".."))
+
+
+def _repo_root():
+    """Locate the repository root.
+
+    This helper is also installed as a standalone copy in
+    /vol/data/benchmark/bin/, where `dirname(__file__)/..` is the benchmark data
+    dir rather than the repo, so figures would be written into a different tree
+    than the one README.md and git track. Validate candidates instead of
+    assuming; BENCH_REPO overrides.
+    """
+    for cand in (os.environ.get("BENCH_REPO", "").strip(),
+                 os.path.normpath(os.path.join(HERE, ".."))):
+        if cand and os.path.isfile(os.path.join(cand, "README.md")) \
+                and os.path.isdir(os.path.join(cand, "results")):
+            return cand
+    return "/vol/data/repos/metagenomic-binning-benchmark"
+
+
+REPO = _repo_root()
 
 
 def load_per_bin(run_dir, name):

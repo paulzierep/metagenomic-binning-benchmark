@@ -120,7 +120,7 @@ Watch progress: `tail -f runs/<run>/comebin_run.log` (epoch bars update in place
 | `/vol/data/envs/checkm2`, `/vol/data/envs/checkm` | evaluation envs (TODO) |
 | `/vol/data/tools/bin/micromamba` | micromamba 2.9.0 |
 | `/vol/data/benchmark/runs/` | raw outputs per run |
-| `/vol/data/benchmark/results/` | parsed tables per run |
+| `results/` in the repo | parsed tables per run (tracked, embedded in README) |
 | `/vol/data/benchmark/logs/` | logs |
 | `/vol/data/benchmark/TASK_COMPLETE` | watchdog sentinel |
 

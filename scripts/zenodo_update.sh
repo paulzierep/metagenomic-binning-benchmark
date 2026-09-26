@@ -29,7 +29,18 @@
 # 22935025), ZENODO_UPDATE=0 disables the script entirely.
 set -euo pipefail
 
-REPO=$(cd "$(dirname "$0")/.." && pwd)
+REPO=${BENCH_REPO:-}
+if [ -z "$REPO" ] || [ ! -f "$REPO/README.md" ]; then
+  # Also installed as a standalone copy in $BENCH/bin/, where
+  # `dirname $0/..` is the benchmark data dir rather than the repo, so the
+  # package would be built from the wrong tree (no docs/, status/, README.md).
+  # Validate candidates instead of assuming.
+  _here=$(cd "$(dirname "$0")" && pwd)
+  for _cand in "$_here/.." /vol/data/repos/metagenomic-binning-benchmark; do
+    if [ -f "$_cand/README.md" ] && [ -d "$_cand/results" ]; then REPO=$(cd "$_cand" && pwd); break; fi
+  done
+fi
+[ -n "$REPO" ] || die "cannot locate repository root (set BENCH_REPO)"
 RUNS_ROOT=${RUNS_ROOT:-/vol/data/benchmark/runs}
 RELEASES=${RELEASES:-/vol/data/benchmark/releases}
 META=${META:-/vol/data/benchmark/meta}

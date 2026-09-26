@@ -35,7 +35,26 @@ import subprocess
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-REPO = os.path.normpath(os.path.join(HERE, ".."))
+
+
+def _repo_root():
+    """Locate the repository root.
+
+    This helper is also installed as a standalone copy in
+    /vol/data/benchmark/bin/, where `dirname(__file__)/..` is the benchmark data
+    dir rather than the repo, so the figure and stats table would be generated
+    into a different tree than the one README.md embeds and git tracks.
+    Validate candidates instead of assuming; BENCH_REPO overrides.
+    """
+    for cand in (os.environ.get("BENCH_REPO", "").strip(),
+                 os.path.normpath(os.path.join(HERE, ".."))):
+        if cand and os.path.isfile(os.path.join(cand, "README.md")) \
+                and os.path.isdir(os.path.join(cand, "results")):
+            return cand
+    return "/vol/data/repos/metagenomic-binning-benchmark"
+
+
+REPO = _repo_root()
 RUNS = os.path.join(REPO, "runs")
 RESULTS = os.path.join(REPO, "results")
 FIGDIR = os.path.join(RESULTS, "figures")
@@ -289,8 +308,16 @@ def main():
     fig.tight_layout(rect=(0, 0, 1, 0.97))
     os.makedirs(os.path.dirname(args.png), exist_ok=True)
     fig.savefig(args.png, dpi=300, bbox_inches="tight")
+    # Deterministic SVG: a fixed hashsalt plus a pinned metadata date keeps the
+    # element ids stable and drops the "now" timestamp, so an unchanged figure
+    # regenerates byte-identically and the automatic post-eval commit only
+    # contains a real change instead of timestamp/id churn.
+    try:
+        matplotlib.rcParams["svg.hashsalt"] = "metagenomic-binning-benchmark"
+    except Exception:
+        pass
     fig.savefig(os.path.splitext(args.png)[0] + ".svg", dpi=300,
-                bbox_inches="tight")
+                bbox_inches="tight", metadata={"Date": None})
     print(f"wrote {args.png}")
 
     table = make_table(ordered_runs, load_aggregates())

@@ -103,36 +103,63 @@ for SAMPLE in $SAMPLES; do
         SHORT_URL=$(sed -n "$((SAMPLE+1))p" "$SHORT_DOWNLOAD_LIST" 2>/dev/null || echo "")
     fi
 
-    echo "Processing CAMI3 sample ${SAMPLE} (short reads)..."
+    # Read long-read URL from download list if available
+    if [ -f "$LONG_DOWNLOAD_LIST" ]; then
+        LONG_URL=$(sed -n "$((SAMPLE+1))p" "$LONG_DOWNLOAD_LIST" 2>/dev/null || echo "")
+    fi
+
+    echo "Processing CAMI3 sample ${SAMPLE} (short+long reads)..."
+
+    # Determine the read candidate file - try short reads first, then long reads
+    READS_CANDIDATE=""
 
     if [ -n "$SHORT_URL" ]; then
-        # Download if needed; the list may contain full paths or just URLs
+        # Local short reads archive (already present or downloaded)
         LOCAL_SHORT="$SRC/cami3_toy_human_gut_short_read_sample_${SAMPLE}.tar.gz"
         if [ ! -f "$LOCAL_SHORT" ]; then
             download_if_missing "$SHORT_URL" "$LOCAL_SHORT"
         fi
-        # Extract reads (this is a tar.gz containing the read files)
-        if [ ! -f "$OUT/bamfiles/sample_${SAMPLE}_bam.bam" ]; then
-            echo "Extracting sample ${SAMPLE} short reads..."
+        # Extract reads if BAM not already built
+        if [ ! -f "$OUT/bamfiles/sample_${SAMPLE}_bam.bam" ] || [ -z "$READS_CANDIDATE" ]; then
             mkdir -p "$OUT/logs/sample_${SAMPLE}"
             tar -xzf "$LOCAL_SHORT" -C "$OUT/logs/sample_${SAMPLE}" 2>/dev/null || true
             # Find the reads file inside - try common patterns
-            READS_CANDIDATE=$(find "$OUT/logs/sample_${SAMPLE}" -name "anonymous_reads.fq*" -o -name "reads*.fq*" | head -1)
-            if [ -z "$READS_CANDIDATE" ]; then
-                READS_CANDIDATE="$OUT/logs/sample_${SAMPLE}/reads"
+            READS_CANDIDATE=$(find "$OUT/logs/sample_${SAMPLE}" -name "anonymous_reads.fq*" -o -name "reads*.fq*" 2>/dev/null | head -1)
+        fi
+    fi
+
+    # If short reads .fq not found, try long reads archive
+    if [ -z "$READS_CANDIDATE" ]; then
+        if [ -n "$LONG_URL" ]; then
+            LOCAL_LONG="$SRC/cami3_toy_human_gut-long_sample_${SAMPLE}.tar.gz"
+            if [ ! -f "$LOCAL_LONG" ]; then
+                download_if_missing "$LONG_URL" "$LOCAL_LONG"
             fi
-            if [ -f "$READS_CANDIDATE" ]; then
-                export MAMBA_ROOT_PREFIX=/vol/data/envs/.mamba
-                "$MM" run -p "$ENV" bwa index "$OUT/contigs.fa" 2>&1 | tail -2
-                "$MM" run -p "$ENV" bash -c "bwa mem -p -t $THREADS '$OUT/contigs.fa' '$READS_CANDIDATE' 2>'$OUT/logs/sample_${SAMPLE}/bwa.log' | samtools view -b -F 4 | samtools sort -@ $THREADS -o '$OUT/bamfiles/sample_${SAMPLE}_bam.bam' -"
-                "$MM" run -p "$ENV" samtools index "$OUT/bamfiles/sample_${SAMPLE}_bam.bam"
-                "$MM" run -p "$ENV" samtools quickcheck "$OUT/bamfiles/sample_${SAMPLE}_bam.bam" && echo "bam OK for sample ${SAMPLE}"
-            else
-                echo "WARNING: could not find reads for sample ${SAMPLE}"
+            if [ -f "$LOCAL_LONG" ]; then
+                mkdir -p "$OUT/logs/sample_${SAMPLE}"
+                tar -xzf "$LOCAL_LONG" -C "$OUT/logs/sample_${SAMPLE}" 2>/dev/null || true
+                # Find anonymous_reads.fq* from long reads archive
+                READS_CANDIDATE=$(find "$OUT/logs/sample_${SAMPLE}" -name "anonymous_reads.fq*" 2>/dev/null | head -1)
             fi
         fi
+    fi
+
+    # If still no candidate, try extracting from local long reads archive
+    if [ -z "$READS_CANDIDATE" ] && [ -f "$SRC/cami3_toy_human_gut-long_sample_${SAMPLE}.tar.gz" ]; then
+        mkdir -p "$OUT/logs/sample_${SAMPLE}"
+        tar -xzf "$SRC/cami3_toy_human_gut-long_sample_${SAMPLE}.tar.gz" -C "$OUT/logs/sample_${SAMPLE}" 2>/dev/null || true
+        READS_CANDIDATE=$(find "$OUT/logs/sample_${SAMPLE}" -name "anonymous_reads.fq*" 2>/dev/null | head -1)
+    fi
+
+    if [ -n "$READS_CANDIDATE" ]; then
+        echo "Using reads: $READS_CANDIDATE"
+        export MAMBA_ROOT_PREFIX=/vol/data/envs/.mamba
+        "$MM" run -p "$ENV" bwa index "$OUT/contigs.fa" 2>&1 | tail -2
+        "$MM" run -p "$ENV" bash -c "bwa mem -p -t $THREADS '$OUT/contigs.fa' '$READS_CANDIDATE' 2>'$OUT/logs/sample_${SAMPLE}/bwa.log' | samtools view -b -F 4 | samtools sort -@ $THREADS -o '$OUT/bamfiles/sample_${SAMPLE}_bam.bam' -"
+        "$MM" run -p "$ENV" samtools index "$OUT/bamfiles/sample_${SAMPLE}_bam.bam"
+        "$MM" run -p "$ENV" samtools quickcheck "$OUT/bamfiles/sample_${SAMPLE}_bam.bam" && echo "bam OK for sample ${SAMPLE}"
     else
-        echo "WARNING: no short-read URL configured for sample ${SAMPLE}; skipping BAM build"
+        echo "WARNING: could not find reads for sample ${SAMPLE}"
     fi
 done
 

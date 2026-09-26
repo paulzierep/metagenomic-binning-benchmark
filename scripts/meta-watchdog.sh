@@ -139,6 +139,71 @@ else
   fi
 fi
 
+# ---- C1b: installed pipeline scripts match repo source ---------------------- #
+# C1 only covers the four cron jobs. The evaluation pipeline is executed from the
+# INSTALLED copies in $BENCH/bin (run_eval.sh calls its helpers via $(dirname $0)),
+# so a helper that exists in the repo but was never deployed silently disables that
+# feature on every future run. Mirror scripts/ -> bin/ and verify byte identity.
+deploy_bad=""
+for src in "$REPO"/scripts/*; do
+  [ -f "$src" ] || continue
+  job=$(basename "$src")
+  case "$job" in __pycache__|*.pyc|*.pyo) continue ;; esac
+  dst="$BENCH/bin/$job"
+  if [ ! -f "$dst" ]; then
+    deploy_bad="$deploy_bad $job(missing)"
+  elif ! cmp -s "$src" "$dst"; then
+    deploy_bad="$deploy_bad $job(stale)"
+  fi
+done
+if [ -n "$deploy_bad" ]; then
+  # Never swap a script out from under a live run: bash reads scripts
+  # incrementally, so replacing one mid-execution can corrupt the run. Defer
+  # the deploy instead; the next tick after the run finishes applies it.
+  deploy_pid=""
+  if [ -f "$BENCH/.active_run" ]; then
+    read -r deploy_pid _ _ _ _ _ _ < "$BENCH/.active_run" || true
+  fi
+  deploy_pstat=$(ps -o stat= -p "${deploy_pid:-0}" 2>/dev/null | tr -d ' ' || true)
+  if [ -n "${deploy_pid:-}" ] && [ "${deploy_pid:-0}" -gt 0 ] 2>/dev/null \
+     && [ -n "$deploy_pstat" ] && [[ "$deploy_pstat" != Z* ]]; then
+    check C1b_deploy ok "deploy deferred: benchmark run pid $deploy_pid is live; pending:$deploy_bad"
+  else
+    for src in "$REPO"/scripts/*; do
+      [ -f "$src" ] || continue
+      job=$(basename "$src")
+      case "$job" in __pycache__|*.pyc|*.pyo) continue ;; esac
+      dst="$BENCH/bin/$job"
+      if [ ! -f "$dst" ] || ! cmp -s "$src" "$dst"; then
+        mkdir -p "$BENCH/bin"
+        cp "$src" "$BENCH/bin/.$job.deploy-new" || continue
+        case "$job" in
+          *.sh) chmod 755 "$BENCH/bin/.$job.deploy-new" ;;
+          *)    chmod 644 "$BENCH/bin/.$job.deploy-new" ;;
+        esac
+        mv "$BENCH/bin/.$job.deploy-new" "$dst" || continue
+      fi
+    done
+    # py helpers are invoked via `python3`, so they need read access but not +x.
+    chmod 755 "$BENCH/bin"/*.sh 2>/dev/null || true
+    deploy_still=""
+    for src in "$REPO"/scripts/*; do
+      [ -f "$src" ] || continue
+      job=$(basename "$src")
+      case "$job" in __pycache__|*.pyc|*.pyo) continue ;; esac
+      cmp -s "$src" "$BENCH/bin/$job" || deploy_still="$deploy_still $job(unfixed)"
+    done
+    if [ -z "$deploy_still" ]; then
+      note_fix "deployed stale/missing pipeline scripts to bin:$(printf '%s' "$deploy_bad" | tr -s ' ')"
+      check C1b_deploy ok "re-deployed:$deploy_bad"
+    else
+      check C1b_deploy broken "deploy failed, still stale:$deploy_still (was:$deploy_bad)"
+    fi
+  fi
+else
+  check C1b_deploy ok "installed pipeline scripts identical to repo source"
+fi
+
 # ---- C2: OpenCode service status + real API health -------------------------- #
 if service_pid=$(service_pid); then
   check C2_service ok "pid $service_pid; service status + /api/info healthy"

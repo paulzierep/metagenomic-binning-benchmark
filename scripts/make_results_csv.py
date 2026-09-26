@@ -15,7 +15,26 @@ name = os.path.basename(run)
 dataset = sys.argv[2] if len(sys.argv) > 2 else ""
 threads = sys.argv[3] if len(sys.argv) > 3 else ""
 meta = os.path.join(run, "run_meta.txt")
-repo = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+
+def _repo_root():
+    """Locate the repository root.
+
+    Also installed as a standalone copy in /vol/data/benchmark/bin/, where
+    `dirname(__file__)/..` is the benchmark data dir rather than the repo, so
+    the aggregate CSV would land outside the repo README/git track. Validate
+    candidates instead of assuming; BENCH_REPO overrides.
+    """
+    here = os.path.dirname(os.path.abspath(__file__))
+    for cand in (os.environ.get("BENCH_REPO", "").strip(),
+                 os.path.normpath(os.path.join(here, ".."))):
+        if cand and os.path.isfile(os.path.join(cand, "README.md")) \
+                and os.path.isdir(os.path.join(cand, "results")):
+            return cand
+    return "/vol/data/repos/metagenomic-binning-benchmark"
+
+
+repo = _repo_root()
 out = os.path.join(repo, "results", f"{name}.csv")
 
 def meta_val(key):

@@ -46,7 +46,7 @@ Internal-only — the public README deliberately excludes these machine paths.
 | `/vol/data/envs/` | micromamba environments (`comebin`, later `checkm2`, `checkm`) |
 | `/vol/data/tools/bin/micromamba` | micromamba 2.9.0 |
 | `/vol/data/benchmark/runs/` | raw outputs, one directory per run |
-| `/vol/data/benchmark/results/` | parsed result tables |
+| `results/` in this repo | parsed result tables (tracked, embedded in README) |
 | `/vol/data/benchmark/logs/` | install/run/watchdog logs |
 | `/vol/data/benchmark/PROGRESS.md` | live resume document for the agent |
 | `/vol/data/benchmark/TASK_COMPLETE` | sentinel — watchdog stops when present |
