@@ -53,8 +53,11 @@ def default_dataset(contigs_path):
         ("BATS_SAMN07137077_METAG", "COMEBin demo (29,434 contigs)"),
         ("comebin_medium", "comebin_medium (3,000 contigs)"),
         ("comebin_small", "comebin_small (300 contigs)"),
-        ("cami2", "CAMI II"),
+        # order matters: "cami_III" contains "cami_II", so check III first.
+        ("cami_III", "CAMI III"),
+        ("cami_II", "CAMI II"),
         ("cami3", "CAMI III"),
+        ("cami2", "CAMI II"),
     ]
     for key, label in known:
         if key in contigs_path:
