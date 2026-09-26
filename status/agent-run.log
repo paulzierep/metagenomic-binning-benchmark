@@ -70495,3 +70495,75 @@ RUNNING
 [2026-09-26 00:56:09] INFO: Concatenating alignments.
 [2026-09-26 00:56:09] INFO: Placing 152 bins into the genome tree with pplacer (be patient).
 2026-09-26T01:04:00Z
+> build · mimo-v2.6-flash-free
+[0m$ [0mcd /vol/data/benchmark/runs && du -csh */comebin_out/comebin_res/comebin_res_bins 2>/dev/null | tail -1; for d in */comebin_out/comebin_res/comebin_res_bins; do printf "%-55s " "$d"; find "$d" -type f -size +0c | wc -l; done; echo "=== key eval outputs only ==="; du -csh */eval/checkm2/quality_report.tsv */eval/checkm/out/storage/bin_stats_ext.tsv 2>/dev/null | tail -1; echo "=== repo mirror comebin_res ==="; du -sh /vol/data/repos/metagenomic-binning-benchmark/runs/*/comebin_res 2>/dev/null; pgrep -f run_eval.sh >/dev/null && echo EVAL_RUNNING || echo EVAL_DONE; date -u +%FT%TZ
+514M	total
+baseline_rerun_autorestart1/comebin_out/comebin_res/comebin_res_bins 0
+fix_v11_20260924/comebin_out/comebin_res/comebin_res_bins 71
+human_v11_20260925/comebin_out/comebin_res/comebin_res_bins 107
+marine_v11_20260925/comebin_out/comebin_res/comebin_res_bins 152
+medium_v11_20260924/comebin_out/comebin_res/comebin_res_bins 16
+small_test_v4/comebin_out/comebin_res/comebin_res_bins  3
+tiny_test_n101/comebin_out/comebin_res/comebin_res_bins 1
+=== key eval outputs only ===
+708K	total
+=== repo mirror comebin_res ===
+16K	/vol/data/repos/metagenomic-binning-benchmark/runs/baseline_rerun/comebin_res
+28K	/vol/data/repos/metagenomic-binning-benchmark/runs/baseline_rerun_autorestart1/comebin_res
+28K	/vol/data/repos/metagenomic-binning-benchmark/runs/baseline_unmodified/comebin_res
+148K	/vol/data/repos/metagenomic-binning-benchmark/runs/fix_v11_20260924/comebin_res
+156K	/vol/data/repos/metagenomic-binning-benchmark/runs/human_v11_20260925/comebin_res
+140K	/vol/data/repos/metagenomic-binning-benchmark/runs/marine_v11_20260925/comebin_res
+156K	/vol/data/repos/metagenomic-binning-benchmark/runs/medium_v11_20260924/comebin_res
+8.0K	/vol/data/repos/metagenomic-binning-benchmark/runs/small_test/comebin_res
+8.0K	/vol/data/repos/metagenomic-binning-benchmark/runs/small_test_v2/comebin_res
+16K	/vol/data/repos/metagenomic-binning-benchmark/runs/small_test_v3/comebin_res
+16K	/vol/data/repos/metagenomic-binning-benchmark/runs/small_test_v4/comebin_res
+16K	/vol/data/repos/metagenomic-binning-benchmark/runs/tiny_test_n100/comebin_res
+16K	/vol/data/repos/metagenomic-binning-benchmark/runs/tiny_test_n101/comebin_res
+EVAL_RUNNING
+2026-09-26T01:04:13Z
+> build · mimo-v2.6-flash-free
+Bins total 514 MB — good size for the bundle. Before writing the update script, let me verify the legacy file-upload endpoint on the draft with a tiny probe (then remove it):
+[0m$ [0mTOK=$(cat /home/ubuntu/.zenodo_token)
+printf 'probe\n' > /tmp/zprobe.txt
+curl -sS -X PUT -H "Authorization: Bearer $TOK" -H "Content-Type: application/octet-stream" --data-binary @/tmp/zprobe.txt "https://zenodo.org/api/deposit/depositions/22969763/files/zprobe.txt" -o /tmp/zup.json -w "PUT http=%{http_code}\n"
+head -c 500 /tmp/zup.json; echo
+curl -sS -H "Authorization: Bearer $TOK" https://zenodo.org/api/deposit/depositions/22969763 -o /tmp/zd.json -w "GET http=%{http_code}\n"
+python3 -c "
+import json; d=json.load(open('/tmp/zd.json'))
+print('files now:', [(f.get('filename') or f.get('key'), f.get('size'), f.get('id')) for f in d.get('files',[])])"
+PUT http=405
+{"message":"The method is not allowed for the requested URL.","status":405}
+
+GET http=200
+files now: [('comebin_small_release_v1.tar.gz', None, '7cece7ec-b064-442b-920e-a50b4f995a23'), ('comebin_small.release.public.json', None, '4ccf9c7b-1cd8-4baf-a0b7-c7a5d556dc2f')]
+> build · mimo-v2.6-flash-free
+405 — that endpoint is gone. The draft has a `links.bucket`; trying the bucket PUT (legacy Zenodo upload path):
+[0m$ [0mTOK=$(cat /home/ubuntu/.zenodo_token)
+curl -sS -X PUT -H "Authorization: Bearer $TOK" --data-binary @/tmp/zprobe.txt "https://zenodo.org/api/files/67202042-162a-4f7d-9b66-58f7a98d569e/zprobe.txt" -o /tmp/zup2.json -w "BUCKET PUT http=%{http_code}\n"
+head -c 600 /tmp/zup2.json; echo
+curl -sS -H "Authorization: Bearer $TOK" https://zenodo.org/api/deposit/depositions/22969763 -o /tmp/zd2.json -w "GET http=%{http_code}\n"
+python3 -c "
+import json; d=json.load(open('/tmp/zd2.json'))
+for f in d.get('files',[]): print(' file:', f.get('filename'), '| id:', f.get('id'), '| size:', f.get('filesize') or f.get('size'), '| checksum:', f.get('checksum'))"
+BUCKET PUT http=415
+{"status": 415, "message": "Invalid 'Content-Type' header. Expected one of: application/octet-stream"}
+GET http=200
+ file: comebin_small_release_v1.tar.gz | id: 7cece7ec-b064-442b-920e-a50b4f995a23 | size: 95216539 | checksum: e37e24b1053e61ca2769f3cc94070e61
+ file: comebin_small.release.public.json | id: 4ccf9c7b-1cd8-4baf-a0b7-c7a5d556dc2f | size: 3650 | checksum: 8cc6b7fb4d77f6f460f44687c163a618
+> build · mimo-v2.6-flash-free
+Close — just needs the right Content-Type:
+[0m$ [0mTOK=$(cat /home/ubuntu/.zenodo_token)
+curl -sS -X PUT -H "Authorization: Bearer $TOK" -H "Content-Type: application/octet-stream" --data-binary @/tmp/zprobe.txt "https://zenodo.org/api/files/67202042-162a-4f7d-9b66-58f7a98d569e/zprobe.txt" -o /tmp/zup3.json -w "BUCKET PUT http=%{http_code}\n"
+head -c 600 /tmp/zup3.json; echo
+curl -sS -H "Authorization: Bearer $TOK" https://zenodo.org/api/deposit/depositions/22969763 -o /tmp/zd3.json
+python3 -c "
+import json; d=json.load(open('/tmp/zd3.json'))
+for f in d.get('files',[]): print(' file:', f.get('filename'), '| id:', f.get('id'), '| size:', f.get('filesize'), '| checksum:', f.get('checksum'))"
+BUCKET PUT http=201
+{"created": "2026-09-26T01:05:51.978211+00:00", "updated": "2026-09-26T01:05:52.088127+00:00", "version_id": "c580a7eb-478c-489e-837c-89b71725c115", "key": "zprobe.txt", "size": 6, "mimetype": "text/plain", "checksum": "md5:1b234f2ba0a6ac3f3a0603acb23a4b57", "is_head": true, "delete_marker": false, "links": {"self": "https://zenodo.org/api/files/67202042-162a-4f7d-9b66-58f7a98d569e/zprobe.txt", "version": "https://zenodo.org/api/files/67202042-162a-4f7d-9b66-58f7a98d569e/zprobe.txt?version_id=c580a7eb-478c-489e-837c-89b71725c115", "uploads": "https://zenodo.org/api/files/67202042-162a-4f7d-9b6
+ file: comebin_small_release_v1.tar.gz | id: 7cece7ec-b064-442b-920e-a50b4f995a23 | size: 95216539 | checksum: e37e24b1053e61ca2769f3cc94070e61
+ file: comebin_small.release.public.json | id: 4ccf9c7b-1cd8-4baf-a0b7-c7a5d556dc2f | size: 3650 | checksum: 8cc6b7fb4d77f6f460f44687c163a618
+ file: zprobe.txt | id: 2ecfba11-d5d0-46ff-876a-9faa3bb394b0 | size: 6 | checksum: 1b234f2ba0a6ac3f3a0603acb23a4b57
+> build · mimo-v2.6-flash-free
