@@ -70974,3 +70974,40 @@ checkm_bins: 152 checkm_compl_mean: 46.36 checkm_cont_mean: 5.09
 done (checkm2 rc=1, checkm rc=0)
 2026-09-26T01:13:41Z
 > build · mimo-v2.6-flash-free
+First eval pass done: **CheckM v1 rc=0 (152 bins, 46.36 % / 5.09 %)**, CheckM2 rc=1 (the disk crash). Re-running `run_eval.sh` now that disk space is fixed — it will redo both cleanly and fire auto-reporting:
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && nohup bash scripts/run_eval.sh /vol/data/benchmark/runs/marine_v11_20260925 32 > /vol/data/benchmark/logs/marine_eval_retry.log 2>&1 & disown; sleep 10; tail -4 /vol/data/benchmark/logs/marine_eval_retry.log; R=/vol/data/repos/metagenomic-binning-benchmark; TS=$(date -u +%FT%TZ); echo "$TS marine-eval-retry: attempt 1 had checkm2_rc=1 (DIAMOND 'No space left on device' on /; freed 12.5GB orphans); CheckM v1 attempt 1 rc=0 (152 bins, 46.36/5.09); relaunched run_eval.sh -> marine_eval_retry.log" >> $R/status/agent-activity.log; echo "$TS marine-eval-retry-launched" >> /vol/data/benchmark/.activity; touch /vol/data/benchmark/.heartbeat
+[09/26/2026 01:14:09 AM] INFO: Custom database path provided for predict run. Checking database at /vol/data/benchmark/checkm2db/CheckM2_database/uniref100.KO.1.dmnd...
+[09/26/2026 01:14:13 AM] INFO: Running quality prediction workflow with 32 threads.
+[09/26/2026 01:14:13 AM] INFO: Calling genes in 152 bins with 32 threads:
+    Finished processing 1 of 152 (0.66%) bins.
+> build · mimo-v2.6-flash-free
+Retry eval is running (CheckM2 gene calling). Meanwhile — investigating the CAMI III prep (script exited; ad-hoc `bwa index` shells remain):
+[0m$ [0mps -eo pid,ppid,lstart,etime,cmd | grep -E "bwa|cami3|prep_" | grep -v grep; echo "=== index files ==="; ls -la --time-style=long-iso /vol/data/datasets/cami_III/toy_human_input_2samples/contigs.fa.* 2>/dev/null; echo "=== parent chain of newest bwa ==="; P=$(pgrep -f "bwa index" | tail -1); ps -o pid,ppid,cmd -p $(ps -o ppid= -p $P 2>/dev/null | tr -d ' ') 2>/dev/null; echo "=== activity log tail ==="; tail -4 /vol/data/repos/metagenomic-binning-benchmark/status/agent-activity.log; date -u +%FT%TZ
+2511592    5551 Sat Sep 26 00:55:10 2026       19:36 /bin/bash -c /vol/data/tools/bin/micromamba run -p /vol/data/envs/comebin bwa index /vol/data/datasets/cami_III/toy_human_input_2samples/contigs.fa 2>&1
+2511593 2511592 Sat Sep 26 00:55:10 2026       19:36 /vol/data/tools/bin/micromamba run -p /vol/data/envs/comebin bwa index /vol/data/datasets/cami_III/toy_human_input_2samples/contigs.fa
+2511595 2511593 Sat Sep 26 00:55:10 2026       19:36 bwa index /vol/data/datasets/cami_III/toy_human_input_2samples/contigs.fa
+2830517    5551 Sat Sep 26 01:12:46 2026       01:59 /bin/bash -c rm -f /vol/data/datasets/cami_III/toy_human_input_2samples/contigs.fa.* && /vol/data/envs/comebin/bin/bwa index /vol/data/datasets/cami_III/toy_human_input_2samples/contigs.fa 2>&1 & BWA_PID=$! echo "Started bwa index PID $BWA_PID" # Wait with longer timeout wait $BWA_PID 2>/dev/null echo "bwa index exited with status $?"
+2830518 2830517 Sat Sep 26 01:12:46 2026       01:59 /bin/bash -c rm -f /vol/data/datasets/cami_III/toy_human_input_2samples/contigs.fa.* && /vol/data/envs/comebin/bin/bwa index /vol/data/datasets/cami_III/toy_human_input_2samples/contigs.fa 2>&1 & BWA_PID=$! echo "Started bwa index PID $BWA_PID" # Wait with longer timeout wait $BWA_PID 2>/dev/null echo "bwa index exited with status $?"
+2830520 2830518 Sat Sep 26 01:12:47 2026       01:58 /vol/data/envs/comebin/bin/bwa index /vol/data/datasets/cami_III/toy_human_input_2samples/contigs.fa
+=== index files ===
+-rw-rw-r-- 1 ubuntu ubuntu      1478 2026-09-26 01:12 /vol/data/datasets/cami_III/toy_human_input_2samples/contigs.fa.amb
+-rw-rw-r-- 1 ubuntu ubuntu    391378 2026-09-26 01:12 /vol/data/datasets/cami_III/toy_human_input_2samples/contigs.fa.ann
+-rw-rw-r-- 1 ubuntu ubuntu 563268660 2026-09-26 01:12 /vol/data/datasets/cami_III/toy_human_input_2samples/contigs.fa.pac
+=== parent chain of newest bwa ===
+=== activity log tail ===
+2026-09-26T00:49:54Z marine-eval: launched run_eval.sh for marine_v11_20260925 (152 bins) detached -> /vol/data/benchmark/logs/marine_eval.log; cami3 prep (bwa) continues undisturbed
+2026-09-26T00:50:42Z marine-eval: launched run_eval.sh detached for marine_v11_20260925 (152 bins, CheckM2+CheckM v1) -> /vol/data/benchmark/logs/marine_eval.log; cami3 prep (bwa) continues in parallel
+2026-09-26T00:55:09Z disk-fix: removed 12.5GB orphaned /tmp intermediates (anonymous_reads/reads_mapping, no open handles, unreferenced by prep_cami3_toy.sh) -> / freed 94%->~30%; CheckM2 DIAMOND had crashed 'No space left on device' during marine eval
+2026-09-26T01:14:16Z marine-eval-retry: attempt 1 had checkm2_rc=1 (DIAMOND 'No space left on device' on /; freed 12.5GB orphans); CheckM v1 attempt 1 rc=0 (152 bins, 46.36/5.09); relaunched run_eval.sh -> marine_eval_retry.log
+2026-09-26T01:14:46Z
+> build · mimo-v2.6-flash-free
+[0m$ [0mps -o pid,ppid,user,lstart,cmd -p 5551 2>/dev/null | head -3; echo "=== siblings under 5551 ==="; ps --ppid 5551 -o pid,lstart,cmd --no-headers | head -8; echo "=== eval retry ==="; tail -c 250 /vol/data/benchmark/logs/marine_eval_retry.log; date -u +%FT%TZ; touch /vol/data/benchmark/.heartbeat
+PID    PPID USER                      STARTED CMD
+   5551       1 ubuntu   Wed Sep 23 13:44:23 2026 /home/ubuntu/.opencode/bin/opencode serve --service
+=== siblings under 5551 ===
+2511592 Sat Sep 26 00:55:10 2026 /bin/bash -c /vol/data/tools/bin/micromamba run -p /vol/data/envs/comebin bwa index /vol/data/datasets/cami_III/toy_human_input_2samples/contigs.fa 2>&1
+2830517 Sat Sep 26 01:12:46 2026 /bin/bash -c rm -f /vol/data/datasets/cami_III/toy_human_input_2samples/contigs.fa.* && /vol/data/envs/comebin/bin/bwa index /vol/data/datasets/cami_III/toy_human_input_2samples/contigs.fa 2>&1 & BWA_PID=$! echo "Started bwa index PID $BWA_PID" # Wait with longer timeout wait $BWA_PID 2>/dev/null echo "bwa index exited with status $?"
+2836071 Sat Sep 26 01:15:39 2026 /bin/bash -c ps -o pid,ppid,user,lstart,cmd -p 5551 2>/dev/null | head -3; echo "=== siblings under 5551 ==="; ps --ppid 5551 -o pid,lstart,cmd --no-headers | head -8; echo "=== eval retry ==="; tail -c 250 /vol/data/benchmark/logs/marine_eval_retry.log; date -u +%FT%TZ; touch /vol/data/benchmark/.heartbeat
+=== eval retry ===
+    Finished processing 147 of 152 (96.71%) bins.    Finished processing 148 of 152 (97.37%) bins.    Finished processing 149 of 152 (98.03%) bins.    Finished processing 150 of 152 (98.68%) bins.    Finished processing 151 of 152 (99.34%) bins.2026-09-26T01:15:39Z
+> build · mimo-v2.6-flash-free
