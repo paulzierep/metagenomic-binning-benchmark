@@ -507,8 +507,10 @@ included; fixes land on branch `comebin-optimizations` in this repo.
       concept DOI already resolves to v3; version DOI showed the known DataCite
       lag (404 at +2 min, v2 took ~68 min → recheck later).
       docs/11 (summary row + two attempt rows) and the README completed-run
-      bullet with the v3 DOI committed + pushed `a057f021`. Outstanding:
-      version-DOI recheck, report on issue #6.*
+      bullet with the v3 DOI committed + pushed `a057f021`; **issue #6 results
+      comment posted 2026-09-26 07:56 UTC** (issuecomment-5844421749).
+      Version-DOI recheck running detached (poller every 2 min, updates the
+      receipt when DataCite propagates).*
 
 - [x] **Issue #12 plots (2026-09-24 ~10:42 UTC)**: `scripts/make_per_bin_plots.py`
       generates per-bin bar charts (`runs/<run>/per_bins.png`, CheckM2 + CheckM v1
