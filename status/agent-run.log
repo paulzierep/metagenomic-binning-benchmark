@@ -74865,3 +74865,24 @@ All training skip-files present. Now checking whether `get_final_result.py` re-r
 [0m→ [0mRead /vol/data/repos/metagenomic-binning-benchmark/scripts/benchmark-watchdog.sh [90m[limit=130, offset=95][0m
 > build · mimo-v2.6-flash-free
 Now I have the full picture. The designed flow: watchdog records terminal failure (evidence preserved in run_meta), clears `.active_run`, no auto-retry — then I launch a **fresh** run dir (the fix wrapper hard-refuses existing dirs). Full retrain is the protocol-compliant, honest-wall-time choice (seed 42 → deterministic). Waiting for the watchdog tick (04:43) to triage:
+[0m$ [0msleep 240; date -u +%FT%TZ; echo "=== active_run ==="; cat /vol/data/benchmark/.active_run 2>/dev/null || echo "CLEARED"; echo "=== watchdog terminal markers ==="; grep -a "watchdog_terminal" /vol/data/benchmark/runs/cami3_v11_20260926/run_meta.txt 2>/dev/null; cat /vol/data/benchmark/runs/cami3_v11_20260926/.watchdog_terminal 2>/dev/null; cat /vol/data/benchmark/.last_benchmark_failure 2>/dev/null; echo "=== watchdog log tail ==="; tail -5 /vol/data/benchmark/logs/benchmark-watchdog.log 2>/dev/null || ls /vol/data/benchmark/logs/ | grep -i watchdog; touch /vol/data/benchmark/.heartbeat
+2026-09-26T04:46:36Z
+=== active_run ===
+CLEARED
+=== watchdog terminal markers ===
+watchdog_terminal: 2026-09-26T04:40:01+00:00 run_meta exit_code=1
+2026-09-26T04:40:01+00:00 run_meta exit_code=1
+2026-09-26T04:40:01+00:00	/vol/data/benchmark/runs/cami3_v11_20260926	run_meta exit_code=1
+=== watchdog log tail ===
+2026-09-24T00:50:01+00:00 [bm-watchdog] pid 267462 is alive but is not a registered COMEBin runner; refusing kill/restart: bash /vol/data/benchmark/.runner-snapshots/baseline_rerun_1790209801802838194.sh /vol/data/benchmark/runs/baseline_rerun_autorestart1 
+2026-09-24T00:55:01+00:00 [bm-watchdog] pid 267462 is alive but is not a registered COMEBin runner; refusing kill/restart: bash /vol/data/benchmark/.runner-snapshots/baseline_rerun_1790209801802838194.sh /vol/data/benchmark/runs/baseline_rerun_autorestart1 
+2026-09-24T00:55:38+00:00 [bm-watchdog] pid 267462 is alive but is not a registered COMEBin runner; refusing kill/restart: bash /vol/data/benchmark/.runner-snapshots/baseline_rerun_1790209801802838194.sh /vol/data/benchmark/runs/baseline_rerun_autorestart1 
+2026-09-25T01:45:01+00:00 [bm-watchdog] tiny_test_n100 terminal failure: run_meta exit_code=1 — active-run cleared; no automatic retry
+2026-09-26T04:40:01+00:00 [bm-watchdog] cami3_v11_20260926 terminal failure: run_meta exit_code=1 — active-run cleared; no automatic retry
+> build · mimo-v2.6-flash-free
+Watchdog triaged cleanly at 04:40:01 — `.active_run` cleared, terminal markers written, no auto-retry. Preflight for the fresh retry run (source tree clean? new dir absent? orphaned `/tmp` garbage check):
+[0m$ [0m{ echo "== COMEBin-v11 dirty =="; git -C /vol/data/repos/COMEBin-v11 status --porcelain --untracked-files=no; git -C /vol/data/repos/COMEBin-v11 rev-parse --short HEAD; echo "== new rundir absent =="; ls -d /vol/data/benchmark/runs/cami3_v11_20260926_rerun 2>&1; echo "== no active benchmark procs =="; pgrep -af "run_comebin|main.py" | grep -v grep; echo "== disk =="; df -h / /vol/data | tail -2; echo "== orphaned /tmp uuid files not open =="; n=0; s=0; for f in /tmp/[0-9a-f]*; do [ -f "$f" ] || continue; o=0; for fd in /proc/[0-9]*/fd/*; do [ "$(readlink "$fd" 2>/dev/null)" = "$f" ] && { o=1; break; }; done; if [ "$o" = 0 ]; then n=$((n+1)); s=$((s+$(stat -c %s "$f"))); fi; done; echo "unopened_uuid_files=$n bytes=$s"; } > /vol/data/tmp_preflight.txt 2>&1; echo rc=$? >> /vol/data/tmp_preflight.txt; touch /vol/data/benchmark/.heartbeat; date -u +%FT%TZ
+2026-09-26T04:47:36Z
+> build · mimo-v2.6-flash-free
+[0m→ [0mRead /vol/data/tmp_preflight.txt 
+> build · mimo-v2.6-flash-free
