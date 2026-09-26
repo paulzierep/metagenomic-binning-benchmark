@@ -72042,3 +72042,387 @@ To https://github.com/paulzierep/metagenomic-binning-benchmark
    3328a96..677073f  main -> main
 > build · muse-spark-1.3-contributor-free
 Pushed (`677073f`). Final DOI check:
+[0m$ [0msleep 60; curl -sS -o /dev/null -L -w "version doi -> %{http_code}\n" https://doi.org/10.5281/zenodo.22969763; date -u +%FT%TZ; touch /vol/data/benchmark/.heartbeat
+version doi -> 404
+2026-09-26T01:48:20Z
+> build · muse-spark-1.3-contributor-free
+Done for this turn. The version DOI is still propagating (documented in the receipt with a re-check note — v1 had the same lag).
+
+**Completed this turn:**
+- **Marine eval finished**: CheckM2 rc 0/356 s, CheckM v1 rc 0/998 s — 152 bins, **CheckM2 50.60/4.10 (HQ 35/MQ 60), CheckM v1 46.36/5.09 (HQ 37/MQ 60)**, best dataset so far. (Attempt 1's CheckM2 crashed on a full `/` — 12.5 GB orphaned `/tmp` files removed first.)
+- **#12 delivered**: `scripts/make_combined_bar_plot.py` (FAIRyMAGs-style 2×3, bars labelled run·commit·branch), wired into `run_eval.sh`; README shows figure + stats table. Stated the "3 main datasets = demo/human/marine" interpretation in the reply for owner correction.
+- **#8 delivered**: `scripts/zenodo_update.sh` (package→manifest→change-hash→new-version→verify), wired into `run_eval.sh`; **v2.0 auto-published** as record 22969763 (168 MB, 7 runs/410 bins, md5-verified, receipt + marker on disk). Fixed async-202 publish handling in the script.
+- **Docs**: marine rows in docs/11 (incl. dup-human-row fix), README marine bullet + Next, docs/10 workflow + v2 status, PROGRESS bogus numbers corrected + delivery entries.
+- **Pushed** `3328a96` + `677073f` under lock (`prep_cami3_toy.sh` left uncommitted — sibling session's WIP); delivery comments on #18/#12/#8.
+
+**Watch items**: version DOI `10.5281/zenodo.22969763` still 404 — re-verify next turn; CAMI III prep is owned by a sibling session (prep script exited, two `bwa index` retries running under `opencode serve`) — left untouched.
+[0m
+> build · big-pickle
+[0m$ [0mls /vol/data/benchmark/TASK_COMPLETE 2>/dev/null && echo TASK_COMPLETE_EXISTS || echo NO_TASK_COMPLETE; cat /vol/data/benchmark/.active_run 2>/dev/null; echo "---doi---"; curl -sS -o /dev/null -L -w "version2 doi -> %{http_code}\n" https://doi.org/10.5281/zenodo.22969763; echo "---heartbeat---"; touch /vol/data/benchmark/.heartbeat; date -u +%FT%TZ
+NO_TASK_COMPLETE
+---doi---
+version2 doi -> 404
+---heartbeat---
+2026-09-26T01:49:02Z
+[0m$ [0mgh issue list -R paulzierep/metagenomic-binning-benchmark --state open --json number,title,updatedAt 2>&1; echo "=== COMEBin ==="; gh issue list -R paulzierep/COMEBin --state open --json number,title,updatedAt 2>&1
+[{"number":12,"title":"Improve reporting","updatedAt":"2026-09-26T01:46:41Z"},{"number":8,"title":"Add benchmark data to zenodo","updatedAt":"2026-09-26T01:46:47Z"},{"number":6,"title":"Optimization","updatedAt":"2026-09-23T20:56:21Z"},{"number":1,"title":"Idea inbox: benchmark ideas, COMEBin fixes, dataset requests","updatedAt":"2026-09-23T14:53:13Z"}]
+=== COMEBin ===
+the 'paulzierep/COMEBin' repository has disabled issues
+> build · big-pickle
+No new issue updates (both 01:46 timestamps are my delivery comments). DOI still propagating (concept DOI works). Checking CAMI III prep state — the last unfinished item:
+[0m$ [0mgrep -n "CAMI III\|cami_III\|prep_cami3" /vol/data/benchmark/PROGRESS.md | tail -20
+103:| Datasets | COMEBin demo data (first), then CAMI II challenge, then CAMI III challenge |
+118:| `/vol/data/datasets/cami_II/`, `cami_III/` | CAMI datasets (TODO) |
+394:      CAMI III (disk budget ≤ 30 GB, 351 GB free).
+426:- [x] **CAMI II marine sample 0 benchmark run → human host-associated sample → CAMI III**
+432:    epochs >99% Top-1. Evaluation via run_eval.sh → report + docs/11 row → CAMI III
+435:- [ ] **CAMI III toy human gut: prep script created** (scripts/prep_cami3_toy.sh);
+437:  scripts/prep_cami3_toy.sh. **Next: download CAMI III toy dataset from cami-challenge.org,
+438:  place at /vol/data/datasets/cami_III/, run prep script to build COMEBin input, then start
+[0m$ [0mecho "=== prep processes ==="; ps -eo pid,ppid,lstart,etime,cmd | grep -E "prep_cami3|bwa|samtools|micromamba run.*bwa" | grep -v grep | head -10; echo "=== toy_human_input_2samples ==="; ls -la --time-style=long-iso /vol/data/datasets/cami_III/toy_human_input_2samples/ 2>/dev/null; echo "=== index files ==="; ls -la --time-style=long-iso /vol/data/datasets/cami_III/toy_human_input_2samples/contigs.fa.* 2>/dev/null; echo "=== bamfiles ==="; ls -la --time-style=long-iso /vol/data/datasets/cami_III/toy_human_input_2samples/bamfiles/ 2>/dev/null | head; touch /vol/data/benchmark/.heartbeat; date -u +%FT%TZ
+=== prep processes ===
+3084029    5551 Sat Sep 26 01:33:24 2026       15:42 /bin/bash -c rm -f /vol/data/datasets/cami_III/toy_human_input_2samples/contigs.fa.*; /vol/data/tools/bin/micromamba run -p /vol/data/envs/comebin bwa index /vol/data/datasets/cami_III/toy_human_input_2samples/contigs.fa 2>&1
+3084042 3084029 Sat Sep 26 01:33:24 2026       15:42 /vol/data/tools/bin/micromamba run -p /vol/data/envs/comebin bwa index /vol/data/datasets/cami_III/toy_human_input_2samples/contigs.fa
+3084059 3084042 Sat Sep 26 01:33:24 2026       15:42 bwa index /vol/data/datasets/cami_III/toy_human_input_2samples/contigs.fa
+=== toy_human_input_2samples ===
+total 2494604
+drwxrwxr-x 4 ubuntu ubuntu       4096 2026-09-26 01:47 .
+drwxrwxr-x 3 ubuntu ubuntu       4096 2026-09-25 23:21 ..
+drwxrwxr-x 2 ubuntu ubuntu       4096 2026-09-25 21:54 bamfiles
+-rw-rw-r-- 1 ubuntu ubuntu     294921 2026-09-26 01:19 contigs.bed
+-rw-rw-r-- 1 ubuntu ubuntu 1145571604 2026-09-26 01:19 contigs.fa
+-rw-rw-r-- 1 ubuntu ubuntu       1478 2026-09-26 01:47 contigs.fa.amb
+-rw-rw-r-- 1 ubuntu ubuntu     391378 2026-09-26 01:47 contigs.fa.ann
+-rw-rw-r-- 1 ubuntu ubuntu 1126537404 2026-09-26 01:47 contigs.fa.bwt
+-rw-rw-r-- 1 ubuntu ubuntu  281634331 2026-09-26 01:47 contigs.fa.pac
+-rw-rw-r-- 1 ubuntu ubuntu        373 2026-09-25 22:46 input_meta.txt
+drwxrwxr-x 4 ubuntu ubuntu       4096 2026-09-25 22:46 logs
+=== index files ===
+-rw-rw-r-- 1 ubuntu ubuntu       1478 2026-09-26 01:47 /vol/data/datasets/cami_III/toy_human_input_2samples/contigs.fa.amb
+-rw-rw-r-- 1 ubuntu ubuntu     391378 2026-09-26 01:47 /vol/data/datasets/cami_III/toy_human_input_2samples/contigs.fa.ann
+-rw-rw-r-- 1 ubuntu ubuntu 1126537404 2026-09-26 01:47 /vol/data/datasets/cami_III/toy_human_input_2samples/contigs.fa.bwt
+-rw-rw-r-- 1 ubuntu ubuntu  281634331 2026-09-26 01:47 /vol/data/datasets/cami_III/toy_human_input_2samples/contigs.fa.pac
+=== bamfiles ===
+total 8
+drwxrwxr-x 2 ubuntu ubuntu 4096 2026-09-25 21:54 .
+drwxrwxr-x 4 ubuntu ubuntu 4096 2026-09-26 01:47 ..
+2026-09-26T01:49:06Z
+> build · big-pickle
+No new issue activity. CAMI III prep is still owned by a sibling session — `bwa index` running (15+ min, `.bwt` written 01:47, `.sa` pending, `bamfiles/` still empty). I'll sync the stale `/vol/data/benchmark/PROGRESS.md` and inspect the prep/run setup so I'm ready to launch the CAMI III benchmark once prep completes:
+[0m$ [0msed -n '1,80p' /vol/data/repos/metagenomic-binning-benchmark/scripts/prep_cami3_toy.sh
+#!/usr/bin/env bash
+# prep_cami3_toy.sh — build the COMEBin input for the CAMI III toy
+# human gut benchmark (2 samples, short+long reads).
+#
+# Source: cami-challenge.org CAMI3 toy human gut dataset.
+#   20 samples (toy longitudinal human gut), short + long reads.
+#   Per-sample ≈ 8.6 GB (short+bread); two samples ≈ 17 GB within 50 GB budget.
+#
+# Strategy (real-data method consistent with comebin_small/medium/marine):
+#   - contigs: gsa_pooled.fasta.gz subset to the TOP $N contigs by length.
+#     N defaults to 5000 ≈ 1/6 of 29,434 demo contigs → expected wall time
+#     ≈ 1/6 of the 6.9 h large run (≈ 1 h). Contig N50 ≈ 150kbp; ≥2000 bp
+#     subset is COMEBin-feasible.
+#   - coverage BAM: bwa mem -p (interleaved short+long reads) over ALL reads.
+#     Reads from unkept contigs produce no alignment; S0* names kept.
+#   - ground truth: gold-standard pooled assembly + per-sample gsa/gsa_mapping
+#
+# Usage: bash scripts/prep_cami3_toy.sh [N_contigs=5000] [samples="0 1"]
+set -euo pipefail
+
+MM=/vol/data/tools/bin/micromamba
+ENV=/vol/data/envs/comebin
+SRC=${C3IO:-/vol/data/datasets/cami_III}
+SHORT_DOWNLOAD_LIST="${SRC}/short_download.list"
+LONG_DOWNLOAD_LIST="${SRC}/long_download.list"
+GSA_POOLED="${SRC}/gsa_pooled.fasta.gz"
+OUT=${OUT:-/vol/data/datasets/cami_III/toy_human_input_2samples}
+N=${1:-5000}
+SAMPLES=${2:-"0 1"}
+THREADS=${THREADS:-32}
+
+mkdir -p "$OUT/bamfiles" "$OUT/logs"
+
+# ---------------------------------------------------------------------------
+# Helper: download a file if not present, reporting progress
+# ---------------------------------------------------------------------------
+download_if_missing() {
+  local url="$1" dest="$2"
+  if [ ! -f "$dest" ]; then
+    echo "Downloading $(basename "$dest")... this may take a while."
+    wget -q --show-progress -O "$dest" "$url"
+  else
+    echo "Already have $(basename "$dest"))."
+  fi
+}
+
+# ---------------------------------------------------------------------------
+# 1. Ensure source files exist (download if needed)
+# ---------------------------------------------------------------------------
+if [ ! -d "$SRC" ]; then
+  echo "ERROR: CAMI III source directory not found at $SRC"
+  echo "Download the CAMI III toy dataset from https://cami-challenge.org/datasets/"
+  echo "and place it at $SRC, or set C3IO to the path."
+  exit 1
+fi
+
+if [ ! -f "$GSA_POOLED" ]; then
+  echo "WARNING: gsa_pooled.fasta.gz not found in $SRC"
+  echo "Contig subsetting may fail without the pooled assembly."
+fi
+
+echo "== CAMI III toy human gut input: top $N contigs, samples $SAMPLES =="
+
+# ---------------------------------------------------------------------------
+# 2. Subset contigs by length (top N longest from gsa_pooled.fasta.gz)
+# ---------------------------------------------------------------------------
+if [ -f "$GSA_POOLED" ]; then
+    export MAMBA_ROOT_PREFIX=/vol/data/envs/.mamba
+    "$MM" run -p "$ENV" python - "$GSA_POOLED" "$OUT/contigs.fa" "$N" "$OUT/contigs.bed" <<'PY'
+import gzip, sys
+from Bio import SeqIO
+gsa, out, n, bed = sys.argv[1], sys.argv[2], int(sys.argv[3]), sys.argv[4]
+op = gzip.open if gsa.endswith(".gz") else open
+recs = sorted(SeqIO.parse(op(gsa, "rt"), "fasta"), key=lambda r: len(r), reverse=True)[:n]
+with open(out, "w") as fh:
+    SeqIO.write(recs, fh, "fasta")
+with open(bed, "w") as fh:
+    for r in recs:
+        fh.write(f"{r.id}\t0\t{len(r)}\n")
+print(f"kept {len(recs)} contigs, {sum(len(r) for r in recs):,} bp, "
+[0m$ [0mcp /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md /vol/data/benchmark/PROGRESS.md && echo synced; R=/vol/data/repos/metagenomic-binning-benchmark; TS=$(date -u +%FT%TZ); echo "$TS sync: /vol/data/benchmark/PROGRESS.md <- repo main (677073f)" >> $R/status/agent-activity.log; echo "$TS progress-synced" >> /vol/data/benchmark/.activity; touch /vol/data/benchmark/.heartbeat
+synced
+> build · big-pickle
+[0m$ [0msed -n '80,200p' /vol/data/repos/metagenomic-binning-benchmark/scripts/prep_cami3_toy.sh
+print(f"kept {len(recs)} contigs, {sum(len(r) for r in recs):,} bp, "
+      f"min {min(len(r) for r in recs):,} max {max(len(r) for r in recs):,}")
+PY
+    NN=$(grep -c '^>' "$OUT/contigs.fa")
+    echo "contigs kept: $NN"
+    [ "$NN" -gt 0 ] || { echo "ERROR: empty contig subset"; exit 1; }
+else
+    echo "WARNING: skipping contig subset — no gsa_pooled.fasta.gz available"
+    # fallback: use all contigs from the first available source
+    NN=0
+fi
+
+# ---------------------------------------------------------------------------
+# 3. For each sample: build coverage BAM with bwa mem
+# ---------------------------------------------------------------------------
+for SAMPLE in $SAMPLES; do
+    SAMPLER=$(printf "%02d" "$SAMPLE")
+    SHORT_URL=""
+    LONG_URL=""
+    READS_FILE=""
+
+    # Read short-read URL from download list if available
+    if [ -f "$SHORT_DOWNLOAD_LIST" ]; then
+        SHORT_URL=$(sed -n "$((SAMPLE+1))p" "$SHORT_DOWNLOAD_LIST" 2>/dev/null || echo "")
+    fi
+
+    # Read long-read URL from download list if available
+    if [ -f "$LONG_DOWNLOAD_LIST" ]; then
+        LONG_URL=$(sed -n "$((SAMPLE+1))p" "$LONG_DOWNLOAD_LIST" 2>/dev/null || echo "")
+    fi
+
+    echo "Processing CAMI3 sample ${SAMPLE} (short+long reads)..."
+
+    # Determine the read candidate file - try short reads first, then long reads
+    READS_CANDIDATE=""
+
+    if [ -n "$SHORT_URL" ]; then
+        # Local short reads archive (already present or downloaded)
+        LOCAL_SHORT="$SRC/cami3_toy_human_gut_short_read_sample_${SAMPLE}.tar.gz"
+        if [ ! -f "$LOCAL_SHORT" ]; then
+            download_if_missing "$SHORT_URL" "$LOCAL_SHORT"
+        fi
+        # Extract reads if BAM not already built
+        if [ ! -f "$OUT/bamfiles/sample_${SAMPLE}_bam.bam" ] || [ -z "$READS_CANDIDATE" ]; then
+            mkdir -p "$OUT/logs/sample_${SAMPLE}"
+            tar -xzf "$LOCAL_SHORT" -C "$OUT/logs/sample_${SAMPLE}" 2>/dev/null || true
+            # Find the reads file inside - try common patterns
+            READS_CANDIDATE=$(find "$OUT/logs/sample_${SAMPLE}" -name "anonymous_reads.fq*" -o -name "reads*.fq*" 2>/dev/null | head -1)
+        fi
+    fi
+
+    # If short reads .fq not found, try long reads archive
+    if [ -z "$READS_CANDIDATE" ]; then
+        if [ -n "$LONG_URL" ]; then
+            LOCAL_LONG="$SRC/cami3_toy_human_gut-long_sample_${SAMPLE}.tar.gz"
+            if [ ! -f "$LOCAL_LONG" ]; then
+                download_if_missing "$LONG_URL" "$LOCAL_LONG"
+            fi
+            if [ -f "$LOCAL_LONG" ]; then
+                mkdir -p "$OUT/logs/sample_${SAMPLE}"
+                tar -xzf "$LOCAL_LONG" -C "$OUT/logs/sample_${SAMPLE}" 2>/dev/null || true
+                # Find anonymous_reads.fq* from long reads archive
+                READS_CANDIDATE=$(find "$OUT/logs/sample_${SAMPLE}" -name "anonymous_reads.fq*" 2>/dev/null | head -1)
+            fi
+        fi
+    fi
+
+    # If still no candidate, try extracting from local long reads archive
+    if [ -z "$READS_CANDIDATE" ] && [ -f "$SRC/cami3_toy_human_gut-long_sample_${SAMPLE}.tar.gz" ]; then
+        mkdir -p "$OUT/logs/sample_${SAMPLE}"
+        tar -xzf "$SRC/cami3_toy_human_gut-long_sample_${SAMPLE}.tar.gz" -C "$OUT/logs/sample_${SAMPLE}" 2>/dev/null || true
+        READS_CANDIDATE=$(find "$OUT/logs/sample_${SAMPLE}" -name "anonymous_reads.fq*" 2>/dev/null | head -1)
+    fi
+
+    if [ -n "$READS_CANDIDATE" ]; then
+        echo "Using reads: $READS_CANDIDATE"
+        export MAMBA_ROOT_PREFIX=/vol/data/envs/.mamba
+        "$MM" run -p "$ENV" bwa index "$OUT/contigs.fa" 2>&1 | tail -2
+        "$MM" run -p "$ENV" bash -c "bwa mem -p -t $THREADS '$OUT/contigs.fa' '$READS_CANDIDATE' 2>'$OUT/logs/sample_${SAMPLE}/bwa.log' | samtools view -b -F 4 | samtools sort -@ $THREADS -o '$OUT/bamfiles/sample_${SAMPLE}_bam.bam' -"
+        "$MM" run -p "$ENV" samtools index "$OUT/bamfiles/sample_${SAMPLE}_bam.bam"
+        "$MM" run -p "$ENV" samtools quickcheck "$OUT/bamfiles/sample_${SAMPLE}_bam.bam" && echo "bam OK for sample ${SAMPLE}"
+    else
+        echo "WARNING: could not find reads for sample ${SAMPLE}"
+    fi
+done
+
+# ---------------------------------------------------------------------------
+# 4. Create input metadata
+# ---------------------------------------------------------------------------
+{
+  echo "cami3_toy_human_gut_input (2 samples, N=$N contigs):"
+  echo "  source:        $SRC (CAMI III toy human gut from cami-challenge.org)"
+  echo "  contigs:       $OUT/contigs.fa ($NN longest of pooled GSA contigs)"
+  echo "  samples:       $SAMPLES"
+  echo "  threads:       $THREADS"
+  [ -f "$GSA_POOLED" ] && echo "  gsa_pooled:    $GSA_POOLED"
+} > "$OUT/input_meta.txt"
+
+echo "== Done. Input at $OUT =="
+echo "Next: run COMEBin with MODE=cami3, seed 42, 32 threads:"
+echo "  bash scripts/run_comebin_fix.sh -m cami3 -s 42 -t 32 -d $OUT"
+> build · big-pickle
+[0m$ [0mgrep -n "MODE\|cami" /vol/data/repos/metagenomic-binning-benchmark/scripts/run_comebin_fix.sh | head -20; echo "=== cami_III dir ==="; ls -la --time-style=long-iso /vol/data/datasets/cami_III/ 2>/dev/null; echo "=== bam dir + log dirs ==="; for s in 0 1; do echo "-- sample_$s:"; ls /vol/data/datasets/cami_III/toy_human_input_2samples/logs/sample_$s/ 2>/dev/null | head -8; done; touch /vol/data/benchmark/.heartbeat
+13:MODE=${MODE:-fix}
+73:  "$RUNDIR/comebin_run.log" "$RUNDIR" "$(date +%s)" "$MODE" "$SRC" "$CONTIGS" "$BAMDIR" > "$ACTIVE.tmp.$$"
+=== cami_III dir ===
+total 1550864
+drwxrwxr-x  3 ubuntu ubuntu       4096 2026-09-25 23:21 .
+drwxrwxr-x 10 ubuntu ubuntu       4096 2026-09-25 21:54 ..
+-rw-rw-r--  1 ubuntu ubuntu       7577 2026-09-25 22:03 CAMI3_toy_dataset_download.list
+-rw-rw-r--  1 ubuntu ubuntu       8007 2026-09-25 22:03 CAMI3_toy_dataset_long_download.list
+-rw-rw-r--  1 ubuntu ubuntu   80282092 2026-09-25 22:49 cami3_toy_human_gut-long_sample_0.tar.gz
+-rw-rw-r--  1 ubuntu ubuntu   87361472 2026-09-25 22:49 cami3_toy_human_gut-long_sample_1.tar.gz
+-rw-rw-r--  1 ubuntu ubuntu   80336740 2026-09-25 22:49 cami3_toy_human_gut_short_read_sample_0.tar.gz
+-rw-rw-r--  1 ubuntu ubuntu   84081664 2026-09-25 22:49 cami3_toy_human_gut_short_read_sample_1.tar.gz
+-rw-rw-r--  1 ubuntu ubuntu 1255960810 2026-03-04 15:36 gsa_pooled.fasta.gz
+-rw-rw-r--  1 ubuntu ubuntu       7440 2026-09-25 22:24 long_download.list
+-rw-rw-r--  1 ubuntu ubuntu       7040 2026-09-25 22:24 short_download.list
+drwxrwxr-x  4 ubuntu ubuntu       4096 2026-09-26 01:49 toy_human_input_2samples
+=== bam dir + log dirs ===
+-- sample_0:
+sample_0_reads
+-- sample_1:
+sample_1_reads
+> build · big-pickle
+[0m$ [0msed -n '1,60p' /vol/data/repos/metagenomic-binning-benchmark/scripts/run_comebin_fix.sh
+#!/usr/bin/env bash
+# run_comebin_fix.sh — run a FIXED COMEBin source tree on the demo dataset and
+# record the run exactly like the baseline. The default is the current v1.1.0
+# optimization worktree; override with SRC_COMEBIN=/path/to/repo.
+set -euo pipefail
+
+MM=/vol/data/tools/bin/micromamba
+ENV=/vol/data/envs/comebin
+SRC=${SRC_COMEBIN:-/vol/data/repos/COMEBin-v11}
+DATA=${DATA:-/vol/data/datasets/comebin_test_data}
+CONTIGS=${CONTIGS:-"$DATA/BATS_SAMN07137077_METAG.scaffolds.min500.fasta.f1k.fasta"}
+BAMDIR=${BAMDIR:-"$DATA/bamfiles"}
+MODE=${MODE:-fix}
+[ -f "$CONTIGS" ] || { echo "ERROR: contigs file not found: $CONTIGS"; exit 1; }
+[ -d "$BAMDIR" ] || { echo "ERROR: bamdir not found: $BAMDIR"; exit 1; }
+RUNDIR=$(realpath -m "${1:-/vol/data/benchmark/runs/fix_v11}")
+THREADS=${THREADS:-32}
+SEED=${SEED:-}
+START_LOCK=/tmp/benchmark-start.lock
+ACTIVE=/vol/data/benchmark/.active_run
+[ -f "$SRC/COMEBin/run_comebin.sh" ] || { echo "ERROR: invalid SRC_COMEBIN repo root: $SRC"; exit 1; }
+
+exec 9>"$START_LOCK"
+flock -n 9 || { echo "ERROR: another benchmark launch holds $START_LOCK"; exit 1; }
+if [ -f "$ACTIVE" ] && [ "${BENCHMARK_WATCHDOG_REPLACE:-0}" != "1" ]; then
+  read -r active_pid active_pgid active_log active_dir active_start active_mode active_src < "$ACTIVE" || true
+  active_state=$(ps -o stat= -p "${active_pid:-0}" 2>/dev/null | tr -d ' ' || true)
+  if [ -n "${active_pid:-}" ] && kill -0 "$active_pid" 2>/dev/null && [[ "$active_state" != Z* ]]; then
+    echo "ERROR: benchmark already active: pid=$active_pid dir=$active_dir mode=${active_mode:-baseline}"
+    exit 1
+  fi
+  old_rc=$(grep -m1 '^exit_code:' "${active_dir:-/nonexistent}/run_meta.txt" 2>/dev/null | awk '{print $2}' || true)
+  [ "${old_rc:-}" = "0" ] || { echo "ERROR: stale failed run requires benchmark-watchdog triage: $active_dir"; exit 1; }
+  rm -f "$ACTIVE"
+fi
+if [ -f "$RUNDIR/run_meta.txt" ] || [ -d "$RUNDIR/comebin_out" ]; then
+  echo "ERROR: refusing to overwrite existing run directory: $RUNDIR"
+  exit 1
+fi
+
+mkdir -p "$RUNDIR/logs"
+COMMIT=$(git -C "$SRC" rev-parse HEAD)
+DIRTY=$(git -C "$SRC" status --porcelain --untracked-files=no | wc -l)
+BRANCH=$(git -C "$SRC" branch --show-current)
+echo "source: $SRC (branch $BRANCH) commit: $COMMIT (dirty files: $DIRTY)"
+[ "$DIRTY" -eq 0 ] || { echo "REFUSING: source tree has uncommitted changes; commit them first"; exit 1; }
+COMEBIN_ARGS=(-a "$CONTIGS" -p "$BAMDIR" -o "$RUNDIR/comebin_out" -n 6 -t "$THREADS")
+if grep -q -- '-d STR.*device' "$SRC/COMEBin/run_comebin.sh"; then
+  COMEBIN_ARGS+=(-d cpu)
+fi
+if [ -n "$SEED" ] && grep -q -- '-s INT.*seed' "$SRC/COMEBin/run_comebin.sh"; then
+  COMEBIN_ARGS+=(-s "$SEED")
+fi
+CMD_TEXT=$(printf '%q ' "$MM" run -p "$ENV" bash run_comebin.sh "${COMEBIN_ARGS[@]}")
+{
+  echo "run:        $RUNDIR"
+  echo "source:     $SRC (branch $BRANCH)"
+  echo "date:       $(date -Is)"
+  echo "commit:     $COMMIT"
+  echo "contigs:    $CONTIGS"
+> build · big-pickle
+Prep script's own hint (`-m cami3`) doesn't match `run_comebin_fix.sh`'s env-var interface — launch will use `CONTIGS/BAMDIR/MODE=cami3` env vars. The prep is still mid-`bwa index` (no `.sa` yet, `bamfiles/` empty). While waiting on the sibling session, doing non-intrusive checks:
+[0m$ [0mecho "=== disk ==="; df -h / /tmp /vol/data | head -4; echo "=== zenodo v2 via API ==="; curl -sS "https://zenodo.org/api/records/22935025/versions" -o /tmp/zvers2.json -w "http=%{http_code}\n"; python3 -c "
+import json
+d=json.load(open('/tmp/zvers2.json'))
+for h in d.get('hits',{}).get('hits',[]):
+    print(' version', h['id'], '|', h['metadata'].get('version'), '| doi', h.get('doi'), '| published', h.get('publication_date') or h.get('created'))" 2>&1; echo "=== datacite ==="; curl -sS "https://api.datacite.org/dois/10.5281/zenodo.22969763" -o /tmp/zdc.json -w "http=%{http_code}\n"; python3 -c "
+import json
+try:
+    d=json.load(open('/tmp/zdc.json'))
+    a=d.get('data',{}).get('attributes',{})
+    print(' state:', a.get('state'), '| event:', a.get('event'), '| url:', a.get('url'))
+except Exception as e: print('parse fail', e)"; touch /vol/data/benchmark/.heartbeat
+=== disk ===
+Filesystem      Size  Used Avail Use% Mounted on
+/dev/vda1        19G  4.7G   14G  26% /
+/dev/vda1        19G  4.7G   14G  26% /
+/dev/vdb        492G  128G  339G  28% /vol/data
+=== zenodo v2 via API ===
+http=200
+ version 22969763 | 2.0 | doi 10.5281/zenodo.22969763 | published 2026-09-26T01:38:40.578115+00:00
+ version 22935025 | 1.0 | doi 10.5281/zenodo.22935025 | published 2026-09-24T09:26:38.685282+00:00
+=== datacite ===
+http=404
+ state: None | event: None | url: None
+> build · big-pickle
+Zenodo lists v2.0 ✓ (published 01:38). DataCite still 404 (same propagation lag v1 had; will re-check). Monitoring CAMI III prep progress:
+[0m$ [0mls -la --time-style=long-iso /vol/data/datasets/cami_III/toy_human_input_2samples/contigs.fa.* 2>/dev/null; ps -eo pid,etime,cmd | grep -E "bwa (index|mem)|samtools" | grep -v grep | head -6; echo "=== log dirs ==="; find /vol/data/datasets/cami_III/toy_human_input_2samples/logs -maxdepth 2 -type d | head; touch /vol/data/benchmark/.heartbeat; date -u +%FT%TZ
+-rw-rw-r-- 1 ubuntu ubuntu      1478 2026-09-26 01:49 /vol/data/datasets/cami_III/toy_human_input_2samples/contigs.fa.amb
+-rw-rw-r-- 1 ubuntu ubuntu    391378 2026-09-26 01:49 /vol/data/datasets/cami_III/toy_human_input_2samples/contigs.fa.ann
+-rw-rw-r-- 1 ubuntu ubuntu 563268660 2026-09-26 01:49 /vol/data/datasets/cami_III/toy_human_input_2samples/contigs.fa.pac
+3084029       16:17 /bin/bash -c rm -f /vol/data/datasets/cami_III/toy_human_input_2samples/contigs.fa.*; /vol/data/tools/bin/micromamba run -p /vol/data/envs/comebin bwa index /vol/data/datasets/cami_III/toy_human_input_2samples/contigs.fa 2>&1
+3084042       16:17 /vol/data/tools/bin/micromamba run -p /vol/data/envs/comebin bwa index /vol/data/datasets/cami_III/toy_human_input_2samples/contigs.fa
+3084059       16:17 bwa index /vol/data/datasets/cami_III/toy_human_input_2samples/contigs.fa
+3173759       00:31 /bin/bash -c rm -f /vol/data/datasets/cami_III/toy_human_input_2samples/contigs.fa.* && /vol/data/envs/comebin/bin/bwa index /vol/data/datasets/cami_III/toy_human_input_2samples/contigs.fa & BWA_PID=$! echo "Started bwa index PID $BWA_PID in background" # Wait a fixed amount and check sleep 600 echo "Checking after 600s..." ls -la /vol/data/datasets/cami_III/toy_human_input_2samples/contigs.fa.* 2>/dev/null ps -p $BWA_PID -o pid,stat 2>/dev/null || echo "Process gone"
+3173760       00:31 /bin/bash -c rm -f /vol/data/datasets/cami_III/toy_human_input_2samples/contigs.fa.* && /vol/data/envs/comebin/bin/bwa index /vol/data/datasets/cami_III/toy_human_input_2samples/contigs.fa & BWA_PID=$! echo "Started bwa index PID $BWA_PID in background" # Wait a fixed amount and check sleep 600 echo "Checking after 600s..." ls -la /vol/data/datasets/cami_III/toy_human_input_2samples/contigs.fa.* 2>/dev/null ps -p $BWA_PID -o pid,stat 2>/dev/null || echo "Process gone"
+3173763       00:31 /vol/data/envs/comebin/bin/bwa index /vol/data/datasets/cami_III/toy_human_input_2samples/contigs.fa
+=== log dirs ===
+/vol/data/datasets/cami_III/toy_human_input_2samples/logs
+/vol/data/datasets/cami_III/toy_human_input_2samples/logs/sample_0
+/vol/data/datasets/cami_III/toy_human_input_2samples/logs/sample_0/sample_0_reads
+/vol/data/datasets/cami_III/toy_human_input_2samples/logs/sample_1
+/vol/data/datasets/cami_III/toy_human_input_2samples/logs/sample_1/sample_1_reads
+2026-09-26T01:49:42Z
+> build · big-pickle
+Two `bwa index` processes are now racing (the sibling session re-launched with `rm -f` at 01:49, deleting the other's `.bwt`). Current one is 563 MB `.pac` and progressing. Per the do-not-disturb mandate I won't touch its processes — I'll monitor for index completion (`.sa`) and `bamfiles/`. Waiting:
