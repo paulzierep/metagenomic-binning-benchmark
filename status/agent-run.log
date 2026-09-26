@@ -77088,3 +77088,167 @@ a057f021b01cfb46ac35045e4978e8e74a089d3f
 === last commit touching status log ===
 980500b0 status: yes — cami3_v11_20260926_rerun epoch 199/200 loss 1.4088499546051025 ac
 > build · mimo-v2.6-flash-free
+All content is committed and pushed (heartbeat swept README + status log into an ancestor commit; HEAD == origin == `a057f021`). Checking PROGRESS "Current state" still matches disk:
+[0m$ [0msed -n '10,60p' /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md
+Benchmark multiple metagenomic genome binners, starting with COMEBin
+(https://github.com/paulzierep/COMEBin). Document the whole process in this repo
+(https://github.com/paulzierep/metagenomic-binning-benchmark) so the work can be
+picked up later by anyone/any session.
+
+Requirements from the user:
+1. Modify COMEBin's source code to improve performance and fix bugs — **in a branch**,
+   **one commit per batch of fixes**.
+2. **Baseline first**: benchmark *unmodified* COMEBin, then apply fix batches,
+   re-running the benchmark after each batch.
+3. Record: parameters used, datasets used, performance/timing, bin quality with
+   **CheckM2 and CheckM (v1)**.
+4. Document everything in this repo.
+
+## Standing authorizations (user-confirmed 2026-09-23 — do NOT re-ask)
+
+1. **This VM, fully**: shell commands (incl. passwordless sudo), installing packages,
+   creating/modifying anything under `/vol/data` and `/home/ubuntu`, long-running
+   background jobs. Backed by `~/.config/opencode/opencode.json`
+   (permissions: `*`→allow incl. external_directory). OpenCode default already allows
+   `*`; the only rule that matters is `external_directory: * → allow` (that was the
+   source of the prompts, because `/vol/data` is outside the session location).
+2. **Both GitHub repos**: `paulzierep/metagenomic-binning-benchmark` AND
+   `paulzierep/COMEBin` — git commit/push (credential helper `~/.git-credentials`,
+   mode 600) and gh CLI (authenticated, `~/.config/gh/hosts.yml`).
+3. **Issues workflow**: the user files ideas/instructions as GitHub **issues**; the
+   agent reads them and **comments** back (see below). ⚠️ the Issues feature is
+   currently DISABLED on `paulzierep/COMEBin` (needs a token with Administration scope
+   or a manual repo-Settings toggle — user must flip it or grant scope). Ideas go to
+   the benchmark repo for now (idea box: issue #1).
+
+## Run logging — where everything is (per run: `runs/<run>/`)
+
+| Path | Content | Granularity |
+|---|---|---|
+| `run_meta.txt` | date, source commit, threads, dataset, exit_code, wall time, #bins | start + end |
+| `comebin_run.log` | **full stdout+stderr of `run_comebin.sh`** — verbose timestamps, every stage (`generate_aug_data`, coverage, FragGeneScan, epochs with progress bars, clustering) | live (tee) |
+| `logs/resources.tsv` | per-run resource sampler: every 30 s — CPU %, RSS (GB) of the wrapper pid, system mem used | 30 s |
+| `logs/sampler.out` | sampler stderr | — |
+| `comebin_out/` | ALL COMEBin internal artifacts: `data_augmentation/` (fasta, kmer, covariance, depth), trained `models/`, `tensorboard*/`, `cluster_res/` (embeddings, leiden runs, bins) | — |
+| (parent) `run_meta.txt` JSON-style CSV in `results/` | parsed metrics row | after eval |
+
+**Everything above is mirrored into this repo** at `runs/<run>/` (small log files
+only — `run_meta.txt`, `comebin_run.log`, `logs/resources.tsv`, `comebin_res/{comebin.log,
+training.log,config.yml}`; raw artifacts stay on disk). The status-heartbeat re-syncs
+every 2 min and at run end, so per-run logs reach GitHub within ~2 min.
+`runs/README.md` documents the layout.
+
+**Agent activity log** `status/agent-activity.log`: the VERBOSE companion to the
+1-line liveness timeline in `status/status.log`. The agent appends one UTC-timestamped
+> build · mimo-v2.6-flash-free
+[0m$ [0mgrep -n "^## \|^### " /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md | head -30; echo "==="; grep -n "Current state" /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md
+9:## Task definition
+25:## Standing authorizations (user-confirmed 2026-09-23 — do NOT re-ask)
+42:## Run logging — where everything is (per run: `runs/<run>/`)
+71:## Run logging — how to read phases
+76:## Resource policy (user: max resources for the benchmark, keep some for the agent, don't break anything)
+88:## Issues workflow (user-facing)
+99:## Decisions (confirmed by user)
+110:## Directory layout (authoritative)
+127:## Environment facts
+139:## COMEBin demo dataset
+148:## Known COMEBin bugs / perf issues (candidates for fix batches)
+185:## Current state
+555:## Watchdog / restart
+===
+4:> verify "Current state" against what is actually on disk under `/vol/data`, and
+185:## Current state
+> build · mimo-v2.6-flash-free
+[0m→ [0mRead /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md [90m[offset=185, limit=55][0m
+> build · mimo-v2.6-flash-free
+[0m$ [0mgrep -n "cami3\|CAMI III" /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md | awk -F: '$1>=185 && $1<=555' | cut -c1-160
+394:      CAMI III (disk budget ≤ 30 GB, 351 GB free).
+426:- [x] **CAMI II marine sample 0 benchmark run (→ CAMI III)**
+432:    earlier CAMI III download attempt filled `/`; orphans removed, run_eval.sh
+441:- [x] **CAMI III toy human gut: prep completed + benchmark RUNNING (2026-09-26)**
+442:      (scripts/prep_cami3_toy.sh created by sibling session; left uncommitted —
+452:      `finish_prep_cami3.sh` (nothing deleted; the earlier "sample 1 corrupted"
+455:      **Run `cami3_v11_20260926` launched 2026-09-26 02:45 UTC** detached via
+456:      run_comebin_fix.sh: MODE=cami3, seed 42, 32 threads, commit 95f5ea8 /
+461:      its `cami3`/`cami2` needles never matched the real `cami_III`/`cami_II`
+462:      contigs paths, so the CAMI III row would have fallen back to a directory
+467:      "CAMI III".*
+479:      **Retry `cami3_v11_20260926_rerun` launched 2026-09-26 04:48 UTC**
+481:      MODE=cami3, seed 42, 32 threads, commit 95f5ea8, dirty 0, registered in
+496:      rc 0: `results/cami3_v11_20260926_rerun.csv` (label **"CAMI III"** via
+499:      520 MB tarball — cami3's 492 bins ship as the new data per #8).
+> build · mimo-v2.6-flash-free
+[0m→ [0mRead /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md [90m[limit=70, offset=441][0m
+> build · mimo-v2.6-flash-free
+Two stale bits in the entry — the heading says "RUNNING" and the tail says "in flight / to commit". Fixing both:
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md
+Index: /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md
++++ /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md
+@@ -437,9 +437,9 @@
+     Epoch 159/200 (Top-1 99.31 → 99.58% × 3), Leiden 120/120; early stop via
+     run_comebin.sh --earlystop. Reported in docs/11 + README + results CSVs
+     (results/marine_v11_20260925.csv, runs/marine_v11_20260925/per_bin_results.csv)._
+ 
+-- [x] **CAMI III toy human gut: prep completed + benchmark RUNNING (2026-09-26)**
++- [x] **CAMI III toy human gut: prep + benchmark run COMPLETED (2026-09-26)**
+       (scripts/prep_cami3_toy.sh created by sibling session; left uncommitted —
+       its WIP). Prep input at
+       `/vol/data/datasets/cami_III/toy_human_input_2samples/`: `contigs.fa`
+       (top-5000-longest of pooled GSA contigs, 1.1 GB), `input_meta.txt`,
+
+> build · mimo-v2.6-flash-free
+[0m✗ [0mEdit /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md failed
+[91m[1mError: [0mCould not find oldString in /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md. It must match exactly, including whitespace and indentation.
+> build · mimo-v2.6-flash-free
+The oldString didn't match exactly — checking the actual bytes:
+[0m$ [0mgrep -n "in flight" /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md | cat -A | cut -c1-200
+498:      datasets unchanged per #12), Zenodo **v3** in flight (draft 22973575,$
+> build · mimo-v2.6-flash-free
+[0m$ [0msed -n '495,502p' /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md | cat -A | cut -c1-120
+run, highest mean contamination (strain-rich toy gut). Report chain all$
+      rc 0: `results/cami3_v11_20260926_rerun.csv` (label **"CAMI III"** via$
+      the `32c5240` matcher fix), per-bin CSV + plots, combined bar plot (3 main$
+      datasets unchanged per #12), Zenodo **v3** in flight (draft 22973575,$
+      520 MB tarball M-bM-^@M-^T cami3's 492 bins ship as the new data per #8).$
+      docs/11 gained the summary row + two attempt rows; README bullet + this$
+      entry to commit. Outstanding: verify Zenodo v3 receipt + DOI, README$
+      bullet with v3 DOI, report on issue #6.*$
+> build · mimo-v2.6-flash-free
+Text appears identical — retrying the edit:
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md
+Index: /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md
++++ /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md
+@@ -494,13 +494,22 @@
+       **35.97 % / 11.42 % (HQ 53, MQ 112)** — most bins and most HQ/MQ of any
+       run, highest mean contamination (strain-rich toy gut). Report chain all
+       rc 0: `results/cami3_v11_20260926_rerun.csv` (label **"CAMI III"** via
+       the `32c5240` matcher fix), per-bin CSV + plots, combined bar plot (3 main
+-      datasets unchanged per #12), Zenodo **v3** in flight (draft 22973575,
+-      520 MB tarball — cami3's 492 bins ship as the new data per #8).
+-      docs/11 gained the summary row + two attempt rows; README bullet + this
+-      entry to commit. Outstanding: verify Zenodo v3 receipt + DOI, README
+-      bullet with v3 DOI, report on issue #6.*
++      datasets unchanged per #12), **Zenodo v3 PUBLISHED** — record 22973575,
++      version DOI [10.5281/zenodo.22973575](https://doi.org/10.5281/zenodo.22973575)
++      (520 MB tarball, cami3's 492 bins ship as the new data per #8). The
++      auto-chain's post-publish step then crashed (zenodo_update.sh assumed the
++      API `files` dict shape, record returned a list → `AttributeError`), so the
++      agent verified the published file via API (size 520,343,638 + md5
++      b8b1b647… match), wrote `meta/zenodo_benchmark_release_v3.json`, advanced
++      `meta/zenodo_last_content.sha256` (eea30326…, blocks a duplicate v4) and
++      fixed+deployed `scripts/zenodo_update.sh` (files-shape normalised);
++      concept DOI already resolves to v3; version DOI showed the known DataCite
++      lag (404 at +2 min, v2 took ~68 min → recheck later).
++      docs/11 (summary row + two attempt rows) and the README completed-run
++      bullet with the v3 DOI committed + pushed `a057f021`. Outstanding:
++      version-DOI recheck, report on issue #6.*
+ 
+ - [x] **Issue #12 plots (2026-09-24 ~10:42 UTC)**: `scripts/make_per_bin_plots.py`
+       generates per-bin bar charts (`runs/<run>/per_bins.png`, CheckM2 + CheckM v1
+       comp/cont per bin) and a comparison scatter
+
+> build · mimo-v2.6-flash-free
