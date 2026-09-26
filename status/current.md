@@ -3,8 +3,8 @@
 | | |
 |---|---|
 | Status | 🟢 `running` |
-| ⏱ Updated (Europe/Berlin) | `2026-09-26T04:42 CEST` |
-| 🏃 Last benchmark (not active) | `marine_v11_20260925` — last observed **epoch 158/200** (log 50165s old) |
+| ⏱ Updated (Europe/Berlin) | `2026-09-26T04:46 CEST` |
+| 🏃 Benchmark | no active run |
 | 🧠 Model (last turn) | `big-pickle` (watchdog rotates to free models on quota) |
 | 📌 Agent note · **0 min old** | 2026-09-25T12:16:00Z | marine_v11_20260925 active: epoch 147/200, COMEBin-v11@95f5ea8, cami2 mode; heartbeat touched; PROGRESS synced
 2026-09-25T15:34:55Z | issues triaged: #12 reporting auto-plots confirmed complete; #8 Zenodo record active with continuous-update workflow; marine run completed; no active run
@@ -22,10 +22,12 @@
 2026-09-26T01:47:11Z progress-committed
 2026-09-26T01:49:18Z progress-synced
 2026-09-26T02:02:36Z docs10-fix-committed
-2026-09-26T02:41:03Z finish-prep-launched |
-| ⚙️ Load · uptime | `6.23 2.65 1.75` · 2 days, 13 hours, 6 minutes — 32 cores, 62 GiB, no GPU |
-| 💾 RAM used/total | `30455/64295 MB` |
+2026-09-26T02:41:03Z finish-prep-launched
+2026-09-26T02:45:37Z cami3-run-launched
+2026-09-26T02:45:58Z cami3-progress-committed |
+| ⚙️ Load · uptime | `1.35 1.62 1.52` · 2 days, 13 hours, 10 minutes — 32 cores, 62 GiB, no GPU |
+| 💾 RAM used/total | `2556/64295 MB` |
 | 🔗 Session | `ses_f31799c77ffeTq9gcYgqc4hBhg` |
-| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `ba083e4 status: yes — marine_v11_20260925 epoch 158/200 loss 0.402632415294647` |
-| 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `7166072 B` — every run, command & tool result |
+| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `3faa008 PROGRESS: CAMI III prep complete (both BAMs indexed+verified), cami3_v11` |
+| 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `7179988 B` — every run, command & tool result |
 | 📈 Timeline | [status/status.log](status/status.log) |

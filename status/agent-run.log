@@ -72974,3 +72974,170 @@ Created file successfully: /vol/data/benchmark/logs/finish_prep_cami3.sh
 launched pid 3197675
 > build · big-pickle
 Now waiting for the finish-prep job (index sample_0, build+index+quickcheck sample_1):
+[0m$ [0msleep 240; tail -15 /vol/data/benchmark/logs/finish_prep_cami3.log; echo "=== procs ==="; ps -eo pid,etime,cmd | grep -E "bwa|samtools|finish_prep" | grep -v grep | head -6; date -u +%FT%TZ; touch /vol/data/benchmark/.heartbeat
+bam OK for sample 0
+extracting sample_1 long reads
+using reads: /vol/data/datasets/cami_III/toy_human_input_2samples/logs/sample_1/sample_1_reads/anonymous_reads.fq.gz
+bwa mem + sort sample_1
+[bam_sort_core] merging from 0 files and 32 in-memory blocks...
+indexing sample_1_bam.bam
+bam OK for sample 1
+=== done 2026-09-26T02:41:29+00:00 ===
+total 158424
+drwxrwxr-x 2 ubuntu ubuntu     4096 Sep 26 02:41 .
+drwxrwxr-x 4 ubuntu ubuntu     4096 Sep 26 02:24 ..
+-rw-rw-r-- 1 ubuntu ubuntu 76171595 Sep 26 02:27 sample_0_bam.bam
+-rw-rw-r-- 1 ubuntu ubuntu   440336 Sep 26 02:41 sample_0_bam.bam.bai
+-rw-rw-r-- 1 ubuntu ubuntu 85129013 Sep 26 02:41 sample_1_bam.bam
+-rw-rw-r-- 1 ubuntu ubuntu   469488 Sep 26 02:41 sample_1_bam.bam.bai
+=== procs ===
+2026-09-26T02:45:05Z
+> build · big-pickle
+Prep complete: both BAMs indexed + quickcheck OK (sample_0 76 MB, sample_1 85 MB). Now launching the CAMI III benchmark detached per protocol:
+[0m$ [0mls -d /vol/data/benchmark/runs/cami3_v11_20260926 2>/dev/null && echo EXISTS || echo "run dir free"; cat /vol/data/benchmark/.active_run 2>/dev/null; echo "---"; ls -la /vol/data/datasets/cami_III/toy_human_input_2samples/contigs.fa; touch /vol/data/benchmark/.heartbeat
+run dir free
+---
+-rw-rw-r-- 1 ubuntu ubuntu 1145571604 Sep 26 01:19 /vol/data/datasets/cami_III/toy_human_input_2samples/contigs.fa
+> build · big-pickle
+Launch command ready. Verifying the COMEBin-v11 source tree is clean (required by run_comebin_fix.sh) before the detached launch:
+[0m$ [0mcd /vol/data/repos/COMEBin-v11 && git status --porcelain --untracked-files=no | head; git rev-parse HEAD; git branch --show-current; free -g | awk '/Mem:/{print $2"G total"}'; touch /vol/data/benchmark/.heartbeat
+95f5ea820f9a4e76f5c2911c0b5ed507ab67b015
+comebin-optimizations-v11
+62G total
+> build · big-pickle
+Source tree clean at 95f5ea8. Launching the CAMI III benchmark detached with a fresh run dir:
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && CONTIGS=/vol/data/datasets/cami_III/toy_human_input_2samples/contigs.fa BAMDIR=/vol/data/datasets/cami_III/toy_human_input_2samples/bamfiles MODE=cami3 SEED=42 nohup bash scripts/run_comebin_fix.sh /vol/data/benchmark/runs/cami3_v11_20260926 > /vol/data/benchmark/logs/cami3_v11_20260926_launch.log 2>&1 & echo "launched pid $!"; sleep 20; echo "=== active_run ==="; cat /vol/data/benchmark/.active_run 2>/dev/null; echo; echo "=== launch log ==="; tail -8 /vol/data/benchmark/logs/cami3_v11_20260926_launch.log; date -u +%FT%TZ; touch /vol/data/benchmark/.heartbeat
+launched pid 3200072
+=== active_run ===
+3200074 3200071 /vol/data/benchmark/runs/cami3_v11_20260926/comebin_run.log /vol/data/benchmark/runs/cami3_v11_20260926 1790390713 cami3 /vol/data/repos/COMEBin-v11 /vol/data/datasets/cami_III/toy_human_input_2samples/contigs.fa /vol/data/datasets/cami_III/toy_human_input_2samples/bamfiles
+
+=== launch log ===
+2026-09-26 02:45:15,547 - Configure reproducibility: start with seed=42, pid=3200129.
+2026-09-26 02:45:16,842 - Configure reproducibility: finished; seed=42, PYTHONHASHSEED=42, CUBLAS_WORKSPACE_CONFIG=:4096:8.
+2026-09-26 02:45:16,842 - generate_aug_data: fastafile
+2026-09-26 02:45:16,848 - Generate augmentation view 1/5 with seed 43.
+2026-09-26 02:45:16,848 - Generate augmentation view 2/5 with seed 44.
+2026-09-26 02:45:16,848 - Generate augmentation view 3/5 with seed 45.
+2026-09-26 02:45:16,848 - Generate augmentation view 4/5 with seed 46.
+2026-09-26 02:45:16,848 - Generate augmentation view 5/5 with seed 47.
+2026-09-26T02:45:33Z
+> build · big-pickle
+Run is live and registered (`.active_run`: pid 3200074, mode=cami3, seed 42, commit-tracked, watchdog will own handoff). Logging and updating PROGRESS:
+[0m$ [0mR=/vol/data/repos/metagenomic-binning-benchmark; TS=$(date -u +%FT%TZ); echo "$TS run: cami3_v11_20260926 launched detached pid 3200072 (active_run 3200074, mode=cami3, seed 42, commit 95f5ea8) after finish-prep (sample_0/1 bams indexed+quickcheck OK); sibling session gone, prep finished idempotently" >> $R/status/agent-activity.log; echo "$TS cami3-run-launched" >> /vol/data/benchmark/.activity; touch /vol/data/benchmark/.heartbeat; echo done
+done
+> build · big-pickle
+[0m$ [0mgrep -n "CAMI III toy human gut: prep script created" /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md; sed -n '433,440p' /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md
+441:- [ ] **CAMI III toy human gut: prep script created** (scripts/prep_cami3_toy.sh);
+    re-run → checkm2_rc 0 / 356 s, checkm_rc 0 / 998 s).
+    CheckM2: 152 bins, 50.60% mean completeness, 4.10% contamination (HQ 35, MQ 60).
+    CheckM v1: 152 bins, 46.36% mean completeness, 5.09% contamination (HQ 37, MQ 60)
+    — strongest quality of any benchmark dataset so far (demo 25%, human 35%).
+    Epoch 159/200 (Top-1 99.31 → 99.58% × 3), Leiden 120/120; early stop via
+    run_comebin.sh --earlystop. Reported in docs/11 + README + results CSVs
+    (results/marine_v11_20260925.csv, runs/marine_v11_20260925/per_bin_results.csv)._
+> build · big-pickle
+[0m$ [0mgrep -n "" /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md | sed -n '443,458p'
+443:  sample 0 BAM mapped via bwa mem). Sample 1 reads unavailable — tar.gz archives
+444:  corrupted (contain only reads_mapping.tsv.gz, not actual FASTQ). ≈17 GB dataset
+445:  within 50 GB budget; full download from cami-challenge.org needed for complete run.
+446:  Prep script structure in place. Next: obtain full CAMI III toy dataset (samples 0+1
+447:  FASTQ) or proceed with sample-0-only partial run using MODE=cami3, seed 42, 32 threads.
+448:
+449:- [x] **Issue #12 plots (2026-09-24 ~10:42 UTC)**: `scripts/make_per_bin_plots.py`
+450:      generates per-bin bar charts (`runs/<run>/per_bins.png`, CheckM2 + CheckM v1
+451:      comp/cont per bin) and a comparison scatter
+452:      (`results/figures/comp_vs_cont_all-runs.png`, one point per bin, color = run)
+453:      via the comebin env's matplotlib. Run for baseline_rerun_autorestart1,
+454:      small_test_v4, medium_v11_20260924; each run re-renders its figures after
+455:      eval. Same-dataset comparisons accumulate (fix_v11 vs baseline once live).
+456:
+457:- [x] **Issues #7/#15/#16 triaged (2026-09-24 10:26–10:44 UTC)**: #7 — the
+458:      optimization flowchart is now rendered live in the README (colored mermaid,
+> build · big-pickle
+[0m✗ [0mEdit /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md failed
+[91m[1mError: [0mCould not find oldString in /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md. It must match exactly, including whitespace and indentation.
+> build · big-pickle
+[0m$ [0msed -n '438,448p' /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md | cat -A | sed -n '1,12p'
+run_comebin.sh --earlystop. Reported in docs/11 + README + results CSVs$
+    (results/marine_v11_20260925.csv, runs/marine_v11_20260925/per_bin_results.csv)._$
+$
+- [ ] **CAMI III toy human gut: prep script created** (scripts/prep_cami3_toy.sh);$
+  dataset partially on disk (contigs subset to 5000 longest, 1.13 Gbp; BWA index built,$
+  sample 0 BAM mapped via bwa mem). Sample 1 reads unavailable M-bM-^@M-^T tar.gz archives$
+  corrupted (contain only reads_mapping.tsv.gz, not actual FASTQ). M-bM-^IM-^H17 GB dataset$
+  within 50 GB budget; full download from cami-challenge.org needed for complete run.$
+  Prep script structure in place. Next: obtain full CAMI III toy dataset (samples 0+1$
+  FASTQ) or proceed with sample-0-only partial run using MODE=cami3, seed 42, 32 threads.$
+$
+> build · big-pickle
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md
+Index: /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md
++++ /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md
+@@ -437,15 +437,27 @@
+     Epoch 159/200 (Top-1 99.31 → 99.58% × 3), Leiden 120/120; early stop via
+     run_comebin.sh --earlystop. Reported in docs/11 + README + results CSVs
+     (results/marine_v11_20260925.csv, runs/marine_v11_20260925/per_bin_results.csv)._
+ 
+-- [ ] **CAMI III toy human gut: prep script created** (scripts/prep_cami3_toy.sh);
+-  dataset partially on disk (contigs subset to 5000 longest, 1.13 Gbp; BWA index built,
+-  sample 0 BAM mapped via bwa mem). Sample 1 reads unavailable — tar.gz archives
+-  corrupted (contain only reads_mapping.tsv.gz, not actual FASTQ). ≈17 GB dataset
+-  within 50 GB budget; full download from cami-challenge.org needed for complete run.
+-  Prep script structure in place. Next: obtain full CAMI III toy dataset (samples 0+1
+-  FASTQ) or proceed with sample-0-only partial run using MODE=cami3, seed 42, 32 threads.
++- [x] **CAMI III toy human gut: prep completed + benchmark RUNNING (2026-09-26)**
++      (scripts/prep_cami3_toy.sh created by sibling session; left uncommitted —
++      its WIP). Prep input at
++      `/vol/data/datasets/cami_III/toy_human_input_2samples/`: `contigs.fa`
++      (top-5000-longest of pooled GSA contigs, 1.1 GB), `input_meta.txt`,
++      complete bwa index (.amb/.ann/.bwt/.pac/.sa, built 02:17–02:24), and
++      both coverage BAMs mapped + indexed + quickcheck OK:
++      `bamfiles/sample_0_bam.bam` (76 MB) and `sample_1_bam.bam` (85 MB),
++      each with `.bai`. The prep-driving session exited mid-flight after
++      sample_0's BAM; remaining steps (sample_0 index, sample_1
++      extract+mapping+sort+index, both quickchecks) completed idempotently via
++      `finish_prep_cami3.sh` (nothing deleted; the earlier "sample 1 corrupted"
++      note was wrong — the long-read archive holds `anonymous_reads.fq.gz`,
++      the short-read archive only `reads_mapping.tsv.gz`).
++      **Run `cami3_v11_20260926` launched 2026-09-26 02:45 UTC** detached via
++      run_comebin_fix.sh: MODE=cami3, seed 42, 32 threads, commit 95f5ea8 /
++      comebin-optimizations-v11, registered in `.active_run`, watchdog owns
++      handoff. Eval via run_eval.sh afterwards (CheckM2 + CheckM v1 →
++      auto-report + Zenodo update).
+ 
+ - [x] **Issue #12 plots (2026-09-24 ~10:42 UTC)**: `scripts/make_per_bin_plots.py`
+       generates per-bin bar charts (`runs/<run>/per_bins.png`, CheckM2 + CheckM v1
+       comp/cont per bin) and a comparison scatter
+
+> build · big-pickle
+Now committing the PROGRESS update (only intended paths — leaving `prep_cami3_toy.sh` and `finish_prep_cami3.sh` out):
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && git fetch origin 2>&1 | tail -1; git status --short | head; exec 9>/tmp/bench-repo.lock; flock -n 9 || { echo LOCK_BUSY; exit 1; }; git add PROGRESS.md status/agent-activity.log && git status --short; git commit -m "PROGRESS: CAMI III prep complete (both BAMs indexed+verified), cami3_v11_20260926 run launched (MODE=cami3, seed 42)" 2>&1 | tail -2; git push origin main 2>&1 | tail -2; TS=$(date -u +%FT%TZ); echo "$TS commit: PROGRESS cami3 prep+run entry pushed" >> /vol/data/repos/metagenomic-binning-benchmark/status/agent-activity.log; echo "$TS cami3-progress-committed" >> /vol/data/benchmark/.activity; touch /vol/data/benchmark/.heartbeat
+M PROGRESS.md
+ M status/agent-activity.log
+M  PROGRESS.md
+M  status/agent-activity.log
+[main 3faa008] PROGRESS: CAMI III prep complete (both BAMs indexed+verified), cami3_v11_20260926 run launched (MODE=cami3, seed 42)
+ 2 files changed, 21 insertions(+)
+To https://github.com/paulzierep/metagenomic-binning-benchmark
+   23c16da..3faa008  main -> main
+> build · big-pickle
+Pushed (`3faa008`). Syncing the /vol/data/benchmark PROGRESS copy and checking run health + DOI:
+[0m$ [0mcp /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md /vol/data/benchmark/PROGRESS.md; echo synced; echo "=== active_run ==="; cat /vol/data/benchmark/.active_run 2>/dev/null | awk '{print "pid="$1" mode="$6" src="$7}'; echo "=== comebin process ==="; ps -eo pid,etime,pcpu,rss,cmd | grep -E "main.py|run_comebin" | grep -v grep | head -3; echo "=== run log tail ==="; tail -4 /vol/data/benchmark/runs/cami3_v11_20260926/comebin_run.log 2>/dev/null; echo "=== version DOI ==="; curl -sS -o /dev/null -L -w "version2 doi -> %{http_code}\n" https://doi.org/10.5281/zenodo.22969763; date -u +%FT%TZ; touch /vol/data/benchmark/.heartbeat
+synced
+=== active_run ===
+pid=3200074 mode=cami3 src=/vol/data/repos/COMEBin-v11
+=== comebin process ===
+3200072       00:47  0.0  2012 /bin/bash -c cd /vol/data/repos/metagenomic-binning-benchmark && CONTIGS=/vol/data/datasets/cami_III/toy_human_input_2samples/contigs.fa BAMDIR=/vol/data/datasets/cami_III/toy_human_input_2samples/bamfiles MODE=cami3 SEED=42 nohup bash scripts/run_comebin_fix.sh /vol/data/benchmark/runs/cami3_v11_20260926 > /vol/data/benchmark/logs/cami3_v11_20260926_launch.log 2>&1 & echo "launched pid $!"; sleep 20; echo "=== active_run ==="; cat /vol/data/benchmark/.active_run 2>/dev/null; echo; echo "=== launch log ==="; tail -8 /vol/data/benchmark/logs/cami3_v11_20260926_launch.log; date -u +%FT%TZ; touch /vol/data/benchmark/.heartbeat
+3200074       00:47  0.0  3628 bash scripts/run_comebin_fix.sh /vol/data/benchmark/runs/cami3_v11_20260926
+3200100       00:47  0.0  3148 bash scripts/run_comebin_fix.sh /vol/data/benchmark/runs/cami3_v11_20260926
+=== run log tail ===
+2026-09-26 02:45:16,848 - Generate augmentation view 2/5 with seed 44.
+2026-09-26 02:45:16,848 - Generate augmentation view 3/5 with seed 45.
+2026-09-26 02:45:16,848 - Generate augmentation view 4/5 with seed 46.
+2026-09-26 02:45:16,848 - Generate augmentation view 5/5 with seed 47.
+=== version DOI ===
+version2 doi -> 404
+2026-09-26T02:46:00Z
+> build · big-pickle
