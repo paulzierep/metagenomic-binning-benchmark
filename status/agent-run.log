@@ -69446,3 +69446,252 @@ cmd_checkm: LD_LIBRARY_PATH=/vol/data/envs/checkm/lib:/vol/data/envs/comebin/lib
 /vol/data/repos/metagenomic-binning-benchmark/scripts/prep_cami3_toy.sh:141:                # Find anonymous_reads.fq* from long reads archive
 /vol/data/repos/metagenomic-binning-benchmark/scripts/prep_cami3_toy.sh:142:                READS_CANDIDATE=$(find "$OUT/logs/sample_${SAMPLE}" -name "anonymous_reads.fq*" 2>/dev/null | head -1)
 /vol/data/repos/metagenomic-binning-benchmark/scripts/prep_cami3_toy.sh:151:        READS_CANDIDATE=$(find "$OUT/logs/sample_${SAMPLE}" -name "anonymous_reads.fq*" 2>/dev/null | head -1)
+> build · mimo-v2.6-flash-free
+No process holds those files open (all last written 23:35–23:46 yesterday). Let me confirm the running prep script doesn't consume them from `/tmp`:
+[0m$ [0mgrep -n "/tmp\|TMP\|TMPDIR" /vol/data/repos/metagenomic-binning-benchmark/scripts/prep_cami3_toy.sh; echo "=== exit code $? ==="; ls /vol/data/datasets/cami_III/toy_human_input_2samples/ /vol/data/datasets/cami_III/toy_human_input_2samples/logs/ 2>/dev/null; echo "=== prep stage (log?) ==="; ls -la /vol/data/datasets/cami_III/toy_human_input_2samples/logs/ 2>/dev/null | head; pgrep -af "bwa mem|curl|wget|tar " | head -5
+=== exit code 1 ===
+/vol/data/datasets/cami_III/toy_human_input_2samples/:
+bamfiles
+contigs.bed
+contigs.fa
+contigs.fa.64.amb
+contigs.fa.64.ann
+contigs.fa.64.pac
+input_meta.txt
+logs
+
+/vol/data/datasets/cami_III/toy_human_input_2samples/logs/:
+sample_0
+sample_1
+=== prep stage (log?) ===
+total 16
+drwxrwxr-x 4 ubuntu ubuntu 4096 Sep 25 22:46 .
+drwxrwxr-x 4 ubuntu ubuntu 4096 Sep 26 00:53 ..
+drwxrwxr-x 3 ubuntu ubuntu 4096 Sep 25 22:46 sample_0
+drwxrwxr-x 3 ubuntu ubuntu 4096 Sep 25 22:46 sample_1
+2511277 /bin/bash -c grep -n "/tmp\|TMP\|TMPDIR" /vol/data/repos/metagenomic-binning-benchmark/scripts/prep_cami3_toy.sh; echo "=== exit code $? ==="; ls /vol/data/datasets/cami_III/toy_human_input_2samples/ /vol/data/datasets/cami_III/toy_human_input_2samples/logs/ 2>/dev/null; echo "=== prep stage (log?) ==="; ls -la /vol/data/datasets/cami_III/toy_human_input_2samples/logs/ 2>/dev/null | head; pgrep -af "bwa mem|curl|wget|tar " | head -5
+> build · mimo-v2.6-flash-free
+No active process uses them, and the current prep script never references `/tmp` — the 12.5 GB are orphaned intermediates from an earlier prep attempt (matches CAMI II prep names). Freeing them now so CheckM2 can succeed:
+[0m$ [0mgrep -n "checkm2_rc\|quality_report\|SKIP\|skip\|exists\|if \[ " /vol/data/repos/metagenomic-binning-benchmark/scripts/run_eval.sh | head -40; echo "=== head of run_eval ==="; sed -n '1,40p' /vol/data/repos/metagenomic-binning-benchmark/scripts/run_eval.sh
+21:if [ -f /vol/data/benchmark/.active_run ]; then
+24:  if [ -n "${active_pid:-}" ] && kill -0 "$active_pid" 2>/dev/null && [[ "$active_state" != Z* ]]; then
+40:  if [ "${#candidate_files[@]}" -gt 0 ]; then
+62:if [ "$rc2" -eq 0 ] && [ ! -s "$CHECKM2_OUT/quality_report.tsv" ]; then
+63:  echo "ERROR: CheckM2 returned 0 but quality_report.tsv is missing/empty; recording failure" \
+67:echo "checkm2_rc: $rc2 checkm2_wall_s: $(( $(date +%s) - T ))" | tee -a "$RUN/run_meta.txt"
+68:[ -f "$CHECKM2_OUT/quality_report.tsv" ] && echo "checkm2 report: $CHECKM2_OUT/quality_report.tsv"
+73:if [ -e "$CHECKM_OUT" ] && [ ! -s "$CHECKM_OUT/storage/bin_stats_ext.tsv" ]; then
+87:if [ "$rc1" -eq 0 ] && [ ! -s "$CHECKM_OUT/storage/bin_stats_ext.tsv" ]; then
+92:if [ "$rc1" -eq 0 ] && grep -q 'Controlled exit resulting from an unrecoverable error' "$CHECKM_OUT/checkm.log" 2>/dev/null; then
+103:if [ "$rc2" -eq 0 ] && [ "$rc1" -eq 0 ]; then
+116:if [ "$rc2" -ne 0 ] || [ "$rc1" -ne 0 ]; then
+=== head of run_eval ===
+#!/usr/bin/env bash
+# run_eval.sh <rundir> [threads] — CheckM2 + CheckM v1 bin-quality evaluation for a
+# finished COMEBin run. Appends the exact command lines + rc/wall times to
+# <rundir>/run_meta.txt and writes outputs to <rundir>/eval/.
+set -euo pipefail
+MM=/vol/data/tools/bin/micromamba
+CHECKM2_ENV=${CHECKM2_ENV:-/vol/data/envs/checkm2}
+# The standalone checkm environment currently uses Python 3.14, whose
+# forkserver/pickling behaviour breaks CheckM v1's private worker methods.
+# The COMEBin environment contains the same CheckM v1 workflow on Python 3.10;
+# use it by default and keep the override for a repaired standalone env.
+CHECKM_ENV=${CHECKM_ENV:-/vol/data/envs/comebin}
+# pplacer in the Python-3.10 environment needs the OpenBLAS shared object
+# installed in the standalone checkm environment.
+CHECKM_LD_LIBRARY_PATH=${CHECKM_LD_LIBRARY_PATH:-/vol/data/envs/checkm/lib:/vol/data/envs/comebin/lib}
+export MAMBA_ROOT_PREFIX=/vol/data/envs/.mamba
+RUN=${1:?usage: run_eval.sh <rundir> [threads]}
+THREADS=${2:-32}
+exec 9>/tmp/benchmark-start.lock
+flock -n 9 || { echo "ERROR: another benchmark launch/evaluation holds /tmp/benchmark-start.lock"; exit 1; }
+if [ -f /vol/data/benchmark/.active_run ]; then
+  read -r active_pid _ < /vol/data/benchmark/.active_run || true
+  active_state=$(ps -o stat= -p "${active_pid:-0}" 2>/dev/null | tr -d ' ' || true)
+  if [ -n "${active_pid:-}" ] && kill -0 "$active_pid" 2>/dev/null && [[ "$active_state" != Z* ]]; then
+    echo "ERROR: refusing CheckM evaluation while benchmark pid $active_pid is active"
+    exit 1
+  fi
+fi
+BINS="$RUN/comebin_out/comebin_res/comebin_res_bins"
+[ -d "$BINS" ] || { echo "ERROR: no bins dir: $BINS"; exit 1; }
+BIN_COUNT=$(find -L "$BINS" -maxdepth 1 -type f -size +0c | wc -l)
+[ "$BIN_COUNT" -gt 0 ] || { echo "ERROR: bins dir contains no non-empty files: $BINS"; exit 1; }
+# COMEBin writes .fa files. CheckM2 matches the extension literally, so the
+# previous -x fasta value silently selected zero bins. Detect common variants.
+BIN_EXT=fa
+for candidate_ext in fasta fna fa; do
+  shopt -s nullglob
+  candidate_files=("$BINS"/*."$candidate_ext")
+  shopt -u nullglob
+  if [ "${#candidate_files[@]}" -gt 0 ]; then
+[0m$ [0mrm -f /tmp/url_anonymous_reads.fq.gz /tmp/anonymous_reads.fq.gz /tmp/url_reads_mapping.tsv /tmp/reads_mapping.tsv /tmp/url_reads_mapping.tsv.gz /tmp/reads_mapping.tsv.gz && df -h / | tail -1; TS=$(date -u +%FT%TZ); echo "$TS disk-fix: removed 12.5GB orphaned /tmp intermediates (anonymous_reads/reads_mapping, no open handles, unreferenced by prep_cami3_toy.sh) -> / freed 94%->~30%; CheckM2 DIAMOND had crashed 'No space left on device' during marine eval" >> /vol/data/repos/metagenomic-binning-benchmark/status/agent-activity.log; touch /vol/data/benchmark/.heartbeat
+/dev/vda1        19G  4.7G   14G  26% /
+> build · mimo-v2.6-flash-free
+`/` is now at 26% (14 GB free). Now let me see how `run_eval.sh` handles the failed CheckM2 and whether it skips completed steps on re-run:
+[0m$ [0msed -n '41,130p' /vol/data/repos/metagenomic-binning-benchmark/scripts/run_eval.sh; echo "=== current eval progress ==="; tail -c 800 /vol/data/benchmark/logs/marine_eval.log; pgrep -af "run_eval.sh|checkm lineage" | head -3; date -u +%FT%TZ
+BIN_EXT=$candidate_ext
+    break
+  fi
+done
+CK2DB=${CHECKM2DB:-/vol/data/benchmark/checkm2db/CheckM2_database/uniref100.KO.1.dmnd}
+[ -f "$CK2DB" ] || { echo "WARNING: checkm2 db not found at $CK2DB (set CHECKM2DB)"; }
+CHECKM2_OUT="$RUN/eval/checkm2"
+CHECKM_ROOT="$RUN/eval/checkm"
+CHECKM_OUT="$CHECKM_ROOT/out"
+CHECKM_TMP="$CHECKM_ROOT/tmp"
+mkdir -p "$CHECKM2_OUT" "$CHECKM_TMP"
+
+# CheckM2 ---------------------------------------------------------------------
+echo "=== CheckM2 (predict; extension=$BIN_EXT; bins=$BIN_COUNT) ==="
+CMD2="$MM run -p $CHECKM2_ENV checkm2 predict --threads $THREADS --database_path $CK2DB --input $BINS --output-directory $CHECKM2_OUT -x $BIN_EXT --force"
+echo "cmd_checkm2: $CMD2" | tee -a "$RUN/run_meta.txt"
+T=$(date +%s)
+set +e
+bash -c "$CMD2" 9>&-
+rc2=$?
+set -e
+if [ "$rc2" -eq 0 ] && [ ! -s "$CHECKM2_OUT/quality_report.tsv" ]; then
+  echo "ERROR: CheckM2 returned 0 but quality_report.tsv is missing/empty; recording failure" \
+    | tee -a "$RUN/run_meta.txt"
+  rc2=1
+fi
+echo "checkm2_rc: $rc2 checkm2_wall_s: $(( $(date +%s) - T ))" | tee -a "$RUN/run_meta.txt"
+[ -f "$CHECKM2_OUT/quality_report.tsv" ] && echo "checkm2 report: $CHECKM2_OUT/quality_report.tsv"
+
+# CheckM v1 -------------------------------------------------------------------
+# Preserve an incomplete prior output instead of overwriting evidence. This is
+# important when upgrading from the broken Python-3.14 standalone environment.
+if [ -e "$CHECKM_OUT" ] && [ ! -s "$CHECKM_OUT/storage/bin_stats_ext.tsv" ]; then
+  stale_out="$CHECKM_ROOT/out.incomplete.$(date +%s)"
+  mv "$CHECKM_OUT" "$stale_out"
+  echo "preserved incomplete CheckM output: $stale_out"
+fi
+mkdir -p "$CHECKM_TMP"
+echo "=== CheckM v1 (lineage_wf; extension=$BIN_EXT; env=$CHECKM_ENV) ==="
+CMD1="LD_LIBRARY_PATH=$CHECKM_LD_LIBRARY_PATH $MM run -p $CHECKM_ENV checkm lineage_wf -x $BIN_EXT -t $THREADS --tmpdir $CHECKM_TMP $BINS $CHECKM_OUT"
+echo "cmd_checkm: $CMD1" | tee -a "$RUN/run_meta.txt"
+T=$(date +%s)
+set +e
+bash -c "$CMD1" 9>&-
+rc1=$?
+set -e
+if [ "$rc1" -eq 0 ] && [ ! -s "$CHECKM_OUT/storage/bin_stats_ext.tsv" ]; then
+  echo "ERROR: CheckM returned 0 but bin_stats_ext.tsv is missing/empty; recording failure" \
+    | tee -a "$RUN/run_meta.txt"
+  rc1=1
+fi
+if [ "$rc1" -eq 0 ] && grep -q 'Controlled exit resulting from an unrecoverable error' "$CHECKM_OUT/checkm.log" 2>/dev/null; then
+  echo "ERROR: CheckM log contains a controlled-error exit; recording failure" \
+    | tee -a "$RUN/run_meta.txt"
+  rc1=1
+fi
+echo "checkm_rc: $rc1 checkm_wall_s: $(( $(date +%s) - T ))" | tee -a "$RUN/run_meta.txt"
+[ -f "$CHECKM_OUT/storage/bin_stats_ext.tsv" ] && echo "checkm statistics: $CHECKM_OUT/storage/bin_stats_ext.tsv"
+
+# Summary and final status ----------------------------------------------------
+echo "=== summary ==="
+python3 "$(dirname "$0")/parse_eval.py" "$RUN" 9>&-
+if [ "$rc2" -eq 0 ] && [ "$rc1" -eq 0 ]; then
+  # Automatic reporting (issues #12/#15): aggregate CSV + per-bin CSV + plots,
+  # regenerated after every successfully evaluated run. Best-effort: a report
+  # failure must not turn a successful evaluation into a failed one.
+  echo "=== auto-reporting: results/<run>.csv, runs/<run>/per_bin_results.csv, per_bins.png ==="
+  python3 "$(dirname "$0")/make_results_csv.py" "$RUN" 9>&- \
+    || echo "WARNING: make_results_csv.py failed (rc=$?)" >&2
+  python3 "$(dirname "$0")/make_per_bin_csv.py" "$RUN" 9>&- \
+    || echo "WARNING: make_per_bin_csv.py failed (rc=$?)" >&2
+  "$MM" run -p "$CHECKM_ENV" python3 "$(dirname "$0")/make_per_bin_plots.py" --all "$RUN" 9>&- \
+    || echo "WARNING: make_per_bin_plots.py failed (rc=$?)" >&2
+fi
+echo "done (checkm2 rc=$rc2, checkm rc=$rc1)"
+if [ "$rc2" -ne 0 ] || [ "$rc1" -ne 0 ]; then
+  exit 1
+fi
+=== current eval progress ===
+    Finished processing 136 of 152 (89.47%) bins.    Finished processing 137 of 152 (90.13%) bins.    Finished processing 138 of 152 (90.79%) bins.    Finished processing 139 of 152 (91.45%) bins.    Finished processing 140 of 152 (92.11%) bins.    Finished processing 141 of 152 (92.76%) bins.    Finished processing 142 of 152 (93.42%) bins.    Finished processing 143 of 152 (94.08%) bins.    Finished processing 144 of 152 (94.74%) bins.    Finished processing 145 of 152 (95.39%) bins.    Finished processing 146 of 152 (96.05%) bins.    Finished processing 147 of 152 (96.71%) bins.    Finished processing 148 of 152 (97.37%) bins.    Finished processing 149 of 152 (98.03%) bins.    Finished processing 150 of 152 (98.68%) bins.    Finished processing 151 of 152 (99.34%) bins.2495933 /bin/bash -c cd /vol/data/repos/metagenomic-binning-benchmark && nohup bash scripts/run_eval.sh /vol/data/benchmark/runs/marine_v11_20260925 32 > /vol/data/benchmark/logs/marine_eval.log 2>&1 & echo "launched pid $!"; sleep 12; tail -8 /vol/data/benchmark/logs/marine_eval.log; TS=$(date -u +%FT%TZ); echo "$TS marine-eval: launched run_eval.sh detached (152 bins, pid $!) -> /vol/data/benchmark/logs/marine_eval.log" >> status/agent-activity.log; echo "$TS marine-eval-launched" >> /vol/data/benchmark/.activity; touch /vol/data/benchmark/.heartbeat
+2495935 bash scripts/run_eval.sh /vol/data/benchmark/runs/marine_v11_20260925 32
+2502987 /vol/data/tools/bin/micromamba run -p /vol/data/envs/comebin checkm lineage_wf -x fa -t 32 --tmpdir /vol/data/benchmark/runs/marine_v11_20260925/eval/checkm/tmp /vol/data/benchmark/runs/marine_v11_20260925/comebin_out/comebin_res/comebin_res_bins /vol/data/benchmark/runs/marine_v11_20260925/eval/checkm/out
+2026-09-26T00:55:21Z
+> build · mimo-v2.6-flash-free
+CheckM v1 is running (151/152 markers); after it finishes the eval will exit rc=1 (CheckM2 failed) with no auto-report — I'll re-run `run_eval.sh` once done (disk is now free). While waiting, let me build the #12 combined bar plot. First, check the per-bin CSV format:
+[0m$ [0msed -n '1,60p' /vol/data/repos/metagenomic-binning-benchmark/scripts/make_per_bin_plots.py; echo ...; wc -l /vol/data/repos/metagenomic-binning-benchmark/scripts/make_per_bin_plots.py
+#!/usr/bin/env python3
+"""make_per_bin_plots.py <rundir> [<rundir> ...]
+
+Issue #12: automatic per-bin quality plots for every evaluated run.
+
+For each run with `runs/<name>/per_bin_results.csv` (from make_per_bin_csv.py)
+it writes:
+  runs/<name>/per_bins.png        — grouped bar chart: per-bin completeness and
+                                    contamination for CheckM2 and CheckM v1
+  results/figures/comp_vs_cont_<key>.png — scatter (completeness vs
+                                    contamination, point = bin, color = run) for
+                                    every run sharing the same comparison key
+                                    (default: dataset name passed via -k/--key
+                                    or the run's quoted dataset string).
+
+Run inside the comebin env (only env with matplotlib):
+  micromamba run -p /vol/data/envs/comebin python scripts/make_per_bin_plots.py <rundir>...
+"""
+import argparse
+import csv
+import os
+import sys
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+REPO = os.path.normpath(os.path.join(HERE, ".."))
+
+
+def load_per_bin(run_dir, name):
+    path = os.path.join(run_dir, "per_bin_results.csv")
+    if not os.path.exists(path):
+        return None
+    with open(path, encoding="utf-8") as f:
+        return list(csv.DictReader(f))
+
+
+def dataset_of(run_dir):
+    """Human-readable dataset label for a run, derived from its run_meta.txt
+    `contigs:` line (mirrors make_results_csv.default_dataset)."""
+    meta = os.path.join(run_dir, "run_meta.txt")
+    contigs = ""
+    if os.path.exists(meta):
+        with open(meta, encoding="utf-8") as f:
+            for line in f:
+                if line.startswith("contigs:"):
+                    contigs = line.split(":", 1)[1].strip()
+                    break
+    known = [
+        ("BATS_SAMN07137077_METAG", "COMEBin demo (29,434 contigs)"),
+        ("comebin_medium", "comebin_medium (3,000 contigs)"),
+        ("comebin_small", "comebin_small (300 contigs)"),
+        ("cami_II", "CAMI II"),
+        ("cami_III", "CAMI III"),
+    ]
+    for key, label in known:
+        if key in contigs:
+            return label
+    return "unknown-dataset"
+
+
+def run_bar_plot(plt, rows, out_path):
+...
+192 /vol/data/repos/metagenomic-binning-benchmark/scripts/make_per_bin_plots.py
+[0m$ [0mhead -3 /vol/data/repos/metagenomic-binning-benchmark/runs/human_v11_20260925/per_bin_results.csv; echo "=== columns ==="; head -1 /vol/data/repos/metagenomic-binning-benchmark/runs/human_v11_20260925/per_bin_results.csv | tr ',' '\n' | cat -n; echo "=== run_meta of baseline for branch field ==="; grep -E "source|branch|commit" /vol/data/benchmark/runs/baseline_rerun_autorestart1/run_meta.txt
+bin,checkm2_completeness,checkm2_contamination,checkm2_genome_size,checkm2_contigs,checkm2_n50,checkm1_completeness,checkm1_contamination
+0,100.0,0.45,5287944,1,5287944,100.0,0.0
+1,100.0,0.2,4887363,1,4887363,100.0,0.0
+=== columns ===
+     1	bin
+     2	checkm2_completeness
+     3	checkm2_contamination
+     4	checkm2_genome_size
+     5	checkm2_contigs
+     6	checkm2_n50
+     7	checkm1_completeness
+     8	checkm1_contamination
+=== run_meta of baseline for branch field ===
+source:     /vol/data/repos/COMEBin
+commit:     904f649ef5cbb4582a6f0e5ec8b0b1f45778d85b
