@@ -77397,3 +77397,168 @@ Everything verified. This turn is complete:
 **Issues:** #6/#1 unchanged from owner (09-23); posted one non-duplicative results report on **#6** covering the run, the ENOSPC incident + deterministic rerun, and the CheckM2 16-thread lesson. COMEBin issues disabled.
 
 **State:** no active run, no eval processes, disk 28 %, HEAD = origin `2430e422`, TASK_COMPLETE absent. Only `status/agent-activity.log` lines remain uncommitted — the heartbeat sweeps those within 2 min.
+[0m
+> build · big-pickle
+Starting per protocol — TASK_COMPLETE, DOI recheck poller, and issues:
+[0m$ [0mdate -u +%FT%TZ
+ls /vol/data/benchmark/TASK_COMPLETE 2>/dev/null && echo TASK_COMPLETE_EXISTS || echo NO_TASK_COMPLETE
+cat /vol/data/benchmark/.active_run 2>/dev/null || echo ACTIVE_RUN_CLEAR
+echo "=== doi poller ==="
+pgrep -f "doi_recheck_v3" >/dev/null && echo POLLER_RUNNING || echo POLLER_DONE
+grep -E "HTTP|Resolves|resolves" /vol/data/benchmark/meta/zenodo_benchmark_release_v3.json 2>/dev/null | head -3
+python3 -c "import json; d=json.load(open('/vol/data/benchmark/meta/zenodo_benchmark_release_v3.json')); print('recheck:', d.get('version_doi_recheck_http'), d.get('version_doi_recheck_utc'))"
+echo "=== issues ==="
+gh issue list -R paulzierep/metagenomic-binning-benchmark --state open --json number,title,updatedAt --jq '.[] | "\(.number) \(.title) \(.updatedAt)"'
+gh issue list -R paulzierep/COMEBin --state open --json number,title,updatedAt 2>&1 | head -2
+tail -3 /vol/data/benchmark/.activity
+df -h / | tail -1
+touch /vol/data/benchmark/.heartbeat
+2026-09-26T07:58:06Z
+NO_TASK_COMPLETE
+ACTIVE_RUN_CLEAR
+=== doi poller ===
+POLLER_RUNNING
+  "concept_doi_resolver_target": "https://zenodo.org/records/22973575 (already resolves to v3)",
+recheck: None None
+=== issues ===
+6 Optimization 2026-09-26T07:56:10Z
+1 Idea inbox: benchmark ideas, COMEBin fixes, dataset requests 2026-09-23T14:53:13Z
+the 'paulzierep/COMEBin' repository has disabled issues
+2026-09-26T07:56:10Z issue6-comment-cami3
+2026-09-26T07:56:26Z zenodo-v3-version-doi-recheck attempt 1 -> HTTP 404 (waiting)
+2026-09-26T07:56:48Z turn-activity docs+progress+issue6-done
+/dev/vda1        19G  5.1G   14G  28% /
+> build · big-pickle
+Nothing new on issues (#6 still only my comment); poller still waiting on DataCite. Verifying Current state vs disk and checking for any outstanding items in the record:
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark
+echo "=== git state ==="
+git status --porcelain
+git log --oneline -2 | cut -c1-90
+git rev-parse HEAD origin/main | uniq -c
+echo "=== Current state tail (post-cami3, lines 500-560) ==="
+sed -n '500,560p' PROGRESS.md | grep -v "^$" | head -40
+echo "=== benched copy sync ==="
+cmp -s PROGRESS.md /vol/data/benchmark/PROGRESS.md && echo PROGRESS_SYNCED || echo PROGRESS_DIFFERS
+touch /vol/data/benchmark/.heartbeat
+=== git state ===
+a4172297 status: yes — cami3_v11_20260926_rerun epoch 199/200 loss 1.4088499546051025 ac
+2430e422 PROGRESS: CAMI III entry finalized (run+eval+docs+Zenodo v3 done; heading stale-R
+      2 a4172297851a75a3605642bac546ccbbb1e9dbf6
+=== Current state tail (post-cami3, lines 500-560) ===
+      (520 MB tarball, cami3's 492 bins ship as the new data per #8). The
+      auto-chain's post-publish step then crashed (zenodo_update.sh assumed the
+      API `files` dict shape, record returned a list → `AttributeError`), so the
+      agent verified the published file via API (size 520,343,638 + md5
+      b8b1b647… match), wrote `meta/zenodo_benchmark_release_v3.json`, advanced
+      `meta/zenodo_last_content.sha256` (eea30326…, blocks a duplicate v4) and
+      fixed+deployed `scripts/zenodo_update.sh` (files-shape normalised);
+      concept DOI already resolves to v3; version DOI showed the known DataCite
+      lag (404 at +2 min, v2 took ~68 min → recheck later).
+      docs/11 (summary row + two attempt rows) and the README completed-run
+      bullet with the v3 DOI committed + pushed `a057f021`. Outstanding:
+      version-DOI recheck, report on issue #6.*
+- [x] **Issue #12 plots (2026-09-24 ~10:42 UTC)**: `scripts/make_per_bin_plots.py`
+      generates per-bin bar charts (`runs/<run>/per_bins.png`, CheckM2 + CheckM v1
+      comp/cont per bin) and a comparison scatter
+      (`results/figures/comp_vs_cont_all-runs.png`, one point per bin, color = run)
+      via the comebin env's matplotlib. Run for baseline_rerun_autorestart1,
+      small_test_v4, medium_v11_20260924; each run re-renders its figures after
+      eval. Same-dataset comparisons accumulate (fix_v11 vs baseline once live).
+- [x] **Issues #7/#15/#16 triaged (2026-09-24 10:26–10:44 UTC)**: #7 — the
+      optimization flowchart is now rendered live in the README (colored mermaid,
+      fuller Current/Next text; `docs/09` synced). #15 — per-bin results for ALL
+      evaluated runs stored under `runs/<run>/per_bin_results.csv` (generator
+      `scripts/make_per_bin_csv.py`); root-level `medium_v11_20260924_checkm2_stats.csv`
+      moved to `runs/medium_v11_20260924/checkm2_per_bin.csv`. #16 — watchdog now
+      defaults to `opencode/big-pickle` (`c42fa84`), rotation only on quota.
+      Commits: `869754a` (per-bin + README), `c42fa84` (watchdog big-pickle).
+- [x] **Issue #12 combined bar plot + stats table (2026-09-26, commit `3328a96`)**:
+      `scripts/make_combined_bar_plot.py` renders the FAIRyMAGs-style
+      `results/figures/combined_bar_plot.png` (+ `.svg`): 2 rows (contamination
+      <5% / <10%) × 3 columns, one subplot per main dataset (demo 29,434 /
+      human 4,900 / marine 41,988 contigs), bars labelled run + COMEBin commit
+      + branch (e.g. `fix_v11_20260924 · 95f5ea8 · comebin-optimizations-v11`).
+      Auto-regenerated by `run_eval.sh` after every successful eval; README
+      shows the figure with the run stats table
+      (`results/main_runs_table.md`) directly underneath. Interpretation of
+      "focus only on 3": demo/human/marine; stated in the #12 delivery comment
+      so the owner can correct it.
+- [x] **Issue #8 Zenodo continuous updates (2026-09-26, commit `3328a96`)**:
+      `scripts/zenodo_update.sh` (package → SHA-256 manifest → content-hash
+=== benched copy sync ===
+PROGRESS_SYNCED
+> build · big-pickle
+Clean tree, HEAD==origin; PROGRESS synced. Two things: the entry's "Outstanding" tail is now stale (issue #6 comment already posted), and I should scan the rest of Current state for anything unresolved:
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark
+sed -n '560,600p' PROGRESS.md | grep -v "^$" | head -30
+echo "=== spot-check artifacts vs disk ==="
+R=/vol/data/benchmark/runs/cami3_v11_20260926_rerun
+for f in $R/run_meta.txt $R/eval/checkm2/quality_report.tsv $R/eval/checkm2.incomplete.1790406628 $R/eval/checkm/out/storage/bin_stats_ext.tsv results/cami3_v11_20260926_rerun.csv /vol/data/benchmark/meta/zenodo_last_content.sha256; do
+  [ -e "$f" ] && echo "OK  $f" || echo "MISSING  $f"
+done
+ls /vol/data/benchmark/runs/cami3_v11_20260926/.watchdog_terminal 2>/dev/null && echo "failed-run evidence kept" || echo "failed-run evidence MISSING"
+touch /vol/data/benchmark/.heartbeat
+`bin/zenodo_update.sh`, `bin/make_combined_bar_plot.py` are
+      byte-identical to the repo and `REPO` resolution now works — so the
+      next evaluation really does regenerate figure + Zenodo version.*
+## Watchdog / restart
+`scripts/agent-watchdog.sh` (installed at `/vol/data/benchmark/bin/`, cron `*/5 * * * *`):
+stale heartbeat (>15 min) → `opencode run` continues session
+`ses_f31799c77ffeTq9gcYgqc4hBhg`; if that failed → fresh session with resume prompt.
+Both prompts first check GitHub issues for user instructions. On quota/token/context
+errors it forces `--model` rotation through the free model list; a successful run
+clears the flag (back to default). Rate limit 6 restarts / 6 h; stops when
+`TASK_COMPLETE` exists. **Agent: touch `/vol/data/benchmark/.heartbeat` regularly.**
+=== spot-check artifacts vs disk ===
+OK  /vol/data/benchmark/runs/cami3_v11_20260926_rerun/run_meta.txt
+OK  /vol/data/benchmark/runs/cami3_v11_20260926_rerun/eval/checkm2/quality_report.tsv
+OK  /vol/data/benchmark/runs/cami3_v11_20260926_rerun/eval/checkm2.incomplete.1790406628
+OK  /vol/data/benchmark/runs/cami3_v11_20260926_rerun/eval/checkm/out/storage/bin_stats_ext.tsv
+OK  results/cami3_v11_20260926_rerun.csv
+OK  /vol/data/benchmark/meta/zenodo_last_content.sha256
+/vol/data/benchmark/runs/cami3_v11_20260926/.watchdog_terminal
+failed-run evidence kept
+> build · big-pickle
+All artifacts verified; the only in-flight item is the DOI poller. Updating the stale "Outstanding" tail of the CAMI III entry (issue comment already posted):
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md
+Index: /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md
++++ /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md
+@@ -506,10 +506,12 @@
+       fixed+deployed `scripts/zenodo_update.sh` (files-shape normalised);
+       concept DOI already resolves to v3; version DOI showed the known DataCite
+       lag (404 at +2 min, v2 took ~68 min → recheck later).
+       docs/11 (summary row + two attempt rows) and the README completed-run
+-      bullet with the v3 DOI committed + pushed `a057f021`. Outstanding:
+-      version-DOI recheck, report on issue #6.*
++      bullet with the v3 DOI committed + pushed `a057f021`; **issue #6 results
++      comment posted 2026-09-26 07:56 UTC** (issuecomment-5844421749).
++      Version-DOI recheck running detached (poller every 2 min, updates the
++      receipt when DataCite propagates).*
+ 
+ - [x] **Issue #12 plots (2026-09-24 ~10:42 UTC)**: `scripts/make_per_bin_plots.py`
+       generates per-bin bar charts (`runs/<run>/per_bins.png`, CheckM2 + CheckM v1
+       comp/cont per bin) and a comparison scatter
+
+> build · big-pickle
+Syncing and committing the PROGRESS finalization under the lock:
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark
+cp PROGRESS.md /vol/data/benchmark/PROGRESS.md
+cmp -s PROGRESS.md /vol/data/benchmark/PROGRESS.md && echo PROGRESS_SYNCED
+exec 9>/tmp/bench-repo.lock && flock -w 120 9 || { echo LOCK_FAILED; exit 1; }
+git fetch origin -q
+git add PROGRESS.md
+git commit -q -m "PROGRESS: CAMI III entry — mark issue #6 comment posted, DOI recheck poller noted" 2>&1 | tail -1
+git pull --rebase -q origin 2>&1 | tail -1
+git push -q origin HEAD && echo PUSH_OK
+TS=$(date -u +%FT%TZ)
+echo "$TS progress-cami3-entry-final-progress-committed" >> status/agent-activity.log
+echo "$TS progress-finalized" >> /vol/data/benchmark/.activity
+touch /vol/data/benchmark/.heartbeat
+git log --oneline -1 | cut -c1-80
+PROGRESS_SYNCED
+PUSH_OK
+5df75ec3 PROGRESS: CAMI III entry — mark issue #6 comment posted, DOI recheck
+> build · big-pickle
+Pushed `5df75ec3`. The DOI poller is the only unfinished item — giving it a bounded wait window:
