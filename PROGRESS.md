@@ -465,6 +465,24 @@ included; fixes land on branch `comebin-optimizations` in this repo.
       `cami_III` before `cami_II` (substring!); fix `32c5240` committed +
       deployed atomically to `bin/` so post-eval regeneration labels it
       "CAMI III".*
+      *2026-09-26 04:36: **run FAILED** (exit_code 1, wall 6,677 s, 0 bins) —
+      not a binning bug: the prep's leftover downloads `/tmp/url_anonymous_reads.fq`
+      (9.1 G) + `.fq.gz` (4.7 G) had filled `/` to 100% since 02:42, so
+      get_result's `checkm analyze` (bacteria) wrote incomplete marker tables
+      (`/tmp` ENOSPC: 21 hmmfetch fatals + 3 dead workers, 04:02–04:04) and
+      final selection died `KeyError: '110'`. Verified the reads were already
+      staged in the dataset (`logs/sample_{0,1}/…/anonymous_reads.fq.gz`,
+      5.0 G + 4.7 G, no process held the /tmp copies) → deleted both, `/`
+      100%→28%; removed 68 orphaned hmm temp files (777 M). Watchdog triaged
+      at 04:40:01 (terminal marker in run_meta + `.watchdog_terminal`, no
+      retry); failed run dir kept untouched as evidence.*
+      **Retry `cami3_v11_20260926_rerun` launched 2026-09-26 04:48 UTC**
+      (fresh run dir per protocol — the fix wrapper refuses existing dirs):
+      MODE=cami3, seed 42, 32 threads, commit 95f5ea8, dirty 0, registered in
+      `.active_run` (pid 3727084), watchdog owns handoff. Same deterministic
+      pipeline (seed 42 ⇒ same embeddings/kmeans); ETA ~06:30 UTC for
+      training+clustering+get_result, then run_eval.sh (CheckM2 + CheckM v1 →
+      auto-report + Zenodo v3).*
 
 - [x] **Issue #12 plots (2026-09-24 ~10:42 UTC)**: `scripts/make_per_bin_plots.py`
       generates per-bin bar charts (`runs/<run>/per_bins.png`, CheckM2 + CheckM v1
