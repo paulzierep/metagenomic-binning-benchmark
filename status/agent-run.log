@@ -74938,3 +74938,80 @@ Run is healthy: augmentation generating (seed 42, views 42-47), all stages alive
 > build · mimo-v2.6-flash-free
 [0m→ [0mRead /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md [90m[limit=50, offset=440][0m
 > build · mimo-v2.6-flash-free
+Appending the incident + retry documentation to the CAMI III entry:
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md
+Index: /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md
++++ /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md
+@@ -464,8 +464,26 @@
+       `human_sample0_input`/`marine_sample0_input`). Matcher now checks
+       `cami_III` before `cami_II` (substring!); fix `32c5240` committed +
+       deployed atomically to `bin/` so post-eval regeneration labels it
+       "CAMI III".*
++      *2026-09-26 04:36: **run FAILED** (exit_code 1, wall 6,677 s, 0 bins) —
++      not a binning bug: the prep's leftover downloads `/tmp/url_anonymous_reads.fq`
++      (9.1 G) + `.fq.gz` (4.7 G) had filled `/` to 100% since 02:42, so
++      get_result's `checkm analyze` (bacteria) wrote incomplete marker tables
++      (`/tmp` ENOSPC: 21 hmmfetch fatals + 3 dead workers, 04:02–04:04) and
++      final selection died `KeyError: '110'`. Verified the reads were already
++      staged in the dataset (`logs/sample_{0,1}/…/anonymous_reads.fq.gz`,
++      5.0 G + 4.7 G, no process held the /tmp copies) → deleted both, `/`
++      100%→28%; removed 68 orphaned hmm temp files (777 M). Watchdog triaged
++      at 04:40:01 (terminal marker in run_meta + `.watchdog_terminal`, no
++      retry); failed run dir kept untouched as evidence.*
++      **Retry `cami3_v11_20260926_rerun` launched 2026-09-26 04:48 UTC**
++      (fresh run dir per protocol — the fix wrapper refuses existing dirs):
++      MODE=cami3, seed 42, 32 threads, commit 95f5ea8, dirty 0, registered in
++      `.active_run` (pid 3727084), watchdog owns handoff. Same deterministic
++      pipeline (seed 42 ⇒ same embeddings/kmeans); ETA ~06:30 UTC for
++      training+clustering+get_result, then run_eval.sh (CheckM2 + CheckM v1 →
++      auto-report + Zenodo v3).*<br><br>
+ 
+ - [x] **Issue #12 plots (2026-09-24 ~10:42 UTC)**: `scripts/make_per_bin_plots.py`
+       generates per-bin bar charts (`runs/<run>/per_bins.png`, CheckM2 + CheckM v1
+       comp/cont per bin) and a comparison scatter
+
+> build · mimo-v2.6-flash-free
+Removing the stray `<br><br>` (out of style for this file):
+[0m✗ [0mEdit /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md failed
+[91m[1mError: [0mCould not find oldString in /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md. It must match exactly, including whitespace and indentation.
+> build · mimo-v2.6-flash-free
+[0m✱ [0mGrep "br><br|Zenodo v3\.\)\*" [90min /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md · 1 match[0m
+> build · mimo-v2.6-flash-free
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md
+Index: /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md
++++ /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md
+@@ -481,9 +481,9 @@
+       MODE=cami3, seed 42, 32 threads, commit 95f5ea8, dirty 0, registered in
+       `.active_run` (pid 3727084), watchdog owns handoff. Same deterministic
+       pipeline (seed 42 ⇒ same embeddings/kmeans); ETA ~06:30 UTC for
+       training+clustering+get_result, then run_eval.sh (CheckM2 + CheckM v1 →
+-      auto-report + Zenodo v3).*<br><br>
++      auto-report + Zenodo v3).*
+ 
+ - [x] **Issue #12 plots (2026-09-24 ~10:42 UTC)**: `scripts/make_per_bin_plots.py`
+       generates per-bin bar charts (`runs/<run>/per_bins.png`, CheckM2 + CheckM v1
+       comp/cont per bin) and a comparison scatter
+
+> build · mimo-v2.6-flash-free
+Committing bookkeeping under lock:
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark
+TS=$(date -u +%FT%TZ)
+echo "$TS launch: cami3_v11_20260926_rerun detached (pid 3727084, mode=cami3, seed 42, commit 95f5ea8, fresh dir after ENOSPC terminal failure of cami3_v11_20260926)" >> status/agent-activity.log
+echo "$TS rerun-launched-pid3727084" >> /vol/data/benchmark/.activity
+exec 9>/tmp/bench-repo.lock; flock -n 9 || { echo LOCK_BUSY; exit 1; }
+git add PROGRESS.md status/agent-activity.log
+git commit -m "PROGRESS: CAMI III ENOSPC incident (prep leftovers filled /) + terminal failure + rerun cami3_v11_20260926_rerun launched" 2>&1 | tail -1
+git push origin main 2>&1 | tail -1
+cp PROGRESS.md /vol/data/benchmark/PROGRESS.md
+touch /vol/data/benchmark/.heartbeat
+echo "committed"; date -u +%FT%TZ
+2 files changed, 19 insertions(+)
+   c6647b6..6509f72  main -> main
+committed
+2026-09-26T04:50:53Z
+> build · mimo-v2.6-flash-free
+Committed `6509f72` (base moved — status-heartbeat cron pushed its own commits, as usual). Now monitoring the rerun — first poll to confirm training starts after augmentation:
