@@ -74787,3 +74787,69 @@ cmd_from_log: 2026-09-26 04:00:02,783 - HMMsearch command: /vol/data/envs/comebi
 0
 /dev/vda1        19G  5.8G   13G  32% /
 > build · mimo-v2.6-flash-free
+The run **failed at the finish line**: `KeyError: '110'` in final-result selection (the bacteria `checkm analyze` results are incomplete — exactly the ENOSPC damage), 0 bins, exit 1 at 04:36:30. Training/Leiden/kmeans artifacts are intact. Checking the resume logic to see if I can re-run just the tail without retraining:
+[0m$ [0mcd /vol/data/repos/COMEBin-v11 && grep -n "BENCHMARK_RESUME\|resume\|skip\|embeddings.npy\|exist" COMEBin/run_comebin.sh | head -30; echo "=== exit_code line ==="; grep -n "exit_code\|wall_s" /vol/data/benchmark/runs/cami3_v11_20260926/run_meta.txt; echo "=== .active_run now ==="; cat /vol/data/benchmark/.active_run 2>/dev/null || echo GONE; echo "=== watchdog status files ==="; ls -la /vol/data/benchmark/status/ 2>/dev/null | head; touch /vol/data/benchmark/.heartbeat
+183:emb_file="${embedding_dir}/embeddings.npy"
+184:covemb_file="${embedding_dir}/covembeddings.npy"
+=== exit_code line ===
+11:exit_code:  1
+12:wall_s:     6677
+=== .active_run now ===
+3200074 3200071 /vol/data/benchmark/runs/cami3_v11_20260926/comebin_run.log /vol/data/benchmark/runs/cami3_v11_20260926 1790390713 cami3 /vol/data/repos/COMEBin-v11 /vol/data/datasets/cami_III/toy_human_input_2samples/contigs.fa /vol/data/datasets/cami_III/toy_human_input_2samples/bamfiles
+=== watchdog status files ===
+> build · mimo-v2.6-flash-free
+[0m$ [0mgrep -rn "BENCHMARK_RESUME" /vol/data/repos/COMEBin-v11/ /vol/data/repos/metagenomic-binning-benchmark/scripts/ 2>/dev/null | grep -v "\.git/" | head; echo "=== run_comebin.sh stage flow ==="; grep -n "main.py\|train\|get_result\|data_augmentation\|python" /vol/data/repos/COMEBin-v11/COMEBin/run_comebin.sh | head -30; touch /vol/data/benchmark/.heartbeat
+/vol/data/repos/metagenomic-binning-benchmark/scripts/run_comebin_baseline.sh:25:RESUME=${BENCHMARK_RESUME:-0}
+/vol/data/repos/metagenomic-binning-benchmark/scripts/run_comebin_baseline.sh:33:  [ -f "$RUNDIR/run_meta.txt" ] || { echo "ERROR: BENCHMARK_RESUME=1 but no run_meta.txt in $RUNDIR"; exit 1; }
+/vol/data/repos/metagenomic-binning-benchmark/scripts/run_comebin_baseline.sh:34:  grep -q '^exit_code:' "$RUNDIR/run_meta.txt" || { echo "ERROR: BENCHMARK_RESUME=1 but phase 1 recorded no exit_code"; exit 1; }
+/vol/data/repos/metagenomic-binning-benchmark/scripts/run_comebin_baseline.sh:61:  echo "For a binning-only continuation of a finished phase-1 run: BENCHMARK_RESUME=1 bash run_comebin_baseline.sh $RUNDIR"
+=== run_comebin.sh stage flow ===
+25:	echo "  -d STR          NN training device: cuda, cuda:N, or cpu (default=cuda)"
+31:	echo "  -b INT          batch size for training process (default=1024)"
+130:if [[ -f "${script_dir}/main.py" ]]; then
+132:elif [[ -f "${script_dir}/COMEBin/main.py" ]]; then
+135:    echo "Cannot locate COMEBin/main.py relative to ${script_path}." >&2
+139:main_py="${comebin_dir}/main.py"
+153:folder="${output_dir}/data_augmentation"
+166:    python "${main_py}" generate_aug_data --contig_file "${contig_file}" \
+167:    --out_augdata_path "${output_dir}/data_augmentation" \
+177:###### Get representation (training process)
+179:train_status=0
+193:    python "${main_py}" train --data "${output_dir}/data_augmentation" \
+198:    train_status=$?
+202:if [[ ${train_status} -ne 0 ]]; then
+203:    report_stage_failure "Training" "${train_status}"
+217:python "${main_py}" bin --contig_file "${contig_file}" \
+227:python "${main_py}" get_result --contig_file "${contig_file}" \
+> build · mimo-v2.6-flash-free
+`run_comebin.sh` stages: generate_aug_data → train → bin → get_result. Checking whether stages skip when outputs already exist (would make a re-launch cheap):
+[0m→ [0mRead /vol/data/repos/COMEBin-v11/COMEBin/run_comebin.sh [90m[limit=90, offset=145][0m
+> build · mimo-v2.6-flash-free
+Stage-skip logic exists: augmentation and training **skip if manifests exist**; `bin` and `get_result` always re-run. So a re-launch in the same dir = re-run only clustering (~3 min) + get_result — exactly the ENOSPC-damaged part. Verifying (a) embeddings artifacts exist for the skip, (b) `get_result` doesn't skip checkm analyze on the stale incomplete output:
+[0m$ [0mls -la /vol/data/benchmark/runs/cami3_v11_20260926/comebin_out/comebin_res/ | head -20; echo "=== skip files ==="; for f in embedding_manifest.json embedding_ids.txt embeddings.npy covembeddings.npy embedding_lengths.npy; do s=$(stat -c %s "/vol/data/benchmark/runs/cami3_v11_20260926/comebin_out/comebin_res/$f" 2>/dev/null); echo "$f: ${s:-MISSING}"; done; echo "=== get_result checkm_bac logic ==="; grep -rn "checkm_bac\|checkm_ar\b" /vol/data/repos/COMEBin-v11/COMEBin/*.py | head -10; touch /vol/data/benchmark/.heartbeat
+total 215180
+drwxrwxr-x 3 ubuntu ubuntu      4096 Sep 26 04:01 .
+drwxrwxr-x 4 ubuntu ubuntu      4096 Sep 26 02:48 ..
+-rw-rw-r-- 1 ubuntu ubuntu 214716883 Sep 26 03:59 checkpoint_0200.pth.tar
+drwxrwxr-x 4 ubuntu ubuntu     20480 Sep 26 04:02 cluster_res
+-rw-rw-r-- 1 ubuntu ubuntu     92880 Sep 26 04:02 comebin.log
+-rw-rw-r-- 1 ubuntu ubuntu       717 Sep 26 02:48 config.yml
+-rw-rw-r-- 1 ubuntu ubuntu   2560128 Sep 26 03:59 covembeddings.npy
+-rw-rw-r-- 1 ubuntu ubuntu    251241 Sep 26 03:59 embedding_ids.txt
+-rw-rw-r-- 1 ubuntu ubuntu     40128 Sep 26 03:59 embedding_lengths.npy
+-rw-rw-r-- 1 ubuntu ubuntu       507 Sep 26 03:59 embedding_manifest.json
+-rw-rw-r-- 1 ubuntu ubuntu   2560128 Sep 26 03:59 embeddings.npy
+-rw-rw-r-- 1 ubuntu ubuntu        88 Sep 26 02:48 events.out.tfevents.1790390891.binningvm-40cf5.3201566.0
+-rw-rw-r-- 1 ubuntu ubuntu     53972 Sep 26 03:59 training.log
+=== skip files ===
+embedding_manifest.json: 507
+embedding_ids.txt: 251241
+embeddings.npy: 2560128
+covembeddings.npy: 2560128
+embedding_lengths.npy: 40128
+=== get_result checkm_bac logic ===
+/vol/data/repos/COMEBin-v11/COMEBin/get_final_result.py:228:    return (method_dir / 'checkm_bac/marker_gene_table.tsv',
+/vol/data/repos/COMEBin-v11/COMEBin/get_final_result.py:229:            method_dir / 'checkm_ar/marker_gene_table.tsv')
+> build · mimo-v2.6-flash-free
+All training skip-files present. Now checking whether `get_final_result.py` re-runs checkm analyze when the (incomplete) `marker_gene_table.tsv` already exists:
+[0m✱ [0mGrep "marker_gene_table|checkm analyze|exists|skip|subprocess|def run|bac\[|arc\[" [90min /vol/data/repos/COMEBin-v11/COMEBin/get_final_result.py · 5 matches[0m
