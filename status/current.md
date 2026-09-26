@@ -3,8 +3,8 @@
 | | |
 |---|---|
 | Status | 🟢 `running` |
-| ⏱ Updated (Europe/Berlin) | `2026-09-26T10:00 CEST` |
-| 🏃 Last benchmark (not active) | `cami3_v11_20260926_rerun` — last observed **epoch 199/200** (log 7382s old) |
+| ⏱ Updated (Europe/Berlin) | `2026-09-26T10:02 CEST` |
+| 🏃 Last benchmark (not active) | `cami3_v11_20260926_rerun` — last observed **epoch 199/200** (log 7502s old) |
 | 🧠 Model (last turn) | `big-pickle` (watchdog rotates to free models on quota) |
 | 📌 Agent note · **1 min old** | 2026-09-25T12:16:00Z | marine_v11_20260925 active: epoch 147/200, COMEBin-v11@95f5ea8, cami2 mode; heartbeat touched; PROGRESS synced
 2026-09-25T15:34:55Z | issues triaged: #12 reporting auto-plots confirmed complete; #8 Zenodo record active with continuous-update workflow; marine run completed; no active run
@@ -45,10 +45,11 @@
 2026-09-26T07:56:26Z zenodo-v3-version-doi-recheck attempt 1 -> HTTP 404 (waiting)
 2026-09-26T07:56:48Z turn-activity docs+progress+issue6-done
 2026-09-26T07:58:24Z progress-finalized
-2026-09-26T07:58:26Z zenodo-v3-version-doi-recheck attempt 2 -> HTTP 404 (waiting) |
-| ⚙️ Load · uptime | `0.04 0.12 2.01` · 2 days, 18 hours, 24 minutes — 32 cores, 62 GiB, no GPU |
-| 💾 RAM used/total | `2144/64295 MB` |
+2026-09-26T07:58:26Z zenodo-v3-version-doi-recheck attempt 2 -> HTTP 404 (waiting)
+2026-09-26T08:00:26Z zenodo-v3-version-doi-recheck attempt 3 -> HTTP 404 (waiting) |
+| ⚙️ Load · uptime | `0.14 0.14 1.78` · 2 days, 18 hours, 26 minutes — 32 cores, 62 GiB, no GPU |
+| 💾 RAM used/total | `2115/64295 MB` |
 | 🔗 Session | `ses_f31799c77ffeTq9gcYgqc4hBhg` |
-| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `5df75ec3 PROGRESS: CAMI III entry — mark issue #6 comment posted, DOI recheck ` |
+| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `da9786bc status: yes — cami3_v11_20260926_rerun epoch 199/200 loss 1.408849954` |
 | 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `7645723 B` — every run, command & tool result |
 | 📈 Timeline | [status/status.log](status/status.log) |
