@@ -3,10 +3,10 @@
 | | |
 |---|---|
 | Status | 🟢 `running` |
-| ⏱ Updated (Europe/Berlin) | `2026-09-26T07:38 CEST` |
-| 🏃 Live benchmark | `cami3_v11_20260926_rerun` — **epoch 141/200** · loss `1.8530539274215698` · top1 acc `63.05989456176758` (log 20s fresh) |
+| ⏱ Updated (Europe/Berlin) | `2026-09-26T07:40 CEST` |
+| 🏃 Live benchmark | `cami3_v11_20260926_rerun` — **epoch 148/200** · loss `1.7165580987930298` · top1 acc `66.64713287353516` (log 2s fresh) |
 | 🧠 Model (last turn) | `muse-spark-1.3-contributor-free` (watchdog rotates to free models on quota) |
-| 📌 Agent note · **14 min old** | 2026-09-25T12:16:00Z | marine_v11_20260925 active: epoch 147/200, COMEBin-v11@95f5ea8, cami2 mode; heartbeat touched; PROGRESS synced
+| 📌 Agent note · **16 min old** | 2026-09-25T12:16:00Z | marine_v11_20260925 active: epoch 147/200, COMEBin-v11@95f5ea8, cami2 mode; heartbeat touched; PROGRESS synced
 2026-09-25T15:34:55Z | issues triaged: #12 reporting auto-plots confirmed complete; #8 Zenodo record active with continuous-update workflow; marine run completed; no active run
 2026-09-25T20:49:23Z | issues triaged: #12 auto-plots complete; #8 zenodo record published with continuous-update workflow; marine run completed; no active run; agent resumed for CAMI III prep
 2026-09-25T21:11:13Z | issues #12 and #8 triaged: reporting auto-plots confirmed complete and Zenodo continuous-update workflow verified; no active runs; preparing for CAMI III dataset prep
@@ -35,9 +35,9 @@
 2026-09-26T04:26:43Z disk-full-incident-freed-13.8G-in-tmp
 2026-09-26T04:50:51Z rerun-launched-pid3727084
 2026-09-26T05:23:51Z rerun-on-track-epoch99 |
-| ⚙️ Load · uptime | `31.38 31.44 29.86` · 2 days, 16 hours, 2 minutes — 32 cores, 62 GiB, no GPU |
-| 💾 RAM used/total | `5009/64295 MB` |
+| ⚙️ Load · uptime | `29.89 30.78 29.82` · 2 days, 16 hours, 4 minutes — 32 cores, 62 GiB, no GPU |
+| 💾 RAM used/total | `5770/64295 MB` |
 | 🔗 Session | `ses_f31799c77ffeTq9gcYgqc4hBhg` |
-| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `6ecdb68 status: yes — cami3_v11_20260926_rerun epoch 135/200 loss 1.8835260868` |
+| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `aec42bc status: yes — cami3_v11_20260926_rerun epoch 141/200 loss 1.8530539274` |
 | 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `7348619 B` — every run, command & tool result |
 | 📈 Timeline | [status/status.log](status/status.log) |
