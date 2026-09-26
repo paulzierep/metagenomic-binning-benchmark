@@ -3,10 +3,10 @@
 | | |
 |---|---|
 | Status | 🟢 `running` |
-| ⏱ Updated (Europe/Berlin) | `2026-09-26T11:30 CEST` |
-| 🏃 Last benchmark (not active) | `cami3_v11_20260926_rerun` — last observed **epoch 199/200** (log 12782s old) |
+| ⏱ Updated (Europe/Berlin) | `2026-09-26T11:32 CEST` |
+| 🏃 Last benchmark (not active) | `cami3_v11_20260926_rerun` — last observed **epoch 199/200** (log 12902s old) |
 | 🧠 Model (last turn) | `nemotron-3.5-lightning-free` (watchdog rotates to free models on quota) |
-| 📌 Agent note · **11 min old** | 2026-09-25T12:16:00Z | marine_v11_20260925 active: epoch 147/200, COMEBin-v11@95f5ea8, cami2 mode; heartbeat touched; PROGRESS synced
+| 📌 Agent note · **13 min old** | 2026-09-25T12:16:00Z | marine_v11_20260925 active: epoch 147/200, COMEBin-v11@95f5ea8, cami2 mode; heartbeat touched; PROGRESS synced
 2026-09-25T15:34:55Z | issues triaged: #12 reporting auto-plots confirmed complete; #8 Zenodo record active with continuous-update workflow; marine run completed; no active run
 2026-09-25T20:49:23Z | issues triaged: #12 auto-plots complete; #8 zenodo record published with continuous-update workflow; marine run completed; no active run; agent resumed for CAMI III prep
 2026-09-25T21:11:13Z | issues #12 and #8 triaged: reporting auto-plots confirmed complete and Zenodo continuous-update workflow verified; no active runs; preparing for CAMI III dataset prep
@@ -57,9 +57,9 @@
 2026-09-26T08:29:56Z | committed script modifications: run_comebin_fix.sh pre-flight free-space guard + run_eval.sh CheckM2 thread-capping/retry guard to main as 170ca0ad
 2026-09-26T09:02:54Z | issue triage: reviewed open issues #22 (summary table for all runs), #21 (use a seed for all runs), #20 (optimization ideas), #19 (better plots), #6 (optimization); posted initial comments to each issue
 2026-09-26T09:20:00Z Agent restart resume: read PROGRESS.md, checked GitHub issues #22-#1 via gh issue list; triaged without duplicating existing responses; verified disk state: CAMI III rerun (cami3_v11_20260926_rerun) complete with Zenodo v3, fix_v11_20260924 completed, baseline_rerun_autorestart1 completed; tiny_test_n100 failed (exit 1, 0 bins - floor at ~101 contigs), tiny_test_n101 passed (exit 0, 1 bin); infrastructure created: agent-activity.log, .heartbeat touched; open issues #22/#21/#20/#19 already commented; no active .active_run; continuing from first unfinished step |
-| ⚙️ Load · uptime | `0.05 0.06 0.06` · 2 days, 19 hours, 54 minutes — 32 cores, 62 GiB, no GPU |
-| 💾 RAM used/total | `2140/64295 MB` |
+| ⚙️ Load · uptime | `0.00 0.04 0.05` · 2 days, 19 hours, 56 minutes — 32 cores, 62 GiB, no GPU |
+| 💾 RAM used/total | `2119/64295 MB` |
 | 🔗 Session | `ses_f31799c77ffeTq9gcYgqc4hBhg` |
-| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `ec8482e6 status: no — cami3_v11_20260926_rerun epoch 199/200 loss 1.4088499546` |
-| 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `7858799 B` — every run, command & tool result |
+| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `826db480 status: yes — cami3_v11_20260926_rerun epoch 199/200 loss 1.408849954` |
+| 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `7858843 B` — every run, command & tool result |
 | 📈 Timeline | [status/status.log](status/status.log) |
