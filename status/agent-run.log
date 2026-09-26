@@ -70716,3 +70716,82 @@ Index: /vol/data/repos/metagenomic-binning-benchmark/scripts/zenodo_update.sh
  m = json.load(open(sys.argv[1]))
 
 > build · mimo-v2.6-flash-free
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/scripts/zenodo_update.sh
+Index: /vol/data/repos/metagenomic-binning-benchmark/scripts/zenodo_update.sh
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/scripts/zenodo_update.sh
++++ /vol/data/repos/metagenomic-binning-benchmark/scripts/zenodo_update.sh
+@@ -125,24 +125,21 @@
+ if [ -f "$LAST" ] && [ "$(cat "$LAST")" = "$CONTENT_SHA" ]; then
+   skip "content unchanged since last upload (sha256 $CONTENT_SHA)"
+ fi
+ 
+-# --- Deterministic tarball ----------------------------------------------------
+-VERSION=$(python3 - <<'PY'
+-import os, urllib.request
+-# next version = published versions + 1 (computed later against the API when
+-# uploading; for the filename a lower bound is enough — refined below if API up)
+-print(os.environ.get("ZENODO_VERSION", ""))
+-PY
+-)
+-[ -n "$VERSION" ] || VERSION="dev"
+-OUT="$RELEASES/comebin_benchmark_release_v${VERSION}_$(date -u +%Y%m%d).tar.gz"
+-tar --sort=name --owner=0 --group=0 --numeric-owner \
+-    --mtime='2020-01-01 00:00:00Z' -cf - -C "$STAGE" . | gzip -n > "$OUT"
+-OUT_MD5=$(md5sum "$OUT" | cut -d' ' -f1)
+-log "package: $OUT ($(stat -c%s "$OUT") bytes, md5 $OUT_MD5)"
++# --- Build the deterministic tarball -----------------------------------------
++build_tar() {
++  tar --sort=name --owner=0 --group=0 --numeric-owner \
++      --mtime='2020-01-01 00:00:00Z' -cf - -C "$STAGE" . | gzip -n > "$1"
++}
+ 
+-[ "$DRY" -eq 1 ] && { log "dry-run: stopping before any network call"; exit 0; }
++if [ "$DRY" -eq 1 ]; then
++  OUT="$RELEASES/comebin_benchmark_release_dryrun_$(date -u +%Y%m%d).tar.gz"
++  build_tar "$OUT"
++  log "package: $OUT ($(stat -c%s "$OUT") bytes, md5 $(md5sum "$OUT" | cut -d' ' -f1))"
++  log "dry-run: stopping before any network call"
++  exit 0
++fi
+ 
+ # --- Zenodo: reuse an open draft or start a new version -----------------------
+ WORK=$(mktemp -d "$RELEASES/api.XXXXXX")
+ req() { # METHOD URL [curl args...] -> $CODE (body in $WORK/resp.json)
+@@ -177,9 +174,9 @@
+   log "reusing open draft $DRAFT_ID"
+ fi
+ rm -rf "$WORK"; WORK=$(mktemp -d "$RELEASES/api.XXXXXX")
+ 
+-# Refine the version number from the published versions + the open draft.
++# Version number = published versions + 1 (v1 exists -> this upload is v2).
+ req GET "https://zenodo.org/api/records/$RECORD/versions"
+ [ "$CODE" = "200" ] || die "versions lookup failed (HTTP $CODE)"
+ VERSION=$(python3 - "$WORK/resp.json" <<'PY'
+ import json, sys
+@@ -187,17 +184,13 @@
+ PY
+ )
+ rm -rf "$WORK"; WORK=$(mktemp -d "$RELEASES/api.XXXXXX")
+ 
+-# Deterministic content: rebuild the tarball name with the real version number.
+-NEW_OUT="$RELEASES/comebin_benchmark_release_v${VERSION}_$(date -u +%Y%m%d).tar.gz"
+-if [ "$OUT" != "$NEW_OUT" ]; then
+-  tar --sort=name --owner=0 --group=0 --numeric-owner \
+-      --mtime='2020-01-01 00:00:00Z' -cf - -C "$STAGE" . | gzip -n > "$NEW_OUT"
+-  rm -f "$OUT"; OUT="$NEW_OUT"
+-  OUT_MD5=$(md5sum "$OUT" | cut -d' ' -f1)
+-fi
+-log "uploading $OUT as Zenodo version $VERSION"
++OUT="$RELEASES/comebin_benchmark_release_v${VERSION}_$(date -u +%Y%m%d).tar.gz"
++build_tar "$OUT"
++OUT_MD5=$(md5sum "$OUT" | cut -d' ' -f1)
++log "package: $OUT ($(stat -c%s "$OUT") bytes, md5 $OUT_MD5)"
++log "uploading as Zenodo version $VERSION"
+ 
+ # --- Upload file via the record's file bucket ---------------------------------
+ req GET "https://zenodo.org/api/deposit/depositions/$DRAFT_ID"
+ [ "$CODE" = "200" ] || die "reading draft failed (HTTP $CODE)"
+
+> build · mimo-v2.6-flash-free
+Now a dry-run test (packages current data, no network):
