@@ -71188,3 +71188,51 @@ EVAL_RUNNING
 2026-09-26T01:36:19Z
 > build · mimo-v2.6-flash-free
 `qa` stage (final) — the auto-report + Zenodo chain should fire within ~2 min:
+[0m$ [0msleep 180; echo "=== chain output ==="; grep -E "checkm_rc|checkm_bins|done \(|auto-reporting|WARNING|zenodo_update" /vol/data/benchmark/logs/marine_eval_retry.log | tail -20; echo "---tail---"; tail -c 600 /vol/data/benchmark/logs/marine_eval_retry.log; echo; pgrep -f run_eval.sh >/dev/null && echo EVAL_RUNNING || echo EVAL_DONE; date -u +%FT%TZ; touch /vol/data/benchmark/.heartbeat
+=== chain output ===
+checkm_rc: 0 checkm_wall_s: 998
+checkm_bins: 152 checkm_compl_mean: 46.36 checkm_cont_mean: 5.09
+=== auto-reporting: results/<run>.csv, runs/<run>/per_bin_results.csv, per_bins.png ===
+[zenodo_update] staging benchmark data -> /vol/data/benchmark/releases/stage.e3wYWx
+[zenodo_update] runs in package: baseline_rerun_autorestart1 (60 bins) fix_v11_20260924 (71 bins) human_v11_20260925 (107 bins) marine_v11_20260925 (152 bins) medium_v11_20260924 (16 bins) small_test_v4 (3 bins) tiny_test_n101 (1 bins)
+[zenodo_update] manifest: 522 files, 577472717 bytes
+[zenodo_update] reusing open draft 22969763
+[zenodo_update] package: /vol/data/benchmark/releases/comebin_benchmark_release_v2_20260926.tar.gz (168110629 bytes, md5 114459d4e728e70b2aefb70e1d8f620e)
+[zenodo_update] uploading as Zenodo version 2
+[zenodo_update] uploaded comebin_benchmark_release_v2_20260926.tar.gz (md5 verified 114459d4e728e70b2aefb70e1d8f620e)
+[zenodo_update] metadata updated (version 2.0, title/description refreshed)
+[zenodo_update] ERROR: publish failed (HTTP 202): {"created": "2026-09-26T01:38:40.578115+00:00", "modified": "2026-09-26T01:38:40.793436+00:00", "id": 22969763, "conceptrecid": "22935024", "doi": "10.5281/zenodo.22969763", "conceptdoi": "10.5281/zenodo.22935024", "doi_url": "https://doi.org/10.5281/zenodo.22969763", "metadata": {"title": "COMEBin metagenomic binning benchmark \u2014 datasets and run results", "doi": "10.5281/zenodo.22969763", "p
+WARNING: zenodo_update.sh failed (rc=1)
+done (checkm2 rc=0, checkm rc=0)
+---tail---
+[zenodo_update] metadata updated (version 2.0, title/description refreshed)
+[zenodo_update] ERROR: publish failed (HTTP 202): {"created": "2026-09-26T01:38:40.578115+00:00", "modified": "2026-09-26T01:38:40.793436+00:00", "id": 22969763, "conceptrecid": "22935024", "doi": "10.5281/zenodo.22969763", "conceptdoi": "10.5281/zenodo.22935024", "doi_url": "https://doi.org/10.5281/zenodo.22969763", "metadata": {"title": "COMEBin metagenomic binning benchmark \u2014 datasets and run results", "doi": "10.5281/zenodo.22969763", "p
+WARNING: zenodo_update.sh failed (rc=1)
+done (checkm2 rc=0, checkm rc=0)
+
+EVAL_RUNNING
+2026-09-26T01:39:30Z
+> build · mimo-v2.6-flash-free
+Auto-chain worked through upload + metadata, but **publish returned HTTP 202** (Zenodo processes publishes asynchronously — my script only accepted 200/201). Checking the actual state:
+[0m$ [0mTOK=$(cat /home/ubuntu/.zenodo_token)
+curl -sS -H "Authorization: Bearer $TOK" https://zenodo.org/api/deposit/depositions/22969763 -o /tmp/zpub.json -w "auth GET http=%{http_code}\n"
+python3 -c "
+import json; d=json.load(open('/tmp/zpub.json'))
+print('state:', d.get('state'), '| submitted:', d.get('submitted'), '| doi:', d.get('doi'))
+print('files:', [(f.get('filename'), f.get('filesize')) for f in d.get('files',[])])"
+curl -sS https://zenodo.org/api/records/22969763 -o /tmp/zpub2.json -w "public GET http=%{http_code}\n"
+python3 -c "
+import json; d=json.load(open('/tmp/zpub2.json'))
+print('public: id', d.get('id'), '| is_published:', d.get('is_published'), '| version:', d.get('metadata',{}).get('version'), '| doi:', d.get('doi'))
+print('files:', {k: (v.get('size'), v.get('checksum')) for k,v in (d.get('files',{}).get('entries') or {}).items()})" 2>/dev/null || head -c 200 /tmp/zpub2.json
+echo "=== run_eval still alive? ==="; pgrep -af "run_eval.sh" | head -3; pgrep -f run_eval.sh >/dev/null && echo RUNNING || echo DONE; date -u +%FT%TZ
+auth GET http=200
+state: done | submitted: True | doi: 10.5281/zenodo.22969763
+files: [('comebin_small_release_v1.tar.gz', 95216539), ('comebin_small.release.public.json', 3650), ('comebin_benchmark_release_v2_20260926.tar.gz', 168110629)]
+public GET http=200
+public: id 22969763 | is_published: None | version: 2.0 | doi: 10.5281/zenodo.22969763
+{"created": "2026-09-26T01:38:40.578115+00:00", "modified": "2026-09-26T01:38:40.793436+00:00", "id": 22969763, "conceptrecid": "22935024", "doi": "10.5281/zenodo.22969763", "conceptdoi": "10.5281/zen=== run_eval still alive? ===
+3169019 /bin/bash -c TOK=$(cat /home/ubuntu/.zenodo_token) curl -sS -H "Authorization: Bearer $TOK" https://zenodo.org/api/deposit/depositions/22969763 -o /tmp/zpub.json -w "auth GET http=%{http_code}\n" python3 -c " import json; d=json.load(open('/tmp/zpub.json')) print('state:', d.get('state'), '| submitted:', d.get('submitted'), '| doi:', d.get('doi')) print('files:', [(f.get('filename'), f.get('filesize')) for f in d.get('files',[])])" curl -sS https://zenodo.org/api/records/22969763 -o /tmp/zpub2.json -w "public GET http=%{http_code}\n" python3 -c " import json; d=json.load(open('/tmp/zpub2.json')) print('public: id', d.get('id'), '| is_published:', d.get('is_published'), '| version:', d.get('metadata',{}).get('version'), '| doi:', d.get('doi')) print('files:', {k: (v.get('size'), v.get('checksum')) for k,v in (d.get('files',{}).get('entries') or {}).items()})" 2>/dev/null || head -c 200 /tmp/zpub2.json echo "=== run_eval still alive? ==="; pgrep -af "run_eval.sh" | head -3; pgrep -f run_eval.sh >/dev/null && echo RUNNING || echo DONE; date -u +%FT%TZ
+RUNNING
+2026-09-26T01:39:54Z
+> build · mimo-v2.6-flash-free
