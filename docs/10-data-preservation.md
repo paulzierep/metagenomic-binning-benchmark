@@ -89,6 +89,47 @@ uploaded filenames, and final checksums in:
 If the upload is incomplete or verification fails, retain the local data and
 report the failure; do not claim that preservation is complete.
 
+## Continuous updates — `scripts/zenodo_update.sh` (issue #8)
+
+Owner requirement (2026-09-25): *store all benchmark data in the same record,
+update continously when new benchmark data is made* — restricted (09:04) to
+data that is **newly generated and not publicly available otherwise**.
+`scripts/zenodo_update.sh` implements this end to end:
+
+1. **Package** the newly generated benchmark data into a staging directory:
+   `results/` (aggregate CSVs + all figures), the `runs/` mirrors
+   (`run_meta.txt`, `comebin_run.log`, `per_bin_results.csv`,
+   `per_bins.png`), every run's bin FASTAs
+   (`comebin_res/comebin_res_bins/`, symlinks dereferenced, non-empty only),
+   the key evaluation reports (CheckM2 `quality_report.tsv`, CheckM v1
+   `bin_stats_ext.tsv` + `checkm.log`), `docs/`, `README.md`, `PROGRESS.md`
+   and `status/agent-activity.log`. Runs without bins and without evaluation
+   results are excluded.
+2. **Manifest** with `make_release_manifest.py --omit-local-path` (sorted
+   relative paths, byte sizes, SHA-256, provenance metadata); the manifest
+   ships inside the tarball as `manifest.json`.
+3. **Change detection**: SHA-256 over the manifest's per-file hashes is
+   compared with `meta/zenodo_last_content.sha256`; identical content exits
+   without touching Zenodo, so repeated evaluations cannot create empty
+   versions.
+4. **Publish as a new version** of record `22935025` under concept DOI
+   10.5281/zenodo.22935024: reuse an open draft or `POST .../actions/newversion`,
+   upload through the record's file bucket
+   (`PUT /api/files/<bucket>/<name>`), refresh title/description/version
+   metadata, publish. The concept DOI always resolves to the newest version;
+   the per-version DOI of v1 (10.5281/zenodo.22935025) stays valid.
+5. **Verify + record**: published file size and MD5 must match the local
+   tarball and the DOI resolver is checked; a receipt is written to
+   `meta/zenodo_benchmark_release_v<N>.json` and only then is the content
+   marker updated.
+
+`run_eval.sh` calls the script best-effort in its auto-reporting block after
+**every successful evaluation**, so each newly evaluated run lands in the
+record without manual steps. `ZENODO_UPDATE=0` disables it,
+`--dry-run` packages everything without any network call, and a missing token
+file is a silent skip (the token itself lives only in the mode-0600
+`~/.zenodo_token`; never commit or log it).
+
 ## Current status
 
 - The small derived dataset exists locally at `/vol/data/datasets/comebin_small`
@@ -116,3 +157,16 @@ report the failure; do not claim that preservation is complete.
   It is not deposited separately until the owner confirms the release license
   and metadata. Future releases repeat this manifest, license, provenance, and
   DOI-verification checklist.
+- **Version 2.0 published 2026-09-26** (record
+  [10.5281/zenodo.22969763](https://doi.org/10.5281/zenodo.22969763), same
+  concept 10.5281/zenodo.22935024 — the first automatic update from
+  `run_eval.sh`): `comebin_benchmark_release_v2_20260926.tar.gz`
+  (168,110,629 bytes, MD5 `114459d4e728e70b2aefb70e1d8f620e`) with **all**
+  seven evaluated runs' bin FASTAs (410 bins), per-bin + aggregate
+  CheckM2/CheckM v1 metrics, eval reports, run logs, all figures (incl. the
+  combined bar plot), docs and a SHA-256 `manifest.json`; v1 files carried
+  over. Published file size + MD5 re-verified against the public record;
+  concept DOI already resolves to v2. Receipt:
+  `/vol/data/benchmark/meta/zenodo_benchmark_release_v2.json`.
+  Derived input subsets (medium/human/marine) are staged as the following
+  versions if the owner wants them archived too.

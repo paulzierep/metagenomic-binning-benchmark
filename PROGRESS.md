@@ -423,14 +423,20 @@ included; fixes land on branch `comebin-optimizations` in this repo.
       ~1/6 set benchmarked (107 bins, 35.31% completeness, 4.912 s wall). Both issues
       have new owner comments addressing remaining questions.
 
-- [x] **CAMI II marine sample 0 benchmark run → human host-associated sample → CAMI III**
-  _(COMPLETE: marine_v11_20260925, exit 0, wall_s 31406 (~8.75 h), 152 non-empty bins,
-    COMEBin-v11@95f5ea8, cami2 mode; finished 2026-09-25T12:58Z).
-    CheckM2: 71 bins, 24.38% mean completeness, 3.78% contamination (HQ 1, MQ 6).
-    CheckM v1: 71 bins, 21.62% mean completeness, 5.18% contamination (HQ 0, MQ 8).
-    Epoch 158/200 reached with Top-1 ≈ 99.58%; early stopped after 3 consecutive
-    epochs >99% Top-1. Evaluation via run_eval.sh → report + docs/11 row → CAMI III
-    (disk budget ≤ 30 GB, 351 GB free)._
+- [x] **CAMI II marine sample 0 benchmark run (→ CAMI III)**
+  _(COMPLETE: marine_v11_20260925, exit 0, wall_s 31406 (~8.72 h), 152 non-empty bins,
+    COMEBin-v11@95f5ea8, cami2 mode, seed 42; finished 2026-09-25T12:58:15Z;
+    41,988 contigs ≥ 2000 bp).
+    **Evaluation COMPLETE 2026-09-26** (attempt 1 checkm2_rc=1: DIAMOND hit
+    "No space left on device" — 12.5 GB of orphaned /tmp intermediates from an
+    earlier CAMI III download attempt filled `/`; orphans removed, run_eval.sh
+    re-run → checkm2_rc 0 / 356 s, checkm_rc 0 / 998 s).
+    CheckM2: 152 bins, 50.60% mean completeness, 4.10% contamination (HQ 35, MQ 60).
+    CheckM v1: 152 bins, 46.36% mean completeness, 5.09% contamination (HQ 37, MQ 60)
+    — strongest quality of any benchmark dataset so far (demo 25%, human 35%).
+    Epoch 159/200 (Top-1 99.31 → 99.58% × 3), Leiden 120/120; early stop via
+    run_comebin.sh --earlystop. Reported in docs/11 + README + results CSVs
+    (results/marine_v11_20260925.csv, runs/marine_v11_20260925/per_bin_results.csv)._
 
 - [x] **Issue #12 plots (2026-09-24 ~10:42 UTC)**: `scripts/make_per_bin_plots.py`
       generates per-bin bar charts (`runs/<run>/per_bins.png`, CheckM2 + CheckM v1

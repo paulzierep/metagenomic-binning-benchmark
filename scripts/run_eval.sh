@@ -111,6 +111,14 @@ if [ "$rc2" -eq 0 ] && [ "$rc1" -eq 0 ]; then
     || echo "WARNING: make_per_bin_csv.py failed (rc=$?)" >&2
   "$MM" run -p "$CHECKM_ENV" python3 "$(dirname "$0")/make_per_bin_plots.py" --all "$RUN" 9>&- \
     || echo "WARNING: make_per_bin_plots.py failed (rc=$?)" >&2
+  # Issue #12: combined bar plot for the three main datasets + its stats table
+  # (README embeds both; regenerated after every successful eval).
+  "$MM" run -p "$CHECKM_ENV" python3 "$(dirname "$0")/make_combined_bar_plot.py" 9>&- \
+    || echo "WARNING: make_combined_bar_plot.py failed (rc=$?)" >&2
+  # Issue #8: continuously store the newly generated benchmark data as a new
+  # version of the same Zenodo record (no-op when content is unchanged).
+  bash "$(dirname "$0")/zenodo_update.sh" 9>&- \
+    || echo "WARNING: zenodo_update.sh failed (rc=$?)" >&2
 fi
 echo "done (checkm2 rc=$rc2, checkm rc=$rc1)"
 if [ "$rc2" -ne 0 ] || [ "$rc1" -ne 0 ]; then
