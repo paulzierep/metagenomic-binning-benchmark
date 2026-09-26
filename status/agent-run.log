@@ -69244,3 +69244,205 @@ Eval is running (CheckM2 on 152 bins). The activity-log append failed because th
 2494359 bwa index /vol/data/datasets/cami_III/toy_human_input_2samples/contigs.fa
 2026-09-26T00:50:42Z
 > build · mimo-v2.6-flash-free
+Eval is running (CheckM2, 152 bins), CAMI III prep continues in parallel. While it evaluates (~20 min), I'll implement the two owner asks. First, get the exact FAIRyMAGs thresholds/colors:
+[0m$ [0mgrep -n -B3 -A10 "def load_counts" /home/ubuntu/.local/share/opencode/tool-output/tool_0d78f5223001ZLXYHjW57jzkjN | head -30; echo "=== checkm2.tsv cols used ==="; grep -n "Completeness\|Contamination" /home/ubuntu/.local/share/opencode/tool-output/tool_0d78f5223001ZLXYHjW57jzkjN | head -10
+170-    "thresholds = [\">90\", \">80\", \">70\", \">60\", \">50\"]\n",
+171-    "colors = [\"#004c4c\", \"#006666\", \"#008080\", \"#33a3a3\", \"#99d6d6\"]\n",
+172-    "\n",
+173:    "def load_counts(cont_cutoff):\n",
+174-    "    result = {thr: [] for thr in thresholds}\n",
+175-    "    totals = []\n",
+176-    "\n",
+177-    "    for usecase in USE_CASES:\n",
+178-    "        f = get_data_path(usecase) / \"checkm2.tsv\"\n",
+179-    "        df = pd.read_csv(f, sep=\"\\t\")\n",
+180-    "        df2 = df[df[\"Contamination\"] < cont_cutoff].copy()\n",
+181-    "        df2[\"Thr\"] = df2[\"Completeness\"].apply(assign_threshold)\n",
+182-    "\n",
+183-    "        counts = df2[\"Thr\"].value_counts()\n",
+=== checkm2.tsv cols used ===
+180:    "        df2 = df[df[\"Contamination\"] < cont_cutoff].copy()\n",
+181:    "        df2[\"Thr\"] = df2[\"Completeness\"].apply(assign_threshold)\n",
+244:    "plot_stacked(axs[0], use_cases, data5, \"Contamination < 5%\")\n",
+245:    "plot_stacked(axs[1], use_cases, data10, \"Contamination < 10%\")\n",
+268:    "    title=\"Completeness\",\n",
+340:       "      <th>Completeness range</th>\n",
+342:       "      <th>Contamination range</th>\n",
+393:       "   Clusters >=2 Avg completeness Completeness range Avg contamination  \\\n",
+398:       "  Contamination range                                        Top 30 taxa  \n",
+421:    "    n_near_complete = ((rep_df[\"Completeness\"] > 95) & (rep_df[\"Contamination\"] < 5)).sum()\n",
+[0m$ [0mgrep -n -B2 -A8 "thresholds = \|thresholds=\[" /home/ubuntu/.local/share/opencode/tool-output/tool_0d78f5223001ZLXYHjW57jzkjN | head -40; grep -n "colors = " /home/ubuntu/.local/share/opencode/tool-output/tool_0d78f5223001ZLXYHjW57jzkjN | head -5; grep -n -A6 "def assign_threshold" /home/ubuntu/.local/share/opencode/tool-output/tool_0d78f5223001ZLXYHjW57jzkjN | head -20
+168-    "    return None\n",
+169-    "\n",
+170:    "thresholds = [\">90\", \">80\", \">70\", \">60\", \">50\"]\n",
+171-    "colors = [\"#004c4c\", \"#006666\", \"#008080\", \"#33a3a3\", \"#99d6d6\"]\n",
+172-    "\n",
+173-    "def load_counts(cont_cutoff):\n",
+174-    "    result = {thr: [] for thr in thresholds}\n",
+175-    "    totals = []\n",
+176-    "\n",
+177-    "    for usecase in USE_CASES:\n",
+178-    "        f = get_data_path(usecase) / \"checkm2.tsv\"\n",
+171:    "colors = [\"#004c4c\", \"#006666\", \"#008080\", \"#33a3a3\", \"#99d6d6\"]\n",
+157:    "def assign_threshold(comp):\n",
+158-    "    if comp >= 90:\n",
+159-    "        return \">90\"\n",
+160-    "    elif comp >= 80:\n",
+161-    "        return \">80\"\n",
+162-    "    elif comp >= 70:\n",
+163-    "        return \">70\"\n",
+> build · mimo-v2.6-flash-free
+[0m$ [0mtail -3 /vol/data/benchmark/logs/marine_eval.log; echo "=== per-bin CSVs ==="; ls /vol/data/repos/metagenomic-binning-benchmark/runs/*/per_bin_results.csv 2>/dev/null; echo "=== assign_threshold tail ==="; grep -n -A12 "def assign_threshold" /home/ubuntu/.local/share/opencode/tool-output/tool_0d78f5223001ZLXYHjW57jzkjN | sed -n '1,20p'; date -u +%FT%TZ; touch /vol/data/benchmark/.heartbeat
+what():  Error writing file /tmp/tmpkntzu5xx/diamond-tmp-sUdpvo
+Aborted (core dumped)
+[09/26/2026 12:53:28 AM] ERROR: An error occured while running DIAMOND: Command 'diamond blastp --outfmt 6 --max-target-seqs 1 --query /tmp/tmpwk14wtyb -o /vol/data/benchmark/runs/marine_v11_20260925/eval/checkm2/diamond_output/DIAMOND_RESULTS.tsv --threads 32 --db /vol/data/benchmark/checkm2db/CheckM2_database/uniref100.KO.1.dmnd --query-cover 80 --subject-cover 80 --id 30 --evalue 1e-05 --block-size 2.0 --tmpdir /tmp/tmpkntzu5xx --quiet ' returned non-zero exit status 134.
+=== per-bin CSVs ===
+/vol/data/repos/metagenomic-binning-benchmark/runs/baseline_rerun_autorestart1/per_bin_results.csv
+/vol/data/repos/metagenomic-binning-benchmark/runs/fix_v11_20260924/per_bin_results.csv
+/vol/data/repos/metagenomic-binning-benchmark/runs/human_v11_20260925/per_bin_results.csv
+/vol/data/repos/metagenomic-binning-benchmark/runs/medium_v11_20260924/per_bin_results.csv
+/vol/data/repos/metagenomic-binning-benchmark/runs/small_test_v4/per_bin_results.csv
+/vol/data/repos/metagenomic-binning-benchmark/runs/tiny_test_n101/per_bin_results.csv
+=== assign_threshold tail ===
+157:    "def assign_threshold(comp):\n",
+158-    "    if comp >= 90:\n",
+159-    "        return \">90\"\n",
+160-    "    elif comp >= 80:\n",
+161-    "        return \">80\"\n",
+162-    "    elif comp >= 70:\n",
+163-    "        return \">70\"\n",
+164-    "    elif comp >= 60:\n",
+165-    "        return \">60\"\n",
+166-    "    elif comp >= 50:\n",
+167-    "        return \">50\"\n",
+168-    "    return None\n",
+169-    "\n",
+2026-09-26T00:53:29Z
+[0m$ [0mfor r in baseline_rerun_autorestart1 fix_v11_20260924 human_v11_20260925 marine_v11_20260925; do echo "--- $r"; grep -E '^(source|commit|branch|contigs|wall_s|bins|seed)' /vol/data/benchmark/runs/$r/run_meta.txt 2>/dev/null; done; echo "=== results csv rows ==="; head -2 /vol/data/repos/metagenomic-binning-benchmark/results/*.csv 2>/dev/null | head -20; ls /vol/data/repos/metagenomic-binning-benchmark/results/
+--- baseline_rerun_autorestart1
+source:     /vol/data/repos/COMEBin
+commit:     904f649ef5cbb4582a6f0e5ec8b0b1f45778d85b
+contigs:    /vol/data/datasets/comebin_test_data/BATS_SAMN07137077_METAG.scaffolds.min500.fasta.f1k.fasta
+wall_s:     24327
+--- fix_v11_20260924
+source:     /vol/data/repos/COMEBin-v11 (branch comebin-optimizations-v11)
+commit:     95f5ea820f9a4e76f5c2911c0b5ed507ab67b015
+contigs:    /vol/data/datasets/comebin_test_data/BATS_SAMN07137077_METAG.scaffolds.min500.fasta.f1k.fasta
+seed:       42
+wall_s:     24741
+bins:       71  -> /vol/data/benchmark/runs/fix_v11_20260924/comebin_out/comebin_res/comebin_res_bins
+--- human_v11_20260925
+source:     /vol/data/repos/COMEBin-v11 (branch comebin-optimizations-v11)
+commit:     95f5ea820f9a4e76f5c2911c0b5ed507ab67b015
+contigs:    /vol/data/datasets/cami_II_human/human_sample0_input/contigs.fa
+seed:       42
+wall_s:     4912
+bins:       107  -> /vol/data/benchmark/runs/human_v11_20260925/comebin_out/comebin_res/comebin_res_bins
+--- marine_v11_20260925
+source:     /vol/data/repos/COMEBin-v11 (branch comebin-optimizations-v11)
+commit:     95f5ea820f9a4e76f5c2911c0b5ed507ab67b015
+contigs:    /vol/data/datasets/cami_II/marine_sample0_input/contigs.fa
+seed:       42
+wall_s:     31406
+bins:       152  -> /vol/data/benchmark/runs/marine_v11_20260925/comebin_out/comebin_res/comebin_res_bins
+=== results csv rows ===
+==> /vol/data/repos/metagenomic-binning-benchmark/results/baseline_rerun_autorestart1.csv <==
+run,source_commit,dataset,threads,total_time_s,n_bins,checkm2_mean_completeness,checkm2_mean_contamination,checkm2_HQ,checkm2_MQ,checkm_mean_completeness,checkm_mean_contamination,checkm_HQ,checkm_MQ
+baseline_rerun_autorestart1,904f649ef5cbb4582a6f0e5ec8b0b1f45778d85b,"COMEBin demo (29,434 contigs)",32,24327,60,25.01,2.98,0,7,21.23,3.40,0,9
+
+==> /vol/data/repos/metagenomic-binning-benchmark/results/fix_v11_20260924.csv <==
+run,source_commit,dataset,threads,total_time_s,n_bins,checkm2_mean_completeness,checkm2_mean_contamination,checkm2_HQ,checkm2_MQ,checkm_mean_completeness,checkm_mean_contamination,checkm_HQ,checkm_MQ
+fix_v11_20260924,95f5ea820f9a4e76f5c2911c0b5ed507ab67b015,"COMEBin demo (29,434 contigs)",32,24741,71,24.38,3.78,1,6,21.62,5.18,0,8
+
+==> /vol/data/repos/metagenomic-binning-benchmark/results/human_v11_20260925.csv <==
+run,source_commit,dataset,threads,total_time_s,n_bins,checkm2_mean_completeness,checkm2_mean_contamination,checkm2_HQ,checkm2_MQ,checkm_mean_completeness,checkm_mean_contamination,checkm_HQ,checkm_MQ
+human_v11_20260925,95f5ea820f9a4e76f5c2911c0b5ed507ab67b015,human_sample0_input,32,4912,107,35.31,5.13,20,29,32.64,4.65,21,29
+
+==> /vol/data/repos/metagenomic-binning-benchmark/results/medium_v11_20260924.csv <==
+run,source_commit,dataset,threads,total_time_s,n_bins,checkm2_mean_completeness,checkm2_mean_contamination,checkm2_HQ,checkm2_MQ,checkm_mean_completeness,checkm_mean_contamination,checkm_HQ,checkm_MQ
+medium_v11_20260924,95f5ea820f9a4e76f5c2911c0b5ed507ab67b015,"COMEBin medium (3,000 contigs)",32,2326,16,35.93,4.67,0,2,33.83,6.03,0,3
+
+==> /vol/data/repos/metagenomic-binning-benchmark/results/small_test_v4.csv <==
+run,source_commit,dataset,threads,total_time_s,n_bins,checkm2_mean_completeness,checkm2_mean_contamination,checkm2_HQ,checkm2_MQ,checkm_mean_completeness,checkm_mean_contamination,checkm_HQ,checkm_MQ
+small_test_v4,c8f22e4935a66a0fd58b794489a9021671b15437,comebin_small,8,122,3,26.07,2.02,0,0,29.08,0.71,0,0
+
+README.md
+baseline_rerun_autorestart1.csv
+figures
+fix_v11_20260924.csv
+human_v11_20260925.csv
+medium_v11_20260924.csv
+small_test_v4.csv
+tiny_test_n101.csv
+> build · mimo-v2.6-flash-free
+CheckM2's DIAMOND crashed with a file-write error — likely `/tmp` full. Checking:
+[0m$ [0mdf -h /tmp /vol/data /home; echo "=== eval process alive? ==="; pgrep -af "run_eval|checkm2|diamond" | grep -v pgrep | head; echo "=== log tail 20 ==="; tail -20 /vol/data/benchmark/logs/marine_eval.log; echo "=== /tmp big ==="; du -sh /tmp/* 2>/dev/null | sort -rh | head -8; date -u +%FT%TZ
+Filesystem      Size  Used Avail Use% Mounted on
+/dev/vda1        19G   18G  1.3G  94% /
+/dev/vdb        492G  128G  339G  28% /vol/data
+/dev/vda1        19G   18G  1.3G  94% /
+=== eval process alive? ===
+2495933 /bin/bash -c cd /vol/data/repos/metagenomic-binning-benchmark && nohup bash scripts/run_eval.sh /vol/data/benchmark/runs/marine_v11_20260925 32 > /vol/data/benchmark/logs/marine_eval.log 2>&1 & echo "launched pid $!"; sleep 12; tail -8 /vol/data/benchmark/logs/marine_eval.log; TS=$(date -u +%FT%TZ); echo "$TS marine-eval: launched run_eval.sh detached (152 bins, pid $!) -> /vol/data/benchmark/logs/marine_eval.log" >> status/agent-activity.log; echo "$TS marine-eval-launched" >> /vol/data/benchmark/.activity; touch /vol/data/benchmark/.heartbeat
+2495935 bash scripts/run_eval.sh /vol/data/benchmark/runs/marine_v11_20260925 32
+=== log tail 20 ===
+    Finished processing 1 of 152 (0.66%) bins.    Finished processing 2 of 152 (1.32%) bins.    Finished processing 3 of 152 (1.97%) bins.    Finished processing 4 of 152 (2.63%) bins.    Finished processing 5 of 152 (3.29%) bins.    Finished processing 6 of 152 (3.95%) bins.    Finished processing 7 of 152 (4.61%) bins.    Finished processing 8 of 152 (5.26%) bins.    Finished processing 9 of 152 (5.92%) bins.    Finished processing 10 of 152 (6.58%) bins.    Finished processing 11 of 152 (7.24%) bins.    Finished processing 12 of 152 (7.89%) bins.    Finished processing 13 of 152 (8.55%) bins.    Finished processing 14 of 152 (9.21%) bins.    Finished processing 15 of 152 (9.87%) bins.    Finished processing 16 of 152 (10.53%) bins.    Finished processing 17 of 152 (11.18%) bins.    Finished processing 18 of 152 (11.84%) bins.    Finished processing 19 of 152 (12.50%) bins.    Finished processing 20 of 152 (13.16%) bins.    Finished processing 21 of 152 (13.82%) bins.    Finished processing 22 of 152 (14.47%) bins.    Finished processing 23 of 152 (15.13%) bins.    Finished processing 24 of 152 (15.79%) bins.    Finished processing 25 of 152 (16.45%) bins.    Finished processing 26 of 152 (17.11%) bins.    Finished processing 27 of 152 (17.76%) bins.    Finished processing 28 of 152 (18.42%) bins.    Finished processing 29 of 152 (19.08%) bins.    Finished processing 30 of 152 (19.74%) bins.    Finished processing 31 of 152 (20.39%) bins.    Finished processing 32 of 152 (21.05%) bins.    Finished processing 33 of 152 (21.71%) bins.    Finished processing 34 of 152 (22.37%) bins.    Finished processing 35 of 152 (23.03%) bins.    Finished processing 36 of 152 (23.68%) bins.    Finished processing 37 of 152 (24.34%) bins.    Finished processing 38 of 152 (25.00%) bins.    Finished processing 39 of 152 (25.66%) bins.    Finished processing 40 of 152 (26.32%) bins.    Finished processing 41 of 152 (26.97%) bins.    Finished processing 42 of 152 (27.63%) bins.    Finished processing 43 of 152 (28.29%) bins.    Finished processing 44 of 152 (28.95%) bins.    Finished processing 45 of 152 (29.61%) bins.    Finished processing 46 of 152 (30.26%) bins.    Finished processing 47 of 152 (30.92%) bins.    Finished processing 48 of 152 (31.58%) bins.    Finished processing 49 of 152 (32.24%) bins.    Finished processing 50 of 152 (32.89%) bins.    Finished processing 51 of 152 (33.55%) bins.    Finished processing 52 of 152 (34.21%) bins.    Finished processing 53 of 152 (34.87%) bins.    Finished processing 54 of 152 (35.53%) bins.    Finished processing 55 of 152 (36.18%) bins.    Finished processing 56 of 152 (36.84%) bins.    Finished processing 57 of 152 (37.50%) bins.    Finished processing 58 of 152 (38.16%) bins.    Finished processing 59 of 152 (38.82%) bins.    Finished processing 60 of 152 (39.47%) bins.    Finished processing 61 of 152 (40.13%) bins.    Finished processing 62 of 152 (40.79%) bins.    Finished processing 63 of 152 (41.45%) bins.    Finished processing 64 of 152 (42.11%) bins.    Finished processing 65 of 152 (42.76%) bins.    Finished processing 66 of 152 (43.42%) bins.    Finished processing 67 of 152 (44.08%) bins.    Finished processing 68 of 152 (44.74%) bins.    Finished processing 69 of 152 (45.39%) bins.    Finished processing 70 of 152 (46.05%) bins.    Finished processing 71 of 152 (46.71%) bins.    Finished processing 72 of 152 (47.37%) bins.    Finished processing 73 of 152 (48.03%) bins.    Finished processing 74 of 152 (48.68%) bins.    Finished processing 75 of 152 (49.34%) bins.    Finished processing 76 of 152 (50.00%) bins.    Finished processing 77 of 152 (50.66%) bins.    Finished processing 78 of 152 (51.32%) bins.    Finished processing 79 of 152 (51.97%) bins.    Finished processing 80 of 152 (52.63%) bins.    Finished processing 81 of 152 (53.29%) bins.    Finished processing 82 of 152 (53.95%) bins.    Finished processing 83 of 152 (54.61%) bins.    Finished processing 84 of 152 (55.26%) bins.    Finished processing 85 of 152 (55.92%) bins.    Finished processing 86 of 152 (56.58%) bins.    Finished processing 87 of 152 (57.24%) bins.    Finished processing 88 of 152 (57.89%) bins.    Finished processing 89 of 152 (58.55%) bins.    Finished processing 90 of 152 (59.21%) bins.    Finished processing 91 of 152 (59.87%) bins.    Finished processing 92 of 152 (60.53%) bins.    Finished processing 93 of 152 (61.18%) bins.    Finished processing 94 of 152 (61.84%) bins.    Finished processing 95 of 152 (62.50%) bins.    Finished processing 96 of 152 (63.16%) bins.    Finished processing 97 of 152 (63.82%) bins.    Finished processing 98 of 152 (64.47%) bins.    Finished processing 99 of 152 (65.13%) bins.    Finished processing 100 of 152 (65.79%) bins.    Finished processing 101 of 152 (66.45%) bins.    Finished processing 102 of 152 (67.11%) bins.    Finished processing 103 of 152 (67.76%) bins.    Finished processing 104 of 152 (68.42%) bins.    Finished processing 105 of 152 (69.08%) bins.    Finished processing 106 of 152 (69.74%) bins.    Finished processing 107 of 152 (70.39%) bins.    Finished processing 108 of 152 (71.05%) bins.    Finished processing 109 of 152 (71.71%) bins.    Finished processing 110 of 152 (72.37%) bins.    Finished processing 111 of 152 (73.03%) bins.    Finished processing 112 of 152 (73.68%) bins.    Finished processing 113 of 152 (74.34%) bins.    Finished processing 114 of 152 (75.00%) bins.    Finished processing 115 of 152 (75.66%) bins.    Finished processing 116 of 152 (76.32%) bins.    Finished processing 117 of 152 (76.97%) bins.    Finished processing 118 of 152 (77.63%) bins.    Finished processing 119 of 152 (78.29%) bins.    Finished processing 120 of 152 (78.95%) bins.    Finished processing 121 of 152 (79.61%) bins.    Finished processing 122 of 152 (80.26%) bins.    Finished processing 123 of 152 (80.92%) bins.    Finished processing 124 of 152 (81.58%) bins.    Finished processing 125 of 152 (82.24%) bins.    Finished processing 126 of 152 (82.89%) bins.    Finished processing 127 of 152 (83.55%) bins.    Finished processing 128 of 152 (84.21%) bins.    Finished processing 129 of 152 (84.87%) bins.    Finished processing 130 of 152 (85.53%) bins.    Finished processing 131 of 152 (86.18%) bins.    Finished processing 132 of 152 (86.84%) bins.    Finished processing 133 of 152 (87.50%) bins.    Finished processing 134 of 152 (88.16%) bins.    Finished processing 135 of 152 (88.82%) bins.    Finished processing 136 of 152 (89.47%) bins.    Finished processing 137 of 152 (90.13%) bins.    Finished processing 138 of 152 (90.79%) bins.    Finished processing 139 of 152 (91.45%) bins.    Finished processing 140 of 152 (92.11%) bins.    Finished processing 141 of 152 (92.76%) bins.    Finished processing 142 of 152 (93.42%) bins.    Finished processing 143 of 152 (94.08%) bins.    Finished processing 144 of 152 (94.74%) bins.    Finished processing 145 of 152 (95.39%) bins.    Finished processing 146 of 152 (96.05%) bins.    Finished processing 147 of 152 (96.71%) bins.    Finished processing 148 of 152 (97.37%) bins.    Finished processing 149 of 152 (98.03%) bins.    Finished processing 150 of 152 (98.68%) bins.    Finished processing 151 of 152 (99.34%) bins.    Finished processing 152 of 152 (100.00%) bins.
+[09/26/2026 12:52:49 AM] INFO: Calculating metadata for 152 bins with 32 threads:
+    Finished processing 1 of 152 (0.66%) bin metadata.    Finished processing 2 of 152 (1.32%) bin metadata.    Finished processing 3 of 152 (1.97%) bin metadata.    Finished processing 4 of 152 (2.63%) bin metadata.    Finished processing 5 of 152 (3.29%) bin metadata.    Finished processing 6 of 152 (3.95%) bin metadata.    Finished processing 7 of 152 (4.61%) bin metadata.    Finished processing 8 of 152 (5.26%) bin metadata.    Finished processing 9 of 152 (5.92%) bin metadata.    Finished processing 10 of 152 (6.58%) bin metadata.    Finished processing 11 of 152 (7.24%) bin metadata.    Finished processing 12 of 152 (7.89%) bin metadata.    Finished processing 13 of 152 (8.55%) bin metadata.    Finished processing 14 of 152 (9.21%) bin metadata.    Finished processing 15 of 152 (9.87%) bin metadata.    Finished processing 16 of 152 (10.53%) bin metadata.    Finished processing 17 of 152 (11.18%) bin metadata.    Finished processing 18 of 152 (11.84%) bin metadata.    Finished processing 19 of 152 (12.50%) bin metadata.    Finished processing 20 of 152 (13.16%) bin metadata.    Finished processing 21 of 152 (13.82%) bin metadata.    Finished processing 22 of 152 (14.47%) bin metadata.    Finished processing 23 of 152 (15.13%) bin metadata.    Finished processing 24 of 152 (15.79%) bin metadata.    Finished processing 25 of 152 (16.45%) bin metadata.    Finished processing 26 of 152 (17.11%) bin metadata.    Finished processing 27 of 152 (17.76%) bin metadata.    Finished processing 28 of 152 (18.42%) bin metadata.    Finished processing 29 of 152 (19.08%) bin metadata.    Finished processing 30 of 152 (19.74%) bin metadata.    Finished processing 31 of 152 (20.39%) bin metadata.    Finished processing 32 of 152 (21.05%) bin metadata.    Finished processing 33 of 152 (21.71%) bin metadata.    Finished processing 34 of 152 (22.37%) bin metadata.    Finished processing 35 of 152 (23.03%) bin metadata.    Finished processing 36 of 152 (23.68%) bin metadata.    Finished processing 37 of 152 (24.34%) bin metadata.    Finished processing 38 of 152 (25.00%) bin metadata.    Finished processing 39 of 152 (25.66%) bin metadata.    Finished processing 40 of 152 (26.32%) bin metadata.    Finished processing 41 of 152 (26.97%) bin metadata.    Finished processing 42 of 152 (27.63%) bin metadata.    Finished processing 43 of 152 (28.29%) bin metadata.    Finished processing 44 of 152 (28.95%) bin metadata.    Finished processing 45 of 152 (29.61%) bin metadata.    Finished processing 46 of 152 (30.26%) bin metadata.    Finished processing 47 of 152 (30.92%) bin metadata.    Finished processing 48 of 152 (31.58%) bin metadata.    Finished processing 49 of 152 (32.24%) bin metadata.    Finished processing 50 of 152 (32.89%) bin metadata.    Finished processing 51 of 152 (33.55%) bin metadata.    Finished processing 52 of 152 (34.21%) bin metadata.    Finished processing 53 of 152 (34.87%) bin metadata.    Finished processing 54 of 152 (35.53%) bin metadata.    Finished processing 55 of 152 (36.18%) bin metadata.    Finished processing 56 of 152 (36.84%) bin metadata.    Finished processing 57 of 152 (37.50%) bin metadata.    Finished processing 58 of 152 (38.16%) bin metadata.    Finished processing 59 of 152 (38.82%) bin metadata.    Finished processing 60 of 152 (39.47%) bin metadata.    Finished processing 61 of 152 (40.13%) bin metadata.    Finished processing 62 of 152 (40.79%) bin metadata.    Finished processing 63 of 152 (41.45%) bin metadata.    Finished processing 64 of 152 (42.11%) bin metadata.    Finished processing 65 of 152 (42.76%) bin metadata.    Finished processing 66 of 152 (43.42%) bin metadata.    Finished processing 67 of 152 (44.08%) bin metadata.    Finished processing 68 of 152 (44.74%) bin metadata.    Finished processing 69 of 152 (45.39%) bin metadata.    Finished processing 70 of 152 (46.05%) bin metadata.    Finished processing 71 of 152 (46.71%) bin metadata.    Finished processing 72 of 152 (47.37%) bin metadata.    Finished processing 73 of 152 (48.03%) bin metadata.    Finished processing 74 of 152 (48.68%) bin metadata.    Finished processing 75 of 152 (49.34%) bin metadata.    Finished processing 76 of 152 (50.00%) bin metadata.    Finished processing 77 of 152 (50.66%) bin metadata.    Finished processing 78 of 152 (51.32%) bin metadata.    Finished processing 79 of 152 (51.97%) bin metadata.    Finished processing 80 of 152 (52.63%) bin metadata.    Finished processing 81 of 152 (53.29%) bin metadata.    Finished processing 82 of 152 (53.95%) bin metadata.    Finished processing 83 of 152 (54.61%) bin metadata.    Finished processing 84 of 152 (55.26%) bin metadata.    Finished processing 85 of 152 (55.92%) bin metadata.    Finished processing 86 of 152 (56.58%) bin metadata.    Finished processing 87 of 152 (57.24%) bin metadata.    Finished processing 88 of 152 (57.89%) bin metadata.    Finished processing 89 of 152 (58.55%) bin metadata.    Finished processing 90 of 152 (59.21%) bin metadata.    Finished processing 91 of 152 (59.87%) bin metadata.    Finished processing 92 of 152 (60.53%) bin metadata.    Finished processing 93 of 152 (61.18%) bin metadata.    Finished processing 94 of 152 (61.84%) bin metadata.    Finished processing 95 of 152 (62.50%) bin metadata.    Finished processing 96 of 152 (63.16%) bin metadata.    Finished processing 97 of 152 (63.82%) bin metadata.    Finished processing 98 of 152 (64.47%) bin metadata.    Finished processing 99 of 152 (65.13%) bin metadata.    Finished processing 100 of 152 (65.79%) bin metadata.    Finished processing 101 of 152 (66.45%) bin metadata.    Finished processing 102 of 152 (67.11%) bin metadata.    Finished processing 103 of 152 (67.76%) bin metadata.    Finished processing 104 of 152 (68.42%) bin metadata.    Finished processing 105 of 152 (69.08%) bin metadata.    Finished processing 106 of 152 (69.74%) bin metadata.    Finished processing 107 of 152 (70.39%) bin metadata.    Finished processing 108 of 152 (71.05%) bin metadata.    Finished processing 109 of 152 (71.71%) bin metadata.    Finished processing 110 of 152 (72.37%) bin metadata.    Finished processing 111 of 152 (73.03%) bin metadata.    Finished processing 112 of 152 (73.68%) bin metadata.    Finished processing 113 of 152 (74.34%) bin metadata.    Finished processing 114 of 152 (75.00%) bin metadata.    Finished processing 115 of 152 (75.66%) bin metadata.    Finished processing 116 of 152 (76.32%) bin metadata.    Finished processing 117 of 152 (76.97%) bin metadata.    Finished processing 118 of 152 (77.63%) bin metadata.    Finished processing 119 of 152 (78.29%) bin metadata.    Finished processing 120 of 152 (78.95%) bin metadata.    Finished processing 121 of 152 (79.61%) bin metadata.    Finished processing 122 of 152 (80.26%) bin metadata.    Finished processing 123 of 152 (80.92%) bin metadata.    Finished processing 124 of 152 (81.58%) bin metadata.    Finished processing 125 of 152 (82.24%) bin metadata.    Finished processing 126 of 152 (82.89%) bin metadata.    Finished processing 127 of 152 (83.55%) bin metadata.    Finished processing 128 of 152 (84.21%) bin metadata.    Finished processing 129 of 152 (84.87%) bin metadata.    Finished processing 130 of 152 (85.53%) bin metadata.    Finished processing 131 of 152 (86.18%) bin metadata.    Finished processing 132 of 152 (86.84%) bin metadata.    Finished processing 133 of 152 (87.50%) bin metadata.    Finished processing 134 of 152 (88.16%) bin metadata.    Finished processing 135 of 152 (88.82%) bin metadata.    Finished processing 136 of 152 (89.47%) bin metadata.    Finished processing 137 of 152 (90.13%) bin metadata.    Finished processing 138 of 152 (90.79%) bin metadata.    Finished processing 139 of 152 (91.45%) bin metadata.    Finished processing 140 of 152 (92.11%) bin metadata.    Finished processing 141 of 152 (92.76%) bin metadata.    Finished processing 142 of 152 (93.42%) bin metadata.    Finished processing 143 of 152 (94.08%) bin metadata.    Finished processing 144 of 152 (94.74%) bin metadata.    Finished processing 145 of 152 (95.39%) bin metadata.    Finished processing 146 of 152 (96.05%) bin metadata.    Finished processing 147 of 152 (96.71%) bin metadata.    Finished processing 148 of 152 (97.37%) bin metadata.    Finished processing 149 of 152 (98.03%) bin metadata.    Finished processing 150 of 152 (98.68%) bin metadata.    Finished processing 151 of 152 (99.34%) bin metadata.    Finished processing 152 of 152 (100.00%) bin metadata.
+[09/26/2026 12:52:51 AM] INFO: Annotating input genomes with DIAMOND using 32 threads
+No space left on device
+terminate called after throwing an instance of 'FileWriteException'
+  what():  Error writing file /tmp/tmpkntzu5xx/diamond-tmp-sUdpvo
+Aborted (core dumped)
+[09/26/2026 12:53:28 AM] ERROR: An error occured while running DIAMOND: Command 'diamond blastp --outfmt 6 --max-target-seqs 1 --query /tmp/tmpwk14wtyb -o /vol/data/benchmark/runs/marine_v11_20260925/eval/checkm2/diamond_output/DIAMOND_RESULTS.tsv --threads 32 --db /vol/data/benchmark/checkm2db/CheckM2_database/uniref100.KO.1.dmnd --query-cover 80 --subject-cover 80 --id 30 --evalue 1e-05 --block-size 2.0 --tmpdir /tmp/tmpkntzu5xx --quiet ' returned non-zero exit status 134.
+checkm2_rc: 1 checkm2_wall_s: 202
+=== CheckM v1 (lineage_wf; extension=fa; env=/vol/data/envs/comebin) ===
+cmd_checkm: LD_LIBRARY_PATH=/vol/data/envs/checkm/lib:/vol/data/envs/comebin/lib /vol/data/tools/bin/micromamba run -p /vol/data/envs/comebin checkm lineage_wf -x fa -t 32 --tmpdir /vol/data/benchmark/runs/marine_v11_20260925/eval/checkm/tmp /vol/data/benchmark/runs/marine_v11_20260925/comebin_out/comebin_res/comebin_res_bins /vol/data/benchmark/runs/marine_v11_20260925/eval/checkm/out
+/vol/data/envs/comebin/lib/python3.10/site-packages/checkm/checkmData.py:27: UserWarning: pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html. The pkg_resources package is slated for removal as early as 2025-11-30. Refrain from using this package or pin to Setuptools<81.
+  from pkg_resources import resource_filename
+[2026-09-26 00:53:30] INFO: CheckM v1.2.5
+[2026-09-26 00:53:30] INFO: checkm lineage_wf -x fa -t 32 --tmpdir /vol/data/benchmark/runs/marine_v11_20260925/eval/checkm/tmp /vol/data/benchmark/runs/marine_v11_20260925/comebin_out/comebin_res/comebin_res_bins /vol/data/benchmark/runs/marine_v11_20260925/eval/checkm/out
+[2026-09-26 00:53:30] INFO: CheckM data: /vol/data/envs/comebin/checkm_data
+[2026-09-26 00:53:30] INFO: [CheckM - tree] Placing bins in reference genome tree.
+[2026-09-26 00:53:31] INFO: Identifying marker genes in 152 bins with 32 threads:
+    Finished processing 0 of 152 (0.00%) bins.    Finished processing 1 of 152 (0.66%) bins.    Finished processing 2 of 152 (1.32%) bins.    Finished processing 3 of 152 (1.97%) bins.    Finished processing 4 of 152 (2.63%) bins.=== /tmp big ===
+4.3G	/tmp/url_anonymous_reads.fq.gz
+4.3G	/tmp/anonymous_reads.fq.gz
+1.7G	/tmp/url_reads_mapping.tsv
+1.7G	/tmp/reads_mapping.tsv
+251M	/tmp/url_reads_mapping.tsv.gz
+251M	/tmp/reads_mapping.tsv.gz
+92M	/tmp/opencode
+78M	/tmp/test_extract
+2026-09-26T00:53:36Z
+> build · mimo-v2.6-flash-free
+`/tmp` (on `/`, 94% full) is full — CheckM2's DIAMOND crashed writing temp files. There are ~12.5 GB of large files in `/tmp`. I must verify none are in use by the running CAMI III prep before touching anything:
+[0m$ [0mls -la --time-style=long-iso /tmp/*.fq.gz /tmp/*.tsv /tmp/*.tsv.gz 2>/dev/null; echo "=== open by processes ==="; for f in /tmp/url_anonymous_reads.fq.gz /tmp/anonymous_reads.fq.gz /tmp/url_reads_mapping.tsv /tmp/reads_mapping.tsv /tmp/url_reads_mapping.tsv.gz /tmp/reads_mapping.tsv.gz; do echo "-- $f"; fuser "$f" 2>&1 | head -2; done; echo "=== all /tmp usage ==="; df -h / | tail -1; du -sh /tmp 2>/dev/null; echo "=== who writes anonymous_reads? grep prep scripts ==="; grep -rn "anonymous_reads\|reads_mapping" /vol/data/repos/metagenomic-binning-benchmark/scripts/*.sh 2>/dev/null | head
+-rw-rw-r-- 1 ubuntu ubuntu 4605656272 2026-09-25 23:36 /tmp/anonymous_reads.fq.gz
+-rw-rw-r-- 1 ubuntu ubuntu     709793 2026-09-25 01:40 /tmp/cami_human_md5.tsv
+-rw-rw-r-- 1 ubuntu ubuntu   55889022 2026-09-25 23:38 /tmp/long_reads_mapping.tsv
+-rw-rw-r-- 1 ubuntu ubuntu 1814309182 2026-09-25 23:35 /tmp/reads_mapping.tsv
+-rw-rw-r-- 1 ubuntu ubuntu  262931198 2026-09-25 23:35 /tmp/reads_mapping.tsv.gz
+-rw-rw-r-- 1 ubuntu ubuntu 4605656272 2026-09-25 23:46 /tmp/url_anonymous_reads.fq.gz
+-rw-rw-r-- 1 ubuntu ubuntu 1814309182 2026-09-25 23:45 /tmp/url_reads_mapping.tsv
+-rw-rw-r-- 1 ubuntu ubuntu  262931198 2026-09-25 23:45 /tmp/url_reads_mapping.tsv.gz
+=== open by processes ===
+-- /tmp/url_anonymous_reads.fq.gz
+-- /tmp/anonymous_reads.fq.gz
+-- /tmp/url_reads_mapping.tsv
+-- /tmp/reads_mapping.tsv
+-- /tmp/url_reads_mapping.tsv.gz
+-- /tmp/reads_mapping.tsv.gz
+=== all /tmp usage ===
+/dev/vda1        19G   18G  1.3G  94% /
+13G	/tmp
+=== who writes anonymous_reads? grep prep scripts ===
+/vol/data/repos/metagenomic-binning-benchmark/scripts/prep_cami2_human.sh:10:#                      reads/anonymous_reads.fq (interleaved PE), reads_mapping.tsv.gz
+/vol/data/repos/metagenomic-binning-benchmark/scripts/prep_cami2_human.sh:31:READS="$SRC/reads/anonymous_reads.fq"
+/vol/data/repos/metagenomic-binning-benchmark/scripts/prep_cami2_human.sh:32:MAPPING="$SRC/reads/reads_mapping.tsv.gz"
+/vol/data/repos/metagenomic-binning-benchmark/scripts/prep_cami2_marine.sh:7:#   - reads:   anonymous_reads.fq.gz (sample-0 pooled reads, interleaved PE)
+/vol/data/repos/metagenomic-binning-benchmark/scripts/prep_cami2_marine.sh:21:READS="$CONT/anonymous_reads.fq.gz"
+/vol/data/repos/metagenomic-binning-benchmark/scripts/prep_cami2_marine.sh:22:MAPPING="$CONT/reads_mapping.tsv.gz"
+/vol/data/repos/metagenomic-binning-benchmark/scripts/prep_cami3_toy.sh:127:            READS_CANDIDATE=$(find "$OUT/logs/sample_${SAMPLE}" -name "anonymous_reads.fq*" -o -name "reads*.fq*" 2>/dev/null | head -1)
+/vol/data/repos/metagenomic-binning-benchmark/scripts/prep_cami3_toy.sh:141:                # Find anonymous_reads.fq* from long reads archive
+/vol/data/repos/metagenomic-binning-benchmark/scripts/prep_cami3_toy.sh:142:                READS_CANDIDATE=$(find "$OUT/logs/sample_${SAMPLE}" -name "anonymous_reads.fq*" 2>/dev/null | head -1)
+/vol/data/repos/metagenomic-binning-benchmark/scripts/prep_cami3_toy.sh:151:        READS_CANDIDATE=$(find "$OUT/logs/sample_${SAMPLE}" -name "anonymous_reads.fq*" 2>/dev/null | head -1)
