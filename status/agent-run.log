@@ -73497,3 +73497,108 @@ epoch=14/200
 top1=4.1211
 top1=5.0293
 top1=4.9154
+> build · mimo-v2.6-flash-free
+PROGRESS verified: CAMI III entry present (line 441), run healthy at epoch 14/200 (~24 s/epoch → ETA ~80 min). Issues: #12/#8 closed by automation with its own verification comments — replying would duplicate. #6/#1 unchanged. Now re-checking the version DOI (the one unfinished watch item):
+[0m$ [0mcurl -sS -o /dev/null -L -w "version2 doi -> %{http_code}\n" https://doi.org/10.5281/zenodo.22969763; curl -sS "https://api.datacite.org/dois/10.5281/zenodo.22969763" | python3 -c "
+import json,sys
+try:
+    d=json.load(sys.stdin); a=d.get('data',{}).get('attributes',{})
+    print('datacite state:', a.get('state'), '| registered:', a.get('registered'))
+except Exception as e: print('datacite: no record (', e, ')')"; date -u +%FT%TZ; touch /vol/data/benchmark/.heartbeat
+version2 doi -> 200
+datacite state: findable | registered: 2026-09-26T02:46:23.000Z
+2026-09-26T02:54:25Z
+> build · mimo-v2.6-flash-free
+**Version DOI now live** — `10.5281/zenodo.22969763` → 200, DataCite `findable` (registered 02:46:23). Updating the receipt to record the verified DOI:
+[0m$ [0mcat /vol/data/benchmark/meta/zenodo_benchmark_release_v2.json
+{
+  "bytes": 168110629,
+  "concept_doi": "10.5281/zenodo.22935024",
+  "concept_doi_resolver_http": 200,
+  "concept_doi_resolver_target": "https://zenodo.org/records/22969763 (resolves to the newest version, v2.0)",
+  "concept_record_id": 22935024,
+  "content_sha256": "7b80d8362d0eaa0152c2c41234dbaebeab200116a2e53c349123d6b44a735b94",
+  "doi": "10.5281/zenodo.22969763",
+  "file_verified": "public size+md5 match local tarball",
+  "filename": "comebin_benchmark_release_v2_20260926.tar.gz",
+  "license": "MIT",
+  "md5": "114459d4e728e70b2aefb70e1d8f620e",
+  "published_at_utc": "2026-09-26T01:41:50.635444+00:00",
+  "record_id": 22969763,
+  "runs": "baseline_rerun_autorestart1 (60 bins),fix_v11_20260924 (71 bins),human_v11_20260925 (107 bins),marine_v11_20260925 (152 bins),medium_v11_20260924 (16 bins),small_test_v4 (3 bins),tiny_test_n101 (1 bins)",
+  "state": "published_verified",
+  "title": "COMEBin metagenomic binning benchmark \u2014 datasets and run results",
+  "upload_path": "run_eval.sh auto-reporting chain -> scripts/zenodo_update.sh (first continuous update)",
+  "version": "2.0",
+  "version_doi_note": "Version DOI re-checked 2026-09-26T02:10Z: still 404 at doi.org (DataCite propagation lag, same as v1) while the Zenodo record itself is published and served (GET /api/records/22969763 -> 200, state=done). Not a repo defect and not actionable locally; the stable citable link is the concept DOI 10.5281/zenodo.22935024, which already resolves to v2. Re-checked by supervisor; no further action pending.",
+  "version_doi_recheck_http": 404,
+  "version_doi_recheck_utc": "2026-09-26T02:10:00Z",
+  "version_doi_resolver_http": 404
+}
+> build · mimo-v2.6-flash-free
+[0m$ [0mpython3 - <<'EOF'
+import json
+p = "/vol/data/benchmark/meta/zenodo_benchmark_release_v2.json"
+d = json.load(open(p))
+d["version_doi_resolver_http"] = 200
+d["version_doi_recheck_http"] = 200
+d["version_doi_recheck_utc"] = "2026-09-26T02:54:25Z"
+d["version_doi_note"] = ("Version DOI propagation lag confirmed resolved: re-checked "
+ "2026-09-26T02:54Z -> doi.org/10.5281/zenodo.22969763 HTTP 200, DataCite state=findable "
+ "(registered 2026-09-26T02:46:23Z, ~68 min after publish — same lag pattern as v1). "
+ "Both the version DOI and the concept DOI 10.5281/zenodo.22935024 now resolve; "
+ "file size+md5 already verified against the public record.")
+json.dump(d, open(p, "w"), indent=2, ensure_ascii=False, sort_keys=True)
+print("receipt updated")
+EOF
+grep -o '"version_doi_[a-z_]*": [^,]*' /vol/data/benchmark/meta/zenodo_benchmark_release_v2.json; TS=$(date -u +%FT%TZ); R=/vol/data/repos/metagenomic-binning-benchmark; echo "$TS zenodo: version DOI 10.5281/zenodo.22969763 verified 200 + DataCite findable; receipt updated" >> $R/status/agent-activity.log; echo "$TS version-doi-verified-200" >> /vol/data/benchmark/.activity; touch /vol/data/benchmark/.heartbeat
+receipt updated
+"version_doi_note": "Version DOI propagation lag confirmed resolved: re-checked 2026-09-26T02:54Z -> doi.org/10.5281/zenodo.22969763 HTTP 200
+"version_doi_recheck_http": 200
+"version_doi_recheck_utc": "2026-09-26T02:54:25Z"
+"version_doi_resolver_http": 200
+> build · mimo-v2.6-flash-free
+Receipt updated. Per the standing plan ("if 200, update receipt + comment"), a brief factual follow-up on #8 is warranted. First checking no automation comment already covered it:
+[0m$ [0mgh api repos/paulzierep/metagenomic-binning-benchmark/issues/8/comments --jq '.[-3:] | .[] | {createdAt: .created_at, author: .user.login, head: (.body[0:280])}' 2>&1; echo "=== any comment mentioning version DOI 200 ==="; gh api repos/paulzierep/metagenomic-binning-benchmark/issues/8/comments --jq '[.[] | select(.body | test("22969763.*(200|findable)|findable"))] | length' 2>&1; touch /vol/data/benchmark/.heartbeat
+{"author":"paulzierep","createdAt":"2026-09-25T21:11:07Z","head":"Triage: Zenodo record 22935025 is published (MIT license, expanded description, 95 MB archive + 3.6 KB manifest, DOI 10.5281/zenodo.22935025 verified). The continuous-update workflow documented in docs/10-data-preservation.md is functional — new dataset packages can be added via "}
+{"author":"paulzierep","createdAt":"2026-09-26T01:46:47Z","head":"Done — benchmark data now lives in **one record with continuous updates** (commit 3328a96).\n\n**Version 2.0 published**: [10.5281/zenodo.22969763](https://doi.org/10.5281/zenodo.22969763) under concept DOI [10.5281/zenodo.22935024](https://doi.org/10.5281/zenodo.22935024) (always "}
+{"author":"paulzierep","createdAt":"2026-09-26T02:23:08Z","head":"Closed by automation — addressed: One-record continuous Zenodo archiving verified: v2.0 (record 22969763, MIT) under concept DOI 10.5281/zenodo.22935024 resolves to v2; public API confirms 168,110,629 bytes / MD5 114459d4e728e70b2aefb70e1d8f620e matching the local tarball, 410 bi"}
+=== any comment mentioning version DOI 200 ===
+0
+> build · mimo-v2.6-flash-free
+No comment covers the DOI resolution. Posting a short factual follow-up on #8:
+[0m$ [0mBODY=$(cat <<'EOF'
+Follow-up: the per-version DOI propagation lag noted above is now **resolved** — [10.5281/zenodo.22969763](https://doi.org/10.5281/zenodo.22969763) returns HTTP 200 (re-checked 2026-09-26 02:54 UTC) and DataCite reports state `findable` (registered 02:46:23Z, ~68 min after publish — the same lag v1 showed). Both the version DOI and the concept DOI [10.5281/zenodo.22935024](https://doi.org/10.5281/zenodo.22935024) now resolve; receipt `meta/zenodo_benchmark_release_v2.json` updated to `version_doi_resolver_http: 200`. Nothing further pending on #8.
+EOF
+); gh api repos/paulzierep/metagenomic-binning-benchmark/issues/8/comments -f body="$BODY" --jq '.id, .html_url' 2>&1 | head -3; TS=$(date -u +%FT%TZ); echo "$TS comment: #8 version-DOI-resolved follow-up posted" >> /vol/data/repos/metagenomic-binning-benchmark/status/agent-activity.log; echo "$TS doi-followup-commented" >> /vol/data/benchmark/.activity; touch /vol/data/benchmark/.heartbeat
+5842559445
+https://github.com/paulzierep/metagenomic-binning-benchmark/issues/8#issuecomment-5842559445
+> build · mimo-v2.6-flash-free
+Now checking docs for stale "DOI still propagating" notes:
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && grep -rn "404\|propagat\|not yet resolv" docs/10-data-preservation.md docs/11-run-results.md README.md 2>/dev/null | head; echo "=== cami3 in README/docs 11 ==="; grep -n "cami3\|CAMI III" README.md | head -8; touch /vol/data/benchmark/.heartbeat
+docs/11-run-results.md:27:| [`baseline_unmodified`](runs/baseline_unmodified/comebin_run.log) — 2026-09-23 14:36:06 → 21:30:28; watchdog classified 21:42:31 | [987db95](https://github.com/paulzierep/COMEBin/commit/987db95d8d399f30b7c82a5f5f40ed6bfdc906c7) upstream | **Failed after epoch 175/200; no bins or evaluation.** `test_getmarker_2quarter.pl` produced no `.seed`, then `cluster.py:368` unconditionally read it and raised `FileNotFoundError`; `get_result` then hit `ModuleNotFoundError: biolib`. | `biolib` import is now verified. [`586c7f7`](https://github.com/paulzierep/COMEBin/commit/586c7f72226171870615138687404767662c1225) hardens the later `gen_seed_idx` call but does not fix the observed line-368 read; fix and verify that read on a future clean run before claiming clustering success. |
+docs/11-run-results.md:28:| [`small_test` — attempt 1](status/agent-run.log) — 2026-09-23 22:39:28 → 22:39:45 (17 s) | [586c7f7](https://github.com/paulzierep/COMEBin/commit/586c7f72226171870615138687404767662c1225) | **Failed during augmentation, exit 1.** `gen_cov.py` raised `KeyError: scaffold_22978`, a BAM-header reference absent from the 300-contig assembly. It failed before clustering, so it did not validate the seed change. | Commit the contig filter in [`47c1449`](https://github.com/paulzierep/COMEBin/commit/47c1449e874c366defe4470f1d43abf91fb8117c), then rerun under a fresh name. |
+=== cami3 in README/docs 11 ===
+3:> 🟢 **Agent status:** `running` · ⏱ `2026-09-26T04:54 CEST` · 🏃 train cami3_v11_20260926: epoch 14/200 · loss 6.040500164031982 · top1 5.865885257720947 · 🧠 `mimo-v2.6-flash-free` · [status.log](status/status.log)
+53:**Next (in progress):** CAMI III toy human gut — prep running (2 samples,
+54:short + long reads, `scripts/prep_cami3_toy.sh`), then first CAMI III run.
+> build · mimo-v2.6-flash-free
+README banner is live (epoch 14/200), but the "Next" text is stale ("prep running" — prep is done, run is training). Updating:
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && sed -n '45,62p' README.md
+**Completed marine run (2026-09-26):** `marine_v11_20260925` on the CAMI II
+**marine** sample-0 set (41,988 contigs ≥ 2000 bp, `MODE=cami2`, seed 42):
+exit 0, wall **31,406 s (≈ 8.7 h)**, early stop at epoch **159/200**
+(Top-1 99.58 % × 3), **152 bins**, CheckM2 **50.60 % / 4.10 %** (HQ 35 /
+MQ 60), CheckM v1 **46.36 % / 5.09 %** (HQ 37 / MQ 60) — the **best-quality
+dataset of the benchmark so far** ([CSV](results/marine_v11_20260925.csv)).
+
+**Next (in progress):** CAMI III toy human gut — prep running (2 samples,
+short + long reads, `scripts/prep_cami3_toy.sh`), then first CAMI III run.
+Every successful evaluation now archives itself: Zenodo **version 2.0**
+published 2026-09-26 (concept DOI
+[10.5281/zenodo.22935024](https://doi.org/10.5281/zenodo.22935024), all run
+outputs + metrics + figures + docs; automatic via
+[`scripts/zenodo_update.sh`](scripts/zenodo_update.sh), issue #8).
+Per-run table + full history: [`docs/11-run-results.md`](docs/11-run-results.md).
+
+## Optimization workflow (issue #7)
