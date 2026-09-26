@@ -74662,3 +74662,29 @@ Exited with code 1
 [0m→ [0mRead /tmp/shellerr.txt 
 [0m→ [0mRead /tmp/shelltest.txt 
 > build · mimo-v2.6-flash-free
+Shell output capture is broken — likely because the disk-full error also broke the harness's temp-file output capture. Commands may still execute. Testing by writing output to `/vol/data` (had 335 GB free) instead of `/tmp`:
+[0m$ [0mdf -h / /vol/data /tmp > /vol/data/tmp_df.txt 2>&1; echo "rc=$?" >> /vol/data/tmp_df.txt; touch /vol/data/benchmark/.heartbeat
+{"exit":0,"truncated":false,"output":"","status":"completed"}
+> build · mimo-v2.6-flash-free
+[0m→ [0mRead /vol/data/tmp_df.txt 
+> build · mimo-v2.6-flash-free
+**Root cause confirmed: `/` is 100% full (19 GB)** — that's why the run hit ENOSPC and why shell output capture fails (harness writes output via `/tmp` on `/`). `/vol/data` is fine. Finding what's filling `/` (writing output to `/vol/data`):
+[0m$ [0mdu -x -d1 / > /vol/data/tmp_du_root.txt 2>/dev/null; echo "rc=$?" >> /vol/data/tmp_du_root.txt; touch /vol/data/benchmark/.heartbeat
+{"exit":0,"truncated":false,"output":"","status":"completed"}
+> build · mimo-v2.6-flash-free
+[0m→ [0mRead /vol/data/tmp_du_root.txt 
+[0m$ [0mdu -x -d1 /var /home /tmp /opt /usr /root > /vol/data/tmp_du_detail.txt 2>/dev/null; echo "rc=$?" >> /vol/data/tmp_du_detail.txt; touch /vol/data/benchmark/.heartbeat
+{"exit":0,"truncated":false,"output":"","status":"completed"}
+> build · mimo-v2.6-flash-free
+`/tmp` = **14.8 GB** on a 19 GB root — it got refilled (12.5 GB had been freed earlier). Drilling in:
+[0m→ [0mRead /vol/data/tmp_du_detail.txt 
+[0m$ [0mdu -x -d1 /tmp > /vol/data/tmp_du_tmp.txt 2>/dev/null; echo "rc=$?" >> /vol/data/tmp_du_tmp.txt; touch /vol/data/benchmark/.heartbeat
+{"exit":0,"truncated":false,"output":"","status":"completed"}
+> build · mimo-v2.6-flash-free
+Visible `/tmp` children sum to only ~213 MB yet `/tmp` totals 14.8 GB — some entries are hidden (permission errors sent to `/dev/null`). Re-running with stderr captured:
+[0m→ [0mRead /vol/data/tmp_du_tmp.txt 
+[0m$ [0mdu -x -d1 /tmp > /vol/data/tmp_du_tmp2.txt 2>&1; echo "rc=$?" >> /vol/data/tmp_du_tmp2.txt; ls -la /tmp > /vol/data/tmp_ls.txt 2>&1; echo "rc=$?" >> /vol/data/tmp_ls.txt; touch /vol/data/benchmark/.heartbeat
+{"exit":0,"truncated":false,"output":"","status":"completed"}
+> build · mimo-v2.6-flash-free
+[0m→ [0mRead /vol/data/tmp_du_tmp2.txt 
+[0m→ [0mRead /vol/data/tmp_ls.txt 
