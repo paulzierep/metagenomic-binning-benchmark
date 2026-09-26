@@ -438,7 +438,7 @@ included; fixes land on branch `comebin-optimizations` in this repo.
     run_comebin.sh --earlystop. Reported in docs/11 + README + results CSVs
     (results/marine_v11_20260925.csv, runs/marine_v11_20260925/per_bin_results.csv)._
 
-- [x] **CAMI III toy human gut: prep completed + benchmark RUNNING (2026-09-26)**
+- [x] **CAMI III toy human gut: prep + benchmark run COMPLETED (2026-09-26)**
       (scripts/prep_cami3_toy.sh created by sibling session; left uncommitted —
       its WIP). Prep input at
       `/vol/data/datasets/cami_III/toy_human_input_2samples/`: `contigs.fa`
@@ -495,11 +495,20 @@ included; fixes land on branch `comebin-optimizations` in this repo.
       run, highest mean contamination (strain-rich toy gut). Report chain all
       rc 0: `results/cami3_v11_20260926_rerun.csv` (label **"CAMI III"** via
       the `32c5240` matcher fix), per-bin CSV + plots, combined bar plot (3 main
-      datasets unchanged per #12), Zenodo **v3** in flight (draft 22973575,
-      520 MB tarball — cami3's 492 bins ship as the new data per #8).
-      docs/11 gained the summary row + two attempt rows; README bullet + this
-      entry to commit. Outstanding: verify Zenodo v3 receipt + DOI, README
-      bullet with v3 DOI, report on issue #6.*
+      datasets unchanged per #12), **Zenodo v3 PUBLISHED** — record 22973575,
+      version DOI [10.5281/zenodo.22973575](https://doi.org/10.5281/zenodo.22973575)
+      (520 MB tarball, cami3's 492 bins ship as the new data per #8). The
+      auto-chain's post-publish step then crashed (zenodo_update.sh assumed the
+      API `files` dict shape, record returned a list → `AttributeError`), so the
+      agent verified the published file via API (size 520,343,638 + md5
+      b8b1b647… match), wrote `meta/zenodo_benchmark_release_v3.json`, advanced
+      `meta/zenodo_last_content.sha256` (eea30326…, blocks a duplicate v4) and
+      fixed+deployed `scripts/zenodo_update.sh` (files-shape normalised);
+      concept DOI already resolves to v3; version DOI showed the known DataCite
+      lag (404 at +2 min, v2 took ~68 min → recheck later).
+      docs/11 (summary row + two attempt rows) and the README completed-run
+      bullet with the v3 DOI committed + pushed `a057f021`. Outstanding:
+      version-DOI recheck, report on issue #6.*
 
 - [x] **Issue #12 plots (2026-09-24 ~10:42 UTC)**: `scripts/make_per_bin_plots.py`
       generates per-bin bar charts (`runs/<run>/per_bins.png`, CheckM2 + CheckM v1
