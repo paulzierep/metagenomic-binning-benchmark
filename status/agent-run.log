@@ -70184,3 +70184,314 @@ links: {
  "newversion": "https://zenodo.org/api/deposit/depositions/22969763/actions/newversion"
 }
 > build · mimo-v2.6-flash-free
+Draft new-version deposition created: **22969763** (concept 22935024) — I'll upload once marine eval data exists. Meanwhile, let me understand `parse_eval.py` (to plan the CheckM2 retry without re-running CheckM v1) and check the draft's inherited files:
+[0m$ [0mpgrep -af "prep_cami3|bwa" | head -5; ls -la --time-style=long-iso /vol/data/datasets/cami_III/toy_human_input_2samples/bamfiles/ 2>/dev/null; date -u +%FT%TZ; pgrep -f run_eval.sh >/dev/null && echo EVAL_RUNNING || echo EVAL_DONE; tail -c 250 /vol/data/benchmark/logs/marine_eval.log
+2502680 /bin/bash -c rm -f /vol/data/datasets/cami_III/toy_human_input_2samples/contigs.fa.* && /vol/data/envs/comebin/bin/bwa index -6 /vol/data/datasets/cami_III/toy_human_input_2samples/contigs.fa 2>&1 & BWA_PID=$! echo "Started bwa index PID $BWA_PID" # Wait for it to complete with a long timeout wait $BWA_PID 2>/dev/null echo "bwa index exited with status $?"
+2502681 /bin/bash -c rm -f /vol/data/datasets/cami_III/toy_human_input_2samples/contigs.fa.* && /vol/data/envs/comebin/bin/bwa index -6 /vol/data/datasets/cami_III/toy_human_input_2samples/contigs.fa 2>&1 & BWA_PID=$! echo "Started bwa index PID $BWA_PID" # Wait for it to complete with a long timeout wait $BWA_PID 2>/dev/null echo "bwa index exited with status $?"
+2502683 /vol/data/envs/comebin/bin/bwa index -6 /vol/data/datasets/cami_III/toy_human_input_2samples/contigs.fa
+2511592 /bin/bash -c /vol/data/tools/bin/micromamba run -p /vol/data/envs/comebin bwa index /vol/data/datasets/cami_III/toy_human_input_2samples/contigs.fa 2>&1
+2511593 /vol/data/tools/bin/micromamba run -p /vol/data/envs/comebin bwa index /vol/data/datasets/cami_III/toy_human_input_2samples/contigs.fa
+total 8
+drwxrwxr-x 2 ubuntu ubuntu 4096 2026-09-25 21:54 .
+drwxrwxr-x 4 ubuntu ubuntu 4096 2026-09-26 00:55 ..
+2026-09-26T01:02:14Z
+EVAL_RUNNING
+aligning 43 of 43 (100.00%) marker genes.
+[2026-09-26 00:56:09] INFO: Reading marker alignment files.
+[2026-09-26 00:56:09] INFO: Concatenating alignments.
+[2026-09-26 00:56:09] INFO: Placing 152 bins into the genome tree with pplacer (be patient).
+[0m$ [0mcat /vol/data/repos/metagenomic-binning-benchmark/scripts/parse_eval.py 2>/dev/null | head -80; echo "=== draft files ==="; TOK=$(cat /home/ubuntu/.zenodo_token); curl -sS -H "Authorization: Bearer $TOK" https://zenodo.org/api/deposit/depositions/22969763 -o /tmp/zdraft2.json -w "http=%{http_code}\n"; python3 -c "
+import json; d=json.load(open('/tmp/zdraft2.json'))
+print('state:', d.get('state'), 'submitted:', d.get('submitted'))
+print('files:', [(f['filename'], f['size']) for f in d.get('files',[])])
+print('version:', d.get('metadata',{}).get('version'), '| title:', d.get('title'))"
+#!/usr/bin/env python3
+"""Append CheckM2 and CheckM v1 means to a run's metadata.
+
+CheckM2 emits a normal TSV table. CheckM v1 1.2.x emits a bin-id column followed
+by a Python-dict representation in ``bin_stats_ext.tsv``; accept both formats so
+an apparently successful CheckM process cannot silently lose its metrics.
+"""
+import ast
+import os
+import sys
+
+run = sys.argv[1]
+meta = os.path.join(run, "run_meta.txt")
+
+
+def scores(path):
+    if not os.path.exists(path):
+        return [], []
+    completeness, contamination = [], []
+    with open(path, encoding="utf-8") as handle:
+        first = handle.readline().rstrip("\n")
+        first_parts = first.split("\t", 1)
+        header_parts = first.split("\t")
+        is_dict_row = len(first_parts) == 2 and first_parts[1].lstrip().startswith("{")
+        if not is_dict_row and "Completeness" in header_parts and "Contamination" in header_parts:
+            ci = header_parts.index("Completeness")
+            ti = header_parts.index("Contamination")
+            lines = [first, *handle]
+            for line in lines:
+                parts = line.rstrip("\n").split("\t")
+                try:
+                    completeness.append(float(parts[ci]))
+                    contamination.append(float(parts[ti]))
+                except (ValueError, IndexError):
+                    continue
+            return completeness, contamination
+        # CheckM v1: '<bin-id>\t<dict literal>\n' with no header row.
+        lines = [first, *handle] if is_dict_row else handle
+        for line in lines:
+            parts = line.rstrip("\n").split("\t", 1)
+            if len(parts) != 2:
+                continue
+            try:
+                record = ast.literal_eval(parts[1])
+                completeness.append(float(record["Completeness"]))
+                contamination.append(float(record["Contamination"]))
+            except (KeyError, TypeError, ValueError, SyntaxError):
+                continue
+    return completeness, contamination
+
+
+rows = []
+checkm2 = scores(os.path.join(run, "eval", "checkm2", "quality_report.tsv"))
+if checkm2[0]:
+    c, t = checkm2
+    rows.append(
+        f"checkm2_bins: {len(c)} checkm2_compl_mean: {sum(c)/len(c):.2f} "
+        f"checkm2_cont_mean: {sum(t)/len(t):.2f}"
+    )
+
+checkm1 = scores(os.path.join(run, "eval", "checkm", "out", "storage", "bin_stats_ext.tsv"))
+if checkm1[0]:
+    c, t = checkm1
+    rows.append(
+        f"checkm_bins: {len(c)} checkm_compl_mean: {sum(c)/len(c):.2f} "
+        f"checkm_cont_mean: {sum(t)/len(t):.2f}"
+    )
+
+# Replace prior derived metric lines so rerunning evaluation is idempotent.
+metric_prefixes = ("checkm2_bins:", "checkm_bins:")
+try:
+    with open(meta, encoding="utf-8") as handle:
+        existing = handle.readlines()
+except FileNotFoundError:
+    existing = []
+kept = [line for line in existing if not line.startswith(metric_prefixes)]
+with open(meta, "w", encoding="utf-8") as handle:
+    handle.writelines(kept)
+    for row in rows:
+        handle.write(row + "\n")
+=== draft files ===
+http=200
+Traceback (most recent call last):
+  File "<string>", line 4, in <module>
+KeyError: 'size'
+state: unsubmitted submitted: False
+> build · mimo-v2.6-flash-free
+Two notes: `parse_eval.py` re-derives metrics idempotently from eval outputs (good — I can retry CheckM2 alone), and the CAMI III prep script has *exited* while ad-hoc `bwa index` shells (another session's) keep running. I'll log that and revisit after marine. Now let me look at the README to place the #12 deliverables:
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && grep -n "" README.md | sed -n '1,90p'
+1:<!--AGENT-STATUS-->
+2:
+3:> 🟢 **Agent status:** `running` · ⏱ `2026-09-26T03:02 CEST` · 🏃 last run marine_v11_20260925: epoch 158/200 · not active · 🧠 `mimo-v2.6-flash-free` · [status.log](status/status.log)
+4:
+5:# Metagenomic binning benchmark
+6:
+7:Benchmark of metagenomic genome binners — starting with
+8:[COMEBin](https://github.com/paulzierep/COMEBin) — with a repeatable harness:
+9:per-run parameters, datasets, wall time / RAM, and bin quality scored with both
+10:**CheckM2** and **CheckM (v1)**. Everything is documented so any session can pick
+11:the work back up (see [`PROGRESS.md`](PROGRESS.md)).
+12:
+13:## Current / Next
+14:
+15:**Completed baseline:** unmodified COMEBin on the **BATS demo dataset**
+16:(29,434 contigs): 200/200 epochs, 60 bins, CheckM2 25.01 % / 2.98 % and
+17:CheckM v1 21.23 % / 3.40 % mean completeness / contamination.
+18:**Completed small gate:** `small_test_v4` → 3 bins, CheckM2 26.07 % / 2.02 %,
+19:CheckM v1 29.08 % / 0.71 %.
+20:**Completed medium run:** `medium_v11_20260924` (source fix batch 1 `95f5ea8`,
+21:3,000 contigs, seed 42): 16 bins, CheckM2 35.93 % / 4.67 %, CheckM v1
+22:33.83 % / 6.03 %.
+23:**Completed large fix run:** `fix_v11_20260924` (same source, same demo
+24:dataset/threads/seed as the baseline): exit 0, wall **24,741 s (6.9 h)**, early
+25:stop at epoch **184/200** (upstream `run_comebin.sh --earlystop`: Top-1 > 99 %
+26:for 3 epochs), **71 bins**, CheckM2 **24.38 % / 3.78 %** (HQ 1 / MQ 6), CheckM v1
+27:**21.62 % / 5.18 %** (HQ 0 / MQ 8) — vs baseline 60 bins / 25.01 / 2.98 in
+28:24,327 s: same wall time, more bins, slightly lower mean completeness and higher
+29:contamination.
+30:
+31:**Completed tiny floor (issue #18a):** `tiny_test_n100` **failed** (HNSW
+32:queries `k = max_edges+1 = 101` > N = 100 → exit 1), so the smallest functional
+33:dataset is **`comebin_tiny_101` (101 contigs)**; `tiny_test_n101` passed in
+34:85 s with **1 bin**, CheckM2 63.89 % / 9.05 %, CheckM v1 46.58 % / 6.35 %
+35:([CSV](results/tiny_test_n101.csv)).
+36:
+37:**Completed human run (issue #18b):** `human_v11_20260925` on the CAMI II
+38:**human host-associated** ~1/6 set (top-4,900-longest contigs of
+39:`gastrooral/sample_0`, 166 Mbp, reads re-mapped with `bwa mem` into
+40:`human_sample0_input/`): exit 0, wall **4,912 s (≈ 1.37 h)** — ~1/5 the demo's
+41:6.9 h — 200/200 epochs, **107 bins**, CheckM2 **35.31 % / 5.13 %** (HQ 20 /
+42:MQ 29), CheckM v1 **32.64 % / 4.65 %** (HQ 21 / MQ 29): the **first dataset in
+43:the benchmark with substantial HQ genome recovery** (20–21 vs 0–1 on the demo
+44:set) ([CSV](results/human_v11_20260925.csv)).
+45:
+46:**Next (in progress this turn):** CAMI II **marine** sample 0 (~1/6 set) →
+47:baseline + fix runs, then CAMI III (disk budget ≤ ~105 GB).
+48:Per-run table + full history: [`docs/11-run-results.md`](docs/11-run-results.md).
+49:
+50:## Optimization workflow (issue #7)
+51:
+52:Optimizations live on branch `comebin-optimizations-v11`, **one commit per
+53:batch**, each batch passing the gate below (details:
+54:[`docs/09-optimization-strategy.md`](docs/09-optimization-strategy.md)).
+55:
+56:```mermaid
+57:flowchart TD
+58:    A["Idea or fix batch"] --> B["1. Small functional test"]
+59:    B --> C["2. Medium validation run"]
+60:    C --> D["3. Large benchmark vs baseline"]
+61:    D --> E{"Better time and quality?"}
+62:    E -->|yes| F["4. Keep and record"]
+63:    E -->|no| G["Rework or revert"]
+64:    F --> H["Next fix batch"]
+65:    classDef step fill:#d9f7be,stroke:#389e0d;
+66:    classDef stop fill:#ffccc7,stroke:#cf1322;
+67:    class A,B,C,D,F,H step;
+68:    class G stop;
+69:```
+70:
+71:**Gate rules:** never skip the small functional test · baseline compared first ·
+72:one timed run at a time (no concurrent COMEBin/CheckM) · keep only with
+73:evidence · a run is kept or reverted/reworked and combined with surviving
+74:ideas · **big benchmark runs only after the fix is validated on small AND
+75:medium — no full-large runs on unvalidated fixes or un-optimized parameters
+76:(issue #17)**, and parameter optimization happens on small sets first.
+77:
+78:## Results
+79:
+80:- Aggregate rows (per run): [`results/`](results/) (`results/<run>.csv`, one
+81:  machine-readable row per run: wall time, bins, CheckM2 + CheckM v1 means and
+82:  HQ/MQ counts).
+83:- Per-bin quality (issue #15): `runs/<run>/per_bin_results.csv` — one row per
+84:  bin joining CheckM2 and CheckM v1 completeness / contamination.
+85:- Figures (issue #12): per-run bar chart `runs/<run>/per_bins.png`
+86:  (per-bin completeness/contamination for both tools), an all-runs comparison
+87:  scatter `results/figures/comp_vs_cont_all-runs.png` (one point per bin,
+88:  color = run), and — the primary comparison view — a **per-dataset subplot
+89:  figure** `results/figures/comp_vs_cont_by_dataset.png` (one panel per
+90:  benchmark dataset, runs colored within the panel, so same-dataset runs are
+> build · mimo-v2.6-flash-free
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && grep -n "" README.md | sed -n '90,140p'; wc -l README.md; echo "=== docs/11 head ==="; sed -n '1,50p' docs/11-run-results.md
+90:  benchmark dataset, runs colored within the panel, so same-dataset runs are
+91:  directly comparable) — regenerated by
+92:  [`scripts/make_per_bin_plots.py`](scripts/make_per_bin_plots.py) after every
+93:  evaluated run. Current rendering:
+94:  [![comp-vs-cont by dataset](results/figures/comp_vs_cont_by_dataset.png)](results/figures/comp_vs_cont_by_dataset.png)
+95:- Full comparison table + run history:
+96:  [`docs/11-run-results.md`](docs/11-run-results.md).
+97:- Eval harness: [`scripts/run_eval.sh`](scripts/run_eval.sh) (CheckM2 + CheckM v1,
+98:  py3.10 + `LD_LIBRARY_PATH`), aggregate generator
+99:  [`scripts/make_results_csv.py`](scripts/make_results_csv.py), per-bin
+100:  generator [`scripts/make_per_bin_csv.py`](scripts/make_per_bin_csv.py).
+101:
+102:## Documentation index
+103:
+104:[`PROGRESS.md`](PROGRESS.md) — resume document (start here) ·
+105:[`docs/`](docs/) — datasets (01), environment (02), fixes (03), evaluation (04),
+106:commands (06), fix batches (07), dataset space plan (08), optimization strategy
+107:(09), data preservation (10), run results (11).
+107 README.md
+=== docs/11 head ===
+# Run results — full table
+
+One row per benchmark run, updated by the agent after each run (timings from `runs/<run>/run_meta.txt` + stage timings in the run log; quality from the CheckM2/CheckM evaluation — see `docs/04-evaluation.md`). Raw per-run outputs stay in `/vol/data/benchmark/runs/`, parsed CSVs in `results/`.
+
+| Run | Date | Source commit | Dataset | Threads | Wall time | Peak RAM | Bins | CheckM2 comp/cont % | CheckM comp/cont % | Status |
+|---|---|---|---|---|---|---|---|---|---|---|
+| `baseline_rerun_autorestart1` | 2026-09-24 | [904f649](https://github.com/paulzierep/COMEBin/commit/904f649ef5cbb4582a6f0e5ec8b0b1f45778d85b) | COMEBin demo (29,434 contigs) | 32 | 24,327 s | 5.42 GB | 60 | 25.01 / 2.98 | 21.23 / 3.40 | ✅ complete; 200/200 epochs |
+| `small_test_v4` | 2026-09-24 | [c8f22e4](https://github.com/paulzierep/COMEBin/commit/c8f22e4935a66a0fd58b794489a9021671b15437) | `comebin_small` (300 contigs) | 8 | 122 s | 0.75 GB | 3 | 26.07 / 2.02 | 29.08 / 0.71 | ✅ functional gate passed |
+| `medium_v11_20260924` | 2026-09-24 | [95f5ea8](https://github.com/paulzierep/COMEBin/commit/95f5ea820f9a4e76f5c2911c0b5ed507ab67b015) | `comebin_medium` (3,000 contigs) | 32 | 2,326 s | 10.69 GB | 16 | 35.93 / 4.67 | 33.83 / 6.03 | ✅ complete; 200/200 epochs, 61.23% Top1; [CSV](../results/medium_v11_20260924.csv) |
+| `fix_v11_20260924` | 2026-09-24 | [95f5ea8](https://github.com/paulzierep/COMEBin/commit/95f5ea820f9a4e76f5c2911c0b5ed507ab67b015) | COMEBin demo (29,434 contigs) | 32 | 24,741 s | 9.4 GB | 71 | 24.38 / 3.78 | 21.62 / 5.18 | ✅ complete; stopped early at epoch 184/200 (`--earlystop`, Top-1 ≥ 99% × 3); [CSV](../results/fix_v11_20260924.csv) |
+| `tiny_test_n100` | 2026-09-25 | [c8f22e4](https://github.com/paulzierep/COMEBin/commit/c8f22e4935a66a0fd58b794489a9021671b15437) | `comebin_tiny` (100 contigs) | 8 | 85 s | – | – | – | – | ❌ exit 1 — HNSW `k = max_edges+1 = 101` > N=100; empirical floor is 101 contigs (issue #18) |
+| `tiny_test_n101` | 2026-09-25 | [c8f22e4](https://github.com/paulzierep/COMEBin/commit/c8f22e4935a66a0fd58b794489a9021671b15437) | `comebin_tiny_101` (101 contigs) | 8 | 85 s | – | 1 | 63.89 / 9.05 | 46.58 / 6.35 | ✅ complete, smallest passing dataset (30 epochs); [CSV](../results/tiny_test_n101.csv) |
+| `human_v11_20260925` | 2026-09-25 | [95f5ea8](https://github.com/paulzierep/COMEBin/commit/95f5ea820f9a4e76f5c2911c0b5ed507ab67b015) | CAMI II human host-associated (4,900 contigs / 166 Mbp, ~1/6 demo) | 32 | 4,912 s | 10.40 GB | 107 | 35.31 / 5.13 | 32.64 / 4.65 | ✅ complete; 200/200 epochs, Top-1 ≈ 96 %; first dataset with substantial HQ recovery (CheckM2 HQ 20 / MQ 29, CheckM v1 HQ 21 / MQ 29); [CSV](../results/human_v11_20260925.csv) |
+| `human_v11_20260925` | 2026-09-25 | [95f5ea8](https://github.com/paulzierep/COMEBin/commit/95f5ea820f9a4e76f5c2911c0b5ed507ab67b015) | CAMI II human sample 0 (4,900 contigs, 166 Mbp) | 32 | 4,912 s (82 min) | 8.6 GB | 107 | 35.31 / 5.13 (HQ 20, MQ 29) | 32.64 / 4.65 (HQ 21, MQ 29) | ✅ complete; 200/200 epochs, final Top-1 95.94%; [CSV](../results/human_v11_20260925.csv) |
+| `baseline_unmodified` | 2026-09-23 | [987db95](https://github.com/paulzierep/COMEBin/commit/987db95d8d399f30b7c82a5f5f40ed6bfdc906c7) (upstream) | COMEBin demo (29,434 contigs) | 32 | – | – | – | – | – | ⏹ failed at epoch 175/200 — see [Run history](#run-history--what-happened-and-whats-next) |
+
+Column contract: **Wall time** = total seconds (plus per-stage breakdown in `docs/02-comebin-baseline.md`), **Bins** = bins exported (≥200 kb filter noted), **comp/cont** = mean completeness / mean contamination, **HQ/MQ counts** live in `results/<run>.csv`. **Source commit** is always a clickable link to that exact commit on GitHub. Per-bin CheckM2 values for the completed medium gate are in [`medium_v11_20260924_checkm2_stats.csv`](../medium_v11_20260924_checkm2_stats.csv).
+
+## Run history — what happened and what's next
+
+Fourteen COMEBin-executing attempts have been recorded: eight terminal failures and six completed runs. The baseline rerun, small functional gate, medium derivative, large fix run, the 101-contig tiny floor run, and the CAMI II human ~1/6 run now have verified bin artifacts and CheckM2/CheckM outputs. Run links point to tracked evidence mirrors; the status banner at the top is authoritative for any active run.
+
+### COMEBin-executing attempts
+
+| Run / time (UTC) | Source | Result and cause | Next step |
+|---|---|---|---|
+| [`baseline_unmodified`](runs/baseline_unmodified/comebin_run.log) — 2026-09-23 14:36:06 → 21:30:28; watchdog classified 21:42:31 | [987db95](https://github.com/paulzierep/COMEBin/commit/987db95d8d399f30b7c82a5f5f40ed6bfdc906c7) upstream | **Failed after epoch 175/200; no bins or evaluation.** `test_getmarker_2quarter.pl` produced no `.seed`, then `cluster.py:368` unconditionally read it and raised `FileNotFoundError`; `get_result` then hit `ModuleNotFoundError: biolib`. | `biolib` import is now verified. [`586c7f7`](https://github.com/paulzierep/COMEBin/commit/586c7f72226171870615138687404767662c1225) hardens the later `gen_seed_idx` call but does not fix the observed line-368 read; fix and verify that read on a future clean run before claiming clustering success. |
+| [`small_test` — attempt 1](status/agent-run.log) — 2026-09-23 22:39:28 → 22:39:45 (17 s) | [586c7f7](https://github.com/paulzierep/COMEBin/commit/586c7f72226171870615138687404767662c1225) | **Failed during augmentation, exit 1.** `gen_cov.py` raised `KeyError: scaffold_22978`, a BAM-header reference absent from the 300-contig assembly. It failed before clustering, so it did not validate the seed change. | Commit the contig filter in [`47c1449`](https://github.com/paulzierep/COMEBin/commit/47c1449e874c366defe4470f1d43abf91fb8117c), then rerun under a fresh name. |
+| [`small_test` — attempt 2](status/agent-run.log) — ~2026-09-23 23:08:34 → 23:09:05 (31 s) | [47c1449](https://github.com/paulzierep/COMEBin/commit/47c1449e874c366defe4470f1d43abf91fb8117c) | **Failed during augmentation, exit 1.** The mean-coverage filter worked, but `gen_var.py` raised the equivalent `KeyError` for the same extra scaffold and its expected variance CSV was absent. | Apply the matching `gen_var.py` filter in [`ee2e507`](https://github.com/paulzierep/COMEBin/commit/ee2e5079ae8fd04caa381486a4bba8c2d2a34a14), then rerun under a fresh name. |
+| [`small_test` — attempt 3](runs/small_test/comebin_run.log) — 2026-09-23 23:09:40 → 23:10:21 (41 s) | [ee2e507](https://github.com/paulzierep/COMEBin/commit/ee2e5079ae8fd04caa381486a4bba8c2d2a34a14) | **Failed, exit 1.** `get_kmer_coverage` indexed the 300-contig matrix with uninitialized values because `np.empty` left missing contig-to-k-mer positions unset, causing an out-of-bounds `IndexError`. | Replace `np.empty` with zero-initialized state in [`904f649`](https://github.com/paulzierep/COMEBin/commit/904f649ef5cbb4582a6f0e5ec8b0b1f45778d85b); rerun as `small_test_v2`. |
+| [`small_test_v2`](runs/small_test_v2/comebin_run.log) — 2026-09-23 23:37:13 → 23:37:56 (43 s) | [904f649](https://github.com/paulzierep/COMEBin/commit/904f649ef5cbb4582a6f0e5ec8b0b1f45778d85b) | **Failed before completing epoch 0, exit 1.** `lengths[seq_id]` raised `KeyError`: `aug0_datacoverage_mean.tsv` contained all 29,434 BAM-header references instead of only the 300 input contigs. | Producer filtering and defensive alignment are committed on `comebin-small-fix` as [`5c77bc8`](https://github.com/paulzierep/COMEBin/commit/5c77bc87ce2c8a83be20016c8f62eb2d6b3feb88); the offline six-view test passes. After the baseline, run the end-to-end small gate and CheckM2/CheckM before building the medium set. |
+| [`baseline_rerun` — attempt 1](runs/baseline_rerun/comebin_run.log) — 2026-09-24 00:15:46 → 00:25:46 (600 s) | [904f649](https://github.com/paulzierep/COMEBin/commit/904f649ef5cbb4582a6f0e5ec8b0b1f45778d85b) | **Failed, exit 143.** This was not a COMEBin exception: a foreground agent tool call imposed a 600 s timeout and sent `SIGTERM` after epoch 0 was logged and the next epoch started. | Never launch a multi-hour baseline in a foreground tool call. Start it detached in a fresh directory, verify `.active_run`, and let `benchmark-watchdog.sh` own the handoff. |
+| [`small_test_v3`](runs/small_test_v3/comebin_run.log) — 2026-09-24 08:45:18 → 08:46:40 | [a0be243](https://github.com/paulzierep/COMEBin/commit/a0be243187c674b4e62b980ef100f8f2e8b83f54) | **Failed functional gate.** Training completed, but the small branch still had the pre-`358ddd8` KMeans call; `KMeans(n_jobs=-1)` raised `TypeError`, and the wrapper masked it as exit 0 with zero bins. | Apply the sklearn compatibility fix to `comebin-small-fix`; the runner now rejects zero-bin success. |
+| [`baseline_rerun_autorestart1`](runs/baseline_rerun_autorestart1/comebin_run.log) — 2026-09-24 00:30:01 → 07:15:28 | [904f649](https://github.com/paulzierep/COMEBin/commit/904f649ef5cbb4582a6f0e5ec8b0b1f45778d85b) | **✅ Complete.** 200/200 epochs, 99.19% Top1. Clustering fixed (hmmer 3.1b2 + sklearn KMeans). CheckM2: 60 bins, 25.01% comp, 2.98% cont. CheckM v1: 60 bins, 21.23% comp, 3.40% cont. | Evaluation done via `scripts/run_eval.sh`. See `eval/checkm2/quality_report.tsv` and `eval/checkm/out/storage/bin_stats_ext.tsv`. |
+| [`small_test_v4`](runs/small_test_v4/comebin_run.log) — 2026-09-24 08:48:33 → 08:50:35 | [c8f22e4](https://github.com/paulzierep/COMEBin/commit/c8f22e4935a66a0fd58b794489a9021671b15437) | **✅ Functional gate passed.** 30/30 epochs, 3 non-empty bins in 122 s. CheckM2: 26.07% mean completeness / 2.02% contamination. CheckM v1 (Python 3.10 + `pplacer` library path): 29.08% / 0.71%. | Small gate is complete; medium 3,000-contig derivative is next. See [`results/small_test_v4.csv`](results/small_test_v4.csv). |
+| [`medium_v11_20260924`](../runs/medium_v11_20260924/comebin_run.log) — 2026-09-24 09:25:50 → 10:04:36 | [95f5ea8](https://github.com/paulzierep/COMEBin/commit/95f5ea820f9a4e76f5c2911c0b5ed507ab67b015) | **✅ Complete.** 200/200 epochs, 61.23% Top1, 16 non-empty bins in 2,326 s. CheckM2: 35.93% mean completeness / 4.67% contamination (MQ=2). CheckM v1: 33.83% / 6.03% (MQ=3). | Evaluation completed with `scripts/run_eval.sh`; see the [aggregate CSV](../results/medium_v11_20260924.csv) and the [per-bin tables](../runs/medium_v11_20260924/per_bin_results.csv) / [CheckM2 per-bin](../runs/medium_v11_20260924/checkm2_per_bin.csv). |
+| [`fix_v11_20260924`](../runs/fix_v11_20260924/comebin_run.log) — 2026-09-24 10:37:15 → 17:29:36 | [95f5ea8](https://github.com/paulzierep/COMEBin/commit/95f5ea820f9a4e76f5c2911c0b5ed507ab67b015) | **✅ Complete** (exit 0, wall 24,741 s). Stopped early at **epoch 184/200** because upstream v1.1.0 `run_comebin.sh` passes `--earlystop` (Top-1 > 99% for 3 epochs: 99.10 → 99.22 → 99.04%), then clustering completed normally (120/120 Leiden) → **71 non-empty bins**. CheckM2: 24.38% / 3.78% (HQ 1, MQ 6). CheckM v1: 21.62% / 5.18% (HQ 0, MQ 8). Versus the baseline on the same data: +1.7% wall time, +11 bins, −0.63 pp completeness, +0.80 pp contamination. | Evaluation done with `scripts/run_eval.sh` (CheckM2 71 s, CheckM v1 398 s); see the [aggregate CSV](../results/fix_v11_20260924.csv) and [per-bin table](../runs/fix_v11_20260924/per_bin_results.csv). Next: issue #18 datasets (tiny + CAMI human ~1/6). |
+| [`tiny_test_n100`](../runs/tiny_test_n100/comebin_run.log) — 2026-09-25 01:44 → 01:46 | [c8f22e4](https://github.com/paulzierep/COMEBin/commit/c8f22e4935a66a0fd58b794489a9021671b15437) | **Failed, exit 1 (85 s).** Smallest-possible-dataset probe for issue #18: `cluster.py` builds an HNSW index and queries `k = max_edges + 1 = 101` neighbours with N = 100 contigs → `RuntimeError: Cannot return the results in a contiguous 2D array` → empty `get_bin_quality` → `ValueError: max() arg is an empty sequence`. | The empirical floor is **101 contigs**; see `tiny_test_n101`. A defensive clamp in `cluster.py` is proposed as a future fix batch (not applied — the benchmark runs upstream). |
+| [`tiny_test_n101`](../runs/tiny_test_n101/comebin_run.log) — 2026-09-25 01:46:33 → 01:47:58 (85 s) | [c8f22e4](https://github.com/paulzierep/COMEBin/commit/c8f22e4935a66a0fd58b794489a9021671b15437) | **✅ Complete.** 101 contigs (issue #18 tiny floor), 30/30 epochs, exit 0, **1 non-empty bin**. CheckM2: 63.89% / 9.05% (MQ 1). CheckM v1: 46.58% / 6.35%. | Smallest passing dataset verified; see [`results/tiny_test_n101.csv`](../results/tiny_test_n101.csv). CAMI-II human ~1/6 set is next (issue #18). |
+| [`human_v11_20260925`](../runs/human_v11_20260925/comebin_run.log) — 2026-09-25 02:17:20 → 03:39:12 (4,912 s = 82 min, 5× faster than the 6.9 h demo run) | [95f5ea8](https://github.com/paulzierep/COMEBin/commit/95f5ea820f9a4e76f5c2911c0b5ed507ab67b015) | **✅ Complete** (exit 0). Issue #18b human host-associated set: top-4,900-longest contigs of CAMI II Toy Human Microbiome `gastrooral/sample_0` (166 Mbp, ~1/6 demo), all 10.6 GB reads re-mapped `bwa mem -p` → `bamfiles/human.bam` (`scripts/prep_cami2_human.sh 4900`). 200/200 epochs (final Top-1 95.94%, no early stop), 120/120 Leiden → **107 non-empty bins**. CheckM2: 35.31% / 5.13% (HQ 20, MQ 29). CheckM v1: 32.64% / 4.65% (HQ 21, MQ 29). First dataset in the benchmark with substantial HQ recovery (top bins ≈ 100% / ≤ 0.45% under both tools). | Evaluation via `scripts/run_eval.sh` (CheckM2 rc 0 / 193 s, CheckM v1 rc 0 / 686 s); [aggregate CSV](../results/human_v11_20260925.csv), [per-bin table](../runs/human_v11_20260925/per_bin_results.csv). Coverage used 1 worker (single BAM) — same setup for the marine set. Next: CAMI II marine sample_0 (~1/6) run, then CAMI III. |
+
+### Guard-only launches
+
+Twelve launches stopped before COMEBin started. They are grouped by episode so refusals are not mistaken for benchmark runs; raw watchdog refusals remain in `/vol/data/benchmark/logs/*.launch.log`.
+
+| Episode / time (UTC) | Count | Cause | Next step |
+|---|---:|---|---|
+| [`baseline_unmodified_autorestart1/2/3`](status/supervisor-run.log) — 21:33, 21:35, 21:40 | 3 | Pristine-baseline guard rejected commit `987db95` plus four dirty files. | Restore a clean committed source tree before retrying. |
+| [Default-path baseline before the rerun](status/agent-run.log) — shortly before 00:15 | 1 | Existing `runs/baseline_unmodified` directory blocked an overwrite. | Pass a fresh explicit run name. |
+| [Small-test preflight before attempt 1](status/agent-run.log) — ~22:39 | 2 | Dirty-source guard rejected the uncommitted seed change. | Commit or clean the source before running. |
+> build · mimo-v2.6-flash-free
+While CheckM v1's pplacer runs, let me size up the full benchmark payload (including produced bins) for the Zenodo package:
+[0m$ [0mcd /vol/data/benchmark/runs && du -sh */comebin_out 2>/dev/null; echo "=== total bins size ==="; du -csh */comebin_out 2>/dev/null | tail -1; echo "=== eval dirs ==="; du -sh */eval 2>/dev/null; echo "=== repo runs mirror contents (marine) ==="; ls -la /vol/data/repos/metagenomic-binning-benchmark/runs/marine_v11_20260925/ 2>/dev/null; echo "=== eval status ==="; pgrep -f run_eval.sh >/dev/null && echo RUNNING || echo DONE; tail -c 200 /vol/data/benchmark/logs/marine_eval.log; date -u +%FT%TZ
+1.6G	baseline_rerun_autorestart1/comebin_out
+1.2G	baseline_unmodified/comebin_out
+594M	fix_v11_20260924/comebin_out
+910M	human_v11_20260925/comebin_out
+1.7G	marine_v11_20260925/comebin_out
+285M	medium_v11_20260924/comebin_out
+60M	small_test/comebin_out
+60M	small_test_v2/comebin_out
+71M	small_test_v3/comebin_out
+89M	small_test_v4/comebin_out
+49M	tiny_test_n100/comebin_out
+52M	tiny_test_n101/comebin_out
+=== total bins size ===
+6.5G	total
+=== eval dirs ===
+78M	baseline_rerun_autorestart1/eval
+94M	fix_v11_20260924/eval
+371M	human_v11_20260925/eval
+326M	marine_v11_20260925/eval
+30M	medium_v11_20260924/eval
+9.2M	small_test_v4/eval
+3.5M	tiny_test_n101/eval
+=== repo runs mirror contents (marine) ===
+total 556
+drwxrwxr-x  4 ubuntu ubuntu   4096 Sep 25 04:28 .
+drwxrwxr-x 15 ubuntu ubuntu   4096 Sep 25 04:16 ..
+drwxrwxr-x  2 ubuntu ubuntu   4096 Sep 25 04:28 comebin_res
+-rw-rw-r--  1 ubuntu ubuntu 545865 Sep 26 01:02 comebin_run.log
+drwxrwxr-x  2 ubuntu ubuntu   4096 Sep 25 04:16 logs
+-rw-rw-r--  1 ubuntu ubuntu   2451 Sep 26 01:02 run_meta.txt
+=== eval status ===
+RUNNING
+9-26 00:56:09] INFO: Reading marker alignment files.
+[2026-09-26 00:56:09] INFO: Concatenating alignments.
+[2026-09-26 00:56:09] INFO: Placing 152 bins into the genome tree with pplacer (be patient).
+2026-09-26T01:04:00Z
