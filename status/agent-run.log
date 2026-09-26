@@ -73734,3 +73734,657 @@ Turn complete. Summary:
 **Housekeeping**: deleted the 168 MB dry-run release tarball (kept the v2 artifact — its md5 `114459d4…` re-verified against the receipt); activity appended to `agent-activity.log` + `.activity`, heartbeat touched throughout.
 
 **Next**: when `cami3_v11_20260926` finishes, `run_eval.sh` auto-chains CheckM2 + CheckM v1 → figures/table → Zenodo version 3.0 (now actually deployed). I'll pick up there on the next turn.
+[0m
+> build · big-pickle
+Starting this turn per protocol — TASK_COMPLETE check, run status, issues:
+[0m$ [0mls /vol/data/benchmark/TASK_COMPLETE 2>/dev/null && echo TASK_COMPLETE_EXISTS || echo NO_TASK_COMPLETE; echo "=== active_run ==="; cat /vol/data/benchmark/.active_run 2>/dev/null; echo; echo "=== run log tail ==="; grep -o "epoch=[0-9]*/200, batches=[0-9]*, loss=[0-9.]*, top1=[0-9.]*" /vol/data/benchmark/runs/cami3_v11_20260926/comebin_run.log 2>/dev/null | tail -2; tail -3 /vol/data/benchmark/runs/cami3_v11_20260926/comebin_run.log 2>/dev/null | tr '\r' '\n' | tail -5; date -u +%FT%TZ; touch /vol/data/benchmark/.heartbeat
+NO_TASK_COMPLETE
+=== active_run ===
+3200074 3200071 /vol/data/benchmark/runs/cami3_v11_20260926/comebin_run.log /vol/data/benchmark/runs/cami3_v11_20260926 1790390713 cami3 /vol/data/repos/COMEBin-v11 /vol/data/datasets/cami_III/toy_human_input_2samples/contigs.fa /vol/data/datasets/cami_III/toy_human_input_2samples/bamfiles
+
+=== run log tail ===
+epoch=24/200, batches=4, loss=5.5235739, top1=8.0990
+epoch=25/200, batches=4, loss=5.5996861, top1=7.3014
+
+  0%|          | 0/4 [00:00<?, ?it/s]
+ 25%|██▌       | 1/4 [00:07<00:22,  7.34s/it]
+ 50%|█████     | 2/4 [00:13<00:12,  6.39s/it]
+ 75%|███████▌  | 3/4 [00:18<00:05,  5.99s/it]2026-09-26T02:58:20Z
+[0m$ [0mgh issue list -R paulzierep/metagenomic-binning-benchmark --state open --json number,title,updatedAt 2>&1; echo "=== COMEBin ==="; gh issue list -R paulzierep/COMEBin --state open --json number,title,updatedAt 2>&1 | head -3; date -u +%FT%TZ; touch /vol/data/benchmark/.heartbeat
+[{"number":6,"title":"Optimization","updatedAt":"2026-09-23T20:56:21Z"},{"number":1,"title":"Idea inbox: benchmark ideas, COMEBin fixes, dataset requests","updatedAt":"2026-09-23T14:53:13Z"}]
+=== COMEBin ===
+the 'paulzierep/COMEBin' repository has disabled issues
+2026-09-26T02:58:21Z
+> build · big-pickle
+No new issues (#6/#1 unchanged, COMEBin disabled). Run at epoch 25/200 (~24 s/epoch → full 200 epochs ≈ 80 min wall, so ~04:05 UTC finish at this pace). Since only routine monitoring is left, let me pre-emptively verify `run_eval.sh` handles the CAMI III run's dataset labeling correctly so the auto-report chain produces proper rows when training finishes:
+[0m$ [0mgrep -n "MODE\|dataset\|cami\|marine\|human\|demo" /vol/data/repos/metagenomic-binning-benchmark/scripts/run_eval.sh | head -30
+114:  # Issue #12: combined bar plot for the three main datasets + its stats table
+> build · big-pickle
+[0m$ [0msed -n '1,60p' /vol/data/repos/metagenomic-binning-benchmark/scripts/run_eval.sh
+#!/usr/bin/env bash
+# run_eval.sh <rundir> [threads] — CheckM2 + CheckM v1 bin-quality evaluation for a
+# finished COMEBin run. Appends the exact command lines + rc/wall times to
+# <rundir>/run_meta.txt and writes outputs to <rundir>/eval/.
+set -euo pipefail
+MM=/vol/data/tools/bin/micromamba
+CHECKM2_ENV=${CHECKM2_ENV:-/vol/data/envs/checkm2}
+# The standalone checkm environment currently uses Python 3.14, whose
+# forkserver/pickling behaviour breaks CheckM v1's private worker methods.
+# The COMEBin environment contains the same CheckM v1 workflow on Python 3.10;
+# use it by default and keep the override for a repaired standalone env.
+CHECKM_ENV=${CHECKM_ENV:-/vol/data/envs/comebin}
+# pplacer in the Python-3.10 environment needs the OpenBLAS shared object
+# installed in the standalone checkm environment.
+CHECKM_LD_LIBRARY_PATH=${CHECKM_LD_LIBRARY_PATH:-/vol/data/envs/checkm/lib:/vol/data/envs/comebin/lib}
+export MAMBA_ROOT_PREFIX=/vol/data/envs/.mamba
+RUN=${1:?usage: run_eval.sh <rundir> [threads]}
+THREADS=${2:-32}
+exec 9>/tmp/benchmark-start.lock
+flock -n 9 || { echo "ERROR: another benchmark launch/evaluation holds /tmp/benchmark-start.lock"; exit 1; }
+if [ -f /vol/data/benchmark/.active_run ]; then
+  read -r active_pid _ < /vol/data/benchmark/.active_run || true
+  active_state=$(ps -o stat= -p "${active_pid:-0}" 2>/dev/null | tr -d ' ' || true)
+  if [ -n "${active_pid:-}" ] && kill -0 "$active_pid" 2>/dev/null && [[ "$active_state" != Z* ]]; then
+    echo "ERROR: refusing CheckM evaluation while benchmark pid $active_pid is active"
+    exit 1
+  fi
+fi
+BINS="$RUN/comebin_out/comebin_res/comebin_res_bins"
+[ -d "$BINS" ] || { echo "ERROR: no bins dir: $BINS"; exit 1; }
+BIN_COUNT=$(find -L "$BINS" -maxdepth 1 -type f -size +0c | wc -l)
+[ "$BIN_COUNT" -gt 0 ] || { echo "ERROR: bins dir contains no non-empty files: $BINS"; exit 1; }
+# COMEBin writes .fa files. CheckM2 matches the extension literally, so the
+# previous -x fasta value silently selected zero bins. Detect common variants.
+BIN_EXT=fa
+for candidate_ext in fasta fna fa; do
+  shopt -s nullglob
+  candidate_files=("$BINS"/*."$candidate_ext")
+  shopt -u nullglob
+  if [ "${#candidate_files[@]}" -gt 0 ]; then
+    BIN_EXT=$candidate_ext
+    break
+  fi
+done
+CK2DB=${CHECKM2DB:-/vol/data/benchmark/checkm2db/CheckM2_database/uniref100.KO.1.dmnd}
+[ -f "$CK2DB" ] || { echo "WARNING: checkm2 db not found at $CK2DB (set CHECKM2DB)"; }
+CHECKM2_OUT="$RUN/eval/checkm2"
+CHECKM_ROOT="$RUN/eval/checkm"
+CHECKM_OUT="$CHECKM_ROOT/out"
+CHECKM_TMP="$CHECKM_ROOT/tmp"
+mkdir -p "$CHECKM2_OUT" "$CHECKM_TMP"
+
+# CheckM2 ---------------------------------------------------------------------
+echo "=== CheckM2 (predict; extension=$BIN_EXT; bins=$BIN_COUNT) ==="
+CMD2="$MM run -p $CHECKM2_ENV checkm2 predict --threads $THREADS --database_path $CK2DB --input $BINS --output-directory $CHECKM2_OUT -x $BIN_EXT --force"
+echo "cmd_checkm2: $CMD2" | tee -a "$RUN/run_meta.txt"
+T=$(date +%s)
+set +e
+bash -c "$CMD2" 9>&-
+rc2=$?
+> build · big-pickle
+[0m$ [0msed -n '60,140p' /vol/data/repos/metagenomic-binning-benchmark/scripts/run_eval.sh
+rc2=$?
+set -e
+if [ "$rc2" -eq 0 ] && [ ! -s "$CHECKM2_OUT/quality_report.tsv" ]; then
+  echo "ERROR: CheckM2 returned 0 but quality_report.tsv is missing/empty; recording failure" \
+    | tee -a "$RUN/run_meta.txt"
+  rc2=1
+fi
+echo "checkm2_rc: $rc2 checkm2_wall_s: $(( $(date +%s) - T ))" | tee -a "$RUN/run_meta.txt"
+[ -f "$CHECKM2_OUT/quality_report.tsv" ] && echo "checkm2 report: $CHECKM2_OUT/quality_report.tsv"
+
+# CheckM v1 -------------------------------------------------------------------
+# Preserve an incomplete prior output instead of overwriting evidence. This is
+# important when upgrading from the broken Python-3.14 standalone environment.
+if [ -e "$CHECKM_OUT" ] && [ ! -s "$CHECKM_OUT/storage/bin_stats_ext.tsv" ]; then
+  stale_out="$CHECKM_ROOT/out.incomplete.$(date +%s)"
+  mv "$CHECKM_OUT" "$stale_out"
+  echo "preserved incomplete CheckM output: $stale_out"
+fi
+mkdir -p "$CHECKM_TMP"
+echo "=== CheckM v1 (lineage_wf; extension=$BIN_EXT; env=$CHECKM_ENV) ==="
+CMD1="LD_LIBRARY_PATH=$CHECKM_LD_LIBRARY_PATH $MM run -p $CHECKM_ENV checkm lineage_wf -x $BIN_EXT -t $THREADS --tmpdir $CHECKM_TMP $BINS $CHECKM_OUT"
+echo "cmd_checkm: $CMD1" | tee -a "$RUN/run_meta.txt"
+T=$(date +%s)
+set +e
+bash -c "$CMD1" 9>&-
+rc1=$?
+set -e
+if [ "$rc1" -eq 0 ] && [ ! -s "$CHECKM_OUT/storage/bin_stats_ext.tsv" ]; then
+  echo "ERROR: CheckM returned 0 but bin_stats_ext.tsv is missing/empty; recording failure" \
+    | tee -a "$RUN/run_meta.txt"
+  rc1=1
+fi
+if [ "$rc1" -eq 0 ] && grep -q 'Controlled exit resulting from an unrecoverable error' "$CHECKM_OUT/checkm.log" 2>/dev/null; then
+  echo "ERROR: CheckM log contains a controlled-error exit; recording failure" \
+    | tee -a "$RUN/run_meta.txt"
+  rc1=1
+fi
+echo "checkm_rc: $rc1 checkm_wall_s: $(( $(date +%s) - T ))" | tee -a "$RUN/run_meta.txt"
+[ -f "$CHECKM_OUT/storage/bin_stats_ext.tsv" ] && echo "checkm statistics: $CHECKM_OUT/storage/bin_stats_ext.tsv"
+
+# Summary and final status ----------------------------------------------------
+echo "=== summary ==="
+python3 "$(dirname "$0")/parse_eval.py" "$RUN" 9>&-
+if [ "$rc2" -eq 0 ] && [ "$rc1" -eq 0 ]; then
+  # Automatic reporting (issues #12/#15): aggregate CSV + per-bin CSV + plots,
+  # regenerated after every successfully evaluated run. Best-effort: a report
+  # failure must not turn a successful evaluation into a failed one.
+  echo "=== auto-reporting: results/<run>.csv, runs/<run>/per_bin_results.csv, per_bins.png ==="
+  python3 "$(dirname "$0")/make_results_csv.py" "$RUN" 9>&- \
+    || echo "WARNING: make_results_csv.py failed (rc=$?)" >&2
+  python3 "$(dirname "$0")/make_per_bin_csv.py" "$RUN" 9>&- \
+    || echo "WARNING: make_per_bin_csv.py failed (rc=$?)" >&2
+  "$MM" run -p "$CHECKM_ENV" python3 "$(dirname "$0")/make_per_bin_plots.py" --all "$RUN" 9>&- \
+    || echo "WARNING: make_per_bin_plots.py failed (rc=$?)" >&2
+  # Issue #12: combined bar plot for the three main datasets + its stats table
+  # (README embeds both; regenerated after every successful eval).
+  "$MM" run -p "$CHECKM_ENV" python3 "$(dirname "$0")/make_combined_bar_plot.py" 9>&- \
+    || echo "WARNING: make_combined_bar_plot.py failed (rc=$?)" >&2
+  # Issue #8: continuously store the newly generated benchmark data as a new
+  # version of the same Zenodo record (no-op when content is unchanged).
+  bash "$(dirname "$0")/zenodo_update.sh" 9>&- \
+    || echo "WARNING: zenodo_update.sh failed (rc=$?)" >&2
+fi
+echo "done (checkm2 rc=$rc2, checkm rc=$rc1)"
+if [ "$rc2" -ne 0 ] || [ "$rc1" -ne 0 ]; then
+  exit 1
+fi
+> build · big-pickle
+Eval chain is clean and best-effort. One thing to verify ahead of time: whether `make_results_csv.py` classifies a `cami3` run correctly, since a cami3 dataset label is new:
+[0m$ [0mgrep -n "dataset\|cami\|marine\|human\|demo\|MODE\|mode" /vol/data/repos/metagenomic-binning-benchmark/scripts/make_results_csv.py | head -20; echo "=== make_combined_bar_plot dataset list ==="; grep -n "dataset\|cami\|marine\|human\|demo\|contigs" /vol/data/repos/metagenomic-binning-benchmark/scripts/make_combined_bar_plot.py | head -25
+2:# make_results_csv.py <rundir> [dataset] [threads] — build results/<run>.csv
+4:#   run,source_commit,dataset,threads,total_time_s,n_bins,
+15:dataset = sys.argv[2] if len(sys.argv) > 2 else ""
+47:def default_dataset(contigs_path):
+48:    """Human-readable dataset label derived from the run's contigs path, for
+53:        ("BATS_SAMN07137077_METAG", "COMEBin demo (29,434 contigs)"),
+56:        ("cami2", "CAMI II"),
+57:        ("cami3", "CAMI III"),
+113:if not dataset:
+114:    dataset = default_dataset(meta_val("contigs"))
+125:header = ["run", "source_commit", "dataset", "threads", "total_time_s", "n_bins",
+128:row = [name, commit, dataset, threads, t_total, n_bins, *c2, *c1]
+=== make_combined_bar_plot dataset list ===
+2:"""make_combined_bar_plot.py [--datasets demo human marine]
+5:the MAIN benchmark datasets, focused on three datasets:
+7:    demo   — COMEBin demo large set (BATS, 29,434 contigs)
+8:    human  — CAMI II human host-associated (4,900 contigs)
+9:    marine — CAMI II marine (41,988 contigs)
+12:main datasets):
+14:  * 2 rows x 3 columns of subplots — one subplot per benchmark dataset (the
+16:  * Horizontal stacked bars, one bar per evaluated run of that dataset,
+62:# The three main benchmark datasets (issue #12: "focus only on 3 from now on").
+63:# key -> (substring matched against run_meta `contigs:`, display name)
+65:    "demo": ("BATS_SAMN07137077", "COMEBin demo (29,434 contigs)"),
+66:    "human": ("cami_II_human", "CAMI II human (4,900 contigs)"),
+67:    "marine": ("cami_II/marine", "CAMI II marine (41,988 contigs)"),
+69:DEFAULT_ORDER = ["demo", "human", "marine"]
+86:                if key.strip() in ("source", "commit", "contigs", "seed", "wall_s"):
+91:def dataset_key(contigs):
+93:        if needle in contigs:
+118:    """-> {dataset_key: [run_info, ...]} for evaluated runs of wanted datasets."""
+127:        key = dataset_key(meta.get("contigs", ""))
+229:    ap.add_argument("--datasets", nargs="+", default=DEFAULT_ORDER,
+230:                    choices=sorted(DATASETS), help="datasets (subplots) to show")
+235:    wanted = [d for d in DEFAULT_ORDER if d in args.datasets]
+250:        sys.exit("ERROR: no evaluated runs found for datasets: "
+290:    # that has data (top-right may be an unevaluated dataset).
+> build · big-pickle
+Good — `make_results_csv.py` already handles `cami3` (line 57: `("cami3", "CAMI III")` label derived from the contigs path), and `make_combined_bar_plot.py` stays on demo/human/marine per #12 ("focus on 3"). Let me check the exact contigs-path matcher to confirm it will label the CAMI III run correctly:
+[0m$ [0msed -n '47,70p' /vol/data/repos/metagenomic-binning-benchmark/scripts/make_results_csv.py; echo "=== check run_meta contigs of cami3 run ==="; grep "^contigs:" /vol/data/benchmark/runs/cami3_v11_20260926/run_meta.txt
+def default_dataset(contigs_path):
+    """Human-readable dataset label derived from the run's contigs path, for
+    automatic (no-arg) regeneration after an evaluated run (issues #12/#15)."""
+    if not contigs_path:
+        return ""
+    known = [
+        ("BATS_SAMN07137077_METAG", "COMEBin demo (29,434 contigs)"),
+        ("comebin_medium", "comebin_medium (3,000 contigs)"),
+        ("comebin_small", "comebin_small (300 contigs)"),
+        ("cami2", "CAMI II"),
+        ("cami3", "CAMI III"),
+    ]
+    for key, label in known:
+        if key in contigs_path:
+            return label
+    return os.path.basename(os.path.dirname(contigs_path))
+
+commit = meta_val("commit")
+t_total = meta_val("wall_s")
+n_bins = meta_val("bins").split()[0] if meta_val("bins") else ""
+
+def scores(path, ccol, tcol):
+    """Return completeness/contamination lists from TSV or CheckM dict output."""
+    if not os.path.exists(path):
+=== check run_meta contigs of cami3 run ===
+contigs:    /vol/data/datasets/cami_III/toy_human_input_2samples/contigs.fa
+> build · big-pickle
+The `cami3` key in the matcher is lowercase `"cami3"`, but this run's path is `cami_III` (uppercase roman) — the substring won't match, so it falls through to the directory basename. Let me check what label the marine CSV actually got:
+[0m$ [0mhead -2 /vol/data/repos/metagenomic-binning-benchmark/results/marine_v11_20260925.csv; echo "==="; head -2 /vol/data/repos/metagenomic-binning-benchmark/results/human_v11_20260925.csv 2>/dev/null; echo "=== matcher test ==="; python3 -c "
+for p in ['/vol/data/datasets/cami_II/marine_sample0_input/contigs.fa','/vol/data/datasets/cami_II/human_sample0_input/contigs.fa','/vol/data/datasets/cami_III/toy_human_input_2samples/contigs.fa']:
+    print(p)
+    for k in ['BATS_SAMN07137077_METAG','comebin_medium','comebin_small','cami2','cami3']:
+        if k in p: print('  match:', k)
+"
+run,source_commit,dataset,threads,total_time_s,n_bins,checkm2_mean_completeness,checkm2_mean_contamination,checkm2_HQ,checkm2_MQ,checkm_mean_completeness,checkm_mean_contamination,checkm_HQ,checkm_MQ
+marine_v11_20260925,95f5ea820f9a4e76f5c2911c0b5ed507ab67b015,marine_sample0_input,32,31406,152,50.60,4.10,35,60,46.36,5.09,37,60
+===
+run,source_commit,dataset,threads,total_time_s,n_bins,checkm2_mean_completeness,checkm2_mean_contamination,checkm2_HQ,checkm2_MQ,checkm_mean_completeness,checkm_mean_contamination,checkm_HQ,checkm_MQ
+human_v11_20260925,95f5ea820f9a4e76f5c2911c0b5ed507ab67b015,human_sample0_input,32,4912,107,35.31,5.13,20,29,32.64,4.65,21,29
+=== matcher test ===
+/vol/data/datasets/cami_II/marine_sample0_input/contigs.fa
+/vol/data/datasets/cami_II/human_sample0_input/contigs.fa
+/vol/data/datasets/cami_III/toy_human_input_2samples/contigs.fa
+> build · big-pickle
+The existing human/marine CSVs carry the directory-basename labels (`human_sample0_input`), and the combined-plot matcher uses `cami_II_human` / `cami_II/marine` needles. Let me check the deployed matcher carefully:
+[0m$ [0msed -n '60,70p' /vol/data/repos/metagenomic-binning-benchmark/scripts/make_combined_bar_plot.py; sed -n '88,100p' /vol/data/repos/metagenomic-binning-benchmark/scripts/make_combined_bar_plot.py; echo "=== direct test of dataset_key ==="; python3 -c "
+import sys; sys.path.insert(0,'/vol/data/repos/metagenomic-binning-benchmark/scripts')
+import importlib.util
+spec = importlib.util.spec_from_file_location('m','/vol/data/repos/metagenomic-binning-benchmark/scripts/make_combined_bar_plot.py')
+m = importlib.util.module_from_spec(spec)
+try:
+    spec.loader.exec_module(m)
+    for p in ['/vol/data/datasets/cami_II/marine_sample0_input/contigs.fa','/vol/data/datasets/cami_II/human_sample0_input/contigs.fa','/vol/data/datasets/cami_III/toy_human_input_2samples/contigs.fa']:
+        print(p, '->', m.dataset_key(p))
+except SystemExit:
+    print('module exit')
+"
+FIGDIR = os.path.join(RESULTS, "figures")
+
+# The three main benchmark datasets (issue #12: "focus only on 3 from now on").
+# key -> (substring matched against run_meta `contigs:`, display name)
+DATASETS = {
+    "demo": ("BATS_SAMN07137077", "COMEBin demo (29,434 contigs)"),
+    "human": ("cami_II_human", "CAMI II human (4,900 contigs)"),
+    "marine": ("cami_II/marine", "CAMI II marine (41,988 contigs)"),
+}
+DEFAULT_ORDER = ["demo", "human", "marine"]
+
+    return meta
+
+
+def dataset_key(contigs):
+    for key, (needle, _name) in DATASETS.items():
+        if needle in contigs:
+            return key
+    return None
+
+
+def branch_of(source):
+    """`source` may be '... (branch NAME)' or a plain path."""
+    if not source:
+=== direct test of dataset_key ===
+/vol/data/datasets/cami_II/marine_sample0_input/contigs.fa -> marine
+/vol/data/datasets/cami_II/human_sample0_input/contigs.fa -> None
+/vol/data/datasets/cami_III/toy_human_input_2samples/contigs.fa -> None
+> build · big-pickle
+The human needle (`cami_II_human`) doesn't match the actual path (`cami_II/human`) — `dataset_key` returns None for the human run. But the automation verified the plot shows human. Let me see how runs are actually discovered:
+[0m$ [0msed -n '112,175p' /vol/data/repos/metagenomic-binning-benchmark/scripts/make_combined_bar_plot.py
+except Exception:
+        pass
+    return "-"
+
+
+def load_runs(wanted):
+    """-> {dataset_key: [run_info, ...]} for evaluated runs of wanted datasets."""
+    found = {k: [] for k in wanted}
+    if not os.path.isdir(RUNS):
+        return found
+    for name in sorted(os.listdir(RUNS)):
+        csv_path = os.path.join(RUNS, name, "per_bin_results.csv")
+        if not os.path.exists(csv_path):
+            continue
+        meta = read_run_meta(os.path.join(RUNS, name))
+        key = dataset_key(meta.get("contigs", ""))
+        if key not in wanted:
+            continue
+        with open(csv_path, encoding="utf-8") as f:
+            rows = list(csv.DictReader(f))
+        commit = meta.get("commit", "-")
+        found[key].append({
+            "name": name,
+            "rows": rows,
+            "commit7": commit[:7] if commit != "-" else "-",
+            "branch": branch_of(meta.get("source", "")),
+            "seed": meta.get("seed", "-"),
+            "wall_s": meta.get("wall_s", "-"),
+        })
+    return found
+
+
+def counts(rows, cutoff):
+    """Stacked segment counts for one run at one contamination cutoff."""
+    seg = {thr: 0 for thr in THRESHOLDS}
+    total = 0
+    for row in rows:
+        try:
+            comp = float(row["checkm2_completeness"])
+            cont = float(row["checkm2_contamination"])
+        except (KeyError, TypeError, ValueError):
+            continue
+        if not (cont < cutoff):
+            continue
+        total += 1
+        for thr in THRESHOLDS[:-1]:
+            if comp >= int(thr[1:]):
+                seg[thr] += 1
+                break
+        else:
+            seg["<50"] += 1
+    return seg, total
+
+
+def load_aggregates():
+    """run -> aggregate stats row from results/<run>.csv (auto-report output)."""
+    agg = {}
+    for name in os.listdir(RESULTS) if os.path.isdir(RESULTS) else []:
+        if not name.endswith(".csv"):
+            continue
+        path = os.path.join(RESULTS, name)
+        try:
+            with open(path, encoding="utf-8") as f:
+                row = next(csv.DictReader(f), None)
+> build · big-pickle
+[0m$ [0mgrep "^contigs:" /vol/data/benchmark/runs/human_v11_20260925/run_meta.txt; echo "=== repo runs mirror ==="; ls /vol/data/repos/metagenomic-binning-benchmark/runs/ | head; echo "=== does repo mirror human run_meta have same contigs? ==="; grep "^contigs:" /vol/data/repos/metagenomic-binning-benchmark/runs/human_v11_20260925/run_meta.txt 2>/dev/null; echo "=== per_bin_results.csv presence ==="; ls -la /vol/data/repos/metagenomic-binning-benchmark/runs/human_v11_20260925/per_bin_results.csv 2>/dev/null
+contigs:    /vol/data/datasets/cami_II_human/human_sample0_input/contigs.fa
+=== repo runs mirror ===
+README.md
+baseline_rerun
+baseline_rerun_autorestart1
+baseline_unmodified
+cami3_v11_20260926
+fix_v11_20260924
+human_v11_20260925
+marine_v11_20260925
+medium_v11_20260924
+small_test
+=== does repo mirror human run_meta have same contigs? ===
+contigs:    /vol/data/datasets/cami_II_human/human_sample0_input/contigs.fa
+=== per_bin_results.csv presence ===
+-rw-rw-r-- 1 ubuntu ubuntu 6052 Sep 25 03:54 /vol/data/repos/metagenomic-binning-benchmark/runs/human_v11_20260925/per_bin_results.csv
+> build · big-pickle
+The human needle is fine in reality (`cami_II_human` is in the path). But my earlier test revealed a real latent gap in `make_results_csv.py`: the `("cami2"/"cami3", ...)` needles are lowercase roman-*arabs* that never match real paths (`cami_II`/`cami_III`), so the human/marine rows carry directory-basename labels (`human_sample0_input`) and the upcoming CAMI III row would read `toy_human_input_2samples`. Let me check how the plot's stats table consumes these before deciding to fix:
+[0m$ [0msed -n '175,228p' /vol/data/repos/metagenomic-binning-benchmark/scripts/make_combined_bar_plot.py
+row = next(csv.DictReader(f), None)
+            if row:
+                agg[row.get("run") or name[:-4]] = row
+        except OSError:
+            continue
+    return agg
+
+
+def fmt_wall(wall_s):
+    try:
+        sec = int(float(wall_s))
+    except (TypeError, ValueError):
+        return "-"
+    if sec >= 3600:
+        return f"{sec // 3600}h{(sec % 3600) // 60:02d}m"
+    return f"{sec // 60}m{sec % 60:02d}s"
+
+
+def make_table(ordered_runs, agg):
+    """Markdown stats table for the runs shown in the plot (#12: table under
+    the bar plot)."""
+    lines = [
+        "| Run | Dataset | COMEBin version | Seed | Wall time | Bins "
+        "| CheckM2 comp / cont | CheckM2 HQ / MQ | CheckM v1 comp / cont "
+        "| CheckM v1 HQ / MQ |",
+        "|---|---|---|---|---|---|---|---|---|---|",
+    ]
+    for key, run in ordered_runs:
+        a = agg.get(run["name"], {})
+        version = f"`{run['commit7']}` ({run['branch']})"
+        lines.append(
+            "| `{name}` | {ds} | {ver} | {seed} | {wall} | {bins} "
+            "| {c2c} / {c2n} | {h2} / {m2} | {c1c} / {c1n} | {h1} / {m1} |".format(
+                name=run["name"],
+                ds=DATASETS[key][1],
+                ver=version,
+                seed=run["seed"],
+                wall=fmt_wall(a.get("total_time_s", run["wall_s"])),
+                bins=a.get("n_bins", len(run["rows"])),
+                c2c=a.get("checkm2_mean_completeness", "-"),
+                c2n=a.get("checkm2_mean_contamination", "-"),
+                h2=a.get("checkm2_HQ", "-"),
+                m2=a.get("checkm2_MQ", "-"),
+                c1c=a.get("checkm_mean_completeness", "-"),
+                c1n=a.get("checkm_mean_contamination", "-"),
+                h1=a.get("checkm_HQ", "-"),
+                m1=a.get("checkm_MQ", "-"),
+            )
+        )
+    return "\n".join(lines) + "\n"
+
+
+def main():
+    ap = argparse.ArgumentParser(description=__doc__)
+> build · big-pickle
+The plot table uses internal display names (fine). The results CSV label is the cosmetic gap. Before changing anything, let me understand the bin/ deploy path (34ea532 added a self-heal mechanism):
+[0m$ [0mgrep -n "bin\b\|deploy\|rsync\|install\|md5sum\|self.heal\|BENCH_REPO" /vol/data/repos/metagenomic-binning-benchmark/scripts/meta-watchdog.sh | head -20; echo "=== cron ==="; crontab -l 2>/dev/null | grep -iE "watchdog|deploy|sync|heartbeat" | head
+1:#!/usr/bin/env bash
+10:export PATH=/home/ubuntu/.opencode/bin:/home/ubuntu/.local/bin:/usr/local/bin:/usr/bin:/bin
+22:REPO_LOCK=${BENCH_REPO_LOCK:-/tmp/bench-repo.lock}
+85:# ---- C1: exact cron jobs + executable installed scripts --------------------- #
+96:  [ -x "/vol/data/benchmark/bin/$job" ] || cron_bad="$cron_bad $job(not-executable)"
+97:  cmp -s "$REPO/scripts/$job" "/vol/data/benchmark/bin/$job" || cron_bad="$cron_bad $job(source-install-mismatch)"
+99:  bash -n "/vol/data/benchmark/bin/$job" >/dev/null 2>&1 || cron_bad="$cron_bad $job(installed-syntax)"
+101:*/5 * * * * /vol/data/benchmark/bin/agent-watchdog.sh|agent-watchdog.sh
+102:*/2 * * * * /vol/data/benchmark/bin/status-heartbeat.sh|status-heartbeat.sh
+103:*/5 * * * * /vol/data/benchmark/bin/benchmark-watchdog.sh|benchmark-watchdog.sh
+104:3,13,23,33,43,53 * * * * /vol/data/benchmark/bin/meta-watchdog.sh|meta-watchdog.sh
+108:  check C1_cron ok "4 exact jobs; cron active; installed/source scripts identical + executable"
+112:      cp "$REPO/scripts/$job" "/vol/data/benchmark/bin/.$job.deploy-new"
+113:      chmod 755 "/vol/data/benchmark/bin/.$job.deploy-new"
+114:      mv "/vol/data/benchmark/bin/.$job.deploy-new" "/vol/data/benchmark/bin/$job"
+117:  chmod +x /vol/data/benchmark/bin/agent-watchdog.sh \
+118:    /vol/data/benchmark/bin/status-heartbeat.sh \
+119:    /vol/data/benchmark/bin/benchmark-watchdog.sh \
+120:    /vol/data/benchmark/bin/meta-watchdog.sh 2>/dev/null || true
+122:    echo '*/5 * * * * /vol/data/benchmark/bin/agent-watchdog.sh'
+=== cron ===
+*/5 * * * * /vol/data/benchmark/bin/agent-watchdog.sh
+*/2 * * * * /vol/data/benchmark/bin/status-heartbeat.sh
+*/5 * * * * /vol/data/benchmark/bin/benchmark-watchdog.sh
+3,13,23,33,43,53 * * * * /vol/data/benchmark/bin/meta-watchdog.sh
+> build · big-pickle
+[0m$ [0mgrep -n "run_eval\|make_results_csv\|make_per_bin\|make_combined\|zenodo_update\|reporting\|helpers\|REPORT" /vol/data/repos/metagenomic-binning-benchmark/scripts/meta-watchdog.sh | head; echo "=== search whole repo for deploy mechanism ==="; grep -rn "bin/\$f\|cp .*scripts.*bin\|deploy" /vol/data/repos/metagenomic-binning-benchmark/scripts/*.sh | grep -v "\.git/" | head -12
+144:# INSTALLED copies in $BENCH/bin (run_eval.sh calls its helpers via $(dirname $0)),
+187:    # py helpers are invoked via `python3`, so they need read access but not +x.
+=== search whole repo for deploy mechanism ===
+/vol/data/repos/metagenomic-binning-benchmark/scripts/meta-watchdog.sh:112:      cp "$REPO/scripts/$job" "/vol/data/benchmark/bin/.$job.deploy-new"
+/vol/data/repos/metagenomic-binning-benchmark/scripts/meta-watchdog.sh:113:      chmod 755 "/vol/data/benchmark/bin/.$job.deploy-new"
+/vol/data/repos/metagenomic-binning-benchmark/scripts/meta-watchdog.sh:114:      mv "/vol/data/benchmark/bin/.$job.deploy-new" "/vol/data/benchmark/bin/$job"
+/vol/data/repos/metagenomic-binning-benchmark/scripts/meta-watchdog.sh:145:# so a helper that exists in the repo but was never deployed silently disables that
+/vol/data/repos/metagenomic-binning-benchmark/scripts/meta-watchdog.sh:147:deploy_bad=""
+/vol/data/repos/metagenomic-binning-benchmark/scripts/meta-watchdog.sh:154:    deploy_bad="$deploy_bad $job(missing)"
+/vol/data/repos/metagenomic-binning-benchmark/scripts/meta-watchdog.sh:156:    deploy_bad="$deploy_bad $job(stale)"
+/vol/data/repos/metagenomic-binning-benchmark/scripts/meta-watchdog.sh:159:if [ -n "$deploy_bad" ]; then
+/vol/data/repos/metagenomic-binning-benchmark/scripts/meta-watchdog.sh:162:  # the deploy instead; the next tick after the run finishes applies it.
+/vol/data/repos/metagenomic-binning-benchmark/scripts/meta-watchdog.sh:163:  deploy_pid=""
+/vol/data/repos/metagenomic-binning-benchmark/scripts/meta-watchdog.sh:165:    read -r deploy_pid _ _ _ _ _ _ < "$BENCH/.active_run" || true
+/vol/data/repos/metagenomic-binning-benchmark/scripts/meta-watchdog.sh:167:  deploy_pstat=$(ps -o stat= -p "${deploy_pid:-0}" 2>/dev/null | tr -d ' ' || true)
+> build · big-pickle
+The meta-watchdog auto-deploys repo `scripts/` to `bin/`, so a repo fix propagates. The existing `known` list in `make_results_csv.py` uses lowercase `cami2`/`cami3` needles that never match the real `cami_II`/`cami_III` paths — the new CAMI III row would be mislabeled `toy_human_input_2samples` (same gap that made human/marine rows read `human_sample0_input`). Since the CAMI III eval auto-chain runs at completion (~80 min out), I'll fix this now (won't touch existing data rows):
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/scripts/make_results_csv.py
+Index: /vol/data/repos/metagenomic-binning-benchmark/scripts/make_results_csv.py
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/scripts/make_results_csv.py
++++ /vol/data/repos/metagenomic-binning-benchmark/scripts/make_results_csv.py
+@@ -52,10 +52,13 @@
+     known = [
+         ("BATS_SAMN07137077_METAG", "COMEBin demo (29,434 contigs)"),
+         ("comebin_medium", "comebin_medium (3,000 contigs)"),
+         ("comebin_small", "comebin_small (300 contigs)"),
+-        ("cami2", "CAMI II"),
++        # order matters: "cami_III" contains "cami_II", so check III first.
++        ("cami_III", "CAMI III"),
++        ("cami_II", "CAMI II"),
+         ("cami3", "CAMI III"),
++        ("cami2", "CAMI II"),
+     ]
+     for key, label in known:
+         if key in contigs_path:
+             return label
+
+> build · big-pickle
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && python3 -c "
+import sys; sys.path.insert(0,'scripts')
+" ; python3 - <<'EOF'
+import re
+src = open('scripts/make_results_csv.py').read()
+# extract the known list by exec'ing up to the function def
+ns = {}
+src2 = src.replace("def default_dataset", "def _stop()")  # not needed; parse manually
+def default_dataset(contigs_path):
+    if not contigs_path:
+        return ""
+    known = [
+        ("BATS_SAMN07137077_METAG", "COMEBin demo (29,434 contigs)"),
+        ("comebin_medium", "comebin_medium (3,000 contigs)"),
+        ("comebin_small", "comebin_small (300 contigs)"),
+        ("cami_III", "CAMI III"),
+        ("cami_II", "CAMI II"),
+        ("cami3", "CAMI III"),
+        ("cami2", "CAMI II"),
+    ]
+    for key, label in known:
+        if key in contigs_path:
+            return label
+    return ""
+for p in ['/vol/data/datasets/cami_III/toy_human_input_2samples/contigs.fa',
+          '/vol/data/datasets/cami_II/marine_sample0_input/contigs.fa',
+          '/vol/data/datasets/cami_II_human/human_sample0_input/contigs.fa',
+          '/vol/data/datasets/comebin_test_data/BATS_SAMN07137077_METAG.scaffolds.min500.fasta.f1k.fasta']:
+    print(p.split('/')[4] if len(p.split('/'))>4 else p, '->', default_dataset(p))
+EOF
+cami_III -> CAMI III
+cami_II -> CAMI II
+cami_II_human -> CAMI II
+comebin_test_data -> COMEBin demo (29,434 contigs)
+> build · big-pickle
+Label logic verified — CAMI III maps correctly, demo preserved, and `cami_II_human` → "CAMI II" (an improvement over the bare `human_sample0_input` fallback; only affects *regenerated* CSVs, not the committed rows). Let me confirm nothing critical consumes the old dataset column value (e.g., plot/table generation), then deploy to bin/:
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && grep -rn "results/.*\.csv\|dataset" README.md docs/11-run-results.md 2>/dev/null | grep -iv "link\|http\|CAMI\|demo\|human\|marine" | head; echo "=== how README table is built ==="; grep -n "main_runs_table\|combined_bar_plot" README.md | head; echo "=== bin deploy: md5 before ==="; md5sum scripts/make_results_csv.py /vol/data/benchmark/bin/make_results_csv.py 2>/dev/null
+README.md:9:per-run parameters, datasets, wall time / RAM, and bin quality scored with both
+README.md:24:dataset/threads/seed as the baseline): exit 0, wall **24,741 s (6.9 h)**, early
+README.md:33:dataset is **`comebin_tiny_101` (101 contigs)**; `tiny_test_n101` passed in
+README.md:35:([CSV](results/tiny_test_n101.csv)).
+README.md:42:MQ 29), CheckM v1 **32.64 % / 4.65 %** (HQ 21 / MQ 29): the **first dataset in
+README.md:98:- Aggregate rows (per run): [`results/`](results/) (`results/<run>.csv`, one
+README.md:106:  color = run), and — the primary comparison view — a **per-dataset subplot
+README.md:107:  figure** `results/figures/comp_vs_cont_by_dataset.png` (one panel per
+README.md:108:  benchmark dataset, runs colored within the panel, so same-dataset runs are
+README.md:112:  [![comp-vs-cont by dataset](results/figures/comp_vs_cont_by_dataset.png)](results/figures/comp_vs_cont_by_dataset.png)
+=== how README table is built ===
+126:[`scripts/make_combined_bar_plot.py`](scripts/make_combined_bar_plot.py) and
+129:![Combined bar plot — bins per completeness threshold by run and COMEBin version](results/figures/combined_bar_plot.png)
+132:([`results/main_runs_table.md`](results/main_runs_table.md)):
+=== bin deploy: md5 before ===
+3f3133037a8c597c71be92d6f01eb9d3  scripts/make_results_csv.py
+9d0653852e4103644527d1dcd17a588a  /vol/data/benchmark/bin/make_results_csv.py
+> build · big-pickle
+Plot/table generation uses its own display names, not the CSV `dataset` column — the label change is cosmetically safe and only affects regenerated rows. Now deploy the fixed helper to `bin/` atomically (same pattern meta-watchdog uses) so the eval chain picks it up even if the run finishes before the next watchdog tick:
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && sed -n '144,175p' scripts/meta-watchdog.sh
+# INSTALLED copies in $BENCH/bin (run_eval.sh calls its helpers via $(dirname $0)),
+# so a helper that exists in the repo but was never deployed silently disables that
+# feature on every future run. Mirror scripts/ -> bin/ and verify byte identity.
+deploy_bad=""
+for src in "$REPO"/scripts/*; do
+  [ -f "$src" ] || continue
+  job=$(basename "$src")
+  case "$job" in __pycache__|*.pyc|*.pyo) continue ;; esac
+  dst="$BENCH/bin/$job"
+  if [ ! -f "$dst" ]; then
+    deploy_bad="$deploy_bad $job(missing)"
+  elif ! cmp -s "$src" "$dst"; then
+    deploy_bad="$deploy_bad $job(stale)"
+  fi
+done
+if [ -n "$deploy_bad" ]; then
+  # Never swap a script out from under a live run: bash reads scripts
+  # incrementally, so replacing one mid-execution can corrupt the run. Defer
+  # the deploy instead; the next tick after the run finishes applies it.
+  deploy_pid=""
+  if [ -f "$BENCH/.active_run" ]; then
+    read -r deploy_pid _ _ _ _ _ _ < "$BENCH/.active_run" || true
+  fi
+  deploy_pstat=$(ps -o stat= -p "${deploy_pid:-0}" 2>/dev/null | tr -d ' ' || true)
+  if [ -n "${deploy_pid:-}" ] && [ "${deploy_pid:-0}" -gt 0 ] 2>/dev/null \
+     && [ -n "$deploy_pstat" ] && [[ "$deploy_pstat" != Z* ]]; then
+    check C1b_deploy ok "deploy deferred: benchmark run pid $deploy_pid is live; pending:$deploy_bad"
+  else
+    for src in "$REPO"/scripts/*; do
+      [ -f "$src" ] || continue
+      job=$(basename "$src")
+      case "$job" in __pycache__|*.pyc|*.pyo) continue ;; esac
+> build · big-pickle
+The watchdog defers deploys while a run is live (safety for script-swapping mid-run). `make_results_csv.py` though is only invoked *after* training during eval (never mid-run), so an atomic swap now is safe and avoids the stale-label risk if eval fires before the next tick. Deploying atomically:
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && cp scripts/make_results_csv.py /vol/data/benchmark/bin/.make_results_csv.py.deploy-new && chmod 755 /vol/data/benchmark/bin/.make_results_csv.py.deploy-new && mv /vol/data/benchmark/bin/.make_results_csv.py.deploy-new /vol/data/benchmark/bin/make_results_csv.py && cmp -s scripts/make_results_csv.py /vol/data/benchmark/bin/make_results_csv.py && echo "deployed + identical" || echo "MISMATCH"; TS=$(date -u +%FT%TZ); echo "$TS fix: make_results_csv.py dataset matcher now matches cami_II/cami_III paths (CAMI III/II labels); deployed atomically to bin/" >> status/agent-activity.log; touch /vol/data/benchmark/.heartbeat
+deployed + identical
+> build · big-pickle
+Now committing the script fix under lock:
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && git fetch origin 2>&1 | tail -1; git status --short; exec 9>/tmp/bench-repo.lock; flock -n 9 || { echo LOCK_BUSY; exit 1; }; git add scripts/make_results_csv.py status/agent-activity.log && git commit -m "make_results_csv.py: fix dataset matcher — cami_III/cami_II needles never matched real cami_III/cami_II paths; CAMI III row would fall back to dir basename" 2>&1 | tail -2; git push origin main 2>&1 | tail -2; TS=$(date -u +%FT%TZ); echo "$TS commit: make_results_csv.py cami2/cami3 label matcher fix pushed" >> status/agent-activity.log; echo "$TS results-csv-label-fix-committed" >> /vol/data/benchmark/.activity; touch /vol/data/benchmark/.heartbeat
+M scripts/make_results_csv.py
+ M status/agent-activity.log
+[main 32c5240] make_results_csv.py: fix dataset matcher — cami_III/cami_II needles never matched real cami_III/cami_II paths; CAMI III row would fall back to dir basename
+ 2 files changed, 5 insertions(+), 1 deletion(-)
+To https://github.com/paulzierep/metagenomic-binning-benchmark
+   eea75ec..32c5240  main -> main
+> build · big-pickle
+Pushed (`32c5240`). Adding a brief PROGRESS note and syncing:
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && grep -n "replaced script\|label fix\|cami3_v11_20260926" PROGRESS.md | head -5
+455:      **Run `cami3_v11_20260926` launched 2026-09-26 02:45 UTC** detached via
+> build · big-pickle
+[0m$ [0msed -n '455,465p' /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md
+**Run `cami3_v11_20260926` launched 2026-09-26 02:45 UTC** detached via
+      run_comebin_fix.sh: MODE=cami3, seed 42, 32 threads, commit 95f5ea8 /
+      comebin-optimizations-v11, registered in `.active_run`, watchdog owns
+      handoff. Eval via run_eval.sh afterwards (CheckM2 + CheckM v1 →
+      auto-report + Zenodo update).
+
+- [x] **Issue #12 plots (2026-09-24 ~10:42 UTC)**: `scripts/make_per_bin_plots.py`
+      generates per-bin bar charts (`runs/<run>/per_bins.png`, CheckM2 + CheckM v1
+      comp/cont per bin) and a comparison scatter
+      (`results/figures/comp_vs_cont_all-runs.png`, one point per bin, color = run)
+      via the comebin env's matplotlib. Run for baseline_rerun_autorestart1,
+> build · big-pickle
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md
+Index: /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md
++++ /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md
+@@ -456,8 +456,16 @@
+       run_comebin_fix.sh: MODE=cami3, seed 42, 32 threads, commit 95f5ea8 /
+       comebin-optimizations-v11, registered in `.active_run`, watchdog owns
+       handoff. Eval via run_eval.sh afterwards (CheckM2 + CheckM v1 →
+       auto-report + Zenodo update).
++      *2026-09-26 03:0x: made `make_results_csv.py` label the run correctly —
++      its `cami3`/`cami2` needles never matched the real `cami_III`/`cami_II`
++      contigs paths, so the CAMI III row would have fallen back to a directory
++      basename (same gap that made the human/marine rows read
++      `human_sample0_input`/`marine_sample0_input`). Matcher now checks
++      `cami_III` before `cami_II` (substring!); fix `32c5240` committed +
++      deployed atomically to `bin/` so post-eval regeneration labels it
++      "CAMI III".*
+ 
+ - [x] **Issue #12 plots (2026-09-24 ~10:42 UTC)**: `scripts/make_per_bin_plots.py`
+       generates per-bin bar charts (`runs/<run>/per_bins.png`, CheckM2 + CheckM v1
+       comp/cont per bin) and a comparison scatter
+
+> build · big-pickle
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && sed -i 's/\*2026-09-26 03:0x: made/\*2026-09-26 03:00: made/' PROGRESS.md; exec 9>/tmp/bench-repo.lock; flock -n 9 || { echo LOCK_BUSY; exit 1; }; git add PROGRESS.md status/agent-activity.log 2>/dev/null; TS=$(date -u +%FT%TZ); echo "$TS docs: PROGRESS cami3 label-fix follow-up" >> status/agent-activity.log; git add status/agent-activity.log; git commit -m "PROGRESS: note make_results_csv.py CAMI III label fix (32c5240)" 2>&1 | tail -1; git push origin main 2>&1 | tail -1; cp PROGRESS.md /vol/data/benchmark/PROGRESS.md; echo "$TS progress-committed" >> /vol/data/benchmark/.activity; touch /vol/data/benchmark/.heartbeat
+2 files changed, 10 insertions(+)
+   32c5240..bcc1745  main -> main
+> build · big-pickle
+Pushed (`bcc1745`). Checking run progress:
+[0m$ [0mgrep -o "epoch=[0-9]*/200, batches=[0-9]*, loss=[0-9.]*, top1=[0-9.]*" /vol/data/benchmark/runs/cami3_v11_20260926/comebin_run.log | tail -2; ps -eo pid,etime,pcpu,rss,cmd | grep "main.py" | grep -v grep | head -2; echo "=== active_run ==="; cat /vol/data/benchmark/.active_run | awk '{print "pid="$1" mode="$6}'; date -u +%FT%TZ; touch /vol/data/benchmark/.heartbeat
+epoch=28/200, batches=4, loss=5.4784184, top1=8.8835
+epoch=29/200, batches=4, loss=5.3928123, top1=9.4141
+3201566       11:28 2829 1583568 python /vol/data/repos/COMEBin-v11/COMEBin/main.py train --data /vol/data/benchmark/runs/cami3_v11_20260926/comebin_out/data_augmentation --emb_szs_forcov 2048 --batch_size 1024 --emb_szs 2048 --n_views 6 --output_path /vol/data/benchmark/runs/cami3_v11_20260926/comebin_out/comebin_res --earlystop --addvars --vars_sqrt --device cpu --num_threads 32 --seed 42
+3210838       00:00 18.1 1453748 python /vol/data/repos/COMEBin-v11/COMEBin/main.py train --data /vol/data/benchmark/runs/cami3_v11_20260926/comebin_out/data_augmentation --emb_szs_forcov 2048 --batch_size 1024 --emb_szs 2048 --n_views 6 --output_path /vol/data/benchmark/runs/cami3_v11_20260926/comebin_out/comebin_res --earlystop --addvars --vars_sqrt --device cpu --num_threads 32 --seed 42
+=== active_run ===
+pid=3200074 mode=cami3
+2026-09-26T02:59:36Z
+> build · big-pickle
+Run is healthy at epoch 29/200 (~28 s/epoch → full 200 ≈ 04:15 UTC, then Leiden). The multi-process training is normal (torch DataLoader workers). Nothing further actionable until completion, but let me confirm stability around the middle of training:
