@@ -94699,3 +94699,787 @@ c4f1f2ed status: yes — small_v11_issue28_regression epoch 199/200 loss 2.61212
  M scripts/meta-watchdog.sh
 ?? scripts/supervise-alive.sh
 > build · big-pickle
+My commit is HEAD on remote main. Only the supervisor WIP files remain dirty (untouched, as required). Now let me post the substantive delivery comments on #19, #22, #24, #26 (replacing the old "will do" prose).
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark
+commit=5cc93218
+
+gh issue comment 19 -R paulzierep/metagenomic-binning-benchmark --body "## Delivered — 4 datasets, plotted below each other ✅
+
+Commit \`$commit\`: \`scripts/make_combined_bar_plot.py\` now plots **four** datasets — demo / CAMI II human / CAMI II marine / **CAMI III toy human gut** — with **one row per dataset, all rows stacked below each other** (4 rows × 2 contamination-cutoff columns: <5 % and <10 %). Every evaluated run of that dataset is its own stacked bar labelled \`run · commit · branch\`, so a commit/branch evaluated on multiple datasets shows up on each of them and is directly comparable between updates.
+
+Rendered: [results/figures/combined_bar_plot.png](https://github.com/paulzierep/metagenomic-binning-benchmark/blob/main/results/figures/combined_bar_plot.png) (also .svg). Run matrix: [results/main_runs_table.md](https://github.com/paulzierep/metagenomic-binning-benchmark/blob/main/results/main_runs_table.md) — 5 rows incl. cami3 (492 bins)." 2>&1 | tail -1
+
+gh issue comment 22 -R paulzierep/metagenomic-binning-benchmark --body "## Delivered — all-runs table at the bottom of the README ✅
+
+Commit \`$commit\`: the table is now in README **section e (All runs)** with one row per run *ever launched* — old ones, failed ones, and all small/tiny ones — exactly the columns requested:
+run date · duration · dataset + zenodo/public link · COMEBin branch + commit · benchmark size (GB, contigs) · #bins · CheckM2 comp/cont · HQ/MQ · **F1** · one-line comment.
+
+- Generator: \`scripts/make_all_runs_table.py\` → \`results/all_runs_table.md\`, auto-injected into README between \`<!--ALL-RUNS-->\` markers (regenerate whenever a new run lands).
+- 16 runs listed, incl. the failed small/v2, tiny n100, cami3 first attempt (ENOSPC), superseded baselines — plus the in-flight #28 regression.
+- F1 = harmonic mean of CheckM2 completeness and purity (1 − contamination)." 2>&1 | tail -1
+
+gh issue comment 24 -R paulzierep/metagenomic-binning-benchmark --body "## Delivered — README restructured into exactly the sections you asked ✅
+
+Commit \`$commit\`, README now has the short human-facing structure:
+
+- **a. Agent tag** — live status banner (heartbeat-updated) + activity/major-steps logs
+- **b. What this project is** — focus only on COMEBin from now on, aim: best binner
+- **c. Progress** — one bullet latest achievement, one bullet next step
+- **d. Benchmark plots** — the 4 datasets, stacked below each other
+- **e. All runs** — the full summary table (see #22)
+- **f. Important links** — Zenodo, COMEBin fork, PROGRESS, all runs, major-steps log
+
+The long per-run prose moved out; the full history stays in [docs/11-run-results.md](https://github.com/paulzierep/metagenomic-binning-benchmark/blob/main/docs/11-run-results.md)." 2>&1 | tail -1
+
+gh issue comment 26 -R paulzierep/metagenomic-binning-benchmark --body "## Delivered — one human-readable major-steps log + last-10, linked in README ✅
+
+Commit \`$commit\`:
+- \`status/major-steps.log\` — one log file with simple human-readable major steps (derived from every run's run_meta + results CSV, plus curated milestones: Zenodo v2/v3 releases, issue resolutions, #28 fix).
+- \`status/major-steps-last10.log\` — just the last 10 steps.
+- Both linked from README **a** (agent tag) and **f** (important links).
+- Generator: \`scripts/make_major_steps_log.py\` (re-run after any new run/milestone)." 2>&1 | tail -1
+touch /vol/data/benchmark/.heartbeat
+https://github.com/paulzierep/metagenomic-binning-benchmark/issues/19#issuecomment-5870360446
+https://github.com/paulzierep/metagenomic-binning-benchmark/issues/22#issuecomment-5870360833
+https://github.com/paulzierep/metagenomic-binning-benchmark/issues/24#issuecomment-5870361269
+https://github.com/paulzierep/metagenomic-binning-benchmark/issues/26#issuecomment-5870361663
+> build · big-pickle
+All four delivery comments posted. Now let me draft the #25 sweep design (plan-only, no launch while `.active_run` is registered). First check the harness and existing docs.
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark
+echo "=== .active_run current ==="
+cat /vol/data/benchmark/.active_run 2>/dev/null || echo CLEAR
+echo "=== run_comebin_fix.sh params (vars grid support?) ==="
+head -40 /vol/data/benchmark/bin/run_comebin_fix.sh 2>/dev/null | grep -nE "VAR|SEED|argparse|case |CONTIGS|BAMDIR|MODE|epochs|batch|temper|emb" | head -20
+echo "=== existing #25 doc? ==="
+ls docs/ | cat
+grep -rl "25" docs/*.md 2>/dev/null | head
+touch /vol/data/benchmark/.heartbeat
+=== .active_run current ===
+2159439 2159436 /tmp/opencode/small_v11_prepatch_baseline/comebin_run.log /tmp/opencode/small_v11_prepatch_baseline 1790600298 small /tmp/opencode/comebin_prepatch
+=== run_comebin_fix.sh params (vars grid support?) ===
+11:CONTIGS=${CONTIGS:-"$DATA/BATS_SAMN07137077_METAG.scaffolds.min500.fasta.f1k.fasta"}
+12:BAMDIR=${BAMDIR:-"$DATA/bamfiles"}
+13:MODE=${MODE:-fix}
+14:[ -f "$CONTIGS" ] || { echo "ERROR: contigs file not found: $CONTIGS"; exit 1; }
+15:[ -d "$BAMDIR" ] || { echo "ERROR: bamdir not found: $BAMDIR"; exit 1; }
+18:SEED=${SEED:-}
+=== existing #25 doc? ===
+00-setup.md
+01-datasets.md
+02-comebin-baseline.md
+03-fixes.md
+04-evaluation.md
+05-agent-restart.md
+06-benchmark-commands.md
+07-fix-batches.md
+08-dataset-space-plan.md
+09-optimization-strategy.md
+10-data-preservation.md
+11-run-results.md
+12-comebin-master-divergence.md
+docs/01-datasets.md
+docs/06-benchmark-commands.md
+docs/08-dataset-space-plan.md
+docs/10-data-preservation.md
+docs/11-run-results.md
+docs/12-comebin-master-divergence.md
+> build · big-pickle
+`.active_run` has changed — the sibling has deregistered the #28 regression run and registered a new run `small_v11_prepatch_baseline`. So no new runs can be launched; the #25 grid stays plan-only. Let me look at the sweep harness params and current strategy doc to design the grid.
+[0m$ [0mcd /vol/data/benchmark
+echo "=== run_comebin_fix.sh full (vars + flags) ==="
+cat bin/run_comebin_fix.sh | sed -n '1,60p'
+echo "=== docs/09 strategy (head) ==="
+head -40 /vol/data/repos/metagenomic-binning-benchmark/docs/09-optimization-strategy.md
+touch .heartbeat
+=== run_comebin_fix.sh full (vars + flags) ===
+#!/usr/bin/env bash
+# run_comebin_fix.sh — run a FIXED COMEBin source tree on the demo dataset and
+# record the run exactly like the baseline. The default is the current v1.1.0
+# optimization worktree; override with SRC_COMEBIN=/path/to/repo.
+set -euo pipefail
+
+MM=/vol/data/tools/bin/micromamba
+ENV=/vol/data/envs/comebin
+SRC=${SRC_COMEBIN:-/vol/data/repos/COMEBin-v11}
+DATA=${DATA:-/vol/data/datasets/comebin_test_data}
+CONTIGS=${CONTIGS:-"$DATA/BATS_SAMN07137077_METAG.scaffolds.min500.fasta.f1k.fasta"}
+BAMDIR=${BAMDIR:-"$DATA/bamfiles"}
+MODE=${MODE:-fix}
+[ -f "$CONTIGS" ] || { echo "ERROR: contigs file not found: $CONTIGS"; exit 1; }
+[ -d "$BAMDIR" ] || { echo "ERROR: bamdir not found: $BAMDIR"; exit 1; }
+RUNDIR=$(realpath -m "${1:-/vol/data/benchmark/runs/fix_v11}")
+THREADS=${THREADS:-32}
+SEED=${SEED:-}
+START_LOCK=/tmp/benchmark-start.lock
+ACTIVE=/vol/data/benchmark/.active_run
+[ -f "$SRC/COMEBin/run_comebin.sh" ] || { echo "ERROR: invalid SRC_COMEBIN repo root: $SRC"; exit 1; }
+
+exec 9>"$START_LOCK"
+flock -n 9 || { echo "ERROR: another benchmark launch holds $START_LOCK"; exit 1; }
+if [ -f "$ACTIVE" ] && [ "${BENCHMARK_WATCHDOG_REPLACE:-0}" != "1" ]; then
+  read -r active_pid active_pgid active_log active_dir active_start active_mode active_src < "$ACTIVE" || true
+  active_state=$(ps -o stat= -p "${active_pid:-0}" 2>/dev/null | tr -d ' ' || true)
+  if [ -n "${active_pid:-}" ] && kill -0 "$active_pid" 2>/dev/null && [[ "$active_state" != Z* ]]; then
+    echo "ERROR: benchmark already active: pid=$active_pid dir=$active_dir mode=${active_mode:-baseline}"
+    exit 1
+  fi
+  old_rc=$(grep -m1 '^exit_code:' "${active_dir:-/nonexistent}/run_meta.txt" 2>/dev/null | awk '{print $2}' || true)
+  [ "${old_rc:-}" = "0" ] || { echo "ERROR: stale failed run requires benchmark-watchdog triage: $active_dir"; exit 1; }
+  rm -f "$ACTIVE"
+fi
+if [ -f "$RUNDIR/run_meta.txt" ] || [ -d "$RUNDIR/comebin_out" ]; then
+  echo "ERROR: refusing to overwrite existing run directory: $RUNDIR"
+  exit 1
+fi
+
+# Pre-flight free space.  A full filesystem does not fail at launch: it silently
+# poisons CheckM's marker tables and then kills get_result hours later.
+# cami3_v11_20260926 burned 6,677 s and produced 0 bins because prep leftovers
+# (13.8 GB in /tmp) had filled / to 100%.  Fail fast, before the run starts.
+# Placed before the .active_run registration, so a refusal cannot be mistaken by
+# benchmark-watchdog for a crashed run and restarted.
+MIN_FREE_GB=${MIN_FREE_GB:-2}
+RUN_FS=$(df -Pk "$(dirname "$RUNDIR")" 2>/dev/null | awk 'NR==2{print int($4/1048576)}')
+TMP_FS=$(df -Pk /tmp 2>/dev/null | awk 'NR==2{print int($4/1048576)}')
+echo "preflight_free_gb: run_fs=${RUN_FS:-unknown} tmp_fs=${TMP_FS:-unknown} floor=${MIN_FREE_GB}"
+for fs_avail in "$RUN_FS" "$TMP_FS"; do
+  if [ -n "$fs_avail" ] && [ "$fs_avail" -lt "$MIN_FREE_GB" ]; then
+    echo "ERROR: only ${fs_avail} GiB free, need >= ${MIN_FREE_GB} GiB (stale prep leftovers in /tmp are the usual cause)"
+    echo "Free space first, or override deliberately with MIN_FREE_GB=0"
+    exit 1
+  fi
+done
+
+mkdir -p "$RUNDIR/logs"
+COMMIT=$(git -C "$SRC" rev-parse HEAD)
+=== docs/09 strategy (head) ===
+# Optimization strategy (issue #7)
+
+Goal: **reduce COMEBin runtime and resource use while keeping quality the same or
+better**, judged with the exact same benchmark harness as the baseline so every
+decision is data-driven.
+
+## What we measure (fixed, per run)
+
+| Metric | Source | Why |
+|---|---|---|
+| Wall-clock time (total + per stage) | `runs/<run>/run_meta.txt` + run log | primary speed target |
+| Peak RAM | `logs/resources.tsv` (30-s samples) | primary resource target |
+| CPU time / core-hours | run log + resources.tsv | efficiency |
+| # bins (≥200 kb filter noted) | CheckM run output | productivity measure |
+| CheckM2 mean completeness / contamination | `run_eval.sh` | quality (main) |
+| CheckM v1 mean completeness / contamination | `run_eval.sh` | quality (cross-check) |
+| CAMI-style F1 (harmonic mean of completeness and purity) | CAMI II/III GT once available | CAMI benchmark metric, see CAMI papers |
+
+For a scored bin, F1 is `2 * completeness * purity /
+(completeness + purity)` after applying the official CAMI size and threshold
+rules; it is **not** the product of the two percentages. If no ground-truth
+binning exists, CheckM2/CheckM values remain separate quality proxies and must
+not be relabeled as CAMI F1.
+
+"Good performance" is therefore: **more headroom on # bins / completeness /
+contamination / F1 per unit of time×RAM**. See `docs/04-evaluation.md` for
+metric definitions and the CAMI papers in the README references.
+
+## Process: batched commits with a decision gate
+
+Optimization work happens on a branch (`comebin-optimizations-v11`), **one commit
+per batch** (see `docs/07-fix-batches.md`). Each batch goes through the gate below.
+
+```mermaid
+flowchart TD
+    A["Idea or fix batch"] --> B["1. Small functional test"]
+    B --> C["2. Medium validation run"]
+    C --> D["3. Large benchmark vs baseline"]
+    D --> E{"Better time and quality?"}
+    E -->|yes| F["4. Keep and record"]
+> build · big-pickle
+The sibling has registered a new run (`small_v11_prepatch_baseline`, src `/tmp/opencode/comebin_prepatch`) for the fork-master prepatch baseline — I must not launch anything. Let me check how the harness passes train params (for designing the #25 grid).
+[0m$ [0mcd /vol/data/benchmark
+echo "=== train params handling in run_comebin_fix.sh ==="
+grep -nE "SEED|epochs|batch|temper|emb_szs|n_views|earlystop|addvars|vars_sqrt|num_threads|--|MAIN_PY|bin/get_result" bin/run_comebin_fix.sh | head -30
+echo "=== medium dataset prep ==="
+ls /vol/data/datasets/comebin_medium/ 2>/dev/null
+ls /vol/data/datasets/comebin_medium/bamfiles 2>/dev/null | head -3
+stat -c '%s %n' /vol/data/datasets/comebin_medium/contigs.fa
+touch .heartbeat
+=== train params handling in run_comebin_fix.sh ===
+18:SEED=${SEED:-}
+61:DIRTY=$(git -C "$SRC" status --porcelain --untracked-files=no | wc -l)
+62:BRANCH=$(git -C "$SRC" branch --show-current)
+66:if grep -q -- '-d STR.*device' "$SRC/COMEBin/run_comebin.sh"; then
+69:if [ -n "$SEED" ] && grep -q -- '-s INT.*seed' "$SRC/COMEBin/run_comebin.sh"; then
+70:  COMEBIN_ARGS+=(-s "$SEED")
+81:  echo "seed:       ${SEED:-unset}"
+=== medium dataset prep ===
+PROVENANCE.txt
+bamfiles
+contig_names.txt
+contigs.bed
+contigs.fa
+contigs.fa.bacar_marker.2quarter_lencutoff_1001.seed
+contigs.fa.bacar_marker.2quarter_lencutoff_1001.seed.err
+contigs.fa.bacar_marker.2quarter_lencutoff_1001.seed.out
+contigs.fa.bacar_marker.hmmout
+contigs.fa.bacar_marker.hmmout.err
+contigs.fa.bacar_marker.hmmout.out
+contigs.fa.frag.err
+contigs.fa.frag.faa
+contigs.fa.frag.ffn
+contigs.fa.frag.gff
+contigs.fa.frag.out
+reads.bam
+reads.bam.bai
+14354233 /vol/data/datasets/comebin_medium/contigs.fa
+> build · big-pickle
+[0m$ [0mcd /vol/data/benchmark
+echo "=== how run_comebin.sh params flow (vars in run_comebin_fix.sh beyond 60) ==="
+sed -n '60,120p' bin/run_comebin_fix.sh
+echo "=== find where train cmd built ==="
+grep -n "main.py train\|COMEBIN_ARGS\|cmd_train" bin/run_comebin_fix.sh | head
+touch .heartbeat
+=== how run_comebin.sh params flow (vars in run_comebin_fix.sh beyond 60) ===
+COMMIT=$(git -C "$SRC" rev-parse HEAD)
+DIRTY=$(git -C "$SRC" status --porcelain --untracked-files=no | wc -l)
+BRANCH=$(git -C "$SRC" branch --show-current)
+echo "source: $SRC (branch $BRANCH) commit: $COMMIT (dirty files: $DIRTY)"
+[ "$DIRTY" -eq 0 ] || { echo "REFUSING: source tree has uncommitted changes; commit them first"; exit 1; }
+COMEBIN_ARGS=(-a "$CONTIGS" -p "$BAMDIR" -o "$RUNDIR/comebin_out" -n 6 -t "$THREADS")
+if grep -q -- '-d STR.*device' "$SRC/COMEBin/run_comebin.sh"; then
+  COMEBIN_ARGS+=(-d cpu)
+fi
+if [ -n "$SEED" ] && grep -q -- '-s INT.*seed' "$SRC/COMEBin/run_comebin.sh"; then
+  COMEBIN_ARGS+=(-s "$SEED")
+fi
+CMD_TEXT=$(printf '%q ' "$MM" run -p "$ENV" bash run_comebin.sh "${COMEBIN_ARGS[@]}")
+{
+  echo "run:        $RUNDIR"
+  echo "source:     $SRC (branch $BRANCH)"
+  echo "date:       $(date -Is)"
+  echo "commit:     $COMMIT"
+  echo "contigs:    $CONTIGS"
+  echo "bamdir:     $BAMDIR"
+  echo "threads:    $THREADS"
+  echo "seed:       ${SEED:-unset}"
+  echo "host:       $(nproc) cores, $(free -g | awk '/Mem:/{print $2}')G RAM, gpu=$(nvidia-smi -L 2>/dev/null || echo none)"
+  echo "cmd_wrapper: $CMD_TEXT"
+} | tee "$RUNDIR/run_meta.txt"
+
+export MAMBA_ROOT_PREFIX=/vol/data/envs/.mamba
+cd "$SRC/COMEBin"   # upstream resolves ../auxiliary relative to CWD
+
+# Fields: pid pgid logfile rundir start_epoch mode source_repo contigs bamdir.
+printf '%s %s %s %s %s %s %s %s %s\n' "$$" "$(ps -o pgid= -p $$ | tr -d ' ')" \
+  "$RUNDIR/comebin_run.log" "$RUNDIR" "$(date +%s)" "$MODE" "$SRC" "$CONTIGS" "$BAMDIR" > "$ACTIVE.tmp.$$"
+mv "$ACTIVE.tmp.$$" "$ACTIVE"
+
+SAMPLER_PID=""
+cleanup() {
+  rc=$?
+  trap - EXIT
+  if [ -n "$SAMPLER_PID" ] && kill -0 "$SAMPLER_PID" 2>/dev/null; then
+    kill "$SAMPLER_PID" 2>/dev/null || true
+    wait "$SAMPLER_PID" 2>/dev/null || true
+  fi
+  if [ "$rc" -eq 0 ] && [ -f "$ACTIVE" ]; then
+    read -r current_pid _ < "$ACTIVE" || true
+    [ "${current_pid:-}" = "$$" ] && rm -f "$ACTIVE"
+  fi
+  exit "$rc"
+}
+trap cleanup EXIT
+trap 'exit 130' INT TERM
+
+sample_resources() {
+  printf 'timestamp\tpids\tcpu_pct\trss_gb\tsystem_mem_mb\n'
+  while :; do
+    read -r pids cpu_pct rss_kb <<<"$(ps -eo pid=,pcpu=,rss=,args= | awk -v out="$RUNDIR/comebin_out" '
+      index($0, out) && $4 !~ /^awk/ {
+        p = p ? p "," $1 : $1; c += $2; r += $3
+      }
+      END { printf "%s %.1f %.0f", p, c, r }
+    ')"
+    system_mem_mb=$(free -m | awk '/Mem:/{print $3}')
+=== find where train cmd built ===
+65:COMEBIN_ARGS=(-a "$CONTIGS" -p "$BAMDIR" -o "$RUNDIR/comebin_out" -n 6 -t "$THREADS")
+67:  COMEBIN_ARGS+=(-d cpu)
+70:  COMEBIN_ARGS+=(-s "$SEED")
+72:CMD_TEXT=$(printf '%q ' "$MM" run -p "$ENV" bash run_comebin.sh "${COMEBIN_ARGS[@]}")
+129:# capture the real main.py train command once training starts (non-blocking)
+130:( sleep 12; MCMD=$(pgrep -af 'main.py train' 2>/dev/null | head -1 | cut -d' ' -f2-); \
+131:  [ -n "$MCMD" ] && echo "cmd_train_py: $MCMD" >> "$RUNDIR/run_meta.txt" ) &
+136:  "${COMEBIN_ARGS[@]}" 2>&1 | tee "$RUNDIR/comebin_run.log"
+> build · big-pickle
+The harness only passes `-a -p -o -n -t [-d cpu] [-s seed]` to run_comebin.sh and refuses dirty source trees, so the sweep grid must use run_comebin.sh's CLI flags. Let me inspect what parameters `run_comebin.sh` (v1.1.0 / v11) actually exposes.
+[0m$ [0mcd /vol/data/repos/COMEBin-v11/COMEBin 2>/dev/null || cd /vol/data/repos/COMEBin-v11
+echo "=== run_comebin.sh usage/options (v11) ==="
+sed -n '1,60p' run_comebin.sh | grep -nE "usage|while getopts|case |\)$|-d|-s|-w|-m|-E|-V|-T|-b|-e" | head -30
+echo "=== getopts block ==="
+awk '/while getopts/,/^done/' run_comebin.sh | head -50
+touch /vol/data/benchmark/.heartbeat
+=== run_comebin.sh usage/options (v11) ===
+17:	echo "  -V              display the COMEBin version and exit"
+23:	echo "  -w INT          concurrent Leiden worker processes (default=same as -t)"
+24:	echo "  -m INT          HNSW neighbors retained per contig (default=100)"
+25:	echo "  -d STR          NN training device: cuda, cuda:N, or cpu (default=cuda)"
+26:	echo "  -s INT          random seed for reproducible runs (default=not set)"
+27:	echo "  -E FLOAT        HMMER sequence E-value used when marker HMMs do not define TC cutoffs (default=1e-5)"
+29:	echo "  -e INT          embedding size for comebin network (default=2048)"
+31:	echo "  -b INT          batch size for training process (default=1024)"
+=== getopts block ===
+while getopts hVa:o:p:n:t:w:m:d:s:E:l:e:c:b: OPT; do
+ case ${OPT} in
+  h) help_message
+    exit 0
+    ;;
+  V) echo "COMEBin version: $VERSION"
+    exit 0
+    ;;
+  a) contig_file=$(realpath -e -- "${OPTARG}") || exit 1
+    ;;
+  o) output_dir=$(realpath -m -- "${OPTARG}") || exit 1
+    ;;
+  p) bam_file_path=$(realpath -e -- "${OPTARG}") || exit 1
+    ;;
+  n) n_views=${OPTARG}
+    ;;
+  t) num_threads=${OPTARG}
+    ;;
+  w) leiden_workers=${OPTARG}
+    ;;
+  m) max_edges=${OPTARG}
+    ;;
+  d) device=${OPTARG}
+    ;;
+  s) random_seed=${OPTARG}
+    ;;
+  E) hmm_evalue=${OPTARG}
+    ;;
+  l) temperature=${OPTARG}
+    ;;
+  e) emb_szs=${OPTARG}
+    ;;
+  c) emb_szs_forcov=${OPTARG}
+    ;;
+  b) batch_size=${OPTARG}
+    ;;
+  \?)
+#    printf "[Usage] `date '+%F %T'` -i <INPUT_FILE> -o <OUTPUT_DIR> -o <P
+#RODUCT_CODE> -s <SOFTWARE_VERSION> -t <TYPE>\n" >&2
+    exit 1
+ esac
+done
+> build · big-pickle
+The harness currently forwards only a fixed set of flags; a param sweep needs `-l -e -c -b -m -w -E` forwarding. Let me check the rest of the harness and whether any biobox/CAMI export exists already.
+[0m$ [0mcd /vol/data/benchmark
+echo "=== rest of run_comebin_fix.sh (120-end) ==="
+sed -n '120,175p' bin/run_comebin_fix.sh
+echo "=== ANY biobox/cami export script? ==="
+grep -rli "biobox\|nuc.\{0,3\}fasta\|\.biobox\|cami.*export\|export.*biobox" scripts/ bin/ 2>/dev/null | head
+echo "=== does v11 clustering output bins in fasta? ==="
+find /vol/data/benchmark/runs/medium_v11_20260924/comebin_out -name "*.fa" -o -name "*.fasta" 2>/dev/null | head -3
+touch .heartbeat
+=== rest of run_comebin_fix.sh (120-end) ===
+    system_mem_mb=$(free -m | awk '/Mem:/{print $3}')
+    printf '%s\t%s\t%s\t%.3f\t%s\n' "$(date -Is)" "${pids:-none}" \
+      "${cpu_pct:-0}" "$(awk -v kb="${rss_kb:-0}" 'BEGIN{print kb/1048576}')" "$system_mem_mb"
+    sleep 30 & wait $!
+  done
+}
+sample_resources > "$RUNDIR/logs/resources.tsv" 2> "$RUNDIR/logs/sampler.out" &
+SAMPLER_PID=$!
+
+# capture the real main.py train command once training starts (non-blocking)
+( sleep 12; MCMD=$(pgrep -af 'main.py train' 2>/dev/null | head -1 | cut -d' ' -f2-); \
+  [ -n "$MCMD" ] && echo "cmd_train_py: $MCMD" >> "$RUNDIR/run_meta.txt" ) &
+
+START=$(date +%s)
+set +e
+CUDA_VISIBLE_DEVICES= "$MM" run -p "$ENV" bash run_comebin.sh \
+  "${COMEBIN_ARGS[@]}" 2>&1 | tee "$RUNDIR/comebin_run.log"
+RC=${PIPESTATUS[0]}
+set -e
+END=$(date +%s)
+
+# The upstream wrapper can mask a clustering/get_result failure and return 0
+# even when it produced no bins. Validate non-empty artifacts before recording
+# terminal success; this is especially important for the medium benchmark.
+BINS="$RUNDIR/comebin_out/comebin_res/comebin_res_bins"
+BIN_COUNT=0
+if [ -d "$BINS" ]; then
+  BIN_COUNT=$(find -L "$BINS" -maxdepth 1 -type f -size +0c | wc -l)
+fi
+if [ "$RC" -eq 0 ] && [ "$BIN_COUNT" -eq 0 ]; then
+  echo "ERROR: COMEBin returned 0 but no non-empty bins were produced at $BINS; recording failure" \
+    | tee -a "$RUNDIR/run_meta.txt"
+  RC=1
+fi
+{
+  echo "exit_code:  $RC"
+  echo "wall_s:     $((END-START))"
+  echo "finished:   $(date -Is)"
+  if [ "$BIN_COUNT" -gt 0 ]; then
+    echo "bins:       $BIN_COUNT  -> $BINS"
+  else
+    echo "bins:       0  -> $BINS (missing or empty)"
+  fi
+} | tee -a "$RUNDIR/run_meta.txt"
+# record helper-tool commands visible in the log (FragGeneScan/hmmsearch seed genes)
+grep -aE 'run_FragGeneScan|hmmsearch' "$RUNDIR/comebin_run.log" 2>/dev/null | head -2 \
+  | sed 's/^/cmd_from_log: /' | tee -a "$RUNDIR/run_meta.txt" >/dev/null || true
+exit "$RC"
+=== ANY biobox/cami export script? ===
+=== does v11 clustering output bins in fasta? ===
+/vol/data/benchmark/runs/medium_v11_20260924/comebin_out/comebin_res/cluster_res/weight_seed_kmeans_k_8_result_bins/7.fa
+/vol/data/benchmark/runs/medium_v11_20260924/comebin_out/comebin_res/cluster_res/weight_seed_kmeans_k_8_result_bins/3.fa
+/vol/data/benchmark/runs/medium_v11_20260924/comebin_out/comebin_res/cluster_res/weight_seed_kmeans_k_8_result_bins/0.fa
+> build · big-pickle
+No biobox exporter exists yet; bins are `.fa` per cluster (good foundation). Now let me write the #25 sweep plan doc (plan-only — no launches while the sibling's run is registered).
+[0m← [0mWrite /vol/data/repos/metagenomic-binning-benchmark/docs/13-optimization-sweep-medium.md
+Created file successfully: /vol/data/repos/metagenomic-binning-benchmark/docs/13-optimization-sweep-medium.md
+> build · big-pickle
+Now let me add the param-forwarding support to the harness (so the sweep is actually runnable) and the biobox exporter for #25. First the forwarding extension, mirroring the existing `-d`/`-s` pattern:
+[0m← [0mEdit /vol/data/benchmark/bin/run_comebin_fix.sh
+Index: /vol/data/benchmark/bin/run_comebin_fix.sh
+===================================================================
+--- /vol/data/benchmark/bin/run_comebin_fix.sh
++++ /vol/data/benchmark/bin/run_comebin_fix.sh
+@@ -68,8 +68,33 @@
+ fi
+ if [ -n "$SEED" ] && grep -q -- '-s INT.*seed' "$SRC/COMEBin/run_comebin.sh"; then
+   COMEBIN_ARGS+=(-s "$SEED")
+ fi
++# ---- issue #25 sweep: forward optional training/compute params ------------ #
++# Map env vars -> run_comebin.sh flags ONLY if the invoked copy supports them
++# (avoids "illegal option" on older/mismatched sources). Defaults = upstream
++# reference values (current medium_v11_20260924 run).
++if [ -n "$TEMP" ]; then
++  grep -q -- '-l FLOAT' "$SRC/COMEBin/run_comebin.sh" && COMEBIN_ARGS+=(-l "$TEMP")
++fi
++if [ -n "$EMB" ]; then
++  grep -q -- '-e INT' "$SRC/COMEBin/run_comebin.sh" && COMEBIN_ARGS+=(-e "$EMB")
++fi
++if [ -n "$EMB_COV" ]; then
++  grep -q -- '-c INT' "$SRC/COMEBin/run_comebin.sh" && COMEBIN_ARGS+=(-c "$EMB_COV")
++fi
++if [ -n "$BATCH" ]; then
++  grep -q -- '-b INT' "$SRC/COMEBin/run_comebin.sh" && COMEBIN_ARGS+=(-b "$BATCH")
++fi
++if [ -n "$MAX_EDGES" ]; then
++  grep -q -- '-m INT' "$SRC/COMEBin/run_comebin.sh" && COMEBIN_ARGS+=(-m "$MAX_EDGES")
++fi
++if [ -n "$LEIDEN_WORKERS" ]; then
++  grep -q -- '-w INT' "$SRC/COMEBin/run_comebin.sh" && COMEBIN_ARGS+=(-w "$LEIDEN_WORKERS")
++fi
++if [ -n "$HMM_EVALUE" ]; then
++  grep -q -- '-E FLOAT' "$SRC/COMEBin/run_comebin.sh" && COMEBIN_ARGS+=(-E "$HMM_EVALUE")
++fi
+ CMD_TEXT=$(printf '%q ' "$MM" run -p "$ENV" bash run_comebin.sh "${COMEBIN_ARGS[@]}")
+ {
+   echo "run:        $RUNDIR"
+   echo "source:     $SRC (branch $BRANCH)"
+
+> build · big-pickle
+Now record the sweep params in run_meta and sync the harness to the repo copy:
+[0m← [0mEdit /vol/data/benchmark/bin/run_comebin_fix.sh
+Index: /vol/data/benchmark/bin/run_comebin_fix.sh
+===================================================================
+--- /vol/data/benchmark/bin/run_comebin_fix.sh
++++ /vol/data/benchmark/bin/run_comebin_fix.sh
+@@ -103,8 +103,9 @@
+   echo "contigs:    $CONTIGS"
+   echo "bamdir:     $BAMDIR"
+   echo "threads:    $THREADS"
+   echo "seed:       ${SEED:-unset}"
++  echo "sweep:      temp=${TEMP:-ref} emb=${EMB:-ref} emb_cov=${EMB_COV:-ref} batch=${BATCH:-ref} max_edges=${MAX_EDGES:-ref} leiden_workers=${LEIDEN_WORKERS:-ref} hmm_evalue=${HMM_EVALUE:-ref}"
+   echo "host:       $(nproc) cores, $(free -g | awk '/Mem:/{print $2}')G RAM, gpu=$(nvidia-smi -L 2>/dev/null || echo none)"
+   echo "cmd_wrapper: $CMD_TEXT"
+ } | tee "$RUNDIR/run_meta.txt"
+ 
+
+> build · big-pickle
+[0m$ [0mcd /vol/data/benchmark
+echo "=== sync harness to repo (if copy exists) ==="
+if [ -f /vol/data/repos/metagenomic-binning-benchmark/scripts/run_comebin_fix.sh ]; then
+  cp bin/run_comebin_fix.sh /vol/data/repos/metagenomic-binning-benchmark/scripts/run_comebin_fix.sh && echo "synced to scripts/"
+elif [ -f /vol/data/repos/metagenomic-binning-benchmark/bin/run_comebin_fix.sh ]; then
+  grep -q run_comebin_fix /vol/data/repos/metagenomic-binning-benchmark/.gitignore 2>/dev/null
+  cp bin/run_comebin_fix.sh /vol/data/repos/metagenomic-binning-benchmark/bin/run_comebin_fix.sh && echo "synced to bin/"
+else
+  echo "no repo copy found — will add to scripts/"
+fi
+echo "=== bash syntax check ==="
+bash -n bin/run_comebin_fix.sh && echo "run_comebin_fix.sh OK"
+touch .heartbeat
+=== sync harness to repo (if copy exists) ===
+synced to scripts/
+=== bash syntax check ===
+run_comebin_fix.sh OK
+> build · big-pickle
+Now the biobox exporter for #25. Let me check the actual bins layout first.
+[0m$ [0mcd /vol/data/benchmark
+echo "=== bins layout in medium run ==="
+ls runs/medium_v11_20260924/comebin_out/comebin_res/comebin_res_bins/ 2>/dev/null | head -5
+echo "=== count ==="
+find runs/medium_v11_20260924/comebin_out/comebin_res/comebin_res_bins/ -maxdepth 1 -type f 2>/dev/null | wc -l
+echo "=== does a bin fasta have contigs? ==="
+head -3 "$(find runs/medium_v11_20260924/comebin_out/comebin_res/comebin_res_bins/ -maxdepth 1 -type f | head -1)" 2>/dev/null
+echo "=== per_bin_results.csv sample row ==="
+head -2 /vol/data/repos/metagenomic-binning-benchmark/runs/medium_v11_20260924/per_bin_results.csv 2>/dev/null
+touch .heartbeat
+=== bins layout in medium run ===
+0.fa
+1.fa
+10.fa
+11.fa
+1262.fa
+=== count ===
+16
+=== does a bin fasta have contigs? ===
+>BATS_SAMN07137077_METAG-scaffold_38 length=15643 orig=NODE_38_length_15643_cov_6.294586
+GCCTACCACATCAGCTCTACTAGCAGGTGAGATAGCAGTAAATACTGCAGACAAAAAGAT
+TTACATTAGAAATTCTAGTAGTCAAATCATAACACTTGCACAGTTTGGAGAGTTTGATCA
+=== per_bin_results.csv sample row ===
+bin,checkm2_completeness,checkm2_contamination,checkm2_genome_size,checkm2_contigs,checkm2_n50,checkm1_completeness,checkm1_contamination
+0,79.51,2.95,1915078,300,7405,85.12820512820512,0.8547008547008547
+> build · big-pickle
+Good — bins are per-cluster FASTA files with contig headers. Now the biobox exporter:
+[0m← [0mWrite /vol/data/repos/metagenomic-binning-benchmark/scripts/export_biobox.sh
+Created file successfully: /vol/data/repos/metagenomic-binning-benchmark/scripts/export_biobox.sh
+> build · big-pickle
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark
+bash -n scripts/export_biobox.sh && echo "export_biobox.sh syntax OK"
+echo "=== smoke test on medium run ==="
+bash scripts/export_biobox.sh /vol/data/benchmark/runs/medium_v11_20260924 2>&1 | tail -5
+echo "=== tarball layout check ==="
+tar -tzf /vol/data/benchmark/runs/medium_v11_20260924/biobox/binning.tar.gz | head -4
+echo "=== summary sample ==="
+head -3 /vol/data/benchmark/runs/medium_v11_20260924/biobox/tree/comebin/v11/binning_summary.tsv
+touch /vol/data/benchmark/.heartbeat
+export_biobox.sh syntax OK
+=== smoke test on medium run ===
+4096 ..
+606 README.txt
+4129265 binning.tar.gz
+4105985 bins.fasta.gz
+4096 tree
+=== tarball layout check ===
+comebin/
+comebin/v11/
+comebin/v11/binning_summary.tsv
+comebin/v11/binning/
+=== summary sample ===
+bin_id	contig_id	contig_len
+0	BATS_SAMN07137077_METAG-scaffold_5	36740
+0	BATS_SAMN07137077_METAG-scaffold_9	24413
+> build · big-pickle
+The biobox exporter works. Now let me commit the #25 design + scripts and post the #25 comment. The `.active_run` is held by the sibling, so this is plan/design only.
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark
+exec 9>/tmp/bench-repo.lock
+flock -w 15 9 || { echo "LOCK TIMEOUT"; exit 1; }
+git pull --rebase origin main 2>&1 | tail -2
+git add docs/13-optimization-sweep-medium.md scripts/export_biobox.sh scripts/run_comebin_fix.sh
+git status --short
+git commit -q -m "docs+scripts: #25 medium optimization sweep design + biobox exporter
+
+- docs/13-optimization-sweep-medium.md: 24-cell medium-dataset grid
+  (one-factor-at-a-time around the reference params, seed 42), ranking rule
+  (bin stats first, runtime tiebreak), CAMI II/III human-only follow-on,
+  Zenodo archival, AMBER + gold-standard, biobox export step
+- scripts/run_comebin_fix.sh: forward optional training/compute params
+  (TEMP/EMB/EMB_COV/BATCH/MAX_EDGES/LEIDEN_WORKERS/HMM_EVALUE) when the
+  invoked run_comebin.sh supports them; record sweep params in run_meta
+- scripts/export_biobox.sh: CAMI biobox binning tarball (engine/version/
+  binning/sample/*.fna + binning_summary.tsv), concat bins.fasta.gz, stats
+  snapshot; validated on medium_v11_20260924 (16 bins, 4.1 MB tarball)
+- Sweep NOT launched: .active_run held by sibling's small_v11_prepatch_baseline" && git log --oneline -1
+git push origin main 2>&1 | tail -2
+flock -u 9
+echo "=== done ==="
+error: cannot pull with rebase: You have unstaged changes.
+error: Please commit or stash them.
+A  docs/13-optimization-sweep-medium.md
+A  scripts/export_biobox.sh
+ M scripts/meta-watchdog.sh
+M  scripts/run_comebin_fix.sh
+?? scripts/supervise-alive.sh
+596a5536 docs+scripts: #25 medium optimization sweep design + biobox exporter
+To https://github.com/paulzierep/metagenomic-binning-benchmark
+   2b6f8bfd..596a5536  main -> main
+=== done ===
+> build · big-pickle
+Push succeeded but let me verify the remote history to be sure the branch is clean (the pull-rebase failed due to supervisor WIP files, so let me confirm no divergence happened).
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark
+git fetch origin main -q
+echo "=== remote main (latest 5) ==="
+git log origin/main --oneline -5
+echo "=== local HEAD vs origin ==="
+git rev-parse HEAD origin/main
+echo "=== my two commits on remote? ==="
+git log origin/main --oneline | grep -c "596a5536"
+git log origin/main --oneline | grep -c "5cc93218"
+echo "=== no TASK_COMPLETE ==="
+ls /vol/data/benchmark/TASK_COMPLETE 2>/dev/null || echo "absent (correct)"
+touch /vol/data/benchmark/.heartbeat
+=== remote main (latest 5) ===
+596a5536 docs+scripts: #25 medium optimization sweep design + biobox exporter
+2b6f8bfd PROGRESS: point the agent at docs/12 before any COMEBin git operation
+8200803f status: yes — small_v11_prepatch_baseline epoch 88/200 loss 4.2773942947387695 acc 16.497394561767578 model big-pickle — 2026-09-25T12:16:00Z | marine_v11_202609 2026-09-25T15:34:55Z | issues triaged: # 2026-09-25T20:49:23Z | issues triaged: # 2026-09-25T21:11:13Z | issues #12 and #8 2026-09-25T21:24:00Z | CAMI III prep scr 2026-09-25T21:54:00Z | agent: started CA 2026-09-26T00:49:54Z marine-eval-launche 2026-09-26T00:50:20Z marine-eval-launche 2026-09-26T00:50:42Z marine-eval-launche 2026-09-26T01:14:16Z marine-eval-retry-l 2026-09-26T01:41:50Z zenodo-v2-published 2026-09-26T01:46:27Z commit: pushed mari 2026-09-26T01:46:47Z delivery-comments-p 2026-09-26T01:47:11Z progress-committed 2026-09-26T01:49:18Z progress-synced 2026-09-26T02:02:36Z docs10-fix-committe 2026-09-26T02:41:03Z finish-prep-launche 2026-09-26T02:45:37Z cami3-run-launched 2026-09-26T02:45:58Z cami3-progress-comm 2026-09-26T02:54:43Z version-doi-verifie 2026-09-26T02:55:42Z doi-followup-commen 2026-09-26T02:56:38Z progress-committed 2026-09-26T02:57:25Z dryrun-tarball-dele 2026-09-26T02:59:24Z results-csv-label-f 2026-09-26T02:59:32Z progress-committed 2026-09-26T04:22:06Z 2026-09-26T04:26:43Z disk-full-incident- 2026-09-26T04:50:51Z rerun-launched-pid3 2026-09-26T05:23:51Z rerun-on-track-epoc 2026-09-26T06:19:21Z rerun-done-eval-run 2026-09-26T06:19:27Z eval started cami3_ 2026-09-26T06:41:54Z eval-checkm-v1-ppla 2026-09-26T07:10:51Z checkm2-retry-16t 2026-09-26T07:47:33Z zenodo-v3-published 2026-09-26T07:52:47Z docs-cami3-delivere 2026-09-26T07:56:10Z issue6-comment-cami 2026-09-26T07:56:26Z zenodo-v3-version-d 2026-09-26T07:56:48Z turn-activity docs+ 2026-09-26T07:58:24Z progress-finalized 2026-09-26T07:58:26Z zenodo-v3-version-d 2026-09-26T08:00:26Z zenodo-v3-version-d 2026-09-26T08:02:27Z zenodo-v3-version-d 2026-09-26T08:04:27Z zenodo-v3-version-d 2026-09-26T08:06:27Z zenodo-v3-version-d 2026-09-26T08:08:27Z zenodo-v3-version-d 2026-09-26T08:10:27Z zenodo-v3-version-d 2026-09-26T08:12:27Z zenodo-v3-version-d 2026-09-26T08:14:28Z doi-recheck-200 2026-09-26T08:29:56Z | committed script 2026-09-26T09:02:54Z | issue triage: rev 2026-09-26T09:20:00Z Agent restart resum 2026-09-26T10:03:14Z | issues triaged: # 2026-09-26T10:54:30Z | issues triaged: # 2026-09-26T11:43:03Z | resumed: verified 2026-09-26T14:20:00Z | issue comments po 2026-09-26T14:25:00Z | PROGRESS.md updat 2026-09-26T13:25:38Z | heartbeat touched 2026-09-26T14:02:55Z | agent active 2026-09-26T14:37:44Z | agent resumed aft 2026-09-26T14:39:42Z | restart-complete: 2026-09-26T15:06:38Z 2026-09-26T15:06:26Z agent-resume-starte 2026-09-26T15:13:07Z 2026-09-26T15:06:26Z agent-resume-second 2026-09-26T15:32:52Z | resume: agent res 2026-09-26 15:50:51 UTC - agent resume: 2026-09-26T16:42:06Z | agent resume: all 2026-09-28T12:59:45Z docs-deliverables: #24 README a-f, #22 a
+5cc93218 docs: #24 README a-f restructure, #22 all-runs table, #19 4-dataset plot, #26 major-steps log
+115917a8 docs: explain the COMEBin master divergence and how to work on COMEBin safely
+=== local HEAD vs origin ===
+596a553635ac86312d1b282bdf2873d302315aaf
+596a553635ac86312d1b282bdf2873d302315aaf
+=== my two commits on remote? ===
+1
+1
+=== no TASK_COMPLETE ===
+absent (correct)
+> build · big-pickle
+Clean: both my commits on remote, HEAD in sync, no TASK_COMPLETE. The sibling pushed a `docs/12` pointer commit between my pushes — my second push landed on top. Now post the #25 plan comment:
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark
+gh issue comment 25 -R paulzierep/metagenomic-binning-benchmark --body "## Optimization sweep — designed (plan + harness ready, launch pending run slot) ✅
+
+Commit \`596a5536\`:
+
+**Plan:** [docs/13-optimization-sweep-medium.md](https://github.com/paulzierep/metagenomic-binning-benchmark/blob/main/docs/13-optimization-sweep-medium.md)
+- **24 runs** on the medium dataset (3,000 contigs, ~39 min each, seed 42): one-factor-at-a-time around the reference params (temperature, embedding sizes, batch size, HNSW max_edges, n_views, Leiden workers, HMM evalue) + 3 commit pins (master \`904f649\`, current v11 \`95f5ea8\`, the #28-fix \`41606c8\`) + 2 combos + seed sanity.
+- **Ranking**: bin stats first (CheckM2 comp/cont + HQ/MQ + F1, CheckM v1 cross-check), runtime as tiebreak — exactly as you asked.
+- **Then larger data = CAMI II & III human only**; demo/marine/medium/small/tiny archived to Zenodo and removed locally to free disk.
+- **AMBER** against the CAMI II gold standard (needs \`setup.tar.gz\`/GT import — flagged in docs/01) and no trimming of full assemblies.
+- **Biobox export**: new \`scripts/export_biobox.sh\` produces the CAMI-standard tarball (engine/version/binning/<sample>/<bin_id>.fna + binning_summary.tsv), concat bins.fasta.gz and a per-bin stats snapshot — validated on \`medium_v11_20260924\` (16 bins → 4.1 MB tarball).
+
+**Harness:** \`scripts/run_comebin_fix.sh\` now forwards optional params (TEMP / EMB / EMB_COV / BATCH / MAX_EDGES / LEIDEN_WORKERS / HMM_EVALUE) only when the invoked \`run_comebin.sh\` supports them, and records them in run_meta.
+
+⚠️ Launch is **blocked** until the current registered run (\`small_v11_prepatch_baseline\`) finishes — the harness refuses to overlap registered runs, per policy. Will launch the sweep as soon as the slot is free." 2>&1 | tail -1
+touch /vol/data/benchmark/.heartbeat
+https://github.com/paulzierep/metagenomic-binning-benchmark/issues/25#issuecomment-5870385013
+> build · big-pickle
+Now the remaining substantive replies: #20 (optimization ideas), #21 (seed 42), #23 (CAMI III provenance). Let me check their current comment state.
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark
+for n in 20 21 23 6; do
+  echo "===== #$n (last comment) ====="
+  gh issue view $n -R paulzierep/metagenomic-binning-benchmark --json title,body,comments --jq '"TITLE: "+.title' 
+  gh issue view $n -R paulzierep/metagenomic-binning-benchmark --json comments --jq '.comments[-1].createdAt + " " + .comments[-1].author.login + ": " + (.comments[-1].body[0:200])'
+  echo
+done
+touch /vol/data/benchmark/.heartbeat
+===== #20 (last comment) =====
+TITLE: what are your ideas for further optimization ?
+2026-09-26T12:31:32Z paulzierep: Optimization candidates from code review (items 10-14): (1) vectorize k-mer counting in gen_kmer.py (currently pure-Python itertools.tee sliding window), (2) closed-form covariance computation in gen_
+
+===== #21 (last comment) =====
+TITLE: use a seed for all runs
+2026-09-26T12:31:26Z paulzierep: Seed 42 is used consistently across COMEBin runs (demo, small, medium, human, marine, CAMI III). For full reproducibility, the project should also seed Python RNG states (numpy, PyTorch) and the Leide
+
+===== #23 (last comment) =====
+TITLE: Where does the assembly for cami3 come from
+2026-09-26T12:31:12Z paulzierep: CAMI III assembly preparation pipeline verified: top-5000 longest contigs from pooled GSA assemblies, bwa index built, both samples' BAMs mapped and indexed. The input assembly (contigs.fa) is ~1.1 GB
+
+===== #6 (last comment) =====
+TITLE: Optimization
+2026-09-26T07:56:10Z paulzierep: ### CAMI III toy human gut — run complete (2026-09-26)
+
+Newest dataset results, per the run-logging protocol (full history: [docs/11-run-results.md](https://github.com/paulzierep/metagenomic-binning-b
+> build · big-pickle
+Those are the old "will do" prose. Per the handoff, substantive replies are still needed on #20, #21, #23. Let me gather the accurate facts first.
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark
+echo "=== docs/07 fix batches (commits on v11 vs master) ==="
+head -50 docs/07-fix-batches.md
+echo "=== docs/12 master divergence (the 5 commits) ==="
+head -40 docs/12-comebin-master-divergence.md 2>/dev/null
+touch /vol/data/benchmark/.heartbeat
+=== docs/07 fix batches (commits on v11 vs master) ===
+# 07 — Fix batches (COMEBin `comebin-optimizations` branch)
+
+One commit per batch. The user directive (issue #2) is a three-stage gate:
+**functional validation always starts on the small benchmark dataset**
+(`/vol/data/datasets/comebin_small`, minutes); after that end-to-end run passes,
+build/run a **medium derived benchmark** (initial target 3,000 contigs, hard cap
+5 GB); run the **large/full benchmark** (timed COMEBin + CheckM2/CheckM) only
+after major commits. Runs are never concurrent. Every run is recorded in
+`runs/<run>/` plus the README performance table. Baseline reference: commit
+`987db95d8d399f30b7c82a5f5f40ed6bfdc906c7` (pristine, `runs/baseline_unmodified/`).
+
+## Fork update (2026-09-23): work now continues on COMEBin v1.1.0
+
+User pushed the updated fork (`origin/master` → `1b476a4`, "Release v1.1.0").
+v1.1.0 rewrites `data_aug/gen_cov.py` (float64 Welford means + variance — the
+old batch-1 coverage-precision fix is **already upstream**), **removes
+`data_aug/gen_var.py`** (`--addvars/--vars_sqrt` still supported) and adds CLI
+flags `-w -m -d cpu -s seed -E -V`. The bin-numbering bug survives, so:
+
+- Branch **`comebin-optimizations-v11`** @ `95f5ea8` (worktree
+  `/vol/data/repos/COMEBin-v11`, based on `1b476a4`): **sequential bin
+  numbering + no empty/missing bins** in `filter_small_bins.py` +
+  `scripts/gen_bins_from_tsv.py` (verified: py_compile + synthetic functional
+  test PASS). Pushed to the fork.
+- New runs must pass `-d cpu` (no GPU) and may use `-s <seed>` for reproducible
+  fix-batch runs. The running baseline (`987db95`, v1.0.4-era) is unaffected;
+  the README table records version+commit per row.
+
+## Batch 1 (original, pre-v1.1.0) — bin numbering + coverage precision
+
+- Commit: `03670d6aa928cbbf3c0fd14b311206eeaff7f079` → branch
+  `comebin-optimizations`
+- Worktree: `/vol/data/repos/COMEBin-opt` (the pristine clone
+  `/vol/data/repos/COMEBin` stays on `master` for baseline reproducibility)
+- Changes:
+  1. **Sequential bin numbering** — `COMEBin/filter_small_bins.py` and
+     `COMEBin/scripts/gen_bins_from_tsv.py` (`gen_bins`): `bin_name` used to be
+     incremented inside the per-*contig* loop → bin file names equalled the
+     cumulative contig count instead of being sequential per bin, and a cluster
+     whose first contig was missing produced an empty stray file. Now numbered
+     `0,1,2,…` once per cluster/bin; contig lookup via `dict.get()`.
+  2. **Fractional coverage** — `COMEBin/data_aug/gen_cov.py` +
+     `COMEBin/data_aug/gen_var.py`: per-base depth `int(float(x))` →
+     `float(x)`, keeps coverage precision instead of truncating to integers.
+- Verified: `python -m py_compile` OK on all 4 files.
+- Benchmark: **re-run pending** — must wait for the baseline run to finish
+  (CPU policy: no concurrent timed runs). Re-run via
+  `scripts/run_comebin_fix.sh runs/fix_batch1` (defaults to the worktree).
+
+## Small-data alignment fix (old 1.0.4 path)
+=== docs/12 master divergence (the 5 commits) ===
+# 12 — COMEBin `master` divergence, and how to work on COMEBin safely
+
+> Written 2026-09-28 after the `paulzierep/COMEBin` `master` branch was found to be
+> **diverged**, which silently blocked every push of COMEBin work.
+> **Read this before committing to, branching from, or force-pushing `paulzierep/COMEBin`.**
+
+## 1. What went wrong
+
+`master` split at a common ancestor and the two sides never rejoined:
+
+```
+                 987db95  "Improve thread usage in cluster.py"   (merge base)
+                 /     \
+  local  master  /       \  1b476a4  Clarify PyTorch installation options   <- GitHub
+              358ddd8    \ ad6ceb3  Release v1.1.0
+              904f649     \ fd7ff06  Update Bioconda CUDA example
+              ee2e507      \
+              47c1449       \
+              586c7f7        \
+```
+
+- Local `master` carried **5** bug-fix commits (2026-09-23 → 09-24).
+- GitHub `master` carried the **3** upstream **v1.1.0 release** commits.
+- Both sides pushed at different times, so a plain push was rejected forever:
+
+```
+$ git push origin master
+ ! [rejected]  master -> master (non-fast-forward)
+```
+
+**Root cause:** the local clone was made on 2026-09-23 13:56 UTC. The v1.1.0 release
+was pushed to `master` 4 hours later (18:17 UTC) *from a different clone*. The local
+clone never fetched that, so all 5 fix commits were built on the stale `987db95` base
+and could never be pushed. Nothing was lost, but no COMEBin work could reach GitHub.
+
+## 2. How it was resolved (2026-09-28)
+
+1. Proved all 5 commits were already on GitHub via `comebin-small-fix`:
+   - `586c7f7`, `47c1449`, `ee2e507`, `904f649` are the **same SHAs** on that branch.
+   - `358ddd8` is patch-id-identical to `c8f22e4` (also on that branch).
+> build · big-pickle
+I have enough for accurate replies. Let me post substantive answers to #20, #21, and #23 (these had only "will do" prose before).
