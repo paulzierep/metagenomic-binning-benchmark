@@ -608,6 +608,25 @@ included; fixes land on branch `comebin-optimizations` in this repo.
   finished 12:55 UTC (process gone; run_meta exit 1, no results CSV yet —
   sibling posts #28). `.active_run` still registered — do not overlap.
 
+### 2026-09-28 Documentation deliverables — delivery + #25 plan (same day)
+
+- Committed+pushed `5cc93218`: README a–f restructure, all-runs table
+  generator (12-col, heartbeat-safe), 4-dataset plot, major-steps logs.
+- Committed+pushed `596a5536`: `docs/13-optimization-sweep-medium.md`
+  (24-cell medium grid, seed 42, ranking rule, CAMI II/III human only
+  follow-on, AMBER/GT, biobox export), harness param forwarding
+  (TEMP/EMB/EMB_COV/BATCH/MAX_EDGES/LEIDEN_WORKERS/HMM_EVALUE), and
+  `scripts/export_biobox.sh` (validated on medium_v11_20260924 → 4.1 MB
+  binning.tar.gz + bins.fasta.gz + binning_summary.tsv).
+- Delivery comments posted (#19, #22, #24, #26, #25 plan; substantive
+  replies #20 optimization ideas, #21 seed 42 + RNG gap, #23 CAMI III
+  provenance = pooled GSA chain). #23 reposted after a backtick/heredoc
+  mishap (~5870399540).
+- `.active_run` now holds the sibling's NEW run `small_v11_prepatch_baseline`
+  (pid 2159439, src /tmp/opencode/comebin_prepatch) — the #28 regression run
+  itself was deregistered by the sibling. Run slot still busy; no new runs
+  launched (sweep = plan only until slot free).
+
 ## Watchdog / restart
 
 `scripts/agent-watchdog.sh` (installed at `/vol/data/benchmark/bin/`, cron `*/5 * * * *`):
