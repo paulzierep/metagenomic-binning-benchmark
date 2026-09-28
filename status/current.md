@@ -4,7 +4,7 @@
 |---|---|
 | Status | 🟢 `running` |
 | ⏱ Updated (Europe/Berlin) | `2026-09-28T15:16 CEST` |
-| 🏃 Live benchmark | `sweep_001_ref` — **epoch 23/200** · loss `6.12768030166626` · top1 acc `4.4140625` (log 5s fresh) |
+| 🏃 Live benchmark | `sweep_001_ref` — **epoch 25/200** · loss `6.039702892303467` · top1 acc `5.162760257720947` (log 2s fresh) |
 | 🧠 Model (last turn) | `big-pickle` (watchdog rotates to free models on quota) |
 | 📌 Agent note · **0 min old** | 2026-09-25T12:16:00Z | marine_v11_20260925 active: epoch 147/200, COMEBin-v11@95f5ea8, cami2 mode; heartbeat touched; PROGRESS synced
 2026-09-25T15:34:55Z | issues triaged: #12 reporting auto-plots confirmed complete; #8 Zenodo record active with continuous-update workflow; marine run completed; no active run
@@ -81,9 +81,9 @@ delayed closeout: PROGRESS synced after 2nd edit; delivery comments #19/#22/#24/
 [2026-09-28T13:11:55Z] #25 sweep live: cell1 train ok; driver waiting; commit 2dc7a43d pushed
 [2026-09-28T13:15:10Z] #24+#19 owner feedback actioned; PROGRESS synced; delivery comments next
 [2026-09-28T13:15:35Z] #24+#19 delivered (aa1bd565); sweep cell1 still training; driver waiting |
-| ⚙️ Load · uptime | `8.30 5.91 3.69` · 4 days, 23 hours, 40 minutes — 32 cores, 62 GiB, no GPU |
-| 💾 RAM used/total | `6070/64295 MB` |
+| ⚙️ Load · uptime | `8.39 6.13 3.82` · 4 days, 23 hours, 41 minutes — 32 cores, 62 GiB, no GPU |
+| 💾 RAM used/total | `5889/64295 MB` |
 | 🔗 Session | `ses_f31799c77ffeTq9gcYgqc4hBhg` |
-| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `aa1bd565 issue #19: readable combined bar plot — compact 2-line y labels, wide` |
-| 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `9665488 B` — every run, command & tool result |
+| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `7f6dabc2 status: yes — sweep_001_ref epoch 23/200 loss 6.12768030166626 acc 4.` |
+| 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `9673677 B` — every run, command & tool result |
 | 📈 Timeline | [status/status.log](status/status.log) |
