@@ -1,18 +1,20 @@
 #!/usr/bin/env python3
-"""make_combined_bar_plot.py [--datasets demo human marine]
+"""make_combined_bar_plot.py [--datasets demo human marine cami3]
 
-Issue #12 (owner request 2026-09-05..25): FAIRyMAGs-style combined bar plot for
-the MAIN benchmark datasets, focused on three datasets:
+Issue #12 + #19 (owner requests 2026-09-05..28): FAIRyMAGs-style combined bar
+plot for the MAIN benchmark datasets, four datasets:
 
     demo   — COMEBin demo large set (BATS, 29,434 contigs)
     human  — CAMI II human host-associated (4,900 contigs)
     marine — CAMI II marine (41,988 contigs)
+    cami3  — CAMI III toy human gut (5,000 contigs)
 
-Figure layout (mirrors FAIRyMAGs `combined_bar_plot.png`, extended to the three
-main datasets):
+Figure layout (mirrors FAIRyMAGs `combined_bar_plot.png`; #19 "show them below
+each other"):
 
-  * 2 rows x 3 columns of subplots — one subplot per benchmark dataset (the
-    columns), rows = contamination cutoffs (top < 5 %, bottom < 10 %).
+  * 4 rows x 2 columns of subplots — one ROW per benchmark dataset (all four
+    datasets stacked below each other), columns = contamination cutoffs
+    (left < 5 %, right < 10 %).
   * Horizontal stacked bars, one bar per evaluated run of that dataset,
     segments = CheckM2 completeness thresholds (">90", ">80", ">70", ">60",
     ">50", plus "<50" so the bar end equals ALL bins passing the contamination
@@ -59,14 +61,15 @@ RUNS = os.path.join(REPO, "runs")
 RESULTS = os.path.join(REPO, "results")
 FIGDIR = os.path.join(RESULTS, "figures")
 
-# The three main benchmark datasets (issue #12: "focus only on 3 from now on").
+# The four main benchmark datasets (issue #12 + #19: "add cami3 as the fourth").
 # key -> (substring matched against run_meta `contigs:`, display name)
 DATASETS = {
     "demo": ("BATS_SAMN07137077", "COMEBin demo (29,434 contigs)"),
     "human": ("cami_II_human", "CAMI II human (4,900 contigs)"),
     "marine": ("cami_II/marine", "CAMI II marine (41,988 contigs)"),
+    "cami3": ("cami_III", "CAMI III toy human gut (5,000 contigs)"),
 }
-DEFAULT_ORDER = ["demo", "human", "marine"]
+DEFAULT_ORDER = ["demo", "human", "marine", "cami3"]
 
 # FAIRyMAGs combined_bar_plot style
 THRESHOLDS = [">90", ">80", ">70", ">60", ">50", "<50"]
@@ -250,13 +253,16 @@ def main():
         sys.exit("ERROR: no evaluated runs found for datasets: "
                  + ", ".join(wanted))
 
-    ncol = len(wanted)
-    fig, axs = plt.subplots(len(CUTOFFS), ncol,
-                            figsize=(6.4 * ncol, 5.2 * len(CUTOFFS)),
+    nrow = len(wanted)
+    ncol = len(CUTOFFS)
+    # Issue #19: "show those below each other" — one row per dataset (all four
+    # stacked vertically), columns = contamination cutoffs.
+    fig, axs = plt.subplots(nrow, ncol,
+                            figsize=(6.4 * ncol, 4.6 * nrow),
                             squeeze=False)
 
-    for row_i, (cutoff, row_title) in enumerate(CUTOFFS):
-        for col_i, key in enumerate(wanted):
+    for row_i, key in enumerate(wanted):
+        for col_i, (cutoff, row_title) in enumerate(CUTOFFS):
             ax = axs[row_i][col_i]
             runs = found[key]
             ax.set_title(f"{DATASETS[key][1]}\n{row_title}",
