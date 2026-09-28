@@ -97189,3 +97189,413 @@ run_meta.txt
 (still running: no exit yet)
 > build · big-pickle
 The sweep is live: cell 1 (`sweep_001_ref`) is registered in `.active_run` and running. Let me confirm real progress (COMBin training process, log growth) before finalizing the turn:
+[0m$ [0mcd /vol/data/benchmark
+echo "=== wait 30s, check process + log growth ==="
+sleep 30
+echo "=== active run + driver ==="
+cat .active_run | awk '{print "pid="$1, "dir="$4, "mode="$6, "src="$7}'
+pgrep -af "main.py train|run_comebin.sh" | grep -v pgrep | head -3 || echo "no train proc yet"
+echo "=== comebin_run.log last lines ==="
+tail -6 runs/sweep_001_ref/comebin_run.log 2>/dev/null
+echo "=== run_meta sweep params for cell 1 ==="
+grep -E "sweep:|seed:|threads:|source:|date:" runs/sweep_001_ref/run_meta.txt
+touch .heartbeat
+=== wait 30s, check process + log growth ===
+=== active run + driver ===
+pid=2185694 dir=/vol/data/benchmark/runs/sweep_001_ref mode=medium src=/vol/data/benchmark/../repos/COMEBin-v11-sweep
+2185734 /vol/data/tools/bin/micromamba run -p /vol/data/envs/comebin bash run_comebin.sh -a /vol/data/datasets/comebin_medium/contigs.fa -p /vol/data/datasets/comebin_medium/bamfiles -o /vol/data/benchmark/runs/sweep_001_ref/comebin_out -n 6 -t 8 -d cpu -s 42
+2185737 bash run_comebin.sh -a /vol/data/datasets/comebin_medium/contigs.fa -p /vol/data/datasets/comebin_medium/bamfiles -o /vol/data/benchmark/runs/sweep_001_ref/comebin_out -n 6 -t 8 -d cpu -s 42
+=== comebin_run.log last lines ===
+2026-09-28 13:09:30,360 - Generate augmentation view 3/5 with seed 45.
+2026-09-28 13:09:30,360 - Generate augmentation view 4/5 with seed 46.
+2026-09-28 13:09:30,360 - Generate augmentation view 5/5 with seed 47.
+2026-09-28 13:09:33,930 - Generated binary augmentation features: assembly_contigs=3000, assembly_n50=4551, retained_contigs=3000, views=6, kmer_features=136.
+2026-09-28 13:09:33,937 - Coverage requested 8 workers but only 1 BAM files exist; using 1 workers.
+2026-09-28 13:09:33,937 - Coverage inputs: contigs=3000, views=6, BAMs=1, workers=1.
+=== run_meta sweep params for cell 1 ===
+source:     /vol/data/benchmark/../repos/COMEBin-v11-sweep (branch )
+date:       2026-09-28T13:09:27+00:00
+threads:    8
+seed:       42
+sweep:      temp=ref emb=ref emb_cov=ref batch=ref max_edges=ref leiden_workers=ref hmm_evalue=ref n_views=6
+> build · big-pickle
+Sweep cell 1 is running properly: `-d cpu -s 42`, 3000 contigs, 6 views, source pinned at `95f5ea8`. Now let me sync docs/13's cell list with the actual grid (cell 23 substitution) and check the repo diff:
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark
+echo "=== docs/13 cell list ==="
+grep -nE "^\|.*sweep_|^###|early|41606c8|904f649|95f5ea8" docs/13-optimization-sweep-medium.md | head -50
+echo "=== git status (repo) ==="
+git status --porcelain | head -20
+=== docs/13 cell list ===
+50:| 1 | reference (no override) | defaults | `sweep_001_ref` |
+51:| 2 | commit | **master 904f649** (unmodified) | `sweep_002_master` |
+52:| 3 | commit | **41606c8** (issue #28 fix, v11) | `sweep_003_issue28fix` |
+53:| 4 | temperature `-l` | 0.05 | `sweep_004_temp005` |
+54:| 5 | temperature `-l` | 0.30 | `sweep_005_temp030` |
+55:| 6 | temperature `-l` | 0.50 | `sweep_006_temp050` |
+56:| 7 | emb_szs `-e` | 1024 | `sweep_007_emb1024` |
+57:| 8 | emb_szs `-e` | 4096 | `sweep_008_emb4096` |
+58:| 9 | emb_szs_forcov `-c` | 1024 | `sweep_009_embcov1024` |
+59:| 10 | emb_szs_forcov `-c` | 4096 | `sweep_010_embcov4096` |
+60:| 11 | batch_size `-b` | 512 | `sweep_011_batch512` |
+61:| 12 | batch_size `-b` | 2048 | `sweep_012_batch2048` |
+62:| 13 | max_edges `-m` | 80 | `sweep_013_edges80` |
+63:| 14 | max_edges `-m` | 150 | `sweep_014_edges150` |
+64:| 15 | n_views `-n` | 4 | `sweep_015_views4` |
+65:| 16 | n_views `-n` | 8 | `sweep_016_views8` |
+66:| 17 | leiden_workers `-w` | 4 | `sweep_017_w4` |
+67:| 18 | leiden_workers `-w` | 16 | `sweep_018_w16` |
+68:| 19 | hmm_evalue `-E` | 1e-3 | `sweep_019_eval1e3` |
+69:| 20 | hmm_evalue `-E` | 1e-7 | `sweep_020_eval1e7` |
+70:| 21 | combo | temp 0.3 + emb 1024 + batch 512 | `sweep_021_comboA` |
+71:| 22 | combo | temp 0.05 + emb 4096 + batch 2048 | `sweep_022_comboB` |
+72:| 23 | earlystop | explicit early-stop off (if flag exposed) | `sweep_023_noearly` |
+73:| 24 | seed sanity | seed 7 (reproducibility check) | `sweep_024_seed7` |
+=== git status (repo) ===
+ M scripts/run_comebin_fix.sh
+?? scripts/run_sweep_medium.sh
+> build · big-pickle
+docs/13 row 23 says `sweep_023_noearly` but the driver launches `sweep_023_embcov512_batch512` (early-stop isn't toggleable — it's hardcoded in `run_comebin.sh`, so I substituted a second combo cell). Updating docs/13 to match the actual grid:
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/docs/13-optimization-sweep-medium.md
+Index: /vol/data/repos/metagenomic-binning-benchmark/docs/13-optimization-sweep-medium.md
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/docs/13-optimization-sweep-medium.md
++++ /vol/data/repos/metagenomic-binning-benchmark/docs/13-optimization-sweep-medium.md
+@@ -68,9 +68,9 @@
+ | 19 | hmm_evalue `-E` | 1e-3 | `sweep_019_eval1e3` |
+ | 20 | hmm_evalue `-E` | 1e-7 | `sweep_020_eval1e7` |
+ | 21 | combo | temp 0.3 + emb 1024 + batch 512 | `sweep_021_comboA` |
+ | 22 | combo | temp 0.05 + emb 4096 + batch 2048 | `sweep_022_comboB` |
+-| 23 | earlystop | explicit early-stop off (if flag exposed) | `sweep_023_noearly` |
++| 23 | combo | emb_cov 512 + batch 512 (early-stop disabled — `--earlystop` is hardcoded in `run_comebin.sh`, not a CLI flag — so this cell tests the small-emb-cov regime instead) | `sweep_023_embcov512_batch512` |
+ | 24 | seed sanity | seed 7 (reproducibility check) | `sweep_024_seed7` |
+ 
+ ## Ranking rule (owner's order)
+ 
+
+> build · big-pickle
+The grid has a real bug: cell 24 (`sweep_024_seed7`) should run with **seed 7**, but the driver uses seed 42 for every cell (no per-cell seed field). I'll stop only the driver (let cell 1's run continue serving the registered `run_comebin_fix.sh`), patch the driver to add a per-cell seed column plus a wait-for-clear gate, then relaunch it to queue behind the in-flight run.
+[0m$ [0mcd /vol/data/benchmark
+echo "=== kill ONLY the driver (2185685); leave run_comebin_fix.sh 2185694 alive ==="
+kill 2185685 2>/dev/null
+sleep 3
+echo "=== driver gone? run still alive? ==="
+ps -p 2185685 >/dev/null 2>&1 && echo "driver STILL ALIVE" || echo "driver gone"
+ps -p 2185694 >/dev/null 2>&1 && echo "run_comebin_fix.sh STILL RUNNING (good)" || echo "run died (bad)"
+pgrep -af "main.py train" | grep -v pgrep | head -2 || echo "no train proc"
+echo "=== .active_run still registered? ==="
+cat .active_run 2>/dev/null | awk '{print "pid="$1" dir="$4" mode="$6}' || echo CLEAR
+touch .heartbeat
+=== kill ONLY the driver (2185685); leave run_comebin_fix.sh 2185694 alive ===
+=== driver gone? run still alive? ===
+driver gone
+run_comebin_fix.sh STILL RUNNING (good)
+2186490 python /vol/data/repos/COMEBin-v11-sweep/COMEBin/main.py train --data /vol/data/benchmark/runs/sweep_001_ref/comebin_out/data_augmentation --emb_szs_forcov 2048 --batch_size 1024 --emb_szs 2048 --n_views 6 --output_path /vol/data/benchmark/runs/sweep_001_ref/comebin_out/comebin_res --earlystop --addvars --vars_sqrt --device cpu --num_threads 8 --seed 42
+2186631 python /vol/data/repos/COMEBin-v11-sweep/COMEBin/main.py train --data /vol/data/benchmark/runs/sweep_001_ref/comebin_out/data_augmentation --emb_szs_forcov 2048 --batch_size 1024 --emb_szs 2048 --n_views 6 --output_path /vol/data/benchmark/runs/sweep_001_ref/comebin_out/comebin_res --earlystop --addvars --vars_sqrt --device cpu --num_threads 8 --seed 42
+=== .active_run still registered? ===
+pid=2185694 dir=/vol/data/benchmark/runs/sweep_001_ref mode=medium
+> build · big-pickle
+The orphaned run survives (training with seed 42). But killing the driver means eval won't run for cell 1, and my skip logic would then skip it forever. I'll rewrite the driver properly: add a per-cell seed column (cell 24 → seed 7), a wait-for-clear gate (poll instead of abort), and resume logic that evals a finished-but-unevaluated run:
+[0m← [0mWrite /vol/data/repos/metagenomic-binning-benchmark/scripts/run_sweep_medium.sh
+Wrote file successfully: /vol/data/repos/metagenomic-binning-benchmark/scripts/run_sweep_medium.sh
+> build · big-pickle
+Now verify the docs/13 THREADS recommendation matches, then syntax-check and relaunch:
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark
+echo "=== docs/13 THREADS / command template ==="
+grep -nE "THREADS|threads|run_comebin_fix" docs/13-optimization-sweep-medium.md | head -10
+echo "=== syntax check driver ==="
+bash -n scripts/run_sweep_medium.sh && echo "sweep driver syntax OK"
+echo "=== cell count in driver ==="
+grep -c '^  "sweep_' scripts/run_sweep_medium.sh
+=== docs/13 THREADS / command template ===
+29:- `/vol/data/benchmark/bin/run_comebin_fix.sh` with:
+33:   MODE=medium THREADS=8 SEED=42`
+42:## Grid (24 cells — all seed 42, THREADS 8)
+46:leiden_workers = threads).
+=== syntax check driver ===
+sweep driver syntax OK
+=== cell count in driver ===
+24
+> build · big-pickle
+The driver matches docs/13 (THREADS=8, seed 42; cell 24 = seed 7 per the reproducibility row). Relaunching the driver detached — it will wait for cell 1's in-flight run, then eval it via the RESUME branch:
+[0m$ [0mcd /vol/data/benchmark
+echo "=== relaunch sweep driver DETACHED (waits for orphaned cell 1) ==="
+nohup bash /vol/data/repos/metagenomic-binning-benchmark/scripts/run_sweep_medium.sh > /vol/data/benchmark/status/sweep-driver.out 2>&1 &
+echo "launcher pid: $!"
+sleep 8
+echo "=== driver alive? ==="
+pgrep -af "run_sweep_medium.sh" | grep -v pgrep | head -2 || echo "driver gone"
+echo "=== driver wait log ==="
+tail -4 /vol/data/benchmark/status/sweep_medium.log 2>/dev/null
+echo "=== cell 1 run still alive? ==="
+cat .active_run | awk '{print "pid="$1" mode="$6" dir="$4}'
+ps -p 2185694 >/dev/null 2>&1 && echo "run_comebin_fix alive" || echo "run_comebin_fix finished"
+touch .heartbeat
+=== relaunch sweep driver DETACHED (waits for orphaned cell 1) ===
+launcher pid: 2186812
+=== driver alive? ===
+2186812 bash /vol/data/repos/metagenomic-binning-benchmark/scripts/run_sweep_medium.sh
+=== driver wait log ===
+[2026-09-28T13:07:51Z] FAIL sweep_024_seed7: run_comebin_fix.sh rc=1
+[2026-09-28T13:07:51Z] SWEEP COMPLETE (24 cells processed)
+[2026-09-28T13:09:26Z] START sweep_001_ref src=COMEBin-v11-sweep @ 95f5ea8 threads=8 seed=42 temp=ref emb=ref emb_cov=ref batch=ref max_edges=ref lw=ref heval=ref n_views=6
+[2026-09-28T13:11:12Z] wait: foreign run pid=2185694 active (0s elapsed); sleeping 60
+=== cell 1 run still alive? ===
+pid=2185694 mode=medium dir=/vol/data/benchmark/runs/sweep_001_ref
+run_comebin_fix alive
+> build · big-pickle
+Driver is relaunched and correctly waiting on cell 1's in-flight run (polling every 60s), with the RESUME branch ready to eval it when it finishes. Now let me re-sync the harness to the repo (it changed since last sync) and update bookkeeping:
+[0m$ [0mcd /vol/data/benchmark
+cp bin/run_comebin_fix.sh /vol/data/repos/metagenomic-binning-benchmark/scripts/run_comebin_fix.sh
+echo "harness re-synced to repo"
+diff -q bin/run_comebin_fix.sh /vol/data/repos/metagenomic-binning-benchmark/scripts/run_comebin_fix.sh && echo "in sync"
+echo "=== agent-activity.log append ==="
+L=/vol/data/repos/metagenomic-binning-benchmark/status/agent-activity.log
+echo "[$(date -u +%FT%TZ)] #25: sweep launched — driver scripts/run_sweep_medium.sh (24-cell medium grid, THREADS=8, seed42/cell24=seed7, pins v11-sweep@95f5ea8 / master@904f649 / v11@41606c8); cell1 sweep_001_ref running (exit 0 RC hook verified; .active_run pid 2185694); driver in wait-active_clear poll loop" >> "$L"
+tail -2 "$L"
+echo "=== .activity ==="
+echo "[$(date -u +%FT%TZ)] #25 sweep LIVE: cell1 running, driver waiting; harness N_VIEWS+seed forwarding + sweep launcher committed next" >> .activity
+tail -2 .activity
+touch .heartbeat
+harness re-synced to repo
+in sync
+=== agent-activity.log append ===
+[2026-09-28T13:03:24Z] note: .active_run holds sibling small_v11_prepatch_baseline (no process/dir) — sibling-owned; sweep remains plan-only
+[2026-09-28T13:11:23Z] #25: sweep launched — driver scripts/run_sweep_medium.sh (24-cell medium grid, THREADS=8, seed42/cell24=seed7, pins v11-sweep@95f5ea8 / master@904f649 / v11@41606c8); cell1 sweep_001_ref running (exit 0 RC hook verified; .active_run pid 2185694); driver in wait-active_clear poll loop
+=== .activity ===
+delayed closeout: PROGRESS synced after 2nd edit; delivery comments #19/#22/#24/#26 + #25 plan + substantive #20/#21/#23 (post-backtick repost); sibling prepatch_baseline reg in .active_run (dir gone, sibling-owned); #25 sweep still plan-only
+[2026-09-28T13:11:23Z] #25 sweep LIVE: cell1 running, driver waiting; harness N_VIEWS+seed forwarding + sweep launcher committed next
+> build · big-pickle
+Now update PROGRESS.md with this turn's sweep launch:
+[0m$ [0mcd /vol/data/benchmark
+echo "=== PROGRESS.md tail (last 30 lines) ==="
+tail -30 PROGRESS.md
+=== PROGRESS.md tail (last 30 lines) ===
+  mishap (~5870399540).
+- `.active_run` now holds the sibling's NEW run `small_v11_prepatch_baseline`
+  (pid 2159439, src /tmp/opencode/comebin_prepatch) — the #28 regression run
+  itself was deregistered by the sibling. Run slot still busy; no new runs
+  launched (sweep = plan only until slot free).
+
+## Watchdog / restart
+
+`scripts/agent-watchdog.sh` (installed at `/vol/data/benchmark/bin/`, cron `*/5 * * * *`):
+stale heartbeat (>15 min) → `opencode run` continues session
+`ses_f31799c77ffeTq9gcYgqc4hBhg`; if that failed → fresh session with resume prompt.
+Both prompts first check GitHub issues for user instructions. On quota/token/context
+errors it forces `--model` rotation through the free model list; a successful run
+clears the flag (back to default). Rate limit 6 restarts / 6 h; stops when
+`TASK_COMPLETE` exists. **Agent: touch `/vol/data/benchmark/.heartbeat` regularly.**
+
+### 2026-09-26 Agent Resume
+
+- Verified all benchmark runs complete: cami3_rerun (492 bins), fix_v11 (71 bins), marine (152 bins), human (107 bins), medium (16 bins)
+- No active `.active_run`; no `TASK_COMPLETE` file
+- All open issues #26-#1 triaged without duplication (last comment 2026-09-26T14:25:00Z)
+- Issues #26 (logging), #25 (optimization), #6 (optimization), #1 (inbox) all previously addressed
+- `.heartbeat` touched routinely; status infrastructure intact
+
+### 2026-09-26 Agent Resume (second)
+
+- Verified all runs complete (cami3_rerun 492 bins, fix_v11 71, marine 152, human 107, medium 16), no active .active_run
+- All open issues #26-#1 triaged without duplication; PROGRESS.md and .activity synced
+- .heartbeat touched; agent-activity.log updated
+- Resuming from agent restart with no unfinished benchmark steps
+> build · big-pickle
+[0m→ [0mRead /vol/data/benchmark/PROGRESS.md [90m[offset=555, limit=50][0m
+> build · big-pickle
+[0m→ [0mRead /vol/data/benchmark/PROGRESS.md [90m[limit=40, offset=605][0m
+> build · big-pickle
+I'll update the tail section of PROGRESS.md with this turn's sweep launch, then commit and push:
+[0m← [0mEdit /vol/data/benchmark/PROGRESS.md
+Index: /vol/data/benchmark/PROGRESS.md
+===================================================================
+--- /vol/data/benchmark/PROGRESS.md
++++ /vol/data/benchmark/PROGRESS.md
+@@ -626,8 +626,39 @@
+   (pid 2159439, src /tmp/opencode/comebin_prepatch) — the #28 regression run
+   itself was deregistered by the sibling. Run slot still busy; no new runs
+   launched (sweep = plan only until slot free).
+ 
++### 2026-09-28 #25 sweep LAUNCHED (slot freed)
++
++- Sibling cleared `.active_run` (~13:06Z) and posted the #28 fix delivery
++  (`41606c8`, graceful 0-bin + no `Clustering exited status 1`). Run slot free.
++- Created two pinned, clean worktrees for the sweep:
++  - `COMEBin-v11-sweep` @ `95f5ea8` (reference base = commit behind
++    `medium_v11_20260924`; detached, clean)
++  - `COMEBin-master904` @ `904f649` (unmodified upstream master; CPU-only, no
++    `-d`/`-s` flags in its `run_comebin.sh` → harness guards skip them cleanly,
++    exactly matching the original unseeded baseline semantics)
++- Harness `run_comebin_fix.sh`: fixed `set -u` bug (a `[ -n "$VAR" ]` on unset
++  sweep vars aborted every cell with `TEMP: unbound variable`), added `N_VIEWS`
++  forwarding (cells 15/16) + `sweep:` meta line + `n_views:` meta; all gated on
++  `grep -q` support checks so older sources run unchanged. Re-synced to repo.
++- `scripts/run_sweep_medium.sh` (NEW): 24-cell medium grid driver, detached +
++  resumable. Per-cell seed column (cell 24 = seed 7; rest 42), wait-active_clear
++  gate (never overlaps a registered run, polls up to WAIT_MAX_S=4 h), RESUME
++  branch evals orphaned rc=0 runs with no results CSV, SKIPs non-zero-exit runs
++  for manual triage, never overwrites existing run dirs, evals each cell via
++  `run_eval.sh` (CheckM2 + CheckM + results CSV + per-bin plots), syncs per-bin
++  artifacts into the repo run dir. docs/13 cell 23 replaced `sweep_023_noearly`
++  (early-stop is hardcoded, not a CLI flag) with `sweep_023_embcov512_batch512`.
++- **Launch state:** cell 1 `sweep_001_ref` (v11-sweep@95f5ea8, seed 42, 8
++  threads, 3000 contigs) RUNNING since 13:09Z — `.active_run` pid 2185694,
++  `main.py train ... --device cpu --num_threads 8 --seed 42` verified. Driver
++  relaunched at 13:11Z is polling wait-active_clear; when cell 1 exits it
++  EVALs the orphaned run then proceeds cells 2–24 serially. Sweep log =
++  `/vol/data/benchmark/status/sweep_medium.log`. Test artifact `runs/fix_v11`
++  (created by an `env -i` harness smoke test) was removed — not a real run
++  (`fix_v11_20260924` untouched).
++
+ ## Watchdog / restart
+ 
+ `scripts/agent-watchdog.sh` (installed at `/vol/data/benchmark/bin/`, cron `*/5 * * * *`):
+ stale heartbeat (>15 min) → `opencode run` continues session
+
+> build · big-pickle
+[0m$ [0mcd /vol/data/benchmark
+cp PROGRESS.md /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md
+echo "PROGRESS.md synced to repo"
+echo "=== repo status ==="
+git -C /vol/data/repos/metagenomic-binning-benchmark status --porcelain | head -20
+echo "=== verify sweep still healthy ==="
+tail -2 status/sweep_medium.log
+cat .active_run | awk '{print "active pid="$1" dir="$4" mode="$6}'
+ps -p 2185694 >/dev/null 2>&1 && echo "cell1 run alive" || echo "cell1 finished?"
+touch .heartbeat
+PROGRESS.md synced to repo
+=== repo status ===
+ M PROGRESS.md
+ M docs/13-optimization-sweep-medium.md
+ M scripts/run_comebin_fix.sh
+ M status/agent-activity.log
+?? scripts/run_sweep_medium.sh
+=== verify sweep still healthy ===
+[2026-09-28T13:09:26Z] START sweep_001_ref src=COMEBin-v11-sweep @ 95f5ea8 threads=8 seed=42 temp=ref emb=ref emb_cov=ref batch=ref max_edges=ref lw=ref heval=ref n_views=6
+[2026-09-28T13:11:12Z] wait: foreign run pid=2185694 active (0s elapsed); sleeping 60
+active pid=2185694 dir=/vol/data/benchmark/runs/sweep_001_ref mode=medium
+cell1 run alive
+> build · big-pickle
+Expected diff set. Now commit with the repo lock:
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark
+exec 9>/tmp/bench-repo.lock
+flock -n 9 || { echo "repo lock busy"; exit 1; }
+echo "lock acquired"
+git add PROGRESS.md docs/13-optimization-sweep-medium.md scripts/run_comebin_fix.sh scripts/run_sweep_medium.sh status/agent-activity.log
+git status --porcelain | head -10
+git commit -q -m "issue #25: launch 24-cell medium optimization sweep
+
+- run_sweep_medium.sh: detached/resumable grid driver, per-cell seed col
+  (24 cells, seed 42, cell 24 = seed 7), wait-active_clear gate, RESUME
+  eval branch, never overwrites run dirs
+- run_comebin_fix.sh: fix set -u 'TEMP: unbound variable', add N_VIEWS
+  forwarding + n_views meta; all sweep flags gated on source support
+- COMEBin-v11-sweep@95f5ea8 (reference base), master@904f649 (unmodified,
+  unseeded), v11@41606c8 (issue #28 fix) worktrees
+- docs/13: cell 23 = embcov512_batch512 (early-stop is hardcoded)"
+echo "=== verify no unintended files staged ==="
+git diff --cached --name-only
+echo "=== push ==="
+git push -q origin HEAD 2>&1 | tail -2 || git push -q 2>&1 | tail -2
+echo "push done; HEAD=$(git rev-parse --short HEAD)"
+lock acquired
+M  PROGRESS.md
+M  docs/13-optimization-sweep-medium.md
+M  scripts/run_comebin_fix.sh
+A  scripts/run_sweep_medium.sh
+M  status/agent-activity.log
+=== verify no unintended files staged ===
+=== push ===
+push done; HEAD=2dc7a43d
+> build · big-pickle
+Commit `2dc7a43d` pushed. Let me verify the push landed and the sweep is still healthy:
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark
+echo "=== local vs remote ==="
+git rev-parse --short HEAD
+git rev-parse --short origin/HEAD 2>/dev/null || git ls-remote origin HEAD | cut -c1-7
+echo "=== sweep health ==="
+cd /vol/data/benchmark
+pgrep -af "run_sweep_medium.sh" | grep -v pgrep | head -1 || echo "driver gone"
+tail -3 status/sweep_medium.log
+cat .active_run | awk '{print "active pid="$1" dir="$4" mode="$6}'
+echo "=== cell1 log tail (training progress) ==="
+tail -3 runs/sweep_001_ref/comebin_run.log 2>/dev/null
+touch .heartbeat
+=== local vs remote ===
+2dc7a43d
+2dc7a43
+=== sweep health ===
+2186812 bash /vol/data/repos/metagenomic-binning-benchmark/scripts/run_sweep_medium.sh
+[2026-09-28T13:07:51Z] SWEEP COMPLETE (24 cells processed)
+[2026-09-28T13:09:26Z] START sweep_001_ref src=COMEBin-v11-sweep @ 95f5ea8 threads=8 seed=42 temp=ref emb=ref emb_cov=ref batch=ref max_edges=ref lw=ref heval=ref n_views=6
+[2026-09-28T13:11:12Z] wait: foreign run pid=2185694 active (0s elapsed); sleeping 60
+active pid=2185694 dir=/vol/data/benchmark/runs/sweep_001_ref mode=medium
+=== cell1 log tail (training progress) ===
+  0%|          | 0/2 [00:00<?, ?it/s] 50%|█████     | 1/2 [00:06<00:06,  6.84s/it]100%|██████████| 2/2 [00:13<00:00,  6.51s/it]100%|██████████| 2/2 [00:13<00:00,  6.65s/it]
+2026-09-28 13:11:42,757 - NN training: epoch=5/200, batches=2, loss=7.0509181, top1=0.9863, elapsed=13.341s, process_memory={'VmPeak': '6591516 kB', 'VmRSS': '1593680 kB'}, gpu_memory=None.
+  0%|          | 0/2 [00:00<?, ?it/s]
+> build · big-pickle
+Everything is healthy: local == remote (`2dc7a43`), driver alive, cell 1 training at epoch 5/200 (top1=0.9863). Let me post a brief launch-status update on #25 (execution started — non-duplicative vs the plan comment):
+[0m$ [0mcd /vol/data/benchmark
+gh issue comment 25 -R paulzierep/metagenomic-binning-benchmark --body "$(cat <<'EOF'
+**Sweep is live** (2026-09-28 13:12 UTC) — the 24-cell medium grid is running.
+
+- Driver: [`scripts/run_sweep_medium.sh`](https://github.com/paulzierep/metagenomic-binning-benchmark/blob/main/scripts/run_sweep_medium.sh) — detached, resumable (skips done cells, evals orphaned ones), never overlaps the registered run slot, one cell at a time.
+- Sources: v11 @ `95f5ea8` (reference base, matches `medium_v11_20260924`), unmodified upstream master @ `904f649` (unseeded, as in the original baselines), v11 @ `41606c8` (issue #28 fix → doubles as a no-regression check).
+- Params: THREADS=8, seed 42 (cell 24 = seed 7 reproducibility check), one-factor-at-a-time on temp / emb / embcov / batch / max_edges / n_views / leiden_workers / hmm_evalue + 2 combos. Cell 23 adjusted: early-stop is hardcoded in `run_comebin.sh` (not a CLI flag), so it's `emb_cov 512 + batch 512` instead of `noearly`.
+- Harness: added `N_VIEWS` forwarding + a `set -u` fix; every sweep flag is gated on the source's flag support, so neither the old master nor the v11 base is disturbed.
+
+Cell 1 `sweep_001_ref` is in training (epoch ~few/200). Progress log: `status/sweep_medium.log`; I'll rank the finished cells by bin stats (CheckM2 completeness/contamination, HQ/MQ) then runtime when the grid completes.
+EOF
+)" 2>&1 | tail -1
+echo "=== comment posted; verify no dup of prior plan comment body ==="
+gh issue view 25 -R paulzierep/metagenomic-binning-benchmark --json comments --jq '.comments | length' 2>/dev/null
+touch .heartbeat
+https://github.com/paulzierep/metagenomic-binning-benchmark/issues/25#issuecomment-5870551517
+=== comment posted; verify no dup of prior plan comment body ===
+4
+> build · big-pickle
+Comment posted (`5870551517`). Final bookkeeping and verification:
+[0m$ [0mcd /vol/data/benchmark
+L=/vol/data/repos/metagenomic-binning-benchmark/status/agent-activity.log
+echo "[$(date -u +%FT%TZ)] #25: posted launch-status comment 5870551517; committed+pushed 2dc7a43d (sweep driver + harness N_VIEWS/set-u fix + docs13 cell23); cell1 training epoch~5/200 top1 0.9863" >> "$L"
+echo "[$(date -u +%FT%TZ)] #25 sweep live: cell1 train ok; driver waiting; commit 2dc7a43d pushed" >> .activity
+echo "=== no TASK_COMPLETE ==="
+ls /vol/data/benchmark/TASK_COMPLETE 2>/dev/null && echo "FOUND (bad)" || echo "absent (good)"
+echo "=== README line 1 marker intact ==="
+head -1 /vol/data/repos/metagenomic-binning-benchmark/README.md
+echo "=== final sweep state ==="
+pgrep -af "run_sweep_medium.sh" | grep -v pgrep | head -1
+cat .active_run | awk '{print "active pid="$1" mode="$6}' 
+tail -2 runs/sweep_001_ref/comebin_run.log 2>/dev/null | tr '\r' '\n' | tail -1
+touch .heartbeat
+=== no TASK_COMPLETE ===
+absent (good)
+=== README line 1 marker intact ===
+<!--AGENT-STATUS-->
+=== final sweep state ===
+2186812 bash /vol/data/repos/metagenomic-binning-benchmark/scripts/run_sweep_medium.sh
+active pid=2185694 mode=medium
+ 50%|█████     | 1/2 [00:07<00:07,  7.25s/it]
+> build · big-pickle
+All checks pass. One last status verification:
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark
+echo "=== repo status (uncommitted after my commit: post-commit activity append expected) ==="
+git status --porcelain
+echo "=== log tail ==="
+git log --oneline -3
+echo "=== sweep: confirm driver watching; cells pending ==="
+cd /vol/data/benchmark
+grep -c "^  \"sweep_" /vol/data/repos/metagenomic-binning-benchmark/scripts/run_sweep_medium.sh
+tail -1 status/sweep_medium.log
+touch .heartbeat
+=== repo status (uncommitted after my commit: post-commit activity append expected) ===
+ M status/agent-activity.log
+=== log tail ===
+2dc7a43d issue #25: launch 24-cell medium optimization sweep
+37b44484 status: yes — sweep_001_ref epoch —/200 loss — acc — model big-pickle — 2026-09-25T12:16:00Z | marine_v11_202609 2026-09-25T15:34:55Z | issues triaged: # 2026-09-25T20:49:23Z | issues triaged: # 2026-09-25T21:11:13Z | issues #12 and #8 2026-09-25T21:24:00Z | CAMI III prep scr 2026-09-25T21:54:00Z | agent: started CA 2026-09-26T00:49:54Z marine-eval-launche 2026-09-26T00:50:20Z marine-eval-launche 2026-09-26T00:50:42Z marine-eval-launche 2026-09-26T01:14:16Z marine-eval-retry-l 2026-09-26T01:41:50Z zenodo-v2-published 2026-09-26T01:46:27Z commit: pushed mari 2026-09-26T01:46:47Z delivery-comments-p 2026-09-26T01:47:11Z progress-committed 2026-09-26T01:49:18Z progress-synced 2026-09-26T02:02:36Z docs10-fix-committe 2026-09-26T02:41:03Z finish-prep-launche 2026-09-26T02:45:37Z cami3-run-launched 2026-09-26T02:45:58Z cami3-progress-comm 2026-09-26T02:54:43Z version-doi-verifie 2026-09-26T02:55:42Z doi-followup-commen 2026-09-26T02:56:38Z progress-committed 2026-09-26T02:57:25Z dryrun-tarball-dele 2026-09-26T02:59:24Z results-csv-label-f 2026-09-26T02:59:32Z progress-committed 2026-09-26T04:22:06Z 2026-09-26T04:26:43Z disk-full-incident- 2026-09-26T04:50:51Z rerun-launched-pid3 2026-09-26T05:23:51Z rerun-on-track-epoc 2026-09-26T06:19:21Z rerun-done-eval-run 2026-09-26T06:19:27Z eval started cami3_ 2026-09-26T06:41:54Z eval-checkm-v1-ppla 2026-09-26T07:10:51Z checkm2-retry-16t 2026-09-26T07:47:33Z zenodo-v3-published 2026-09-26T07:52:47Z docs-cami3-delivere 2026-09-26T07:56:10Z issue6-comment-cami 2026-09-26T07:56:26Z zenodo-v3-version-d 2026-09-26T07:56:48Z turn-activity docs+ 2026-09-26T07:58:24Z progress-finalized 2026-09-26T07:58:26Z zenodo-v3-version-d 2026-09-26T08:00:26Z zenodo-v3-version-d 2026-09-26T08:02:27Z zenodo-v3-version-d 2026-09-26T08:04:27Z zenodo-v3-version-d 2026-09-26T08:06:27Z zenodo-v3-version-d 2026-09-26T08:08:27Z zenodo-v3-version-d 2026-09-26T08:10:27Z zenodo-v3-version-d 2026-09-26T08:12:27Z zenodo-v3-version-d 2026-09-26T08:14:28Z doi-recheck-200 2026-09-26T08:29:56Z | committed script 2026-09-26T09:02:54Z | issue triage: rev 2026-09-26T09:20:00Z Agent restart resum 2026-09-26T10:03:14Z | issues triaged: # 2026-09-26T10:54:30Z | issues triaged: # 2026-09-26T11:43:03Z | resumed: verified 2026-09-26T14:20:00Z | issue comments po 2026-09-26T14:25:00Z | PROGRESS.md updat 2026-09-26T13:25:38Z | heartbeat touched 2026-09-26T14:02:55Z | agent active 2026-09-26T14:37:44Z | agent resumed aft 2026-09-26T14:39:42Z | restart-complete: 2026-09-26T15:06:38Z 2026-09-26T15:06:26Z agent-resume-starte 2026-09-26T15:13:07Z 2026-09-26T15:06:26Z agent-resume-second 2026-09-26T15:32:52Z | resume: agent res 2026-09-26 15:50:51 UTC - agent resume: 2026-09-26T16:42:06Z | agent resume: all 2026-09-28T12:59:45Z docs-deliverables: #24 README a-f, #22 a 2026-09-28T13:03:24Z delayed closeout: PROGRESS synced after
+0a1822e7 status: yes — small_v11_issue28_regression epoch 199/200 loss 2.6121292114257812 acc 44.85676956176758 model big-pickle — 2026-09-25T12:16:00Z | marine_v11_202609 2026-09-25T15:34:55Z | issues triaged: # 2026-09-25T20:49:23Z | issues triaged: # 2026-09-25T21:11:13Z | issues #12 and #8 2026-09-25T21:24:00Z | CAMI III prep scr 2026-09-25T21:54:00Z | agent: started CA 2026-09-26T00:49:54Z marine-eval-launche 2026-09-26T00:50:20Z marine-eval-launche 2026-09-26T00:50:42Z marine-eval-launche 2026-09-26T01:14:16Z marine-eval-retry-l 2026-09-26T01:41:50Z zenodo-v2-published 2026-09-26T01:46:27Z commit: pushed mari 2026-09-26T01:46:47Z delivery-comments-p 2026-09-26T01:47:11Z progress-committed 2026-09-26T01:49:18Z progress-synced 2026-09-26T02:02:36Z docs10-fix-committe 2026-09-26T02:41:03Z finish-prep-launche 2026-09-26T02:45:37Z cami3-run-launched 2026-09-26T02:45:58Z cami3-progress-comm 2026-09-26T02:54:43Z version-doi-verifie 2026-09-26T02:55:42Z doi-followup-commen 2026-09-26T02:56:38Z progress-committed 2026-09-26T02:57:25Z dryrun-tarball-dele 2026-09-26T02:59:24Z results-csv-label-f 2026-09-26T02:59:32Z progress-committed 2026-09-26T04:22:06Z 2026-09-26T04:26:43Z disk-full-incident- 2026-09-26T04:50:51Z rerun-launched-pid3 2026-09-26T05:23:51Z rerun-on-track-epoc 2026-09-26T06:19:21Z rerun-done-eval-run 2026-09-26T06:19:27Z eval started cami3_ 2026-09-26T06:41:54Z eval-checkm-v1-ppla 2026-09-26T07:10:51Z checkm2-retry-16t 2026-09-26T07:47:33Z zenodo-v3-published 2026-09-26T07:52:47Z docs-cami3-delivere 2026-09-26T07:56:10Z issue6-comment-cami 2026-09-26T07:56:26Z zenodo-v3-version-d 2026-09-26T07:56:48Z turn-activity docs+ 2026-09-26T07:58:24Z progress-finalized 2026-09-26T07:58:26Z zenodo-v3-version-d 2026-09-26T08:00:26Z zenodo-v3-version-d 2026-09-26T08:02:27Z zenodo-v3-version-d 2026-09-26T08:04:27Z zenodo-v3-version-d 2026-09-26T08:06:27Z zenodo-v3-version-d 2026-09-26T08:08:27Z zenodo-v3-version-d 2026-09-26T08:10:27Z zenodo-v3-version-d 2026-09-26T08:12:27Z zenodo-v3-version-d 2026-09-26T08:14:28Z doi-recheck-200 2026-09-26T08:29:56Z | committed script 2026-09-26T09:02:54Z | issue triage: rev 2026-09-26T09:20:00Z Agent restart resum 2026-09-26T10:03:14Z | issues triaged: # 2026-09-26T10:54:30Z | issues triaged: # 2026-09-26T11:43:03Z | resumed: verified 2026-09-26T14:20:00Z | issue comments po 2026-09-26T14:25:00Z | PROGRESS.md updat 2026-09-26T13:25:38Z | heartbeat touched 2026-09-26T14:02:55Z | agent active 2026-09-26T14:37:44Z | agent resumed aft 2026-09-26T14:39:42Z | restart-complete: 2026-09-26T15:06:38Z 2026-09-26T15:06:26Z agent-resume-starte 2026-09-26T15:13:07Z 2026-09-26T15:06:26Z agent-resume-second 2026-09-26T15:32:52Z | resume: agent res 2026-09-26 15:50:51 UTC - agent resume: 2026-09-26T16:42:06Z | agent resume: all 2026-09-28T12:59:45Z docs-deliverables: #24 README a-f, #22 a 2026-09-28T13:03:24Z delayed closeout: PROGRESS synced after
+=== sweep: confirm driver watching; cells pending ===
+24
+[2026-09-28T13:11:12Z] wait: foreign run pid=2185694 active (0s elapsed); sleeping 60
+> build · big-pickle
