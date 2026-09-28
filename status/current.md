@@ -3,13 +3,13 @@
 | | |
 |---|---|
 | Status | 🔴 `stopped (watchdog will restart)` |
-| ⏱ Updated (Europe/Berlin) | `2026-09-28T15:32 CEST` |
-| 🏃 Live benchmark | `sweep_001_ref` — **epoch 94/200** · loss `4.721885681152344` · top1 acc `38.88671875` (log 11s fresh) |
+| ⏱ Updated (Europe/Berlin) | `2026-09-28T15:34 CEST` |
+| 🏃 Live benchmark | `sweep_001_ref` — **epoch 103/200** · loss `4.66772985458374` · top1 acc `40.162757873535156` (log 9s fresh) |
 | 🧠 Model (last turn) | `big-pickle` (watchdog rotates to free models on quota) |
-| 📌 Agent note · **16 min old** | heartbeat stale 910s — agent dead/idle, watchdog should restart within ~5 min |
-| ⚙️ Load · uptime | `7.99 7.74 6.34` · 4 days, 23 hours, 56 minutes — 32 cores, 62 GiB, no GPU |
-| 💾 RAM used/total | `7585/64295 MB` |
+| 📌 Agent note · **18 min old** | heartbeat stale 1030s — agent dead/idle, watchdog should restart within ~5 min |
+| ⚙️ Load · uptime | `7.69 7.66 6.48` · 4 days, 23 hours, 58 minutes — 32 cores, 62 GiB, no GPU |
+| 💾 RAM used/total | `6316/64295 MB` |
 | 🔗 Session | `ses_f31799c77ffeTq9gcYgqc4hBhg` |
-| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `f3bbc332 status: yes — sweep_001_ref epoch 85/200 loss 4.815260410308838 acc 3` |
+| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `e61f91ea meta: supervise tick 2026-09-28T13:33:01Z — 0 fix(es)` |
 | 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `9678074 B` — every run, command & tool result |
 | 📈 Timeline | [status/status.log](status/status.log) |
