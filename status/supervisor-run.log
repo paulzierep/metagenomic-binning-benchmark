@@ -62370,3 +62370,208 @@ scripts/supervise-alive.sh
 === count ===
 2
 > build · big-pickle
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark || exit 1
+exec 9>/tmp/bench-repo.lock
+flock -w 120 9 || { echo "ABORT: lock"; exit 1; }
+# hard guard: exactly the two intended paths
+actual=$(git diff --cached --name-only | sort | tr '\n' ' ')
+expected="scripts/meta-watchdog.sh scripts/supervise-alive.sh "
+[ "$actual" = "$expected" ] || { echo "ABORT: staged set mismatch: '$actual'"; exit 1; }
+git commit -q -F - <<'EOF'
+Add supervise-alive.sh to source control; watch for unsourced bin scripts
+
+Two linked deploy-drift defects, both found by the meta supervisor:
+
+1. scripts/supervise-alive.sh had no source in this repo. It is a live cron
+   job (every 5 min) that existed only as /vol/data/benchmark/bin/supervise-
+   alive.sh, so it was unversioned, unreviewable, unreproducible, and no
+   future edit could ever reach it. The file is added here byte-identical to
+   the installed copy so the repo is now the single source of truth and C1b
+   can manage it.
+
+2. C1b only walks repo/scripts -> bin. The reverse direction was invisible to
+   it, so an installed script with no repo source stayed healthy as far as
+   C1b was concerned, which is exactly how (1) went unnoticed. New check
+   C1c_unsourced_bin walks bin -> repo/scripts and reports `degraded` for any
+   installed script lacking a source. It is deliberately not auto-fixed:
+   the only correct repair is to add the source, which is a judgement call
+   for the supervisor, so it is reported rather than silently worked around.
+
+Both files are deployed to /vol/data/benchmark/bin and verified
+byte-identical (C1b ok, C1c ok).
+EOF
+echo "=== commit ==="; git log --oneline -1; echo "=== files in commit ==="; git show --stat --name-only --format= HEAD
+=== commit ===
+96aaa1b9 Add supervise-alive.sh to source control; watch for unsourced bin scripts
+=== files in commit ===
+scripts/meta-watchdog.sh
+scripts/supervise-alive.sh
+> build · big-pickle
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark || exit 1
+exec 9>/tmp/bench-repo.lock
+flock -w 180 9 || { echo "ABORT: lock"; exit 1; }
+echo "local  HEAD: $(git rev-parse HEAD)"
+echo "remote HEAD: $(git ls-remote origin refs/heads/main | awk '{print $1}')"
+git push origin HEAD:main 2>&1 | tail -6
+echo "=== after push ==="; echo "local  HEAD: $(git rev-parse HEAD)"; echo "remote HEAD: $(git ls-remote origin refs/heads/main | awk '{print $1}')"
+local  HEAD: 96aaa1b9f84135daa38fd2049f03019531980d9b
+remote HEAD: b6f1fd6f8d07fbee79f187ec0f53623c497b50a7
+To https://github.com/paulzierep/metagenomic-binning-benchmark
+   b6f1fd6f..96aaa1b9  HEAD -> main
+=== after push ===
+local  HEAD: 96aaa1b9f84135daa38fd2049f03019531980d9b
+remote HEAD: 96aaa1b9f84135daa38fd2049f03019531980d9b
+> build · big-pickle
+Pushed cleanly (fast-forward from the agent's `b6f1fd6f`, their work preserved). Let me verify nothing of the agent's was disturbed and check the log format.
+[0m$ [0mtail -6 /vol/data/benchmark/logs/supervisor-actions.log; echo "=== line count ==="; wc -l < /vol/data/benchmark/logs/supervisor-actions.log
+2026-09-24T10:21:35+00:00 [supervisor] Post-publish verification: META_WATCHDOG_NO_LLM=1 reported C1-C7/C9 ok, no active benchmark, 377 GiB free, HEAD=origin/main; C8 remains intentionally broken for open issues; no service/cron/driver restart.
+2026-09-24T10:22:00+00:00 [supervisor] Added one corrective issue #15 update linking the committed 16-row per-bin CheckM2 supplement and clarifying that plots/heatmaps remain open; no duplicate closure performed.
+2026-09-24T11:14:00+00:00 [supervisor] Consumed 6 issue-closer markers (#16,#15,#12,#13,#11,#8) via two issue-closer.sh runs (MAX_PER_RUN=5); verified all 6 CLOSED on GitHub with single automation comments, no dupes; closer published status/meta (306a16c, HEAD=origin/main clean); open set now #17/#14/#7/#6/#2/#1 pending owner; fix_v11 pid 873786 alive.
+2026-09-25T01:41:00+00:00 [supervisor] Escalation 01:33Z: only C8 broken (issues #18/#17/#14/#12/#7/#2); verified all other checks ok, driver alive mid-turn. Deployed stale repo scripts to bin (run_small_test.sh, make_per_bin_plots.py; bin/run_eval.sh would have used the old plot generator) with syntax check. Wrote .issues_done markers #17/#14/#2/#12 (all verified on disk) and cleared stale .issues_closed/12 so the deterministic closer can re-close reopened #12 (by-dataset subplot figure verified embedded in README + regenerated post-fix_v11). #18 triage already posted by driver 01:07:50Z (no duplicate); #7 flowchart rewrite committed by driver but pending owner confirmation -> not marked done. Pushed driver commit 1614c96 (fix_v11 eval complete + issue #18 triage prep) under /tmp/bench-repo.lock; verified HEAD=origin/main=1614c96, worktree clean, only expected paths committed. fix_v11 eval verified: exit 0, 24741 s, 71 bins, CheckM2 24.38/3.78, CheckM v1 21.62/5.18. No service/cron/driver restart; no active run touched.
+2026-09-25T03:06:09Z [supervisor] Escalation 03:03Z: only C8 broken (#18 updated 02:23Z by driver "run launched"); human_v11 run (pid 1412588, cami2-human) healthy at epoch ~106/200, left untouched. Triage already posted by driver (no duplicate comment); work in progress, not closeable -> no .issues_done marker. Advanced .issues_seen/18 to 1790303001 (02:23:21Z) so the watchdog stops re-escalating; marked the issue handled. Deployed missing scripts/prep_cami2_human.sh to bin (byte-identical, chmod 755, syntax OK); verified all other repo scripts are byte-identical + deployed. Verified C1-C7, C8b, C9 ok, no stale state (watchdog attempt/hang-restart markers age-filtered), no cron/service/driver restart, active run untouched. Repo HEAD=origin/main clean.
+2026-09-26T02:14:04+00:00 [supervisor] Escalation 02:03Z: only C8 broken (#12/#8 "updated" at 01:46:41Z/01:46:47Z by the automation own delivery comments, not owner input — self-inflicted alert, so no duplicate comment posted). Verified both issues work rather than trusting the claims: #12 combined_bar_plot.png/.svg is 2x3 (contam <5%/<10% rows x demo/human/marine cols, 6 svg axes), bars carry run+COMEBin commit+branch, results/main_runs_table.md embedded in README and all 4 rows match run_meta.txt; #8 Zenodo v2.0 record 22969763 (MIT) under concept DOI 10.5281/zenodo.22935024 which resolves to v2, public API confirms 168110629 B / MD5 114459d4e728e70b2aefb70e1d8f620e == local tarball, archive holds 410 bin FASTAs + 522-file manifest, v1 files carried over. Found the real defect behind both claims: make_combined_bar_plot.py and zenodo_update.sh were never deployed to /vol/data/benchmark/bin and bin/run_eval.sh was pre-feature, AND all reporting helpers resolved the repo as dirname(script)/.. which from bin/ is the benchmark data dir not the repo (figures/CSVs would land outside git+README; zenodo_update.sh would have published an incomplete release with no docs/, status/, README.md — it had already emitted a stale bench-root results/small_test_v4.csv with superseded CheckM v1 40.24/1.07 vs committed 29.08/0.71, now removed, and the 2 docs lines describing that path corrected). Fixed repo-root resolution in make_results_csv.py/make_per_bin_csv.py/make_per_bin_plots.py/make_combined_bar_plot.py/zenodo_update.sh (validated: README.md+results/ present, BENCH_REPO override) and deployed all of scripts/ to bin/. Added meta-watchdog C1b_deploy: mirrors scripts/->bin/, verifies byte identity, self-heals, reports broken instead of lying when the deploy fails, and DEFERS while .active_run is live so a script is never swapped under a running eval; C1 cron-job set and reinstall path untouched (4 exact jobs, cron active — no reinstall since C1 was ok). Made the SVG deterministic (fixed hashsalt, Date suppressed) so auto-updates diff real changes only. Verified: installed copies resolve REPO to the git repo and regenerate combined_bar_plot.png/main_runs_table.md byte-identically with zero git churn; results+per_bin helpers from bin/ likewise byte-identical; deployed zenodo_update.sh --dry-run packaged 522 files / 577480505 B (content now +7788 B vs published v2, so the next successful eval will correctly publish v3.0); C1b tested for missing/stale/in-sync/unwritable/live-run. Re-checked the v2 version DOI 10.5281/zenodo.22969763 at 02:10Z: still 404 at doi.org (upstream DataCite lag, not actionable) while the record serves 200 — recorded in meta/zenodo_benchmark_release_v2.json, concept DOI is the stable citable link. Wrote .issues_done/12 and /8 (<=400 B each so the closer does not truncate) for the deterministic closer, which runs before the supervisor launch in meta-watchdog so it will action them next tick; issues left OPEN by me and never closed any other way. Also committed the driver uncommitted scripts/prep_cami3_toy.sh long-read fallback (syntax + vars verified, not executing). No service/cron/driver restart (C2 status OK, driver alive), no benchmark run in flight and none touched, 339 GiB free. Pushed 34ea532 under /tmp/bench-repo.lock with an explicit pathspec (10 expected files only, nothing pre-staged, no untracked); HEAD=origin/main and worktree clean, driver has since added ddc45cd on top.
+=== line count ===
+15
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && echo "=== agent in-flight work still present ==="; git status --porcelain; echo "=== my 2 files now clean? ==="; git status --porcelain -- scripts/meta-watchdog.sh scripts/supervise-alive.sh && echo "(clean)"
+=== agent in-flight work still present ===
+=== my 2 files now clean? ===
+(clean)
+> build · big-pickle
+Agent committed its work in flight (nothing lost). Let me do a final health pass before logging.
+[0m$ [0mBENCH=/vol/data/benchmark; REPO=/vol/data/repos/metagenomic-binning-benchmark
+bad=""; for src in "$REPO"/scripts/*; do [ -f "$src" ] || continue; job=$(basename "$src"); case "$job" in __pycache__|*.pyc|*.pyo) continue ;; esac; cmp -s "$src" "$BENCH/bin/$job" || bad="$bad $job"; done
+[ -z "$bad" ] && echo "C1b_deploy: ok (all repo/scripts identical in bin)" || echo "C1b_deploy: DRIFT:$bad"
+orphan=""; for f in "$BENCH"/bin/*; do [ -f "$f" ] || continue; j=$(basename "$f"); case "$j" in .*|__pycache__|*.pyc|*.pyo) continue ;; esac; [ -f "$REPO/scripts/$j" ] || orphan="$orphan $j"; done
+[ -z "$orphan" ] && echo "C1c_unsourced_bin: ok" || echo "C1c_unsourced_bin: DEGRADED:$orphan"
+echo "active run: $([ -f $BENCH/.active_run ] && cat $BENCH/.active_run || echo none)"
+echo "TASK_COMPLETE: $([ -f $BENCH/TASK_COMPLETE ] && echo PRESENT || echo absent)"
+echo "disk: $(df -h /vol/data | tail -1 | awk '{print $4" free"}')"
+echo "HEAD=$(git -C $REPO rev-parse --short HEAD)  origin/main=$(git -C $REPO ls-remote origin refs/heads/main | cut -c1-8)"
+echo "escalations in 360min: $(find $BENCH/meta/.escalations -type f -mmin -360 2>/dev/null | wc -l)  (MAX_ESCAL=3)"
+echo "cron jobs: $(crontab -l 2>/dev/null | grep -c 'benchmark/bin/')"
+C1b_deploy: DRIFT: agent-watchdog.sh export_biobox.sh make_all_runs_table.py make_combined_bar_plot.py make_major_steps_log.py
+C1c_unsourced_bin: ok
+active run: 2159439 2159436 /tmp/opencode/small_v11_prepatch_baseline/comebin_run.log /tmp/opencode/small_v11_prepatch_baseline 1790600298 small /tmp/opencode/comebin_prepatch
+TASK_COMPLETE: absent
+disk: 315G free
+HEAD=96aaa1b9  origin/main=96aaa1b9
+escalations in 360min: 1  (MAX_ESCAL=3)
+cron jobs: 5
+> build · big-pickle
+Two items: stale `.active_run` from my own baseline run, and C1b drift on the agent's newly-committed scripts. Let me fix both.
+[0m$ [0mPID=$(awk '{print $1}' /vol/data/benchmark/.active_run); DIR=$(awk '{print $4}' /vol/data/benchmark/.active_run)
+if kill -0 "$PID" 2>/dev/null; then echo "ABORT: pid $PID still alive"; exit 1; fi
+echo "pid $PID dead; registered dir=$DIR (exists: $([ -d "$DIR" ] && echo yes || echo 'no, already cleaned'))"
+rm -f /vol/data/benchmark/.active_run && echo "cleared stale .active_run"
+pid 2159439 dead; registered dir=/tmp/opencode/small_v11_prepatch_baseline (exists: no, already cleaned)
+cleared stale .active_run
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && for f in agent-watchdog.sh export_biobox.sh make_all_runs_table.py make_combined_bar_plot.py make_major_steps_log.py; do
+  [ -f "scripts/$f" ] || { echo "MISSING SOURCE: $f"; continue; }
+  case "$f" in
+    *.sh) bash -n "scripts/$f" && install -m 0755 "scripts/$f" "/vol/data/benchmark/bin/.dep.$f.tmp" && mv -f "/vol/data/benchmark/bin/.dep.$f.tmp" "/vol/data/benchmark/bin/$f" && cmp -s "scripts/$f" "/vol/data/benchmark/bin/$f" && echo "deployed+identical: $f" || echo "FAIL: $f" ;;
+    *.py) /vol/data/envs/comebin/bin/python -m py_compile "scripts/$f" && install -m 0644 "scripts/$f" "/vol/data/benchmark/bin/.dep.$f.tmp" && mv -f "/vol/data/benchmark/bin/.dep.$f.tmp" "/vol/data/benchmark/bin/$f" && cmp -s "scripts/$f" "/vol/data/benchmark/bin/$f" && echo "deployed+identical: $f" || echo "FAIL: $f" ;;
+  esac
+done
+deployed+identical: agent-watchdog.sh
+deployed+identical: export_biobox.sh
+deployed+identical: make_all_runs_table.py
+deployed+identical: make_combined_bar_plot.py
+deployed+identical: make_major_steps_log.py
+> build · big-pickle
+[0m$ [0mBENCH=/vol/data/benchmark; REPO=/vol/data/repos/metagenomic-binning-benchmark
+bad=""; for src in "$REPO"/scripts/*; do [ -f "$src" ] || continue; job=$(basename "$src"); case "$job" in __pycache__|*.pyc|*.pyo) continue ;; esac; cmp -s "$src" "$BENCH/bin/$job" || bad="$bad $job"; done
+[ -z "$bad" ] && echo "C1b_deploy: ok" || echo "C1b_deploy: DRIFT:$bad"
+orphan=""; for f in "$BENCH"/bin/*; do [ -f "$f" ] || continue; j=$(basename "$f"); case "$j" in .*|__pycache__|*.pyc|*.pyo) continue ;; esac; [ -f "$REPO/scripts/$j" ] || orphan="$orphan $j"; done
+[ -z "$orphan" ] && echo "C1c_unsourced_bin: ok" || echo "C1c_unsourced_bin: DEGRADED:$orphan"
+echo "bin script count: $(ls -1 $BENCH/bin | wc -l)   repo/scripts count: $(ls -1 $REPO/scripts | grep -vE '__pycache__|\.py[co]$' | wc -l)"
+echo "no leftover temp deploys: $(ls -a $BENCH/bin | grep -c '^\.dep\.\|^\.deploy\.')"
+echo "active run: $([ -f $BENCH/.active_run ] && echo PRESENT || echo none)"
+echo "worktree: $(git -C $REPO status --porcelain | wc -l) modified paths"
+C1b_deploy: ok
+C1c_unsourced_bin: ok
+bin script count: 27   repo/scripts count: 26
+no leftover temp deploys: 0
+active run: none
+worktree: 0 modified paths
+> build · big-pickle
+[0m$ [0mBENCH=/vol/data/benchmark; REPO=/vol/data/repos/metagenomic-binning-benchmark
+comm -3 <(ls -1 $REPO/scripts | grep -vE '__pycache__|\.py[co]$' | sort) <(ls -1 $BENCH/bin | sort) | sed 's/^\t/ONLY-IN-BIN: /; s/^\([^ ]\)/ONLY-IN-REPO: \1/'
+ONLY-IN-REPO: ONLY-IN-BIN: __pycache__
+> build · big-pickle
+Perfect correspondence (only `__pycache__`, correctly excluded). Now the required log entry:
+[0m$ [0mTS=$(date -Is)
+printf '%s [supervisor] Escalation 12:53Z: only C8 broken (new/updated #28,#27,#19-#26,#6). Resolved issue #28 (real COMEBin bug, fixed in /vol/data/repos/COMEBin-v11, NOT the benchmark repo, so no conflict with the concurrent agent): commit 41606c8 on comebin-optimizations-v11 makes COMEBin report 0 bins and exit 0 instead of raising. Root cause: test_getmarker_2quarter.pl uses exit 2/3/4 to signal "no usable seed set"; gen_seed() treated every non-zero status as tool failure and escalated an ordinary empty result to RuntimeError. Fix = MARKER_NO_SEED_EXIT_CODES={2,3,4} + allowed_returncodes on _run_external_command; gen_seed() warns, publishes no seed file, returns 0; main.py bin/get_result short-circuit on seed_count==0. Genuine failures (status 1 or outside 2/3/4) still raise, so breakage is not silenced. Verified: new tests/test_marker_seed_empty_result.py 5/5 PASS (same test on parent 95f5ea8 = 10 FAIL incl. the exact reported traceback utils.py:188 rc=1, so the test really pins the bug); issue signature status 3 / "Marker hits mapped to input contigs, but no usable marker seed set could be generated." reproduced on real data and now exits 0 with "Reporting 0 bins"; no-regression proof on benchmark data via run_small_test.sh small dataset (300 contigs/3.5Mbp, seed 42, 200 epochs, 121 Leiden grids) patched 41606c8 vs pre-patch 95f5ea8 on byte-identical inputs -> marker seed file byte-identical, 121/121 Leiden grids bit-identical, winning labels identical. That fixture yields 0 bins for BOTH commits and that is pre-existing, not the fix: whole assembly is 3.5Mbp so no Leiden cluster reaches MINIMUM_FINAL_BIN_SIZE=200kb (largest 124kb); larger fixtures unaffected (cami3_v11_20260926_rerun=492 bins). Diagnosed and proved rather than assumed: an earlier same-fixture run had recorded exit_code=1/0 bins and I did not attribute it to the patch without this A/B. Posted the fix+evidence comment on #28 (issuecomment-5870418121). #27 ("Are u ok ?") was already answered accurately by the agent at 12:52:42Z so I posted no duplicate. Wrote NO .issues_done markers - no issue is verified complete; never closed any issue by any other means. Deploy drift fixed both directions: added scripts/supervise-alive.sh to source control (it was a live 5-min cron job existing only in bin, unversioned and unreachable by any future edit) and added check C1c_unsourced_bin, since C1b only walks repo/scripts->bin and was blind to exactly that failure; C1c reports degraded rather than auto-fixing because adding a source is a judgement call. Committed 96aaa1b9 with exactly 2 paths (scripts/meta-watchdog.sh, scripts/supervise-alive.sh) and pushed to main under /tmp/bench-repo.lock; staged set hard-guarded, index verified empty first, agent in-flight edits (README.md, make_combined_bar_plot.py, make_all_runs_table.py, make_major_steps_log.py, results/*) left untouched and not committed, push was a fast-forward over the agent b6f1fd6f so their work is preserved. Cleared 2 stale .active_run pointers left by my own diagnostic runs (pids 2137087, 2159439, both verified dead first; I did NOT invoke benchmark-watchdog.sh, which would have relaunched a multi-hour full baseline). Deployed the agent 5 newly committed scripts to bin (agent-watchdog.sh, export_biobox.sh, make_all_runs_table.py, make_combined_bar_plot.py, make_major_steps_log.py) after syntax/compile checks -> C1b ok. Final: C1b ok, C1c ok, bin and repo/scripts in exact correspondence, no active benchmark run, no TASK_COMPLETE sentinel, 5 cron jobs, 315 GiB free, 1/3 escalations in 360min, HEAD=origin/main=96aaa1b9, worktree clean. No service/cron/driver restart and no benchmark run touched. Left open deliberately: COMEBin 41606c8 is local-only (origin/comebin-optimizations-v11 still 95f5ea8, origin/master 1b476a4) so the merge to master + bioconda release the user asked for is still the agent follow-up - flagged explicitly on #28 so it is not lost; master is now a clean 2-commit fast-forward with no divergence. The OSError Errno 16 pymp-* DataLoader temp-dir tracebacks left unaddressed to keep blast radius small (non-fatal, training reached epoch 200) and noted as such on #28.\n' "$TS" >> /vol/data/benchmark/logs/supervisor-actions.log
+echo "appended; new line count: $(wc -l < /vol/data/benchmark/logs/supervisor-actions.log)"
+tail -1 /vol/data/benchmark/logs/supervisor-actions.log | cut -c1-160
+appended; new line count: 16
+2026-09-28T13:05:04+00:00 [supervisor] Escalation 12:53Z: only C8 broken (new/updated #28,#27,#19-#26,#6). Resolved issue #28 (real COMEBin bug, fixed in /vol/d
+> build · big-pickle
+[0m$ [0mecho "=== FINAL STATE ==="
+cd /vol/data/repos/metagenomic-binning-benchmark
+echo "HEAD:        $(git rev-parse --short HEAD)"
+echo "origin/main: $(git ls-remote origin refs/heads/main | cut -c1-8)"
+echo "worktree:    $(git status --porcelain | wc -l) modified"
+echo "commit 96aaa1b9 paths:"; git show --stat --name-only --format= HEAD
+echo
+echo "COMEBin v11: $(git -C /vol/data/repos/COMEBin-v11 log --oneline -1)"
+echo "issues: 28 comments=$(cd /vol/data/repos/metagenomic-binning-benchmark && gh issue view 28 --json comments --jq '.comments|length')  27 comments=$(gh issue view 27 --json comments --jq '.comments|length')"
+echo "issues_done markers: $(ls -1 /vol/data/benchmark/meta/.issues_done | wc -l)"
+echo "active run: $([ -f /vol/data/benchmark/.active_run ] && echo PRESENT || echo none)"
+echo "supervisor-actions.log lines: $(wc -l < /vol/data/benchmark/logs/supervisor-actions.log)"
+=== FINAL STATE ===
+HEAD:        96aaa1b9
+origin/main: 96aaa1b9
+worktree:    0 modified
+commit 96aaa1b9 paths:
+scripts/meta-watchdog.sh
+scripts/supervise-alive.sh
+
+COMEBin v11: 41606c8 Report 0 bins instead of erroring when no marker seed set exists
+issues: 28 comments=1  27 comments=1
+issues_done markers: 0
+active run: none
+supervisor-actions.log lines: 16
+> build · big-pickle
+Supervisor run complete.
+
+## What the escalation actually was
+
+`C8_issues broken` was the trigger, not a code bug — 12 issues flagged for triage. Only **#28** was a real defect; I verified rather than assumed.
+
+## Issue #28 — COMEBin marker-seed crash (real bug, fixed)
+
+Root cause: `test_getmarker_2quarter.pl` uses exit codes **2/3/4** to mean "no usable seed set". `gen_seed()` treated every non-zero status as a tool failure, escalating an ordinary *empty result* into `RuntimeError`, which then killed the run with `Clustering exited with status 1`.
+
+Commit `41606c8` on `comebin-optimizations-v11` (in the COMEBin repo, not the benchmark repo — so it never collided with the concurrent agent):
+- `MARKER_NO_SEED_EXIT_CODES = {2,3,4}` + `allowed_returncodes` on `_run_external_command`
+- `gen_seed()` warns, publishes no seed file, returns `0`; `bin`/`get_result` short-circuit to "Reporting 0 bins", exit `0`
+- Genuine failures (status 1, or outside 2/3/4) **still raise** — breakage isn't silenced
+
+Verification: 5/5 new regression tests pass (the same test on the parent commit gives 10 failures including the exact reported traceback); the reported signature reproduced on real data now exits 0.
+
+**The important part — the 0-bins scare was a false alarm.** A regression run of mine reported `exit_code: 1 / 0 bins`, and I did not blame or absolve the patch without evidence. An A/B against the pre-patch commit on byte-identical inputs gave: marker seed byte-identical, **121/121 Leiden grids bit-identical**, winning labels identical. Both commits produce 0 bins because that fixture is 3.5 Mbp total and no cluster reaches `MINIMUM_FINAL_BIN_SIZE` (200 kb) — largest is 124 kb. Pre-existing, unrelated to the fix; larger fixtures are unaffected (CAMI III = 492 bins).
+
+## Deploy drift (both directions)
+
+- `supervise-alive.sh` was a **live 5-min cron job with no repo source** — unversioned, and no future edit could ever reach it. Added to source control.
+- Added check **`C1c_unsourced_bin`**, because `C1b` only walks repo→bin and was structurally blind to exactly this. It reports `degraded` rather than auto-fixing — adding a source is a judgement call, not a mechanical repair.
+
+## Deliberate non-actions
+
+- **No `.issues_done` markers** — no issue is verified complete. Closed nothing by any other means.
+- **#27 got no comment** — the agent had already answered it accurately at 12:52:42Z; posting would have been a duplicate.
+- **Did not run `benchmark-watchdog.sh`** to clear the stale `.active_run` pointers — it would have relaunched a multi-hour full baseline. I verified both pids dead and removed the pointers directly.
+- Left the `pymp-*` `Errno 16` tracebacks alone (non-fatal, epoch 200 reached) to keep blast radius small; noted on #28.
+
+## Commits
+
+| repo | commit | note |
+|---|---|---|
+| COMEBin-v11 | `41606c8` | local only — **not yet on GitHub** |
+| benchmark | `96aaa1b9` | 2 paths exactly, pushed to `main` |
+
+Benchmark push held `/tmp/bench-repo.lock`, hard-guarded the staged set, verified the index was empty first, and fast-forwarded over the agent's `b6f1fd6f` so their in-flight work (README, plots, run tables) was preserved untouched.
+
+**Final:** C1b ok · C1c ok · bin↔repo exact · HEAD=origin/main · worktree clean · no active run · 315 GiB free · 1/3 escalations.
+
+⚠️ **One thing needs the agent:** `41606c8` is still local-only (`origin/comebin-optimizations-v11` is at `95f5ea8`). The merge to `master` and bioconda release you asked for on #28 is **not done** — I flagged this explicitly in the issue comment so it isn't lost. Master is now a clean 2-commit fast-forward with no divergence, so it's a clean merge whenever the agent picks it up.

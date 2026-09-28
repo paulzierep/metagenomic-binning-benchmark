@@ -95907,3 +95907,427 @@ Previous turn pushed `5cc93218` (#24/#22/#19/#26) and `596a5536` (#25 plan + har
 
 ### Issues
 No new owner comments since my posts — the #19–#26 timestamps (~13:00–13:02Z) reflect my own delivery comments. #28 remains sibling-owned (no comments yet). Deliveries posted on #19/#22/#24/#26, plan on #25, substantive replies on #20/#21/#23.
+[0m
+> build · big-pickle
+[0m$ [0mcd /vol/data/benchmark
+echo "=== time ==="
+date -u +%FT%TZ
+echo "=== .active_run ==="
+cat .active_run 2>/dev/null || echo CLEAR
+echo "=== PROGRESS.md current state (head + recent tail) ==="
+sed -n '185,260p' PROGRESS.md
+echo "=== issues: benchmark repo ==="
+gh issue list -R paulzierep/metagenomic-binning-benchmark --state open --json number,title,updatedAt --jq '.[] | "#\(.number) [\(.updatedAt)] \(.title)"' 2>/dev/null
+echo "=== issues: COMEBin repo ==="
+gh issue list -R paulzierep/COMEBin --state open --json number,title,updatedAt --jq '.[] | "#\(.number) [\(.updatedAt)] \(.title)"' 2>/dev/null
+touch .heartbeat
+=== time ===
+2026-09-28T13:04:14Z
+=== .active_run ===
+2159439 2159436 /tmp/opencode/small_v11_prepatch_baseline/comebin_run.log /tmp/opencode/small_v11_prepatch_baseline 1790600298 small /tmp/opencode/comebin_prepatch
+=== PROGRESS.md current state (head + recent tail) ===
+13. `get_augfeature.py`: reads each TSV header twice + same file 3× for names.
+14. Leiden grid = 8×5×3 = 120 unseeded runs in a Pool → sweep/prune/seeding.
+
+**Benchmark integrity:** baseline = pristine upstream commit
+(`/vol/data/repos/COMEBin`, record `git rev-parse HEAD`), unseeded nondeterminism
+included; fixes land on branch `comebin-optimizations` in this repo.
+
+## Current state
+
+- [x] `/vol/data` layout created; micromamba 2.9.0 installed
+- [x] Issue triage (2026-09-26): reviewed open issues #22 (summary table), #21 (seeds), #20 (optimization ideas), #19 (better plots), #6 (optimization); posted initial comments
+- [x] **Agent restart resumed (2026-09-26)**: read PROGRESS.md, checked GitHub issues via `gh issue list`; triaged without duplicating existing responses; verified disk state: CAMI III rerun (cami3_v11_20260926_rerun) complete with Zenodo v3, fix_v11_20260924 completed, baseline_rerun_autorestart1 completed; tiny_test_n100 failed (exit 1, 0 bins - floor at ~101 contigs), tiny_test_n101 passed (exit 0, 1 bin); infrastructure created: agent-activity.log, .heartbeat touched; open issues #22/#21/#20/#19 already commented; no active .active_run; issue #23 commented
+- [x] **Issue triage continuation (2026-09-26)**: new/updated issues #23 (CAMI3 assembly source), #24 (README cleanup), #25 (optimization improvements), #26 (logging improvements); commented without duplicating existing responses
+- [x] **Issue triage follow-up (2026-09-26)**: added comments to issues #26 (logging), #25 (optimization), #24 (README cleanup), #23 (Cami3 assembly source), #22 (summary table), #21 (seed reproducibility), #20 (optimization candidates), #19 (better plots); all without duplicating existing responses
+- [x] **Agent restart (2026-09-26, second resume)**: verified disk state consistent with first resume; CAMI III rerun complete (492 bins, Zenodo v3:10.5281/zenodo.22973575), no active .active_run; all benchmark runs complete; no unfinished steps remaining; re-triaged open issues #26-#1 without duplicating existing responses; touched .heartbeat, updated .activity and agent-activity.log
+- [x] COMEBin test dataset downloaded (5.58 GB) **and extracted** (6.4 GB; 29,434 contigs)
+- [x] Full COMEBin source review (findings above)
+- [x] Base env `/vol/data/envs/comebin` installed (python3.10, numpy1.23, sklearn1.1,
+      biopython1.81, pytorch-cpu, samtools/bwa/bedtools/hmmer/FragGeneScan/prodigal,
+      hnswlib/igraph/leidenalg; scanpy/numba NOT needed — never imported)
+- [x] Eval envs built: `/vol/data/envs/checkm2` (CheckM2 v1.1.0) + `/vol/data/envs/checkm`
+      (checkm v1; repaired with `setuptools<81` → `pkg_resources` on py3.14)
+- [x] Docs written & pushed to `main` (README, PROGRESS, docs/00–06, scripts/, .gitignore)
+- [x] gh CLI 2.45.0 installed + authenticated; idea-inbox issue #1 created
+- [x] Standing permissions configured (`~/.config/opencode/opencode.json`)
+- [x] Watchdogs installed (cron `*/5` agent + `*/5` benchmark-hang + `*/2` status-heartbeat)
+- [x] Per-run detailed logs mirrored into repo `runs/<run>/` (run_meta, comebin_run.log,
+      resources.tsv, comebin_res/*) — baseline row already live on GitHub
+- [x] Command lines documented: `docs/06-benchmark-commands.md`; per-run `run_meta.txt`
+      records `cmd_wrapper:` / `cmd_train_py:` / `cmd_from_log:`
+- [x] Status heartbeat live: German-time (Europe/Berlin) banner on README line 1 +
+      `status/current.md` (mem+load) + `status/status.log` + verbose
+      `status/agent-activity.log` — pushed every 2 min. Now embeds a **live epoch
+      probe** from the active run (banner shows `epoch N/200 · x/28 batches`), so
+      status never looks frozen.
+- [x] Issue #3 "I think comebin is stuck" — answered 2026-09-23 16:33 UTC with
+      live evidence (main.py ~3120% CPU on 32 cores, loss 3.33→3.16, Top1→94%,
+      46/200 epochs, ETA ~6 h worst case): run is healthy; the frozen look was a
+      stale banner snapshot → fixed with the live probe above.
+- [x] Binaries verified: run_FragGeneScan.pl, hmmsearch, bedtools, bwa, samtools, checkm
+- [x] BAM indexed (`SRR5720343.bam.bai`)
+- [x] Small benchmark dataset (issue #2): 300 top-length contigs + real overlapping reads
+      → `/vol/data/datasets/comebin_small` (94 MB); functional test runner ready
+      (`scripts/run_small_test.sh`). `small_test_v4` passed end-to-end on 2026-09-24
+      (30 epochs, 3 non-empty bins, wall 122 s); CheckM2 mean 26.07% completeness /
+      2.02% contamination and CheckM v1 mean 29.08% / 0.71%. Results:
+      `results/small_test_v4.csv`.
+- [x] CAMI II marine assemblies downloaded + **md5 verified** (`1c054a45…`), 9.42 GB;
+      extraction running; marine short-reads URL recorded (docs/01)
+- [x] CAMI II marine sample 0 (short-read): reads archive downloaded (5.2 G, 2026-09-23)
+      + extracted → `reads_0/…/reads/anonymous_reads.fq.gz` (**interleaved paired-end**,
+      35.25 M reads ≈ 17.6 M pairs) + `reads_mapping.tsv.gz` (maps reads → **genome**,
+      not contig). **Input decision** (docs/01): contigs = `anonymous_gsa.fasta.gz`
+      subset ≥2,000 bp (**41,988 contigs**; full set 1.48 M is not COMEBin-feasible),
+      reads = all → `bwa mem -p` single BAM; ground truth = `binning_gs.tsv` subset.
+      `scripts/prep_cami2_marine.sh` + env-overridable `run_comebin_fix.sh`
+      (CONTIGS/BAMDIR/MODE=`cami2`) ready; prep is CPU-bound → runs post-baseline
+- [x] checkm2 reference DB downloaded + extracted (`/vol/data/benchmark/checkm2db/`,
+      `uniref100.KO.1.dmnd` 3.08 GB); **checkm v1 reference data INSTALLED + verified**:
+      official tarball `checkm_data_2015_01_16.tar.gz` (288,590,617 B, `gzip -t` OK)
+      → extracted to `/vol/data/benchmark/checkm_ref/`, `checkm data setRoot` done,
+      CheckM v1.1.3 `taxon_list` loads markers OK (commands in docs/06)
+- [x] **Fix batch 1 (original) committed + pushed to fork** (branch
+      `comebin-optimizations`, commit `03670d6a`, worktree
+      `/vol/data/repos/COMEBin-opt`): sequential bin numbering + float coverage
+      depth (gen_cov.py + gen_var.py) — see `docs/07-fix-batches.md`
+- [x] **Fork updated by user (issue #5)**: origin/master → `1b476a4` (v1.1.0:
+      gen_cov.py float64/Welford rewrite — coverage fix now upstream; gen_var.py
+      removed; new flags `-w -m -d cpu -s seed -E -V`). Rebased fix work onto it:
+      branch **`comebin-optimizations-v11`** @ `95f5ea8` (worktree
+      `/vol/data/repos/COMEBin-v11`): sequential bin numbering + no-empty-bins
+      re-applied; py_compile + synthetic functional test PASS; pushed
+- [x] **Issue #4 "why agent often broken" — root cause found + fixed**: watchdog
+      log showed 17:35–18:41 outage = crash-loop rate limit hit by the OLD
+      one-shot-per-cron design. Persistent driver loop now keeps the agent on
+      the SAME session turn-after-turn; crash-guard markers only count FAILED
+=== issues: benchmark repo ===
+#28 [2026-09-28T13:03:45Z] Fix this issue
+#27 [2026-09-28T12:52:42Z] Are u ok ?
+#26 [2026-09-28T13:00:08Z] Improve logging
+#25 [2026-09-28T13:01:40Z] Improve optimization
+#24 [2026-09-28T13:00:07Z] Main readme needs cleaning
+#23 [2026-09-28T13:02:38Z] Where does the assembly for cami3 come from
+#22 [2026-09-28T13:00:05Z] is there a summary table for all runs
+#21 [2026-09-28T13:02:14Z] use a seed for all runs
+#20 [2026-09-28T13:02:13Z] what are your ideas for further optimization ?
+#19 [2026-09-28T13:00:03Z] better plots
+#6 [2026-09-26T07:56:10Z] Optimization
+#1 [2026-09-23T14:53:13Z] Idea inbox: benchmark ideas, COMEBin fixes, dataset requests
+=== issues: COMEBin repo ===
+> build · big-pickle
+Let me check the PROGRESS.md tail (my last turn's notes), #28's latest comments (it updated at 13:03:45Z), and whether the owner replied anywhere.
+[0m$ [0mcd /vol/data/benchmark
+echo "=== PROGRESS.md tail (recent turn notes) ==="
+grep -n "2026-09-28" PROGRESS.md | tail -8
+echo
+echo "=== #28 comments ==="
+gh issue view 28 -R paulzierep/metagenomic-binning-benchmark --json comments --jq '.comments[] | "\n--- " + .createdAt + " " + .author.login + " ---\n" + (.body[0:400])' 2>/dev/null
+echo
+echo "=== #27 comments ==="
+gh issue view 27 -R paulzierep/metagenomic-binning-benchmark --json comments --jq '.comments[-1] | .createdAt + " " + .author.login + ": " + (.body[0:400])' 2>/dev/null
+touch .heartbeat
+=== PROGRESS.md tail (recent turn notes) ===
+579:### 2026-09-28 Documentation deliverables (#24/#22/#19/#26)
+611:### 2026-09-28 Documentation deliverables — delivery + #25 plan (same day)
+
+=== #28 comments ===
+
+--- 2026-09-28T13:03:45Z paulzierep ---
+Fixed on `comebin-optimizations-v11` @ **`41606c8`** — COMEBin now reports **0 bins and exits 0** instead of raising, and the pipeline no longer dies with `Clustering exited with status 1`.
+
+### Root cause
+`auxiliary/test_getmarker_2quarter.pl` uses distinct exit codes to say "I could not build a usable seed set": `2` (no marker hit matches a contig), `3` (hits mapped, but no gene passes the compl
+
+=== #27 comments ===
+2026-09-28T12:52:42Z paulzierep: Yes — alive again, thanks for checking in. A quick honest recap:
+
+**What happened (the 2-day gap):** a `TASK_COMPLETE` sentinel file got written into the benchmark working area on 2026-09-26. The supervisor treats that file as a hard stop, so agent activity was latched off from ~17:00Z on the 26th until the sentinel was removed (status log literally shows "TASK COMPLETE — sentinel present / alive=
+> build · big-pickle
+The sibling posted the #28 delivery at 13:03:45Z (their issue; not mine to duplicate). No new owner comments — #19–#26 timestamps are my own posts. My #25 sweep remains blocked by the stale sibling registration. The most valuable non-overlapping work now: build the sweep launcher so the #25 grid auto-starts the moment the slot clears, plus first-run checks. Let me inspect the harness and eval flow first.
+[0m$ [0mcd /vol/data/benchmark
+echo "=== run_eval.sh exists? ==="
+ls -la bin/run_eval.sh 2>/dev/null && head -30 bin/run_eval.sh
+echo "=== how previous sweep-eligible runs were evaluated (medium example) ==="
+ls runs/medium_v11_20260924/logs/ 2>/dev/null
+ls /vol/data/repos/metagenomic-binning-benchmark/results/medium_v11_20260924.csv 2>/dev/null && head -2 /vol/data/repos/metagenomic-binning-benchmark/results/medium_v11_20260924.csv
+echo "=== run_comebin_fix.sh: how CONTIGS/BAMDIR defaults + THREADS flow (lines 1-20) ==="
+sed -n '1,20p' bin/run_comebin_fix.sh
+touch .heartbeat
+=== run_eval.sh exists? ===
+-rwxr-xr-x 1 ubuntu ubuntu 8698 Sep 26 08:13 bin/run_eval.sh
+#!/usr/bin/env bash
+# run_eval.sh <rundir> [threads] — CheckM2 + CheckM v1 bin-quality evaluation for a
+# finished COMEBin run. Appends the exact command lines + rc/wall times to
+# <rundir>/run_meta.txt and writes outputs to <rundir>/eval/.
+set -euo pipefail
+MM=/vol/data/tools/bin/micromamba
+CHECKM2_ENV=${CHECKM2_ENV:-/vol/data/envs/checkm2}
+# The standalone checkm environment currently uses Python 3.14, whose
+# forkserver/pickling behaviour breaks CheckM v1's private worker methods.
+# The COMEBin environment contains the same CheckM v1 workflow on Python 3.10;
+# use it by default and keep the override for a repaired standalone env.
+CHECKM_ENV=${CHECKM_ENV:-/vol/data/envs/comebin}
+# pplacer in the Python-3.10 environment needs the OpenBLAS shared object
+# installed in the standalone checkm environment.
+CHECKM_LD_LIBRARY_PATH=${CHECKM_LD_LIBRARY_PATH:-/vol/data/envs/checkm/lib:/vol/data/envs/comebin/lib}
+export MAMBA_ROOT_PREFIX=/vol/data/envs/.mamba
+RUN=${1:?usage: run_eval.sh <rundir> [threads]}
+THREADS=${2:-32}
+exec 9>/tmp/benchmark-start.lock
+flock -n 9 || { echo "ERROR: another benchmark launch/evaluation holds /tmp/benchmark-start.lock"; exit 1; }
+if [ -f /vol/data/benchmark/.active_run ]; then
+  read -r active_pid _ < /vol/data/benchmark/.active_run || true
+  active_state=$(ps -o stat= -p "${active_pid:-0}" 2>/dev/null | tr -d ' ' || true)
+  if [ -n "${active_pid:-}" ] && kill -0 "$active_pid" 2>/dev/null && [[ "$active_state" != Z* ]]; then
+    echo "ERROR: refusing CheckM evaluation while benchmark pid $active_pid is active"
+    exit 1
+  fi
+fi
+BINS="$RUN/comebin_out/comebin_res/comebin_res_bins"
+[ -d "$BINS" ] || { echo "ERROR: no bins dir: $BINS"; exit 1; }
+=== how previous sweep-eligible runs were evaluated (medium example) ===
+resources.tsv
+run_eval.log
+run_eval.pid
+sampler.out
+/vol/data/repos/metagenomic-binning-benchmark/results/medium_v11_20260924.csv
+run,source_commit,dataset,threads,total_time_s,n_bins,checkm2_mean_completeness,checkm2_mean_contamination,checkm2_HQ,checkm2_MQ,checkm_mean_completeness,checkm_mean_contamination,checkm_HQ,checkm_MQ
+medium_v11_20260924,95f5ea820f9a4e76f5c2911c0b5ed507ab67b015,"COMEBin medium (3,000 contigs)",32,2326,16,35.93,4.67,0,2,33.83,6.03,0,3
+=== run_comebin_fix.sh: how CONTIGS/BAMDIR defaults + THREADS flow (lines 1-20) ===
+#!/usr/bin/env bash
+# run_comebin_fix.sh — run a FIXED COMEBin source tree on the demo dataset and
+# record the run exactly like the baseline. The default is the current v1.1.0
+# optimization worktree; override with SRC_COMEBIN=/path/to/repo.
+set -euo pipefail
+
+MM=/vol/data/tools/bin/micromamba
+ENV=/vol/data/envs/comebin
+SRC=${SRC_COMEBIN:-/vol/data/repos/COMEBin-v11}
+DATA=${DATA:-/vol/data/datasets/comebin_test_data}
+CONTIGS=${CONTIGS:-"$DATA/BATS_SAMN07137077_METAG.scaffolds.min500.fasta.f1k.fasta"}
+BAMDIR=${BAMDIR:-"$DATA/bamfiles"}
+MODE=${MODE:-fix}
+[ -f "$CONTIGS" ] || { echo "ERROR: contigs file not found: $CONTIGS"; exit 1; }
+[ -d "$BAMDIR" ] || { echo "ERROR: bamdir not found: $BAMDIR"; exit 1; }
+RUNDIR=$(realpath -m "${1:-/vol/data/benchmark/runs/fix_v11}")
+THREADS=${THREADS:-32}
+SEED=${SEED:-}
+START_LOCK=/tmp/benchmark-start.lock
+ACTIVE=/vol/data/benchmark/.active_run
+> build · big-pickle
+Let me re-verify the sibling run state (heartbeat still says epoch 199/200), the COMEBin repo issues (empty output earlier), and check #6's status:
+[0m$ [0mcd /vol/data/benchmark
+echo "=== any active comebin processes now? ==="
+ps -eo pid,ppid,etimes,args | grep -E "run_comebin|main.py train|small_v11" | grep -v grep | head -5 || echo "none"
+echo "=== heartbeat current banner ==="
+sed -n '3p' /vol/data/repos/metagenomic-binning-benchmark/README.md | cut -c1-130
+echo "=== COMEBin repo open issues (raw) ==="
+gh issue list -R paulzierep/COMEBin --state open --limit 20 2>&1 | head -10
+echo "=== .active_run re-read with mtime ==="
+stat -c '%y %n' .active_run 2>/dev/null
+cat .active_run
+echo "=== #6 recent comments ==="
+gh issue view 6 -R paulzierep/metagenomic-binning-benchmark --json comments --jq '.comments[-1] | .createdAt + " " + .author.login + ": " + (.body[0:300])' 2>/dev/null
+touch .heartbeat
+=== any active comebin processes now? ===
+=== heartbeat current banner ===
+> 🟢 **Agent status:** `running` · ⏱ `2026-09-28T15:04 CEST` · 🏃 last run small_v11_issue28_regression: epoch 199/200 · 
+=== COMEBin repo open issues (raw) ===
+the 'paulzierep/COMEBin' repository has disabled issues
+=== .active_run re-read with mtime ===
+=== #6 recent comments ===
+cat: .active_run: No such file or directory
+2026-09-26T07:56:10Z paulzierep: ### CAMI III toy human gut — run complete (2026-09-26)
+
+Newest dataset results, per the run-logging protocol (full history: [docs/11-run-results.md](https://github.com/paulzierep/metagenomic-binning-benchmark/blob/main/docs/11-run-results.md)).
+
+**`cami3_v11_20260926_rerun`** — CAMI III toy human gu
+> build · big-pickle
+The sibling cleared their registration — `.active_run` is gone and no COMEBin processes are running. The run slot is now **free**, and the COMEBin repo has issues disabled (nothing to triage there). The first unfinished step is the **#25 medium sweep launch**. Let me check resources and disk, then build and launch the sweep driver.
+[0m$ [0mcd /vol/data/benchmark
+echo "=== cores/mem ==="
+nproc
+free -g | awk '/Mem/{print "mem:", $2"G total, " $7"G avail"}'
+echo "=== disk free ==="
+df -h /vol/data /tmp/opencode 2>/dev/null | awk 'NR==1||/\//'
+echo "=== medium dataset ready? ==="
+ls -la /vol/data/datasets/comebin_medium/contigs.fa /vol/data/datasets/comebin_medium/bamfiles/reads.bam 2>/dev/null | awk '{print $5, $9}'
+echo "=== v11 head (what sweep will mostly run) ==="
+git -C /vol/data/repos/COMEBin-v11 rev-parse --short HEAD 2>/dev/null
+git -C /vol/data/repos/COMEBin-v11 status --porcelain --untracked-files=no 2>/dev/null | head -3
+echo "=== COMEBin master head (cell 2 pin) ==="
+git -C /vol/data/repos/COMEBin rev-parse --short HEAD 2>/dev/null
+echo "=== judge: does run_comebin.sh support -l/-e/-c/-b/-m/-w/-E in v11? ==="
+grep -cE '\-l FLOAT|\-e INT|\-c INT|\-b INT|\-m INT|\-w INT|\-E FLOAT' /vol/data/repos/COMEBin-v11/COMEBin/run_comebin.sh 2>/dev/null
+touch .heartbeat
+=== cores/mem ===
+32
+mem: 62G total, 60G avail
+=== disk free ===
+Filesystem      Size  Used Avail Use% Mounted on
+/dev/vdb        492G  152G  315G  33% /vol/data
+/dev/vda1        19G  5.2G   14G  29% /
+=== medium dataset ready? ===
+406576757 /vol/data/datasets/comebin_medium/bamfiles/reads.bam
+14354233 /vol/data/datasets/comebin_medium/contigs.fa
+=== v11 head (what sweep will mostly run) ===
+41606c8
+=== COMEBin master head (cell 2 pin) ===
+1b476a4
+=== judge: does run_comebin.sh support -l/-e/-c/-b/-m/-w/-E in v11? ===
+7
+> build · big-pickle
+Slot is free. Medium dataset ready, 32 cores, 315G free disk. The v11 worktree now heads at `41606c8` (sibling's #28 fix). docs/13's reference cell should ideally pin the pre-fix `95f5ea8` (the commit behind `medium_v11_20260924`) so the fix's no-regression effect is measurable. Let me check the worktree setup before building the sweep driver.
+[0m$ [0mcd /vol/data
+echo "=== worktree layout ==="
+git -C /vol/data/repos/COMEBin-v11 worktree list 2>/dev/null || echo "not a linked worktree"
+echo "=== repo root of v11 ==="
+git -C /vol/data/repos/COMEBin-v11 rev-parse --show-toplevel 2>/dev/null
+echo "=== is 95f5ea8 reachable from v11? ==="
+git -C /vol/data/repos/COMEBin-v11 cat-file -t 95f5ea8 2>/dev/null && git -C /vol/data/repos/COMEBin-v11 log --oneline -1 95f5ea8 2>/dev/null
+echo "=== COMEBin (master) origin ==="
+git -C /vol/data/repos/COMEBin remote -v 2>/dev/null | head -2
+git -C /vol/data/repos/COMEBin log --oneline -2 2>/dev/null
+echo "=== .gitignore in benchmark repo (runs ignored?) ==="
+grep -nE "runs|results" /vol/data/repos/metagenomic-binning-benchmark/.gitignore 2>/dev/null | head
+touch .heartbeat
+=== worktree layout ===
+/vol/data/repos/COMEBin            1b476a4 [master]
+/vol/data/repos/COMEBin-opt        03670d6 [comebin-optimizations]
+/vol/data/repos/COMEBin-small-fix  c8f22e4 [comebin-small-fix]
+/vol/data/repos/COMEBin-v11        41606c8 [comebin-optimizations-v11]
+=== repo root of v11 ===
+/vol/data/repos/COMEBin-v11
+=== is 95f5ea8 reachable from v11? ===
+commit
+95f5ea8 batch1 (v1.1.0 base): sequential bin numbering, drop empty/missing bins
+=== COMEBin (master) origin ===
+origin	https://github.com/paulzierep/COMEBin.git (fetch)
+origin	https://github.com/paulzierep/COMEBin.git (push)
+1b476a4 Clarify PyTorch installation options
+fd7ff06 Update Bioconda CUDA installation example
+=== .gitignore in benchmark repo (runs ignored?) ===
+1:# never commit large/raw benchmark artifacts — only parsed tables go to results/
+15:# NOTE: per-run DETAILED LOGS ARE TRACKED in the repo (runs/<run>/, synced by the
+18:# on disk under /vol/data/benchmark/runs/.
+19:runs/*
+20:!runs/*/
+21:!runs/README.md
+22:!runs/*/run_meta.txt
+23:!runs/*/comebin_run.log
+24:!runs/*/logs/
+25:!runs/*/logs/resources.tsv
+> build · big-pickle
+Slot free, medium dataset ready. Now let me look at the harness cleanup behavior and watchdog interaction before writing the sweep driver:
+[0m$ [0mcd /vol/data/benchmark
+echo "=== run_comebin_fix.sh cleanup + trap (tail) ==="
+sed -n '150,190p' bin/run_comebin_fix.sh
+echo "=== watchdog handles what? (modes) ==="
+grep -nE "MODE|mode|run_meta|restart|triage" bin/benchmark-watchdog.sh 2>/dev/null | head -12
+ls /vol/data/benchmark/bin/
+touch .heartbeat
+=== run_comebin_fix.sh cleanup + trap (tail) ===
+  done
+}
+sample_resources > "$RUNDIR/logs/resources.tsv" 2> "$RUNDIR/logs/sampler.out" &
+SAMPLER_PID=$!
+
+# capture the real main.py train command once training starts (non-blocking)
+( sleep 12; MCMD=$(pgrep -af 'main.py train' 2>/dev/null | head -1 | cut -d' ' -f2-); \
+  [ -n "$MCMD" ] && echo "cmd_train_py: $MCMD" >> "$RUNDIR/run_meta.txt" ) &
+
+START=$(date +%s)
+set +e
+CUDA_VISIBLE_DEVICES= "$MM" run -p "$ENV" bash run_comebin.sh \
+  "${COMEBIN_ARGS[@]}" 2>&1 | tee "$RUNDIR/comebin_run.log"
+RC=${PIPESTATUS[0]}
+set -e
+END=$(date +%s)
+
+# The upstream wrapper can mask a clustering/get_result failure and return 0
+# even when it produced no bins. Validate non-empty artifacts before recording
+# terminal success; this is especially important for the medium benchmark.
+BINS="$RUNDIR/comebin_out/comebin_res/comebin_res_bins"
+BIN_COUNT=0
+if [ -d "$BINS" ]; then
+  BIN_COUNT=$(find -L "$BINS" -maxdepth 1 -type f -size +0c | wc -l)
+fi
+if [ "$RC" -eq 0 ] && [ "$BIN_COUNT" -eq 0 ]; then
+  echo "ERROR: COMEBin returned 0 but no non-empty bins were produced at $BINS; recording failure" \
+    | tee -a "$RUNDIR/run_meta.txt"
+  RC=1
+fi
+{
+  echo "exit_code:  $RC"
+  echo "wall_s:     $((END-START))"
+  echo "finished:   $(date -Is)"
+  if [ "$BIN_COUNT" -gt 0 ]; then
+    echo "bins:       $BIN_COUNT  -> $BINS"
+  else
+    echo "bins:       0  -> $BINS (missing or empty)"
+  fi
+} | tee -a "$RUNDIR/run_meta.txt"
+# record helper-tool commands visible in the log (FragGeneScan/hmmsearch seed genes)
+=== watchdog handles what? (modes) ===
+4:# still restarts it.
+9:#   - HUNG     = process alive but log silent for > $HANG_S -> kill + restart
+10:#   - CRASHED  = process gone with no terminal evidence       -> restart
+12:#   - DONE     = run_meta.txt exit_code:0                    -> clear .active_run
+15:#   - rate limit: max $MAX_PER_RUN restarts per run per rolling 24 h
+20:ACTIVE="$BENCH/.active_run"        # pid pgid logfile rundir start_ts mode source [contigs bamdir]
+36:read -r pid pgid logfile rundir start mode source contigs bamdir < "$ACTIVE"
+38:root_name=${name%%_autorestart*}
+39:mode=${mode:-baseline}
+46:[[ "$mode" =~ ^[A-Za-z0-9._-]+$ ]] || { log "unsafe active-run mode '$mode'; refusing state change"; exit 0; }
+47:if [ "$mode" != "baseline" ] && [ ! -f "$source/COMEBin/run_comebin.sh" ]; then
+48:  log "registered $mode source is missing run_comebin.sh: $source; refusing state change"
+__pycache__
+agent-watchdog.sh
+benchmark-watchdog.sh
+export_biobox.sh
+issue-closer.sh
+make_all_runs_table.py
+make_combined_bar_plot.py
+make_major_steps_log.py
+make_medium_dataset.sh
+make_per_bin_csv.py
+make_per_bin_plots.py
+make_release_manifest.py
+make_results_csv.py
+make_small_dataset.sh
+meta-watchdog.sh
+parse_eval.py
+prep_cami2_human.sh
+prep_cami2_marine.sh
+prep_cami3_toy.sh
+run_comebin_baseline.sh
+run_comebin_fix.sh
+run_eval.sh
+run_small_test.sh
+status-heartbeat.sh
+supervise-alive.sh
+test_batch1.py
+zenodo_update.sh
+> build · big-pickle
+The harness self-registers per run and the watchdog owns handoff. Let me check early-stop flag availability and whether I can safely create a pinned worktree at `95f5ea8` for the pre-#28-fix reference cell:
+[0m$ [0mcd /vol/data
+echo "=== earlystop in v11 run_comebin.sh (how to toggle) ==="
+grep -nE "earlystop|early_stop|top1|epoch" /vol/data/repos/COMEBin-v11/COMEBin/run_comebin.sh 2>/dev/null | head -10
+echo "=== common git dir / bare repo? ==="
+git -C /vol/data/repos/COMEBin-v11 rev-parse --git-common-dir 2>/dev/null
+echo "=== can add detached worktree at 95f5ea8? (test dry-run) ==="
+git -C /vol/data/repos/COMEBin-v11 worktree add --detach /vol/data/repos/COMEBin-v11-sweep 95f5ea8 2>&1 | tail -2
+ls /vol/data/repos/COMEBin-v11-sweep/COMEBin/run_comebin.sh 2>/dev/null && echo "v11-sweep worktree OK"
+touch /vol/data/benchmark/.heartbeat
+=== earlystop in v11 run_comebin.sh (how to toggle) ===
+196:    --output_path "${output_dir}/comebin_res" --earlystop --addvars --vars_sqrt \
+=== common git dir / bare repo? ===
+/vol/data/repos/COMEBin/.git
+=== can add detached worktree at 95f5ea8? (test dry-run) ===
+Preparing worktree (detached HEAD 95f5ea8)
+HEAD is now at 95f5ea8 batch1 (v1.1.0 base): sequential bin numbering, drop empty/missing bins
+/vol/data/repos/COMEBin-v11-sweep/COMEBin/run_comebin.sh
+v11-sweep worktree OK
+> build · big-pickle

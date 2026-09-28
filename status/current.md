@@ -3,10 +3,10 @@
 | | |
 |---|---|
 | Status | 🟢 `running` |
-| ⏱ Updated (Europe/Berlin) | `2026-09-28T15:04 CEST` |
-| 🏃 Last benchmark (not active) | `small_v11_issue28_regression` — last observed **epoch 199/200** (log 586s old) |
+| ⏱ Updated (Europe/Berlin) | `2026-09-28T15:05 CEST` |
+| 🏃 Last benchmark (not active) | `small_v11_issue28_regression` — last observed **epoch 199/200** (log 686s old) |
 | 🧠 Model (last turn) | `big-pickle` (watchdog rotates to free models on quota) |
-| 📌 Agent note · **0 min old** | 2026-09-25T12:16:00Z | marine_v11_20260925 active: epoch 147/200, COMEBin-v11@95f5ea8, cami2 mode; heartbeat touched; PROGRESS synced
+| 📌 Agent note · **2 min old** | 2026-09-25T12:16:00Z | marine_v11_20260925 active: epoch 147/200, COMEBin-v11@95f5ea8, cami2 mode; heartbeat touched; PROGRESS synced
 2026-09-25T15:34:55Z | issues triaged: #12 reporting auto-plots confirmed complete; #8 Zenodo record active with continuous-update workflow; marine run completed; no active run
 2026-09-25T20:49:23Z | issues triaged: #12 auto-plots complete; #8 zenodo record published with continuous-update workflow; marine run completed; no active run; agent resumed for CAMI III prep
 2026-09-25T21:11:13Z | issues #12 and #8 triaged: reporting auto-plots confirmed complete and Zenodo continuous-update workflow verified; no active runs; preparing for CAMI III dataset prep
@@ -77,9 +77,9 @@
 docs-deliverables: #24 README a-f, #22 all-runs table (README e + all_runs_table.md), #19 4-dataset stacked plot, #26 major-steps logs; commit+push pending
 2026-09-28T13:03:24Z
 delayed closeout: PROGRESS synced after 2nd edit; delivery comments #19/#22/#24/#26 + #25 plan + substantive #20/#21/#23 (post-backtick repost); sibling prepatch_baseline reg in .active_run (dir gone, sibling-owned); #25 sweep still plan-only |
-| ⚙️ Load · uptime | `1.24 3.43 2.52` · 4 days, 23 hours, 28 minutes — 32 cores, 62 GiB, no GPU |
-| 💾 RAM used/total | `2499/64295 MB` |
+| ⚙️ Load · uptime | `0.40 2.51 2.28` · 4 days, 23 hours, 30 minutes — 32 cores, 62 GiB, no GPU |
+| 💾 RAM used/total | `2613/64295 MB` |
 | 🔗 Session | `ses_f31799c77ffeTq9gcYgqc4hBhg` |
-| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `05545ec7 docs: PROGRESS turn closeout (doc deliverables + #25 plan, replies #20/` |
-| 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `9490352 B` — every run, command & tool result |
+| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `96aaa1b9 Add supervise-alive.sh to source control; watch for unsourced bin scrip` |
+| 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `9515652 B` — every run, command & tool result |
 | 📈 Timeline | [status/status.log](status/status.log) |
