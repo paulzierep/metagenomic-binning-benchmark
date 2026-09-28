@@ -96331,3 +96331,582 @@ HEAD is now at 95f5ea8 batch1 (v1.1.0 base): sequential bin numbering, drop empt
 /vol/data/repos/COMEBin-v11-sweep/COMEBin/run_comebin.sh
 v11-sweep worktree OK
 > build · big-pickle
+The slot is free, dataset ready, and I've created a pinned worktree at `95f5ea8` for the pre-#28-fix reference (cell 1 + all param cells), so the #28-fix cell (41606c8) doubles as a no-regression check. First, small harness change: add `N_VIEWS` forwarding (cells 15/16 need it), since `-n 6` is currently hardcoded.
+[0m← [0mEdit /vol/data/benchmark/bin/run_comebin_fix.sh
+Index: /vol/data/benchmark/bin/run_comebin_fix.sh
+===================================================================
+--- /vol/data/benchmark/bin/run_comebin_fix.sh
++++ /vol/data/benchmark/bin/run_comebin_fix.sh
+@@ -61,9 +61,9 @@
+ DIRTY=$(git -C "$SRC" status --porcelain --untracked-files=no | wc -l)
+ BRANCH=$(git -C "$SRC" branch --show-current)
+ echo "source: $SRC (branch $BRANCH) commit: $COMMIT (dirty files: $DIRTY)"
+ [ "$DIRTY" -eq 0 ] || { echo "REFUSING: source tree has uncommitted changes; commit them first"; exit 1; }
+-COMEBIN_ARGS=(-a "$CONTIGS" -p "$BAMDIR" -o "$RUNDIR/comebin_out" -n 6 -t "$THREADS")
++COMEBIN_ARGS=(-a "$CONTIGS" -p "$BAMDIR" -o "$RUNDIR/comebin_out" -n "${N_VIEWS:-6}" -t "$THREADS")
+ if grep -q -- '-d STR.*device' "$SRC/COMEBin/run_comebin.sh"; then
+   COMEBIN_ARGS+=(-d cpu)
+ fi
+ if [ -n "$SEED" ] && grep -q -- '-s INT.*seed' "$SRC/COMEBin/run_comebin.sh"; then
+
+> build · big-pickle
+[0m← [0mEdit /vol/data/benchmark/bin/run_comebin_fix.sh
+Index: /vol/data/benchmark/bin/run_comebin_fix.sh
+===================================================================
+--- /vol/data/benchmark/bin/run_comebin_fix.sh
++++ /vol/data/benchmark/bin/run_comebin_fix.sh
+@@ -102,8 +102,9 @@
+   echo "commit:     $COMMIT"
+   echo "contigs:    $CONTIGS"
+   echo "bamdir:     $BAMDIR"
+   echo "threads:    $THREADS"
++  echo "n_views:    ${N_VIEWS:-6}"
+   echo "seed:       ${SEED:-unset}"
+   echo "sweep:      temp=${TEMP:-ref} emb=${EMB:-ref} emb_cov=${EMB_COV:-ref} batch=${BATCH:-ref} max_edges=${MAX_EDGES:-ref} leiden_workers=${LEIDEN_WORKERS:-ref} hmm_evalue=${HMM_EVALUE:-ref}"
+   echo "host:       $(nproc) cores, $(free -g | awk '/Mem:/{print $2}')G RAM, gpu=$(nvidia-smi -L 2>/dev/null || echo none)"
+   echo "cmd_wrapper: $CMD_TEXT"
+
+> build · big-pickle
+[0m$ [0mcd /vol/data/benchmark
+grep -n "sweep:" bin/run_comebin_fix.sh
+bash -n bin/run_comebin_fix.sh && echo "syntax OK"
+cp bin/run_comebin_fix.sh /vol/data/repos/metagenomic-binning-benchmark/scripts/run_comebin_fix.sh
+echo "synced repo copy"
+touch .heartbeat
+72:# ---- issue #25 sweep: forward optional training/compute params ------------ #
+108:  echo "sweep:      temp=${TEMP:-ref} emb=${EMB:-ref} emb_cov=${EMB_COV:-ref} batch=${BATCH:-ref} max_edges=${MAX_EDGES:-ref} leiden_workers=${LEIDEN_WORKERS:-ref} hmm_evalue=${HMM_EVALUE:-ref}"
+syntax OK
+synced repo copy
+> build · big-pickle
+[0m← [0mEdit /vol/data/benchmark/bin/run_comebin_fix.sh
+Index: /vol/data/benchmark/bin/run_comebin_fix.sh
+===================================================================
+--- /vol/data/benchmark/bin/run_comebin_fix.sh
++++ /vol/data/benchmark/bin/run_comebin_fix.sh
+@@ -104,9 +104,9 @@
+   echo "bamdir:     $BAMDIR"
+   echo "threads:    $THREADS"
+   echo "n_views:    ${N_VIEWS:-6}"
+   echo "seed:       ${SEED:-unset}"
+-  echo "sweep:      temp=${TEMP:-ref} emb=${EMB:-ref} emb_cov=${EMB_COV:-ref} batch=${BATCH:-ref} max_edges=${MAX_EDGES:-ref} leiden_workers=${LEIDEN_WORKERS:-ref} hmm_evalue=${HMM_EVALUE:-ref}"
++  echo "sweep:      temp=${TEMP:-ref} emb=${EMB:-ref} emb_cov=${EMB_COV:-ref} batch=${BATCH:-ref} max_edges=${MAX_EDGES:-ref} leiden_workers=${LEIDEN_WORKERS:-ref} hmm_evalue=${HMM_EVALUE:-ref} n_views=${N_VIEWS:-6}"
+   echo "host:       $(nproc) cores, $(free -g | awk '/Mem:/{print $2}')G RAM, gpu=$(nvidia-smi -L 2>/dev/null || echo none)"
+   echo "cmd_wrapper: $CMD_TEXT"
+ } | tee "$RUNDIR/run_meta.txt"
+ 
+
+> build · big-pickle
+[0m$ [0mcd /vol/data/benchmark
+bash -n bin/run_comebin_fix.sh && echo "syntax OK"
+cp bin/run_comebin_fix.sh /vol/data/repos/metagenomic-binning-benchmark/scripts/run_comebin_fix.sh
+echo "synced repo copy"
+touch .heartbeat
+syntax OK
+synced repo copy
+> build · big-pickle
+Now let me check the full eval pipeline (results CSV + per-bin CSV) so the sweep driver produces everything the all-runs table needs:
+[0m$ [0mcd /vol/data/benchmark
+echo "=== run_eval.sh tail (what it writes + result pipeline) ==="
+grep -nE "results/|per_bin|make_results_csv|make_per_bin_csv|eval/|\.csv" bin/run_eval.sh | head -20
+echo "=== make_results_csv.py: how it picks runs ==="
+head -40 /vol/data/repos/metagenomic-binning-benchmark/scripts/make_results_csv.py 2>/dev/null || head -40 bin/make_results_csv.py
+touch .heartbeat
+=== run_eval.sh tail (what it writes + result pipeline) ===
+4:# <rundir>/run_meta.txt and writes outputs to <rundir>/eval/.
+47:CHECKM2_OUT="$RUN/eval/checkm2"
+48:CHECKM_ROOT="$RUN/eval/checkm"
+97:  stale_ck2="$RUN/eval/checkm2.incomplete.$(date +%s)"
+147:  echo "=== auto-reporting: results/<run>.csv, runs/<run>/per_bin_results.csv, per_bins.png ==="
+148:  python3 "$(dirname "$0")/make_results_csv.py" "$RUN" 9>&- \
+149:    || echo "WARNING: make_results_csv.py failed (rc=$?)" >&2
+150:  python3 "$(dirname "$0")/make_per_bin_csv.py" "$RUN" 9>&- \
+151:    || echo "WARNING: make_per_bin_csv.py failed (rc=$?)" >&2
+152:  "$MM" run -p "$CHECKM_ENV" python3 "$(dirname "$0")/make_per_bin_plots.py" --all "$RUN" 9>&- \
+153:    || echo "WARNING: make_per_bin_plots.py failed (rc=$?)" >&2
+=== make_results_csv.py: how it picks runs ===
+#!/usr/bin/env python3
+# make_results_csv.py <rundir> [dataset] [threads] — build results/<run>.csv
+# (README "Benchmark runs — performance" + docs/04-evaluation.md contract):
+#   run,source_commit,dataset,threads,total_time_s,n_bins,
+#   checkm2_mean_completeness,checkm2_mean_contamination,checkm2_HQ,checkm2_MQ,
+#   checkm_mean_completeness,checkm_mean_contamination,checkm_HQ,checkm_MQ
+# MIMAG thresholds: HQ = compl>90 & cont<5 ; MQ = compl>=50 & cont<10.
+# Reads meta from <rundir>/run_meta.txt, per-bin scores from
+# <rundir>/eval/checkm2/quality_report.tsv + <rundir>/eval/checkm/out/storage/bin_stats_ext.tsv.
+import ast
+import csv, os, sys
+
+run = os.path.abspath(sys.argv[1])
+name = os.path.basename(run)
+dataset = sys.argv[2] if len(sys.argv) > 2 else ""
+threads = sys.argv[3] if len(sys.argv) > 3 else ""
+meta = os.path.join(run, "run_meta.txt")
+
+
+def _repo_root():
+    """Locate the repository root.
+
+    Also installed as a standalone copy in /vol/data/benchmark/bin/, where
+    `dirname(__file__)/..` is the benchmark data dir rather than the repo, so
+    the aggregate CSV would land outside the repo README/git track. Validate
+    candidates instead of assuming; BENCH_REPO overrides.
+    """
+    here = os.path.dirname(os.path.abspath(__file__))
+    for cand in (os.environ.get("BENCH_REPO", "").strip(),
+                 os.path.normpath(os.path.join(here, ".."))):
+        if cand and os.path.isfile(os.path.join(cand, "README.md")) \
+                and os.path.isdir(os.path.join(cand, "results")):
+            return cand
+    return "/vol/data/repos/metagenomic-binning-benchmark"
+
+
+repo = _repo_root()
+out = os.path.join(repo, "results", f"{name}.csv")
+
+def meta_val(key):
+> build · big-pickle
+Eval pipeline is complete (run_eval.sh auto-generates the results CSVs + per-bin plots). Let me confirm the master pin cell is feasible (is `904f649` reachable?) and check `--earlystop` toggleability for cell 23:
+[0m$ [0mcd /vol/data
+echo "=== is 904f649 (docs/13 cell 2 pin) reachable in COMEBin master? ==="
+git -C /vol/data/repos/COMEBin cat-file -t 904f649 2>/dev/null && git -C /vol/data/repos/COMEBin log --oneline -1 904f649 2>/dev/null || echo "904f649 NOT in COMEBin (will use HEAD 1b476a4)"
+echo "=== earlystop toggle: where does --earlystop come from in run_comebin.sh? ==="
+sed -n '185,205p' /vol/data/repos/COMEBin-v11-sweep/COMEBin/run_comebin.sh
+touch .heartbeat
+=== is 904f649 (docs/13 cell 2 pin) reachable in COMEBin master? ===
+commit
+904f649 Fix: initialize covIdxArr with np.zeros instead of np.empty to prevent IndexError from uninitialized garbage values in get_kmer_coverage
+=== earlystop toggle: where does --earlystop come from in run_comebin.sh? ===
+embedding_lengths="${embedding_dir}/embedding_lengths.npy"
+
+if [[ -s "${embedding_manifest}" && -s "${embedding_ids}" &&
+      -s "${emb_file}" && -s "${covemb_file}" &&
+      -s "${embedding_lengths}" ]]; then
+    echo "No need to run getting representation."
+else
+    echo "Running getting representation."
+    python "${main_py}" train --data "${output_dir}/data_augmentation" \
+    --emb_szs_forcov "${emb_szs_forcov}" \
+    --batch_size "${batch_size}" --emb_szs "${emb_szs}" --n_views "${n_views}" \
+    --output_path "${output_dir}/comebin_res" --earlystop --addvars --vars_sqrt \
+    --device "${device}" --num_threads "${num_threads}" "${temperature_options[@]}" "${seed_options[@]}"
+    train_status=$?
+fi
+
+
+if [[ ${train_status} -ne 0 ]]; then
+    report_stage_failure "Training" "${train_status}"
+fi
+> build · big-pickle
+`904f649` is reachable on master; `--earlystop` is hardcoded (no CLI toggle) so docs/13's cell 23 needs replacing with a feasible param variant. Creating the pinned master worktree for cell 2, then writing the sweep driver:
+[0m$ [0mcd /vol/data
+git -C /vol/data/repos/COMEBin worktree add --detach /vol/data/repos/COMEBin-master904 904f649 2>&1 | tail -2
+ls /vol/data/repos/COMEBin-master904/COMEBin/run_comebin.sh 2>/dev/null && echo "master904 worktree OK"
+echo "=== dirtiness check both pinned worktrees ==="
+git -C /vol/data/repos/COMEBin-v11-sweep status --porcelain --untracked-files=no | wc -l
+git -C /vol/data/repos/COMEBin-master904 status --porcelain --untracked-files=no | wc -l
+touch /vol/data/benchmark/.heartbeat
+Preparing worktree (detached HEAD 904f649)
+HEAD is now at 904f649 Fix: initialize covIdxArr with np.zeros instead of np.empty to prevent IndexError from uninitialized garbage values in get_kmer_coverage
+/vol/data/repos/COMEBin-master904/COMEBin/run_comebin.sh
+master904 worktree OK
+=== dirtiness check both pinned worktrees ===
+0
+0
+> build · big-pickle
+Now check that the master904 worktree's `run_comebin.sh` supports the `-d cpu`/`-s` flags the harness passes (older version may not):
+[0m$ [0mcd /vol/data/repos/COMEBin-master904/COMEBin
+echo "=== getopts in master904 run_comebin.sh ==="
+grep -n "getopts" run_comebin.sh
+awk '/while getopts/,/^done/' run_comebin.sh | grep -E "^\s*[a-zA-Z]\)" | head -20
+echo "=== -d and -s handling ==="
+grep -nE '\-d\)|\-s\)|device|random_seed' run_comebin.sh | head -8
+=== getopts in master904 run_comebin.sh ===
+39:while getopts a:o:p:n:t:l:e:c:b: OPT; do
+  a) contig_file=$(realpath ${OPTARG})
+  o) output_dir=$(realpath ${OPTARG})
+  p) bam_file_path=$(realpath ${OPTARG})
+  n) n_views=${OPTARG}
+  t) num_threads=${OPTARG}
+  l) temperature=${OPTARG}
+  e) emb_szs=${OPTARG}
+  c) emb_szs_forcov=${OPTARG}
+  b) batch_size=${OPTARG}
+=== -d and -s handling ===
+> build · big-pickle
+Important: the old master904 `run_comebin.sh` doesn't support `-d`/`-s` flags (the harness guards against that — good). But I need to confirm it runs on CPU (no GPU here). The baseline at 904f649 ran fine earlier, so let me verify how device is set:
+[0m$ [0mcd /vol/data/repos/COMEBin-master904/COMEBin
+echo "=== device default + training call in master904 ==="
+grep -nE "device|cuda|cpu" run_comebin.sh | head -12
+echo "=== does old run_comebin.sh hardcode --earlystop? ==="
+grep -nE "earlystop|batch_size|n_views|--device" run_comebin.sh | head -8
+=== device default + training call in master904 ===
+=== does old run_comebin.sh hardcode --earlystop? ===
+33:n_views=6
+37:batch_size=1024
+47:  n) n_views=${OPTARG}
+57:  b) batch_size=${OPTARG}
+76:if (( sequence_count < ${batch_size} )); then
+77:    batch_size=${sequence_count}
+80:echo "Batch size: ${batch_size}"
+118:    if [ "$count" -ne ${n_views} ]; then
+> build · big-pickle
+[0m$ [0mcd /vol/data/repos/COMEBin-master904/COMEBin
+echo "=== the main.py train invocation in master904 ==="
+sed -n '95,135p' run_comebin.sh
+echo "=== baseline_rerun_autorestart1 run_meta (did 904f649 run on CPU?) ==="
+grep -E "cmd_wrapper|seed|threads|device" /vol/data/benchmark/runs/baseline_rerun_autorestart1/run_meta.txt 2>/dev/null | head -5
+touch /vol/data/benchmark/.heartbeat
+=== the main.py train invocation in master904 ===
+        temperature=0.07
+    else
+        temperature=0.15
+    fi
+    echo "Tau(temperature): ${temperature}"
+else
+    echo "Tau(temperature): ${temperature}"
+fi
+
+
+current_path=$(pwd)
+chmod +x ${current_path}/../auxiliary/test_getmarker_2quarter.pl
+
+########################################################################################################
+###### Get augmentation data
+########################################################################################################
+folder=${output_dir}/data_augmentation
+keyword="_datacoverage_mean"
+
+if [ -d "$folder" ]; then
+    echo "${output_dir}/data_augmentation exists."
+    count=$(find "$folder" -maxdepth 1 -type f -name "*$keyword*" | wc -l)
+    echo "Number of files containing '$keyword' in the folder: $count"
+    if [ "$count" -ne ${n_views} ]; then
+        echo "Running data augmentation."
+        python main.py generate_aug_data --contig_file ${contig_file} \
+        --out_augdata_path ${output_dir}/data_augmentation \
+        --n_views ${n_views} --bam_file_path ${bam_file_path} --num_threads ${num_threads}
+    else
+        echo "No need to run data augmentation."
+    fi
+else
+    echo "${output_dir}/data_augmentation does not exist."
+    echo "Running data augmentation."
+    python main.py generate_aug_data --contig_file ${contig_file} \
+    --out_augdata_path ${output_dir}/data_augmentation \
+    --n_views ${n_views} --bam_file_path ${bam_file_path} --num_threads ${num_threads}
+fi
+
+if [[ $? -ne 0 ]] ; then echo "Something went wrong with running generating augmentation data. Exiting.";exit 1; fi
+
+=== baseline_rerun_autorestart1 run_meta (did 904f649 run on CPU?) ===
+threads:    32
+cmd_wrapper: bash run_comebin.sh -a /vol/data/datasets/comebin_test_data/BATS_SAMN07137077_METAG.scaffolds.min500.fasta.f1k.fasta -p /vol/data/datasets/comebin_test_data/bamfiles -o /vol/data/benchmark/runs/baseline_rerun_autorestart1/comebin_out -n 6 -t 32  # via: micromamba run -p /vol/data/envs/comebin
+cmd_checkm2: /vol/data/tools/bin/micromamba run -p /vol/data/envs/checkm2 checkm2 predict --threads 32 --database_path /vol/data/benchmark/checkm2db/CheckM2_database/uniref100.KO.1.dmnd --input /vol/data/benchmark/runs/baseline_rerun_autorestart1/comebin_out/comebin_res/comebin_res_bins --output-directory /vol/data/benchmark/runs/baseline_rerun_autorestart1/eval/checkm2 -x fasta
+cmd_checkm2: /vol/data/tools/bin/micromamba run -p /vol/data/envs/checkm2 checkm2 predict --threads 32 --database_path /vol/data/benchmark/checkm2db/CheckM2_database/uniref100.KO.1.dmnd --input /vol/data/benchmark/runs/baseline_rerun_autorestart1/comebin_out/comebin_res/comebin_res_bins --output-directory /vol/data/benchmark/runs/baseline_rerun_autorestart1/eval/checkm2 -x fasta
+cmd_checkm2: /vol/data/tools/bin/micromamba run -p /vol/data/envs/checkm2 checkm2 predict --threads 32 --database_path /vol/data/benchmark/checkm2db/CheckM2_database/uniref100.KO.1.dmnd --input /vol/data/benchmark/runs/baseline_rerun_autorestart1/comebin_out/comebin_res/comebin_res_bins --output-directory /vol/data/benchmark/runs/baseline_rerun_autorestart1/eval/checkm2 -x fasta
+> build · big-pickle
+The old version runs fine on CPU (baseline ran at 904f649). Let me see how its `main.py train` call handles device/seed (CPU-only):
+[0m$ [0mcd /vol/data/repos/COMEBin-master904/COMEBin
+echo "=== full train invocation (rest of file) ==="
+sed -n '135,190p' run_comebin.sh
+echo "=== main.py train args (device? seed?) in master904 ==="
+grep -nE "add_argument.*device|add_argument.*seed|--device|--seed|device" main.py | head -8
+=== full train invocation (rest of file) ===
+
+########################################################################################################
+###### Get representation (training process)
+########################################################################################################
+folder=${output_dir}/comebin_res
+keyword="embeddings.tsv"
+
+if [ -d "$folder" ]; then
+    echo "${output_dir}/comebin_res exists."
+    count=$(find "$folder" -maxdepth 1 -type f -name "*$keyword*" | wc -l)
+    echo "Number of files containing '$keyword' in the folder: $count"
+    if [ "$count" -ne 2 ]; then
+        echo "Running getting representation."
+        python main.py train --data ${output_dir}/data_augmentation \
+        --temperature ${temperature} --emb_szs_forcov ${emb_szs_forcov} \
+        --batch_size ${batch_size} --emb_szs ${emb_szs} --n_views ${n_views} \
+        --add_model_for_coverage \
+        --output_path ${output_dir}/comebin_res --earlystop --addvars --vars_sqrt --num_threads ${num_threads}
+    else
+        echo "No need to run getting representation."
+    fi
+else
+    echo "${output_dir}/comebin_res does not exist."
+    echo "Running getting representation."
+    python main.py train --data ${output_dir}/data_augmentation \
+    --temperature ${temperature} --emb_szs_forcov ${emb_szs_forcov} \
+    --batch_size ${batch_size} --emb_szs ${emb_szs} --n_views ${n_views} \
+    --add_model_for_coverage \
+    --output_path ${output_dir}/comebin_res --earlystop --addvars --vars_sqrt --num_threads ${num_threads}
+fi
+
+
+if [[ $? -ne 0 ]] ; then echo "Something went wrong with running training network. Exiting.";exit 1; fi
+
+########################################################################################################
+#### Clustering (run Leiden-based clustering methods and get the final result)
+########################################################################################################
+emb_file=${output_dir}/comebin_res/embeddings.tsv
+seed_file=${contig_file}.bacar_marker.2quarter_lencutoff_1001.seed
+
+python main.py bin --contig_file ${contig_file} \
+--emb_file ${emb_file} \
+--output_path ${output_dir}/comebin_res \
+--seed_file ${seed_file} --num_threads ${num_threads}
+
+python main.py get_result --contig_file ${contig_file} \
+--output_path ${output_dir}/comebin_res \
+--seed_file ${seed_file} --num_threads ${num_threads}
+
+if [[ $? -ne 0 ]] ; then echo "Something went wrong with running clustering. Exiting.";exit 1; fi
+
+=== main.py train args (device? seed?) in master904 ===
+166:    NoContrast_subparsers.add_argument('--seed_file', type=str, help=("The marker seed file."))
+211:    clustering_subparsers.add_argument('--seed_file', type=str, help=("The marker seed file."))
+238:    get_result_subparsers.add_argument('--seed_file', type=str, help=("The marker seed file."))
+> build · big-pickle
+The old master runs CPU-only (no `-d`/`-s` — harness safely skips them) and is deliberately unseeded, matching the original baseline semantics. Now I must verify the harness's param-forwarding greps actually match the v11 usage text (for `-l`, `-c`, and seed/device), then write the sweep driver:
+[0m$ [0mcd /vol/data/repos/COMEBin-v11-sweep/COMEBin
+echo "=== usage block lines for -l -c -e -b -m -w -E -d -s ==="
+grep -nE "^\s+\-[lcmeEbdsw][^ ]* " run_comebin.sh | head -12
+echo "=== exact grep patterns the harness tests ==="
+for pat in "-l FLOAT" "-e INT" "-c INT" "-b INT" "-m INT" "-w INT" "-E FLOAT" "-d STR.*device" "-s INT.*seed"; do
+  if grep -q -- "$pat" run_comebin.sh; then echo "MATCH: $pat"; else echo "NO MATCH: $pat"; fi
+done
+=== usage block lines for -l -c -e -b -m -w -E -d -s ===
+159:      -s "${folder}/contig_lengths.npy" && -s "${folder}/augmentation_intervals.npy" &&
+160:      -s "${folder}/kmer_counts.npy" && -s "${coverage_manifest}" &&
+161:      -s "${folder}/bam_ids.txt" && -s "${folder}/coverage_mean.npy" &&
+162:      -s "${folder}/coverage_var.npy" ]]; then
+188:      -s "${emb_file}" && -s "${covemb_file}" &&
+189:      -s "${embedding_lengths}" ]]; then
+=== exact grep patterns the harness tests ===
+MATCH: -l FLOAT
+MATCH: -e INT
+MATCH: -c INT
+MATCH: -b INT
+MATCH: -m INT
+MATCH: -w INT
+MATCH: -E FLOAT
+MATCH: -d STR.*device
+MATCH: -s INT.*seed
+> build · big-pickle
+All param-forwarding greps match the v11 run_comebin.sh. Now let me write the sweep driver script. It will run cells serially (one at a time, detached), each cell = run + eval, resumable, logging progress:
+[0m← [0mWrite /vol/data/repos/metagenomic-binning-benchmark/scripts/run_sweep_medium.sh
+Created file successfully: /vol/data/repos/metagenomic-binning-benchmark/scripts/run_sweep_medium.sh
+> build · big-pickle
+Now syntax-check the driver and verify the first cell's prerequisites before launching:
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark
+bash -n scripts/run_sweep_medium.sh && echo "syntax OK"
+echo "=== cell preview (what would launch) ==="
+grep -c "sweep_" scripts/run_sweep_medium.sh
+echo "=== ensure ref worktree exprs resolve ==="
+BENCH=/vol/data/benchmark
+ls -d $BENCH/../repos/COMEBin-v11-sweep $BENCH/../repos/COMEBin-v11 $BENCH/../repos/COMEBin-master904 2>/dev/null
+echo "=== confirm .active_run is clear right now ==="
+cat $BENCH/.active_run 2>/dev/null || echo "CLEAR"
+touch /vol/data/benchmark/.heartbeat
+syntax OK
+=== cell preview (what would launch) ===
+28
+=== ensure ref worktree exprs resolve ===
+/vol/data/benchmark/../repos/COMEBin-master904
+/vol/data/benchmark/../repos/COMEBin-v11
+/vol/data/benchmark/../repos/COMEBin-v11-sweep
+=== confirm .active_run is clear right now ===
+CLEAR
+> build · big-pickle
+All checks pass. Before launching the full sweep, let me do a quick smoke test of the run harness with cell 1 on a tiny subset — no wait, the medium run takes ~40 min minimum and I must not launch multi-hour runs in foreground. Instead, let me verify the driver's environment-passing logic with a dry-run bash trace of the first cell's env construction:
+[0m$ [0mcd /vol/data/benchmark
+echo "=== verify run_comebin_fix.sh refuses to overwrite existing run (dry check) ==="
+grep -n "refusing to" bin/run_comebin_fix.sh
+echo "=== trace driver env construction for cell 1 without running it ==="
+bash -c '
+BENCH=/vol/data/benchmark; V11=$BENCH/../repos/COMEBin-v11-sweep
+spec="sweep_001_ref|$V11|ref|ref|ref|ref|ref|ref|ref|6"
+IFS="|" read -r name src temp emb emb_cov batch max_edges lw heval nviews <<< "$spec"
+declare -a ENV=()
+[ "$temp" != "ref" ] && ENV+=(TEMP="$temp")
+echo "env elements: ${ENV[*]:-<none>}"
+echo "name=$name src=$(basename $src) seed=42 nviews=$nviews"
+' 2>&1
+touch /vol/data/benchmark/.heartbeat
+=== verify run_comebin_fix.sh refuses to overwrite existing run (dry check) ===
+37:  echo "ERROR: refusing to overwrite existing run directory: $RUNDIR"
+=== trace driver env construction for cell 1 without running it ===
+env elements: <none>
+name=sweep_001_ref src=COMEBin-v11-sweep seed=42 nviews=6
+> build · big-pickle
+Two fixes needed before launch: `ENV` is a bash special variable (use a different array name) and the redirect files should live under `status/` not as stray siblings. Let me patch the driver:
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/scripts/run_sweep_medium.sh
+Index: /vol/data/repos/metagenomic-binning-benchmark/scripts/run_sweep_medium.sh
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/scripts/run_sweep_medium.sh
++++ /vol/data/repos/metagenomic-binning-benchmark/scripts/run_sweep_medium.sh
+@@ -113,17 +113,17 @@
+     continue
+   fi
+ 
+   # Build env overrides, dropping "ref".
+-  declare -a ENV=()
+-  [ "$temp"  != "ref" ] && ENV+=(TEMP="$temp")
+-  [ "$emb"   != "ref" ] && ENV+=(EMB="$emb")
+-  [ "$emb_cov" != "ref" ] && ENV+=(EMB_COV="$emb_cov")
+-  [ "$batch" != "ref" ] && ENV+=(BATCH="$batch")
+-  [ "$max_edges" != "ref" ] && ENV+=(MAX_EDGES="$max_edges")
+-  [ "$lw"    != "ref" ] && ENV+=(LEIDEN_WORKERS="$lw")
+-  [ "$heval" != "ref" ] && ENV+=(HMM_EVALUE="$heval")
+-  [ "$nviews" != "6" ] && ENV+=(N_VIEWS="$nviews")
++  declare -a SWEEP_ENV=()
++  [ "$temp"  != "ref" ] && SWEEP_ENV+=(TEMP="$temp")
++  [ "$emb"   != "ref" ] && SWEEP_ENV+=(EMB="$emb")
++  [ "$emb_cov" != "ref" ] && SWEEP_ENV+=(EMB_COV="$emb_cov")
++  [ "$batch" != "ref" ] && SWEEP_ENV+=(BATCH="$batch")
++  [ "$max_edges" != "ref" ] && SWEEP_ENV+=(MAX_EDGES="$max_edges")
++  [ "$lw"    != "ref" ] && SWEEP_ENV+=(LEIDEN_WORKERS="$lw")
++  [ "$heval" != "ref" ] && SWEEP_ENV+=(HMM_EVALUE="$heval")
++  [ "$nviews" != "6" ] && SWEEP_ENV+=(N_VIEWS="$nviews")
+   # Seeded cells: always seed EXCEPT the unmodified master pin (no -s support).
+   if [ "$src" = "$MASTER" ]; then
+     SEED_FOR_RUN=""
+   else
+
+> build · big-pickle
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/scripts/run_sweep_medium.sh
+Index: /vol/data/repos/metagenomic-binning-benchmark/scripts/run_sweep_medium.sh
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/scripts/run_sweep_medium.sh
++++ /vol/data/repos/metagenomic-binning-benchmark/scripts/run_sweep_medium.sh
+@@ -133,10 +133,10 @@
+   log "START $name src=$(basename "$src") @ $(git -C "$src" rev-parse --short HEAD 2>/dev/null || echo '?') threads=$THREADS seed=${SEED_FOR_RUN:-none} temp=$temp emb=$emb emb_cov=$emb_cov batch=$batch max_edges=$max_edges lw=$lw heval=$heval n_views=$nviews"
+ 
+   env SRC_COMEBIN="$src" DATA="$DATA" CONTIGS="$CONTIGS" BAMDIR="$BAMDIR" \
+       MODE=medium THREADS="$THREADS" SEED="$SEED_FOR_RUN" \
+-      "${ENV[@]}" \
+-      "$BIN/run_comebin_fix.sh" "$RUN" >> "$RUN-comebin.out" 2>&1 \
++      "${SWEEP_ENV[@]}" \
++      "$BIN/run_comebin_fix.sh" "$RUN" >> "$BENCH/status/$name.comebin.out" 2>&1 \
+     || { log "FAIL $name: run_comebin_fix.sh rc=$?"; continue; }
+ 
+   rc=$(grep -m1 '^exit_code:' "$RUN/run_meta.txt" | awk '{print $2}' || true)
+   log "RUN_DONE $name exit=${rc:-?}"
+@@ -145,9 +145,9 @@
+     log "FAIL $name: no successful bins; skipping eval"
+     continue
+   fi
+ 
+-  if ! "$BIN/run_eval.sh" "$RUN" > "$RUN-eval.out" 2>&1; then
++  if ! "$BIN/run_eval.sh" "$RUN" > "$BENCH/status/$name.eval.out" 2>&1; then
+     log "EVAL_FAIL $name (rc=$?) — results CSV may be missing; will re-eval later"
+     continue
+   fi
+   log "DONE $name (eval OK, results CSV + per-bin plots generated)"
+
+> build · big-pickle
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark
+bash -n scripts/run_sweep_medium.sh && echo "syntax OK"
+echo "=== launch sweep driver DETACHED (no foreground multi-hour runs) ==="
+R=run_sweep_medium
+nohup bash scripts/run_sweep_medium.sh > /vol/data/benchmark/status/sweep-driver.out 2>&1 &
+echo "driver pid: $!"
+sleep 8
+echo "=== driver alive? first log lines ==="
+pod=$(pgrep -f "bash scripts/run_sweep_medium.sh" | head -1)
+echo "pgrep driver: ${pod:-none}"
+tail -5 /vol/data/benchmark/status/sweep_medium.log 2>/dev/null || echo "(log not yet written)"
+echo "=== .active_run after driver start ==="
+cat /vol/data/benchmark/.active_run 2>/dev/null || echo "CLEAR (cell may still be prepping contigs/bam)"
+touch /vol/data/benchmark/.heartbeat
+syntax OK
+=== launch sweep driver DETACHED (no foreground multi-hour runs) ===
+driver pid: 2184084
+/bin/bash: line 5: /vol/data/benchmark/status/sweep-driver.out: No such file or directory
+=== driver alive? first log lines ===
+pgrep driver: 2184082
+(log not yet written)
+=== .active_run after driver start ===
+CLEAR (cell may still be prepping contigs/bam)
+> build · big-pickle
+The driver's stdout redirect failed (status dir missing at redirect time). The driver itself may still be alive — let me check and re-launch cleanly:
+[0m$ [0mcd /vol/data/benchmark
+echo "=== status dir ==="
+ls -ld status 2>/dev/null || echo "MISSING"
+echo "=== is driver still alive? ==="
+pgrep -af "run_sweep_medium" | head -3 || echo "driver gone"
+echo "=== .active_run ==="
+cat .active_run 2>/dev/null || echo CLEAR
+echo "=== any stray run dirs created? ==="
+ls -d runs/sweep_* 2>/dev/null || echo "none yet"
+touch .heartbeat
+=== status dir ===
+MISSING
+=== is driver still alive? ===
+2184093 /bin/bash -c cd /vol/data/benchmark echo "=== status dir ===" ls -ld status 2>/dev/null || echo "MISSING" echo "=== is driver still alive? ===" pgrep -af "run_sweep_medium" | head -3 || echo "driver gone" echo "=== .active_run ===" cat .active_run 2>/dev/null || echo CLEAR echo "=== any stray run dirs created? ===" ls -d runs/sweep_* 2>/dev/null || echo "none yet" touch .heartbeat
+=== .active_run ===
+CLEAR
+=== any stray run dirs created? ===
+none yet
+> build · big-pickle
+`/vol/data/benchmark/status` doesn't exist — the repo uses `status/` inside the repo. Let me check the repo's status dir and how the heartbeat writes logs, then fix the driver's log path:
+[0m$ [0mcd /vol/data/benchmark
+echo "=== repo status dir ==="
+ls -d /vol/data/repos/metagenomic-binning-benchmark/status 2>/dev/null && ls /vol/data/repos/metagenomic-binning-benchmark/status/ | head
+echo "=== where does status-heartbeat write status.log? ==="
+grep -nE "status/|STATUS=|BENCH=" /vol/data/repos/metagenomic-binning-benchmark/scripts/status-heartbeat.sh | head -8
+touch .heartbeat
+=== repo status dir ===
+/vol/data/repos/metagenomic-binning-benchmark/status
+agent-activity.log
+agent-run.log
+current.md
+major-steps-last10.log
+major-steps.log
+meta
+status.log
+supervisor-run.log
+watchdog.log
+=== where does status-heartbeat write status.log? ===
+8:#   2. status/current.md    — overwritten when the status actually changes
+9:#   3. status/status.log    — append-only timeline of CHANGES (not beeps): the
+11:#   4. status/agent-activity.log — VERBOSE agent action log (agent appends lines)
+13:#   +  status/agent-run.log — FULL transcript of every `opencode run` (all agent
+15:#   +  status/watchdog.log  — agent/watchdog restart history
+16:#   +  status/supervisor-run.log, status/meta/ — supervisor artifacts
+34:BENCH=/vol/data/benchmark
+48:# This prevents status/meta publishers from interleaving writes with each other.
+> build · big-pickle
+The status dir for the benchmark data area is missing — the repo holds `status/`. I'll create `/vol/data/benchmark/status` (needed for driver logs) and re-launch:
+[0m$ [0mcd /vol/data/benchmark
+mkdir -p status
+echo "created /vol/data/benchmark/status"
+echo "=== re-launch driver DETACHED ==="
+nohup bash /vol/data/repos/metagenomic-binning-benchmark/scripts/run_sweep_medium.sh > /vol/data/benchmark/status/sweep-driver.out 2>&1 &
+echo "driver pid: $!"
+sleep 10
+echo "=== driver alive? ==="
+pgrep -af "run_sweep_medium.sh" | grep -v pgrep | head -3 || echo "driver gone"
+echo "=== sweep log so far ==="
+tail -6 /vol/data/benchmark/status/sweep_medium.log 2>/dev/null || echo "(no log yet)"
+echo "=== .active_run now ==="
+cat .active_run 2>/dev/null || echo "CLEAR"
+echo "=== cell 1 dir? ==="
+ls -d runs/sweep_001_ref 2>/dev/null && grep -E "exit_code|bins:|source:|sweep:" runs/sweep_001_ref/run_meta.txt 2>/dev/null | head -6 || echo "no dir yet"
+touch .heartbeat
+created /vol/data/benchmark/status
+=== re-launch driver DETACHED ===
+driver pid: 2184109
+=== driver alive? ===
+=== sweep log so far ===
+[2026-09-28T13:07:51Z] FAIL sweep_022_comboB: run_comebin_fix.sh rc=1
+[2026-09-28T13:07:51Z] START sweep_023_embcov512_batch512 src=COMEBin-v11-sweep @ 95f5ea8 threads=8 seed=42 temp=ref emb=ref emb_cov=512 batch=512 max_edges=ref lw=ref heval=ref n_views=6
+[2026-09-28T13:07:51Z] FAIL sweep_023_embcov512_batch512: run_comebin_fix.sh rc=1
+[2026-09-28T13:07:51Z] START sweep_024_seed7 src=COMEBin-v11-sweep @ 95f5ea8 threads=8 seed=42 temp=ref emb=ref emb_cov=ref batch=ref max_edges=ref lw=ref heval=ref n_views=6
+[2026-09-28T13:07:51Z] FAIL sweep_024_seed7: run_comebin_fix.sh rc=1
+[2026-09-28T13:07:51Z] SWEEP COMPLETE (24 cells processed)
+=== .active_run now ===
+CLEAR
+=== cell 1 dir? ===
+runs/sweep_001_ref
