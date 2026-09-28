@@ -62171,3 +62171,202 @@ BATS_SAMN07137077_METAG-scaffold_17
 BATS_SAMN07137077_METAG-scaffold_30
 > build · big-pickle
 Same 3 seed contigs as the known-good reference. Now waiting for the baseline.
+[0m$ [0mfor i in $(seq 1 30); do
+  if grep -qE "^exit_code:|^ERROR" /tmp/opencode/prepatch_baseline.log 2>/dev/null; then echo "DONE"; break; fi
+  sleep 10
+done
+grep -oE "epoch=[0-9]+/200" /tmp/opencode/prepatch_baseline.log | tail -1
+echo "=== tail ==="; tail -12 /tmp/opencode/prepatch_baseline.log
+DONE
+epoch=200/200
+=== tail ===
+[2026-09-28 13:02:26] INFO: Reading HMM info from file.
+[2026-09-28 13:02:26] INFO: Parsing HMM hits to marker genes:
+    Finished parsing hits for 1 of 3 (33.33%) bins.    Finished parsing hits for 2 of 3 (66.67%) bins.    Finished parsing hits for 3 of 3 (100.00%) bins.
+[2026-09-28 13:02:27] INFO: QA information written to: /tmp/opencode/small_v11_prepatch_baseline/comebin_out/comebin_res/cluster_res/unitem_profile/binning_methods/weight_seed_kmeans_k_3_result.labels.npy/checkm_ar/genome_quality.tsv
+[2026-09-28 13:02:27] INFO: { Current stage: 0:00:00.214 || Total: 0:00:00.214 }
+2026-09-28 13:02:27,827 - Final result:	/tmp/opencode/small_v11_prepatch_baseline/comebin_out/comebin_res/cluster_res/Leiden_bandwidth_0.05_res_maxedges100respara_10_partgraph_ratio_100.labels.npy
+2026-09-28 13:02:27,827 - Stream winning Leiden bins from /tmp/opencode/realdata_prepatch/contigs.fa.
+ERROR: COMEBin returned 0 but no non-empty bins were produced at /tmp/opencode/small_v11_prepatch_baseline/comebin_out/comebin_res/comebin_res_bins; recording failure
+exit_code:  1
+wall_s:     250
+finished:   2026-09-28T13:02:28+00:00
+bins:       0  -> /tmp/opencode/small_v11_prepatch_baseline/comebin_out/comebin_res/comebin_res_bins (missing or empty)
+> build · big-pickle
+Pre-patch baseline reproduces the **exact same** outcome. Let me do a rigorous side-by-side to prove behavioral equivalence.
+[0m$ [0mecho "=== PATCHED marker-seed line ==="; grep -E "Marker seed generation exited" /vol/data/benchmark/runs/small_v11_issue28_regression/comebin_run.log
+echo "=== PREPATCH marker-seed line ==="; grep -E "Marker seed generation exited" /tmp/opencode/small_v11_prepatch_baseline/comebin_run.log
+echo; echo "=== prepatch seed file ==="; ls -la /tmp/opencode/realdata_prepatch/*.seed && cat /tmp/opencode/realdata_prepatch/contigs.fa.bacar_marker.2quarter_lencutoff_1001.seed
+echo "=== both seeds identical to each other? ==="
+cmp /tmp/opencode/realdata/ds/contigs.fa.bacar_marker.2quarter_lencutoff_1001.seed /tmp/opencode/realdata_prepatch/contigs.fa.bacar_marker.2quarter_lencutoff_1001.seed && echo "SEEDS BYTE-IDENTICAL (patch vs prepatch)"
+=== PATCHED marker-seed line ===
+2026-09-28 12:54:20,163 - Marker seed generation exited with status 0; stderr=/tmp/opencode/realdata/ds/contigs.fa.bacar_marker.2quarter_lencutoff_1001.seed.err.
+=== PREPATCH marker-seed line ===
+2026-09-28 13:01:43,378 - Marker seed generation exited with status 0; stderr=/tmp/opencode/realdata_prepatch/contigs.fa.bacar_marker.2quarter_lencutoff_1001.seed.err.
+
+=== prepatch seed file ===
+-rw------- 1 ubuntu ubuntu 107 Sep 28 13:01 /tmp/opencode/realdata_prepatch/contigs.fa.bacar_marker.2quarter_lencutoff_1001.seed
+BATS_SAMN07137077_METAG-scaffold_17
+BATS_SAMN07137077_METAG-scaffold_30
+BATS_SAMN07137077_METAG-scaffold_7
+=== both seeds identical to each other? ===
+SEEDS BYTE-IDENTICAL (patch vs prepatch)
+[0m$ [0m/vol/data/envs/comebin/bin/python - <<'EOF'
+import numpy as np, glob, hashlib
+A='/vol/data/benchmark/runs/small_v11_issue28_regression/comebin_out/comebin_res/cluster_res'
+B='/tmp/opencode/small_v11_prepatch_baseline/comebin_out/comebin_res/cluster_res'
+win='Leiden_bandwidth_0.05_res_maxedges100respara_10_partgraph_ratio_100.labels.npy'
+a=np.load(f'{A}/{win}',allow_pickle=True); b=np.load(f'{B}/{win}',allow_pickle=True)
+print('patched   : n=%d n_clusters=%d sha=%s'%(len(a),len(np.unique(a)),hashlib.sha256(a.tobytes()).hexdigest()[:16]))
+print('prepatch  : n=%d n_clusters=%d sha=%s'%(len(b),len(np.unique(b)),hashlib.sha256(b.tobytes()).hexdigest()[:16]))
+print('labels identical:', np.array_equal(a,b))
+# how many of the 120 leiden grids agree
+fa=sorted(x.split('/')[-1] for x in glob.glob(f'{A}/*.labels.npy'))
+fb=sorted(x.split('/')[-1] for x in glob.glob(f'{B}/*.labels.npy'))
+print('grid files: patched=%d prepatch=%d same_names=%s'%(len(fa),len(fb),fa==fb))
+same=sum(1 for f in fa if np.array_equal(np.load(f'{A}/{f}',allow_pickle=True),np.load(f'{B}/{f}',allow_pickle=True)))
+print('grids with identical labels: %d/%d'%(same,len(fa)))
+EOF
+patched   : n=300 n_clusters=222 sha=33343fedaa1cea9b
+prepatch  : n=300 n_clusters=222 sha=33343fedaa1cea9b
+labels identical: True
+grid files: patched=121 prepatch=121 same_names=True
+grids with identical labels: 121/121
+> build · big-pickle
+Definitive: **121/121 Leiden grids bit-identical**, seeds byte-identical, both 0 bins. The patch is behavior-preserving; the 0-bin outcome is a pre-existing property of the 3.5 Mbp dataset. Let me clean up.
+[0m$ [0mdu -sh /vol/data/benchmark/runs/small_v11_issue28_regression /tmp/opencode/small_v11_prepatch_baseline /tmp/opencode/realdata_prepatch 2>/dev/null
+cd /vol/data/repos/COMEBin-v11 && git worktree remove --force /tmp/opencode/comebin_prepatch && git worktree prune && echo "worktree removed"
+rm -rf /tmp/opencode/small_v11_prepatch_baseline
+echo "--- remaining worktrees ---"; git worktree list
+echo "--- free disk ---"; df -h /vol/data | tail -1
+32M	/vol/data/benchmark/runs/small_v11_issue28_regression
+32M	/tmp/opencode/small_v11_prepatch_baseline
+4.8M	/tmp/opencode/realdata_prepatch
+worktree removed
+--- remaining worktrees ---
+/vol/data/repos/COMEBin            1b476a4 [master]
+/vol/data/repos/COMEBin-opt        03670d6 [comebin-optimizations]
+/vol/data/repos/COMEBin-small-fix  c8f22e4 [comebin-small-fix]
+/vol/data/repos/COMEBin-v11        41606c8 [comebin-optimizations-v11]
+--- free disk ---
+/dev/vdb        492G  152G  315G  33% /vol/data
+> build · big-pickle
+Let me verify the COMEBin master state before commenting (so the issue reply is accurate).
+[0m$ [0mcd /vol/data/repos/COMEBin-v11 && echo "=== branch/HEAD ==="; git rev-parse --abbrev-ref HEAD; git log --oneline -1
+echo "=== vs origin/master ==="; git fetch origin --quiet 2>/dev/null; git rev-list --left-right --count origin/master...HEAD 2>/dev/null | awk '{print "behind="$1" ahead="$2}'
+echo "=== unpushed commits on this branch vs origin ==="; git log --oneline origin/master..HEAD 2>/dev/null | head -10
+echo "=== origin/master HEAD ==="; git log --oneline -1 origin/master 2>/dev/null
+echo "=== tags ==="; git tag --list | tail -5
+=== branch/HEAD ===
+comebin-optimizations-v11
+41606c8 Report 0 bins instead of erroring when no marker seed set exists
+=== vs origin/master ===
+behind=0 ahead=2
+=== unpushed commits on this branch vs origin ===
+41606c8 Report 0 bins instead of erroring when no marker seed set exists
+95f5ea8 batch1 (v1.1.0 base): sequential bin numbering, drop empty/missing bins
+=== origin/master HEAD ===
+1b476a4 Clarify PyTorch installation options
+=== tags ===
+1.0.0
+1.0.1
+1.0.2
+1.0.3
+1.0.4
+> build · big-pickle
+[0m$ [0mcd /vol/data/repos/COMEBin-v11 && git ls-remote origin 'refs/heads/comebin-optimizations-v11' 2>/dev/null; echo "--- local 41606c8 present on origin? ---"; git branch -r --contains 41606c8 2>/dev/null || echo "(no remote branch contains it)"
+95f5ea820f9a4e76f5c2911c0b5ed507ab67b015	refs/heads/comebin-optimizations-v11
+--- local 41606c8 present on origin? ---
+> build · big-pickle
+[0m$ [0mcd /vol/data/repos/COMEBin-v11 && git log -1 --format='%H%n%an%n%ad%n%s' 41606c8; echo "=== test file present ==="; git show --stat 41606c8 | tail -8
+41606c8e154aa62c01d361361d04b74f18f225ab
+paulzierep
+Mon Sep 28 12:50:27 2026 +0000
+Report 0 bins instead of erroring when no marker seed set exists
+=== test file present ===
+    tests/test_marker_seed_empty_result.py covers all three statuses plus the happy
+    path: the empty cases return 0 without publishing a seed file, and a normal
+    input still produces seeds and runs through main.py bin/get_result with exit 0.
+
+ COMEBin/main.py                        |  16 ++-
+ COMEBin/utils.py                       |  46 ++++++-
+ tests/test_marker_seed_empty_result.py | 232 +++++++++++++++++++++++++++++++++
+ 3 files changed, 286 insertions(+), 8 deletions(-)
+> build · big-pickle
+Let me re-verify the test suite still passes before commenting, then post to #28.
+[0m$ [0mcd /vol/data/repos/COMEBin-v11 && /vol/data/envs/comebin/bin/python tests/test_marker_seed_empty_result.py 2>&1 | tail -15
+[PASS] case4: main.py bin exited 0
+[PASS] case4: main.py reported 0 bins
+[PASS] case4: no traceback
+--- case 5 (main.py get_result, no usable seed) ---
+r.pl /tmp/issue28-sj6jupi9/case4/assembly.fasta.bacar_marker.hmmout /tmp/issue28-sj6jupi9/case4/assembly.fasta 1001 /tmp/issue28-sj6jupi9/case4/.assembly.fasta.bacar_marker.2quarter_lencutoff_1001.seed.2180700.o5np4d0r.tmp
+2026-09-28 13:03:29,719 - Marker seed generation exited with status 3; stderr=/tmp/issue28-sj6jupi9/case4/assembly.fasta.bacar_marker.2quarter_lencutoff_1001.seed.err.
+2026-09-28 13:03:29,719 - Marker seed generation exited with status 3 (an expected empty result for this input); stderr=/tmp/issue28-sj6jupi9/case4/assembly.fasta.bacar_marker.2quarter_lencutoff_1001.seed.err; tail=Marker hits mapped to input contigs, but no usable marker seed set could be generated..
+2026-09-28 13:03:29,719 - No usable marker seeds for /tmp/issue28-sj6jupi9/case4/assembly.fasta (marker script status 3, hmm_hits=1, stderr=/tmp/issue28-sj6jupi9/case4/assembly.fasta.bacar_marker.2quarter_lencutoff_1001.seed.err). COMEBin cannot build a binning axis for this input and will report 0 bins.
+2026-09-28 13:03:29,719 - Reporting 0 bins for /tmp/issue28-sj6jupi9/case4/assembly.fasta: no usable marker seed set, so no bins can be selected. This is an empty result for this input, not an error.
+
+[PASS] case5: main.py get_result exited 0
+[PASS] case5: main.py get_result reported 0 bins
+
+ALL CHECKS PASSED
+> build · big-pickle
+All tests pass. Now posting the #28 update:
+[0m$ [0mcat > /tmp/opencode/issue28_comment.md <<'EOF'
+Fixed on `comebin-optimizations-v11` @ **`41606c8`** — COMEBin now reports **0 bins and exits 0** instead of raising, and the pipeline no longer dies with `Clustering exited with status 1`.
+
+### Root cause
+`auxiliary/test_getmarker_2quarter.pl` uses distinct exit codes to say "I could not build a usable seed set": `2` (no marker hit matches a contig), `3` (hits mapped, but no gene passes the completeness/coverage gate), `4` (no marker hits at all). `gen_seed()` treated every non-zero status as a hard tool failure, so a perfectly ordinary *empty result* — your case, `status 3` — was escalated to `RuntimeError: Marker seed generation failed with status 3`.
+
+### The fix
+- `COMEBin/utils.py`: new `MARKER_NO_SEED_EXIT_CODES = frozenset({2, 3, 4})`; `_run_external_command()` takes an `allowed_returncodes` argument so an expected empty outcome is not conflated with a genuine crash.
+- `gen_seed()` logs a clear warning, publishes **no** seed file, and returns `0`.
+- `COMEBin/main.py`: `bin` and `get_result` short-circuit when `seed_count == 0` and exit `0` with an explicit `Reporting 0 bins ... This is an empty result for this input, not an error.`
+- A real tool failure (status 1, or any code outside 2/3/4) still raises, so genuine breakage is not silenced.
+
+### Verification
+1. **New regression test** `tests/test_marker_seed_empty_result.py` — 5 cases (statuses 2/3/4, plus the happy path through `main.py bin` and `get_result`): **all pass**. Run against the parent commit `95f5ea8` the same test reports 10 failures, including your exact traceback (`utils.py` line 188 in `_run_external_command`, rc=1) — so the test genuinely pins the bug.
+2. **Your signature, on real data** — 300-contig assembly with 208 real HMM hits reproduces `status 3` + `tail=Marker hits mapped to input contigs, but no usable marker seed set could be generated.`; it now exits `0` with `Reporting 0 bins`.
+3. **No regression on the happy path, on benchmark data** — full small-dataset benchmark run (`run_small_test.sh`, seed 42, 200 epochs, 121 Leiden grids), patched `41606c8` vs pre-patch `95f5ea8`, same byte-identical inputs:
+   - marker seed file: **byte-identical** to the known-good reference seed
+   - all **121/121** Leiden result grids: **bit-identical labels**
+   - winning result and bin output: identical
+
+   That run yields 0 bins for *both* commits, which is a pre-existing property of that fixture and not the fix: the whole assembly is 3.5 Mbp, so no Leiden cluster reaches `MINIMUM_FINAL_BIN_SIZE` (200 kb) — the largest is 124 kb. Larger fixtures are unaffected (`cami3_v11_20260926_rerun`: 492 bins).
+
+### Still open (not mine to close)
+`41606c8` is currently **local only** — `origin/comebin-optimizations-v11` is still at `95f5ea8`, and `origin/master` is at `1b476a4`. The branch is now a clean 2-commit fast-forward ahead of `master` with no divergence, so the **merge to `master` + bioconda release prep is the remaining step**, as promised on #27. Flagging it here so it is not lost: the fix is not yet on GitHub.
+
+One note left deliberately unaddressed to keep the blast radius small: the `OSError: [Errno 16] Device or resource busy: .../pymp-*` DataLoader temp-dir tracebacks in your log. They are non-fatal — training continued to epoch 200 — and are a separate cleanup problem, not part of this fix.
+EOF
+wc -l /tmp/opencode/issue28_comment.md
+25 /tmp/opencode/issue28_comment.md
+> build · big-pickle
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && gh issue comment 28 --body-file /tmp/opencode/issue28_comment.md 2>&1 | tail -3; echo "=== verify ==="; gh issue view 28 --json comments --jq '.comments | length'
+https://github.com/paulzierep/metagenomic-binning-benchmark/issues/28#issuecomment-5870418121
+=== verify ===
+1
+> build · big-pickle
+Comment posted. #27 already answered — skipping to avoid duplication. No issue is verified complete, so no `.issues_done` markers. Now the commit — checking index state first.
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && echo "=== staged right now ==="; git diff --cached --name-only; echo "(end)"; echo "=== lock holder? ==="; fuser -v /tmp/bench-repo.lock 2>&1 | head -3 || echo "lock free"
+=== staged right now ===
+(end)
+=== lock holder? ===
+> build · big-pickle
+Index clean, lock free. Committing under the lock with staged-path verification:
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark || exit 1
+exec 9>/tmp/bench-repo.lock
+flock -w 120 9 || { echo "ABORT: could not acquire /tmp/bench-repo.lock"; exit 1; }
+echo "lock acquired"
+# refuse to proceed if the agent left anything staged
+staged_before=$(git diff --cached --name-only)
+if [ -n "$staged_before" ]; then echo "ABORT: index not clean, staged: $staged_before"; exit 1; fi
+git add -- scripts/meta-watchdog.sh scripts/supervise-alive.sh
+echo "=== staged paths ==="; git diff --cached --name-only
+echo "=== count ==="; git diff --cached --name-only | wc -l
+lock acquired
+=== staged paths ===
+scripts/meta-watchdog.sh
+scripts/supervise-alive.sh
+=== count ===
+2
+> build · big-pickle
