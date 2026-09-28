@@ -59976,3 +59976,479 @@ ing HMMsearch result /tmp/issue28-h0as_sse/case4/assembly.fasta.bacar_marker.hmm
 
 FAILED (4): ['case3: gen_seed returned a positive seed count', 'case3: seed file published', 'case4: main.py reported 0 bins', 'case5: main.py get_result reported 0 bins']
 > build · big-pickle
+The fix works. My test fixture had two bugs (tab-delimited instead of space-delimited domtblout, and stderr vs stdout). Let me fix the test:
+[0m← [0mEdit /tmp/opencode/test_issue28_marker_seed.py
+Index: /tmp/opencode/test_issue28_marker_seed.py
+===================================================================
+--- /tmp/opencode/test_issue28_marker_seed.py
++++ /tmp/opencode/test_issue28_marker_seed.py
+@@ -53,26 +53,35 @@
+     return root
+ 
+ 
+ def make_hmmout(path, hits):
+-    """Write a hmmscan --domtblout file.
++    """Write a space-delimited `hmmsearch --domtblout` file.
+ 
+-    Each hit is (target_name, target_length, env_from, env_to). The perl script
+-    keeps a contig as a seed when (env_to - env_from) / target_length >= 0.4.
++    Each hit is (gene_name, target_contig, query_len, hmm_from, hmm_to). Only
++    fields 4 (query name), 6 (qlen), 16 (hmm from) and 17 (hmm to) are read by
++    auxiliary/test_getmarker_<quarter>.pl: it groups hits by gene, keeps a contig
++    when (hmm_to - hmm_from) / qlen >= 0.4 and the contig is at least the
++    contig-length threshold long, then picks the median per-gene seed count.
+     """
+     with open(path, 'w') as handle:
+         handle.write('# hmmscan --domtblout test fixture\n')
+         handle.write('# target name        query name           aln dom\n')
+-        for i, (target, target_len, env_from, env_to) in enumerate(hits, start=1):
++        for gene, target, query_len, hmm_from, hmm_to in hits:
+             fields = [
+-                target, f'q{i}', '1', '1', '1', str(target_len), '1', '1', '1', '1',
+-                str(env_from), str(env_to), '1', '1', '1', '1', '1', '1', '1', '1',
+-                '1', '1', '1', '1', '1', '1', '1', '1', '1', '1',
++                target, '-', str(query_len),          # 1-3 target, tacc, tlen
++                gene, '-', str(query_len),            # 4-6 query, qacc, qlen
++                '1e-30', '50.0', '0.0',               # 7-9 E-value, score, bias
++                'of', '1',                            # 10-11 "#  of"
++                '1e-30', '1e-35', '50.0', '0.0',      # 12-15 c-E, i-E, score, bias
++                str(hmm_from), str(hmm_to),           # 16-17 hmm from, hmm to
++                str(hmm_from), str(hmm_to),           # 18-19 ali from, ali to
++                str(hmm_from), str(hmm_to),           # 20-21 env from, env to
++                '0.0', '-',                           # 22-23 acc, description
+             ]
+-            handle.write('\t'.join(fields) + '\n')
++            handle.write(' '.join(fields) + '\n')
+ 
+ 
+-def prepare_case(root, hits, contigs, contig_len_threshold=1001):
++def prepare_case(root, hits, contigs):
+     """Create a working dir with a contigs fasta and pre-seeded tool caches."""
+     root.mkdir(parents=True, exist_ok=True)
+     contig_file = root / 'assembly.fasta'
+     write_fasta(contig_file, contigs)
+
+> build · big-pickle
+[0m← [0mEdit /tmp/opencode/test_issue28_marker_seed.py
+Index: /tmp/opencode/test_issue28_marker_seed.py
+===================================================================
+--- /tmp/opencode/test_issue28_marker_seed.py
++++ /tmp/opencode/test_issue28_marker_seed.py
+@@ -123,89 +123,100 @@
+     env['PATH'] = f'{stubs}:{env["PATH"]}'
+     env['PYTHONDONTWRITEBYTECODE'] = '1'
+ 
+     # ---- Case 1: the reported failure — hits map to contigs, none usable -----
+-    # One 2000 bp contig, one hit covering 10 bp => 10/2000 = 0.005 < 0.4 cutoff.
++    # One 2000 bp contig, one hit covering 10 bp => 10/2000 = 0.005 < 0.4 cutoff,
++    # so the marker script reports "hits mapped to contigs, no usable seed set".
+     work1 = base / 'case1'
+     contig1 = prepare_case(
+         work1,
+-        hits=[('k99', 2000, 5, 15)],
++        hits=[('TIGR00388', 'k99', 2000, 5, 15)],
+         contigs=[('k99', 'ACGT' * 500)],
+     )
+     r1 = run_gen_seed(work1, contig1, env)
++    out1 = r1.stdout + r1.stderr
+     print('--- case 1 (no usable seed set; perl exits 3) ---')
+-    print(r1.stdout[-1500:] or r1.stderr[-1500:])
++    print(out1[-1500:])
+     check('case1: gen_seed did not raise', r1.returncode == 0,
+-          f'rc={r1.returncode} stderr={r1.stderr[-600:]}')
+-    check('case1: gen_seed reported 0 seeds', 'SEED_COUNT=0' in r1.stdout,
+-          r1.stdout[-400:])
+-    check('case1: warned instead of erroring', 'Reporting 0 bins' not in r1.stdout
+-          and 'No usable marker seeds' in r1.stdout, r1.stdout[-400:])
++          f'rc={r1.returncode} {r1.stderr[-600:]}')
++    check('case1: gen_seed reported 0 seeds', 'SEED_COUNT=0' in out1, out1[-400:])
++    check('case1: warned instead of erroring', 'No usable marker seeds' in out1, out1[-400:])
+     check('case1: no seed file was published',
+           not (work1 / 'assembly.fasta.bacar_marker.2quarter_lencutoff_1001.seed').exists())
+-    check('case1: no traceback in output', 'Traceback' not in r1.stdout + r1.stderr)
++    check('case1: no traceback in output', 'Traceback' not in out1)
+ 
+     # ---- Case 2: hits that do not match contig ids at all (perl exits 2) -----
+     work2 = base / 'case2'
+     contig2 = prepare_case(
+         work2,
+-        hits=[('unrelated_target', 2000, 5, 1995)],
++        hits=[('TIGR00388', 'unrelated_target', 2000, 5, 1995)],
+         contigs=[('k99', 'ACGT' * 500)],
+     )
+     r2 = run_gen_seed(work2, contig2, env)
++    out2 = r2.stdout + r2.stderr
+     print('--- case 2 (no hits match contig ids; perl exits 2) ---')
+-    print(r2.stdout[-1200:] or r2.stderr[-1200:])
+-    check('case2: gen_seed reported 0 seeds', r2.returncode == 0 and 'SEED_COUNT=0' in r2.stdout,
+-          f'rc={r2.returncode} out={r2.stdout[-400:]} err={r2.stderr[-400:]}')
++    print(out2[-1000:])
++    check('case2: gen_seed reported 0 seeds',
++          r2.returncode == 0 and 'SEED_COUNT=0' in out2,
++          f'rc={r2.returncode} {out2[-400:]}')
+ 
+     # ---- Case 3: regression guard — a usable seed still works ---------------
+-    # Contig 2000 bp, hit covering 1600 bp => 1600/2000 = 0.8 >= 0.4 cutoff, and
+-    # the median marker gene has 1 contig so the script writes it out.
++    # 3 distinct marker genes x 2 qualifying contigs each. The per-gene seed
++    # counts are [2, 2, 2], so the median is 2 and the script writes seeds out.
+     work3 = base / 'case3'
++    usable_hits = [
++        ('TIGR00388', 'c1', 2000, 1, 1901), ('TIGR00388', 'c2', 2000, 1, 1901),
++        ('TIGR00471', 'c3', 2000, 1, 1901), ('TIGR00471', 'c4', 2000, 1, 1901),
++        ('TIGR00408', 'c5', 2000, 1, 1901), ('TIGR00408', 'c6', 2000, 1, 1901),
++    ]
+     contig3 = prepare_case(
+         work3,
+-        hits=[('k99', 2000, 5, 1605)],
+-        contigs=[('k99', 'ACGT' * 500)],
++        hits=usable_hits,
++        contigs=[(f'c{i}', 'ACGT' * 500) for i in range(1, 7)],
+     )
+     r3 = run_gen_seed(work3, contig3, env)
++    out3 = r3.stdout + r3.stderr
+     print('--- case 3 (usable seed present) ---')
+-    print(r3.stdout[-1200:] or r3.stderr[-1200:])
++    print(out3[-1000:])
+     check('case3: gen_seed returned a positive seed count',
+-          r3.returncode == 0 and 'SEED_COUNT=1' in r3.stdout,
+-          f'rc={r3.returncode} out={r3.stdout[-400:]} err={r3.stderr[-400:]}')
++          r3.returncode == 0 and 'SEED_COUNT=2' in out3,
++          f'rc={r3.returncode} {out3[-600:]}')
+     check('case3: seed file published',
+           (work3 / 'assembly.fasta.bacar_marker.2quarter_lencutoff_1001.seed').is_file())
++    check('case3: no false "no usable seeds" warning', 'No usable marker seeds' not in out3,
++          out3[-400:])
+ 
+     # ---- Case 4: main.py bin exits 0 and reports 0 bins ---------------------
+     work4 = base / 'case4'
+     contig4 = prepare_case(
+         work4,
+-        hits=[('k99', 2000, 5, 15)],
++        hits=[('TIGR00388', 'k99', 2000, 5, 15)],
+         contigs=[('k99', 'ACGT' * 500)],
+     )
+     cmd = [PYTHON, str(COMEBIN_DIR / 'main.py'), 'bin',
+            '--contig_file', str(contig4), '--output_path', str(work4 / 'out'),
+            '--num_threads', '2', '--contig_len', '1001']
+     r4 = subprocess.run(cmd, cwd=str(COMEBIN_DIR), env=env, capture_output=True, text=True)
++    out4 = r4.stdout + r4.stderr
+     print('--- case 4 (main.py bin, no usable seed) ---')
+-    print(r4.stdout[-1500:] or r4.stderr[-1500:])
++    print(out4[-1200:])
+     check('case4: main.py bin exited 0', r4.returncode == 0,
+-          f'rc={r4.returncode} stderr={r4.stderr[-600:]}')
+-    check('case4: main.py reported 0 bins', 'Reporting 0 bins' in r4.stdout,
+-          r4.stdout[-400:])
+-    check('case4: no traceback', 'Traceback' not in r4.stdout + r4.stderr)
++          f'rc={r4.returncode} {r4.stderr[-600:]}')
++    check('case4: main.py reported 0 bins', 'Reporting 0 bins' in out4, out4[-400:])
++    check('case4: no traceback', 'Traceback' not in out4)
+ 
+     # ---- Case 5: main.py get_result exits 0 and reports 0 bins -------------
+     cmd5 = [PYTHON, str(COMEBIN_DIR / 'main.py'), 'get_result',
+             '--contig_file', str(contig4), '--output_path', str(work4 / 'out'),
+             '--num_threads', '2', '--contig_len', '1001']
+     r5 = subprocess.run(cmd5, cwd=str(COMEBIN_DIR), env=env, capture_output=True, text=True)
++    out5 = r5.stdout + r5.stderr
+     print('--- case 5 (main.py get_result, no usable seed) ---')
+-    print(r5.stdout[-1500:] or r5.stderr[-1500:])
++    print(out5[-1200:])
+     check('case5: main.py get_result exited 0', r5.returncode == 0,
+-          f'rc={r5.returncode} stderr={r5.stderr[-600:]}')
+-    check('case5: main.py get_result reported 0 bins', 'Reporting 0 bins' in r5.stdout,
+-          r5.stdout[-400:])
++          f'rc={r5.returncode} {r5.stderr[-600:]}')
++    check('case5: main.py get_result reported 0 bins', 'Reporting 0 bins' in out5,
++          out5[-400:])
+ 
+     shutil.rmtree(base, ignore_errors=True)
+     print()
+     if failures:
+
+> build · big-pickle
+[0m$ [0mcd /tmp/opencode && timeout 400 python3 test_issue28_marker_seed.py 2>&1 | tail -60
+--- case 1 (no usable seed set; perl exits 3) ---
+stubs/hmmsearch, perl=/usr/bin/perl, marker_script=/vol/data/repos/COMEBin-v11/auxiliary/test_getmarker_2quarter.pl, marker_hmm=/vol/data/repos/COMEBin-v11/auxiliary/bacar_marker.hmm.
+Reusing FragGeneScan protein file: /tmp/issue28-kzmgv2gq/case1/assembly.fasta.frag.faa.
+Reusing HMMsearch result /tmp/issue28-kzmgv2gq/case1/assembly.fasta.bacar_marker.hmmout with 1 hits; --hmm_evalue applies only when HMMsearch runs and cached thresholds are not compared.
+Marker seed generation command: /usr/bin/perl /vol/data/repos/COMEBin-v11/auxiliary/test_getmarker_2quarter.pl /tmp/issue28-kzmgv2gq/case1/assembly.fasta.bacar_marker.hmmout /tmp/issue28-kzmgv2gq/case1/assembly.fasta 1001 /tmp/issue28-kzmgv2gq/case1/.assembly.fasta.bacar_marker.2quarter_lencutoff_1001.seed.2136140.37lnd86l.tmp
+Marker seed generation exited with status 3; stderr=/tmp/issue28-kzmgv2gq/case1/assembly.fasta.bacar_marker.2quarter_lencutoff_1001.seed.err.
+Marker seed generation exited with status 3 (an expected empty result for this input); stderr=/tmp/issue28-kzmgv2gq/case1/assembly.fasta.bacar_marker.2quarter_lencutoff_1001.seed.err; tail=Marker hits mapped to input contigs, but no usable marker seed set could be generated..
+No usable marker seeds for /tmp/issue28-kzmgv2gq/case1/assembly.fasta (marker script status 3, hmm_hits=1, stderr=/tmp/issue28-kzmgv2gq/case1/assembly.fasta.bacar_marker.2quarter_lencutoff_1001.seed.err). COMEBin cannot build a binning axis for this input and will report 0 bins.
+SEED_COUNT=0
+
+[PASS] case1: gen_seed did not raise
+[PASS] case1: gen_seed reported 0 seeds
+[PASS] case1: warned instead of erroring
+[PASS] case1: no seed file was published
+[PASS] case1: no traceback in output
+--- case 2 (no hits match contig ids; perl exits 2) ---
+n command: /usr/bin/perl /vol/data/repos/COMEBin-v11/auxiliary/test_getmarker_2quarter.pl /tmp/issue28-kzmgv2gq/case2/assembly.fasta.bacar_marker.hmmout /tmp/issue28-kzmgv2gq/case2/assembly.fasta 1001 /tmp/issue28-kzmgv2gq/case2/.assembly.fasta.bacar_marker.2quarter_lencutoff_1001.seed.2136142.m5xkoaqn.tmp
+Marker seed generation exited with status 2; stderr=/tmp/issue28-kzmgv2gq/case2/assembly.fasta.bacar_marker.2quarter_lencutoff_1001.seed.err.
+Marker seed generation exited with status 2 (an expected empty result for this input); stderr=/tmp/issue28-kzmgv2gq/case2/assembly.fasta.bacar_marker.2quarter_lencutoff_1001.seed.err; tail=Marker hits were found, but none matched input contig identifiers..
+No usable marker seeds for /tmp/issue28-kzmgv2gq/case2/assembly.fasta (marker script status 2, hmm_hits=1, stderr=/tmp/issue28-kzmgv2gq/case2/assembly.fasta.bacar_marker.2quarter_lencutoff_1001.seed.err). COMEBin cannot build a binning axis for this input and will report 0 bins.
+SEED_COUNT=0
+
+[PASS] case2: gen_seed reported 0 seeds
+--- case 3 (usable seed present) ---
+MEBin-v11/auxiliary/test_getmarker_2quarter.pl, marker_hmm=/vol/data/repos/COMEBin-v11/auxiliary/bacar_marker.hmm.
+Reusing FragGeneScan protein file: /tmp/issue28-kzmgv2gq/case3/assembly.fasta.frag.faa.
+Reusing HMMsearch result /tmp/issue28-kzmgv2gq/case3/assembly.fasta.bacar_marker.hmmout with 6 hits; --hmm_evalue applies only when HMMsearch runs and cached thresholds are not compared.
+Marker seed generation command: /usr/bin/perl /vol/data/repos/COMEBin-v11/auxiliary/test_getmarker_2quarter.pl /tmp/issue28-kzmgv2gq/case3/assembly.fasta.bacar_marker.hmmout /tmp/issue28-kzmgv2gq/case3/assembly.fasta 1001 /tmp/issue28-kzmgv2gq/case3/.assembly.fasta.bacar_marker.2quarter_lencutoff_1001.seed.2136145.nsw908xk.tmp
+Marker seed generation exited with status 0; stderr=/tmp/issue28-kzmgv2gq/case3/assembly.fasta.bacar_marker.2quarter_lencutoff_1001.seed.err.
+Published marker seed file /tmp/issue28-kzmgv2gq/case3/assembly.fasta.bacar_marker.2quarter_lencutoff_1001.seed with 2 seeds.
+SEED_COUNT=2
+
+[PASS] case3: gen_seed returned a positive seed count
+[PASS] case3: seed file published
+[PASS] case3: no false "no usable seeds" warning
+--- case 4 (main.py bin, no usable seed) ---
+/tmp/issue28-kzmgv2gq/case4/assembly.fasta.bacar_marker.hmmout /tmp/issue28-kzmgv2gq/case4/assembly.fasta 1001 /tmp/issue28-kzmgv2gq/case4/.assembly.fasta.bacar_marker.2quarter_lencutoff_1001.seed.2136147.42whbo7o.tmp
+2026-09-28 12:48:44,612 - Marker seed generation exited with status 3; stderr=/tmp/issue28-kzmgv2gq/case4/assembly.fasta.bacar_marker.2quarter_lencutoff_1001.seed.err.
+2026-09-28 12:48:44,612 - Marker seed generation exited with status 3 (an expected empty result for this input); stderr=/tmp/issue28-kzmgv2gq/case4/assembly.fasta.bacar_marker.2quarter_lencutoff_1001.seed.err; tail=Marker hits mapped to input contigs, but no usable marker seed set could be generated..
+2026-09-28 12:48:44,613 - No usable marker seeds for /tmp/issue28-kzmgv2gq/case4/assembly.fasta (marker script status 3, hmm_hits=1, stderr=/tmp/issue28-kzmgv2gq/case4/assembly.fasta.bacar_marker.2quarter_lencutoff_1001.seed.err). COMEBin cannot build a binning axis for this input and will report 0 bins.
+2026-09-28 12:48:44,613 - Reporting 0 bins for /tmp/issue28-kzmgv2gq/case4/assembly.fasta: no usable marker seed set, so no binning axis can be built. This is an empty result for this input, not an error.
+
+[PASS] case4: main.py bin exited 0
+[PASS] case4: main.py reported 0 bins
+[PASS] case4: no traceback
+--- case 5 (main.py get_result, no usable seed) ---
+r.pl /tmp/issue28-kzmgv2gq/case4/assembly.fasta.bacar_marker.hmmout /tmp/issue28-kzmgv2gq/case4/assembly.fasta 1001 /tmp/issue28-kzmgv2gq/case4/.assembly.fasta.bacar_marker.2quarter_lencutoff_1001.seed.2136231.8j7oqh5c.tmp
+2026-09-28 12:48:47,421 - Marker seed generation exited with status 3; stderr=/tmp/issue28-kzmgv2gq/case4/assembly.fasta.bacar_marker.2quarter_lencutoff_1001.seed.err.
+2026-09-28 12:48:47,421 - Marker seed generation exited with status 3 (an expected empty result for this input); stderr=/tmp/issue28-kzmgv2gq/case4/assembly.fasta.bacar_marker.2quarter_lencutoff_1001.seed.err; tail=Marker hits mapped to input contigs, but no usable marker seed set could be generated..
+2026-09-28 12:48:47,421 - No usable marker seeds for /tmp/issue28-kzmgv2gq/case4/assembly.fasta (marker script status 3, hmm_hits=1, stderr=/tmp/issue28-kzmgv2gq/case4/assembly.fasta.bacar_marker.2quarter_lencutoff_1001.seed.err). COMEBin cannot build a binning axis for this input and will report 0 bins.
+2026-09-28 12:48:47,422 - Reporting 0 bins for /tmp/issue28-kzmgv2gq/case4/assembly.fasta: no usable marker seed set, so no bins can be selected. This is an empty result for this input, not an error.
+
+[PASS] case5: main.py get_result exited 0
+[PASS] case5: main.py get_result reported 0 bins
+
+ALL CHECKS PASSED
+> build · big-pickle
+All 5 cases pass. Let me verify the before/after by running the same test against the unfixed code (isolated checkout, no disturbance to the working tree):
+[0m$ [0mrm -rf /tmp/opencode/comebin-prefix && git -C /vol/data/repos/COMEBin-v11 worktree add --detach /tmp/opencode/comebin-prefix HEAD 2>&1 | tail -2 && cd /tmp/opencode/comebin-prefix && git checkout -q HEAD -- . && git log --oneline -1
+Preparing worktree (detached HEAD 95f5ea8)
+HEAD is now at 95f5ea8 batch1 (v1.1.0 base): sequential bin numbering, drop empty/missing bins
+95f5ea8 batch1 (v1.1.0 base): sequential bin numbering, drop empty/missing bins
+> build · big-pickle
+[0m$ [0mcd /tmp/opencode && COMEBIN_REPO=/tmp/opencode/comebin-prefix timeout 400 python3 test_issue28_marker_seed.py 2>&1 | grep -E "^\[(PASS|FAIL)\]|^FAILED|^ALL CHECKS" 
+[FAIL] case1: gen_seed did not raise :: rc=1 ll last):
+[FAIL] case1: gen_seed reported 0 seeds :: tils.py", line 188, in _run_external_command
+[FAIL] case1: warned instead of erroring :: tils.py", line 188, in _run_external_command
+[PASS] case1: no seed file was published
+[FAIL] case1: no traceback in output
+[FAIL] case2: gen_seed reported 0 seeds :: rc=1 bin-prefix/COMEBin/utils.py", line 188, in _run_external_command
+[PASS] case3: gen_seed returned a positive seed count
+[PASS] case3: seed file published
+[PASS] case3: no false "no usable seeds" warning
+[FAIL] case4: main.py bin exited 0 :: rc=1 ds, args.contig_len, marker_name="bacar_marker",
+[FAIL] case4: main.py reported 0 bins :: tils.py", line 188, in _run_external_command
+[FAIL] case4: no traceback
+[FAIL] case5: main.py get_result exited 0 :: rc=1 ds, args.contig_len, marker_name="bacar_marker",
+[FAIL] case5: main.py get_result reported 0 bins :: tils.py", line 188, in _run_external_command
+FAILED (10): ['case1: gen_seed did not raise', 'case1: gen_seed reported 0 seeds', 'case1: warned instead of erroring', 'case1: no traceback in output', 'case2: gen_seed reported 0 seeds', 'case4: main.py bin exited 0', 'case4: main.py reported 0 bins', 'case4: no traceback', 'case5: main.py get_result exited 0', 'case5: main.py get_result reported 0 bins']
+> build · big-pickle
+Before/after proven. Let me clean up and add the regression test to the COMEBin repo:
+[0m$ [0mgit -C /vol/data/repos/COMEBin-v11 worktree remove --force /tmp/opencode/comebin-prefix && git -C /vol/data/repos/COMEBin-v11 worktree list && echo "CLEANED"
+/vol/data/repos/COMEBin            358ddd8 [master]
+/vol/data/repos/COMEBin-opt        03670d6 [comebin-optimizations]
+/vol/data/repos/COMEBin-small-fix  c8f22e4 [comebin-small-fix]
+/vol/data/repos/COMEBin-v11        95f5ea8 [comebin-optimizations-v11]
+CLEANED
+> build · big-pickle
+[0m$ [0mmkdir -p /vol/data/repos/COMEBin-v11/tests && cp /tmp/opencode/test_issue28_marker_seed.py /vol/data/repos/COMEBin-v11/tests/test_marker_seed_empty_result.py && cd /vol/data/repos/COMEBin-v11 && sed -i "s|PYTHON = os.environ.get('COMEBIN_PYTHON', '/vol/data/envs/comebin/bin/python')|PYTHON = os.environ.get('COMEBIN_PYTHON', sys.executable)|" tests/test_marker_seed_empty_result.py && grep -n "^PYTHON" tests/test_marker_seed_empty_result.py
+25:PYTHON = os.environ.get('COMEBIN_PYTHON', sys.executable)
+> build · big-pickle
+[0m← [0mEdit /vol/data/repos/COMEBin-v11/tests/test_marker_seed_empty_result.py
+Index: /vol/data/repos/COMEBin-v11/tests/test_marker_seed_empty_result.py
+===================================================================
+--- /vol/data/repos/COMEBin-v11/tests/test_marker_seed_empty_result.py
++++ /vol/data/repos/COMEBin-v11/tests/test_marker_seed_empty_result.py
+@@ -18,11 +18,13 @@
+ import tempfile
+ import textwrap
+ from pathlib import Path
+ 
+-COMEBIN_REPO = Path(os.environ.get('COMEBIN_REPO', '/vol/data/repos/COMEBin-v11'))
++COMEBIN_REPO = Path(os.environ.get('COMEBIN_REPO', Path(__file__).resolve().parent.parent))
+ COMEBIN_DIR = COMEBIN_REPO / 'COMEBin'
+ AUXILIARY = COMEBIN_REPO / 'auxiliary'
++# Run in the interpreter COMEBin itself needs (numpy/Bio/torch); the cases are
++# subprocesses so they can assert on exit status and log output.
+ PYTHON = os.environ.get('COMEBIN_PYTHON', sys.executable)
+ 
+ failures = []
+ 
+
+> build · big-pickle
+[0m$ [0mcd /vol/data/repos/COMEBin-v11 && timeout 400 /vol/data/envs/comebin/bin/python tests/test_marker_seed_empty_result.py 2>&1 | grep -E "^\[(PASS|FAIL)\]|^FAILED|^ALL CHECKS"
+[PASS] case1: gen_seed did not raise
+[PASS] case1: gen_seed reported 0 seeds
+[PASS] case1: warned instead of erroring
+[PASS] case1: no seed file was published
+[PASS] case1: no traceback in output
+[PASS] case2: gen_seed reported 0 seeds
+[PASS] case3: gen_seed returned a positive seed count
+[PASS] case3: seed file published
+[PASS] case3: no false "no usable seeds" warning
+[PASS] case4: main.py bin exited 0
+[PASS] case4: main.py reported 0 bins
+[PASS] case4: no traceback
+[PASS] case5: main.py get_result exited 0
+[PASS] case5: main.py get_result reported 0 bins
+ALL CHECKS PASSED
+> build · big-pickle
+Now let me validate on real benchmark data. First, check the small test dataset and tool availability:
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && sed -n '1,60p' scripts/run_small_test.sh
+#!/usr/bin/env bash
+# run_small_test.sh — issue #2 correctness test: run COMEBin's real pipeline on
+# /vol/data/datasets/comebin_small with the same bookkeeping as a benchmark.
+# It refuses to overlap another registered benchmark and is intentionally
+# non-interactive. Usage:
+#   bash scripts/run_small_test.sh [rundir] [threads]
+# Environment:
+#   SRC_COMEBIN=/path/to/repo-root   COMEBin checkout/worktree to test
+#                                   (default: the verified small-data fix worktree)
+#   SEED=42                          optional reproducible seed (supported CLIs)
+#   BATCH_SIZE=256 EMB_SIZE=512      small-data training defaults
+#   EPOCHS=30                         training epochs (issue #10; default 30 for
+#                                     fast functional tests; passed as -E only
+#                                     when the CLI supports it)
+#   DATA=/vol/data/datasets/comebin_small
+#                                     dataset dir with contigs.fa + bamfiles/reads.bam
+#                                     (issue #18: point it at the tiny set to test
+#                                     the smallest functional dataset)
+set -euo pipefail
+
+MM=/vol/data/tools/bin/micromamba
+ENV=/vol/data/envs/comebin
+SRC=${SRC_COMEBIN:-/vol/data/repos/COMEBin-small-fix}
+DATA=${DATA:-/vol/data/datasets/comebin_small}
+CONTIGS="$DATA/contigs.fa"
+BAMDIR="$DATA/bamfiles"
+RUNDIR=$(realpath -m "${1:-/vol/data/benchmark/runs/small_test}")
+THREADS=${2:-8}
+BATCH_SIZE=${BATCH_SIZE:-256}
+EMB_SIZE=${EMB_SIZE:-512}
+EPOCHS=${EPOCHS:-30}
+SEED=${SEED:-}
+START_LOCK=/tmp/benchmark-start.lock
+ACTIVE=/vol/data/benchmark/.active_run
+
+[ -f "$CONTIGS" ] || { echo "ERROR: missing small contigs: $CONTIGS"; exit 1; }
+[ -f "$BAMDIR/reads.bam" ] || { echo "ERROR: missing small BAM: $BAMDIR/reads.bam"; exit 1; }
+[ -f "$SRC/COMEBin/run_comebin.sh" ] || { echo "ERROR: SRC_COMEBIN is not a COMEBin repo root: $SRC"; exit 1; }
+
+# Serialize new launches and refuse overlap with the independently tracked run.
+# Checking .active_run is essential: the already-running baseline predates this lock.
+exec 9>"$START_LOCK"
+flock -n 9 || { echo "ERROR: another benchmark launch holds $START_LOCK"; exit 1; }
+if [ -f "$ACTIVE" ] && [ "${BENCHMARK_WATCHDOG_REPLACE:-0}" != "1" ]; then
+  read -r active_pid active_pgid active_log active_dir active_start active_mode active_src < "$ACTIVE" || true
+  active_state=$(ps -o stat= -p "${active_pid:-0}" 2>/dev/null | tr -d ' ' || true)
+  if [ -n "${active_pid:-}" ] && kill -0 "$active_pid" 2>/dev/null && [[ "$active_state" != Z* ]]; then
+    echo "ERROR: benchmark already active: pid=$active_pid dir=$active_dir mode=${active_mode:-baseline}"
+    echo "Small functional tests and full benchmarks must never overlap; try again after that run finishes."
+    exit 1
+  fi
+  old_rc=$(grep -m1 '^exit_code:' "${active_dir:-/nonexistent}/run_meta.txt" 2>/dev/null | awk '{print $2}' || true)
+  if [ "${old_rc:-}" != "0" ]; then
+    echo "ERROR: stale failed active run is registered: pid=$active_pid dir=$active_dir"
+    echo "Run /vol/data/benchmark/bin/benchmark-watchdog.sh to triage/restart it; not starting a second run."
+    exit 1
+  fi
+  echo "clearing completed stale active-run registration for $active_dir"
+  rm -f "$ACTIVE"
+fi
+[0m$ [0mls /vol/data/envs/comebin/bin/ | grep -iE "fraggene|hmmsearch|comebin" 2>&1; echo "=== datasets ==="; ls -la /vol/data/datasets/ 2>&1
+FragGeneScan
+hmmsearch
+run_FragGeneScan.pl
+=== datasets ===
+total 5444644
+drwxrwxr-x 10 ubuntu ubuntu       4096 Sep 25 21:54 .
+drwxr-xr-x  9 ubuntu ubuntu       4096 Sep 26 04:47 ..
+drwxrwxr-x  5 ubuntu ubuntu       4096 Sep 25 04:01 cami_II
+drwxrwxr-x  3 ubuntu ubuntu       4096 Sep 25 23:21 cami_III
+drwxrwxr-x  4 ubuntu ubuntu       4096 Sep 25 01:55 cami_II_human
+drwxrwxr-x  3 ubuntu ubuntu       4096 Sep 24 10:03 comebin_medium
+drwxrwxr-x  3 ubuntu ubuntu       4096 Sep 24 08:46 comebin_small
+drwxr-xr-x  4 ubuntu ubuntu      16384 Sep 24 08:22 comebin_test_data
+-rw-------  1 ubuntu ubuntu 5575256185 Jul  4  2023 comebin_test_data.zip
+drwxrwxr-x  3 ubuntu ubuntu       4096 Sep 25 01:42 comebin_tiny
+drwxrwxr-x  3 ubuntu ubuntu       4096 Sep 25 01:47 comebin_tiny_101
+> build · big-pickle
+[0m$ [0mcd /vol/data/benchmark/runs/small_test_v4 && cat run_meta.txt 2>&1 | head -20; echo "=== nproc/mem ==="; nproc; free -g | head -2
+run:        /vol/data/benchmark/runs/small_test_v4
+date:       2026-09-24T08:48:33+00:00
+source:     /vol/data/repos/COMEBin-small-fix
+branch:     comebin-small-fix
+commit:     c8f22e4935a66a0fd58b794489a9021671b15437
+contigs:    /vol/data/datasets/comebin_small/contigs.fa  (300 contigs, 3.5M)
+bamdir:     /vol/data/datasets/comebin_small/bamfiles
+threads:    8
+batch_size: 256
+emb_size:   512
+epochs:     30 (passed as -E when the CLI supports it)
+seed:       42
+host:       32 cores, 62G RAM
+cmd_wrapper: /vol/data/tools/bin/micromamba run -p /vol/data/envs/comebin bash run_comebin.sh -a /vol/data/datasets/comebin_small/contigs.fa -p /vol/data/datasets/comebin_small/bamfiles -o /vol/data/benchmark/runs/small_test_v4/comebin_out -n 6 -t 8 -b 256 -e 512 -c 512 -E 30 
+exit_code:  0
+wall_s:     122
+finished:   2026-09-24T08:50:35+00:00
+bins:       3  -> /vol/data/benchmark/runs/small_test_v4/comebin_out/comebin_res/comebin_res_bins
+cmd_checkm2: /vol/data/tools/bin/micromamba run -p /vol/data/envs/checkm2 checkm2 predict --threads 8 --database_path /vol/data/benchmark/checkm2db/CheckM2_database/uniref100.KO.1.dmnd --input /vol/data/benchmark/runs/small_test_v4/comebin_out/comebin_res/comebin_res_bins --output-directory /vol/data/benchmark/runs/small_test_v4/eval/checkm2 -x fasta
+cmd_checkm2: /vol/data/tools/bin/micromamba run -p /vol/data/envs/checkm2 checkm2 predict --threads 8 --database_path /vol/data/benchmark/checkm2db/CheckM2_database/uniref100.KO.1.dmnd --input /vol/data/benchmark/runs/small_test_v4/comebin_out/comebin_res/comebin_res_bins --output-directory /vol/data/benchmark/runs/small_test_v4/eval/checkm2 -x fa --force
+=== nproc/mem ===
+32
+               total        used        free      shared  buff/cache   available
+Mem:              62           2          31           0          29          60
+[0m$ [0mls -la /vol/data/benchmark/.active_run 2>&1; cat /vol/data/benchmark/.active_run 2>/dev/null; echo "=== small dataset ==="; ls -la /vol/data/datasets/comebin_small/ /vol/data/datasets/comebin_small/bamfiles/ 2>&1; grep -c ">" /vol/data/datasets/comebin_small/contigs.fa
+ls: cannot access '/vol/data/benchmark/.active_run': No such file or directory
+=== small dataset ===
+/vol/data/datasets/comebin_small/:
+total 9380
+drwxrwxr-x  3 ubuntu ubuntu    4096 Sep 24 08:46 .
+drwxrwxr-x 10 ubuntu ubuntu    4096 Sep 25 21:54 ..
+drwxrwxr-x  2 ubuntu ubuntu    4096 Sep 24 01:05 bamfiles
+-rw-rw-r--  1 ubuntu ubuntu   10992 Sep 23 14:53 contig_names.txt
+-rw-------  1 ubuntu ubuntu   13234 Sep 24 01:01 contigs.bed
+-rw-rw-r--  1 ubuntu ubuntu 3651343 Sep 23 14:53 contigs.fa
+-rw-rw-r--  1 ubuntu ubuntu     107 Sep 24 08:46 contigs.fa.bacar_marker.2quarter_lencutoff_1001.seed
+-rw-rw-r--  1 ubuntu ubuntu   45317 Sep 24 08:46 contigs.fa.bacar_marker.hmmout
+-rw-rw-r--  1 ubuntu ubuntu       0 Sep 24 08:46 contigs.fa.bacar_marker.hmmout.err
+-rw-rw-r--  1 ubuntu ubuntu  404900 Sep 24 08:46 contigs.fa.bacar_marker.hmmout.out
+-rw-rw-r--  1 ubuntu ubuntu 1289865 Sep 23 22:07 contigs.fa.frag.faa
+-rw-rw-r--  1 ubuntu ubuntu 3489994 Sep 23 22:07 contigs.fa.frag.ffn
+-rw-rw-r--  1 ubuntu ubuntu  533375 Sep 23 22:07 contigs.fa.frag.gff
+-rw-rw-r--  1 ubuntu ubuntu  124407 Sep 23 22:07 contigs.fa.frag.out
+-rw-rw-r--  1 ubuntu ubuntu    1642 Sep 24 08:48 contigs.fa_lengths.txt
+
+/vol/data/datasets/comebin_small/bamfiles/:
+total 92140
+drwxrwxr-x 2 ubuntu ubuntu     4096 Sep 24 01:05 .
+drwxrwxr-x 3 ubuntu ubuntu     4096 Sep 24 08:46 ..
+-rw-rw-r-- 1 ubuntu ubuntu        0 Sep 23 14:55 bedtools.err
+-rw-rw-r-- 1 ubuntu ubuntu 94078937 Sep 23 14:57 reads.bam
+-rw-rw-r-- 1 ubuntu ubuntu   259016 Sep 24 01:01 reads.bam.bai
+300
+> build · big-pickle
+Now let me validate on real benchmark data. Setting up a real-data reproduction:
+[0m$ [0mset -e
+W=/tmp/opencode/realdata
+rm -rf $W && mkdir -p $W/ds/bamfiles
+cp /vol/data/datasets/comebin_small/contigs.fa $W/ds/
+cp /vol/data/datasets/comebin_small/contigs.fa.frag.faa $W/ds/
+cp /vol/data/datasets/comebin_small/contigs.fa.bacar_marker.hmmout $W/ds/
+ln -s /vol/data/datasets/comebin_small/bamfiles/reads.bam $W/ds/bamfiles/reads.bam
+ln -s /vol/data/datasets/comebin_small/bamfiles/reads.bam.bai $W/ds/bamfiles/reads.bam.bai
+echo "contigs: $(grep -c '>' $W/ds/contigs.fa)  hmm hits: $(grep -vc '^#' $W/ds/contigs.fa.bacar_marker.hmmout)"
+echo "max contig len: $(awk '/^>/{if(l>m)m=l; l=0; next}{l+=length($0)}END{if(l>m)m=l; print m}' $W/ds/contigs.fa)"
+echo "real seed file (reference): "; cat /vol/data/datasets/comebin_small/contigs.fa.bacar_marker.2quarter_lencutoff_1001.seed
+contigs: 300  hmm hits: 208
+max contig len: 124454
+real seed file (reference): 
+BATS_SAMN07137077_METAG-scaffold_7
+BATS_SAMN07137077_METAG-scaffold_17
+BATS_SAMN07137077_METAG-scaffold_30
+> build · big-pickle
