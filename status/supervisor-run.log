@@ -60452,3 +60452,303 @@ BATS_SAMN07137077_METAG-scaffold_7
 BATS_SAMN07137077_METAG-scaffold_17
 BATS_SAMN07137077_METAG-scaffold_30
 > build · big-pickle
+[0m$ [0mcd /vol/data/repos/COMEBin-v11/COMEBin && export PATH=/vol/data/envs/comebin/bin:$PATH && \
+timeout 300 /vol/data/envs/comebin/bin/python main.py bin \
+  --contig_file /tmp/opencode/realdata/ds/contigs.fa \
+  --output_path /tmp/opencode/realdata/outB \
+  --num_threads 8 --contig_len 200000 2>&1 | tail -14; echo "=== EXIT: ${PIPESTATUS[0]} ==="
+2026-09-28 12:50:05,072 - bin
+2026-09-28 12:50:05,072 - Marker tools: FragGeneScan=/vol/data/envs/comebin/bin/FragGeneScan, wrapper=/vol/data/envs/comebin/bin/run_FragGeneScan.pl, hmmsearch=/vol/data/envs/comebin/bin/hmmsearch, perl=/vol/data/envs/comebin/bin/perl, marker_script=/vol/data/repos/COMEBin-v11/auxiliary/test_getmarker_2quarter.pl, marker_hmm=/vol/data/repos/COMEBin-v11/auxiliary/bacar_marker.hmm.
+2026-09-28 12:50:05,072 - Reusing FragGeneScan protein file: /tmp/opencode/realdata/ds/contigs.fa.frag.faa.
+2026-09-28 12:50:05,072 - Reusing HMMsearch result /tmp/opencode/realdata/ds/contigs.fa.bacar_marker.hmmout with 208 hits; --hmm_evalue applies only when HMMsearch runs and cached thresholds are not compared.
+2026-09-28 12:50:05,073 - Marker seed generation command: /vol/data/envs/comebin/bin/perl /vol/data/repos/COMEBin-v11/auxiliary/test_getmarker_2quarter.pl /tmp/opencode/realdata/ds/contigs.fa.bacar_marker.hmmout /tmp/opencode/realdata/ds/contigs.fa 200000 /tmp/opencode/realdata/ds/.contigs.fa.bacar_marker.2quarter_lencutoff_200000.seed.2136930.wep2_z8_.tmp
+2026-09-28 12:50:05,100 - Marker seed generation exited with status 3; stderr=/tmp/opencode/realdata/ds/contigs.fa.bacar_marker.2quarter_lencutoff_200000.seed.err.
+2026-09-28 12:50:05,100 - Marker seed generation exited with status 3 (an expected empty result for this input); stderr=/tmp/opencode/realdata/ds/contigs.fa.bacar_marker.2quarter_lencutoff_200000.seed.err; tail=Marker hits mapped to input contigs, but no usable marker seed set could be generated..
+2026-09-28 12:50:05,100 - No usable marker seeds for /tmp/opencode/realdata/ds/contigs.fa (marker script status 3, hmm_hits=208, stderr=/tmp/opencode/realdata/ds/contigs.fa.bacar_marker.2quarter_lencutoff_200000.seed.err). COMEBin cannot build a binning axis for this input and will report 0 bins.
+2026-09-28 12:50:05,101 - Reporting 0 bins for /tmp/opencode/realdata/ds/contigs.fa: no usable marker seed set, so no binning axis can be built. This is an empty result for this input, not an error.
+=== EXIT: 0 ===
+> build · big-pickle
+Real-data reproduction confirmed (208 real hits → status 3 → now exit 0 with 0 bins). Now the full no-regression run on the real benchmark dataset:
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && sed -n '60,140p' scripts/run_small_test.sh
+fi
+
+if [ -f "$RUNDIR/run_meta.txt" ] || [ -d "$RUNDIR/comebin_out" ]; then
+  echo "ERROR: refusing to overwrite an existing run directory: $RUNDIR"
+  echo "Choose a fresh rundir (autorestart directories are created by benchmark-watchdog)."
+  exit 1
+fi
+
+mkdir -p "$RUNDIR/logs"
+COMMIT=$(git -C "$SRC" rev-parse HEAD)
+BRANCH=$(git -C "$SRC" branch --show-current)
+# Ignore generated caches such as __pycache__, but reject every tracked edit.
+DIRTY=$(git -C "$SRC" status --porcelain --untracked-files=no | wc -l)
+echo "source commit: $COMMIT branch=$BRANCH (tracked dirty files: $DIRTY) — small-dataset test run"
+[ "$DIRTY" -eq 0 ] || { echo "REFUSING: source has tracked changes; commit or clean it first"; exit 1; }
+COMEBIN_ARGS=(
+  -a "$CONTIGS" -p "$BAMDIR" -o "$RUNDIR/comebin_out"
+  -n 6 -t "$THREADS" -b "$BATCH_SIZE" -e "$EMB_SIZE" -c "$EMB_SIZE"
+)
+# v1.1.0+ defaults to CUDA; this VM is CPU-only. Older CLIs do not know -d.
+if grep -q -- '-d STR.*device' "$SRC/COMEBin/run_comebin.sh"; then
+  COMEBIN_ARGS+=(-d cpu)
+fi
+if [ -n "$SEED" ] && grep -q -- '-s INT.*seed' "$SRC/COMEBin/run_comebin.sh"; then
+  COMEBIN_ARGS+=(-s "$SEED")
+fi
+# Issue #10: cap epochs for fast functional tests (upstream CLI has no -E).
+if grep -q -- '-E INT.*epochs' "$SRC/COMEBin/run_comebin.sh"; then
+  COMEBIN_ARGS+=(-E "$EPOCHS")
+fi
+CMD_TEXT=$(printf '%q ' "$MM" run -p "$ENV" bash run_comebin.sh "${COMEBIN_ARGS[@]}")
+
+{
+  echo "run:        $RUNDIR"
+  echo "date:       $(date -Is)"
+  echo "source:     $SRC"
+  echo "branch:     $BRANCH"
+  echo "commit:     $COMMIT"
+  echo "contigs:    $CONTIGS  ($(grep -c '^>' "$CONTIGS") contigs, $(du -h "$CONTIGS" | cut -f1))"
+  echo "bamdir:     $BAMDIR"
+  echo "threads:    $THREADS"
+  echo "batch_size: $BATCH_SIZE"
+  echo "emb_size:   $EMB_SIZE"
+  echo "epochs:     $EPOCHS (passed as -E when the CLI supports it)"
+  echo "seed:       ${SEED:-unset}"
+  echo "host:       $(nproc) cores, $(free -g | awk '/Mem:/{print $2}')G RAM"
+  echo "cmd_wrapper: $CMD_TEXT"
+} | tee "$RUNDIR/run_meta.txt"
+
+export MAMBA_ROOT_PREFIX=/vol/data/envs/.mamba
+cd "$SRC/COMEBin"
+
+# Fields: pid pgid logfile rundir start_epoch mode source_repo. Older baseline
+# registrations have five fields and are treated as mode=baseline.
+printf '%s %s %s %s %s %s %s\n' "$$" "$(ps -o pgid= -p $$ | tr -d ' ')" \
+  "$RUNDIR/comebin_run.log" "$RUNDIR" "$(date +%s)" small "$SRC" > "$ACTIVE.tmp.$$"
+mv "$ACTIVE.tmp.$$" "$ACTIVE"
+
+SAMPLER_PID=""
+cleanup() {
+  rc=$?
+  trap - EXIT
+  if [ -n "$SAMPLER_PID" ] && kill -0 "$SAMPLER_PID" 2>/dev/null; then
+    kill "$SAMPLER_PID" 2>/dev/null || true
+    wait "$SAMPLER_PID" 2>/dev/null || true
+  fi
+  # On normal completion all foreground children are gone. Explicitly release
+  # the launch lock before a short functional test exits; a signal exit does not
+  # proactively declare the launch area free.
+  if [ "$rc" -ne 130 ]; then
+    flock -u 9 2>/dev/null || true
+    exec 9>&-
+  fi
+  # A failed run stays registered so benchmark-watchdog can apply its restart
+  # budget. Only a successful run clears its own registration.
+  if [ "$rc" -eq 0 ] && [ -f "$ACTIVE" ]; then
+    read -r current_pid _ < "$ACTIVE" || true
+    [ "${current_pid:-}" = "$$" ] && rm -f "$ACTIVE"
+  fi
+  exit "$rc"
+}
+> build · big-pickle
+The harness requires a clean source tree, so let me commit the COMEBin fix first:
+[0m$ [0mcd /vol/data/repos/COMEBin-v11 && git status --porcelain --untracked-files=no; echo "--- full status ---"; git status --short | head -20
+M COMEBin/main.py
+ M COMEBin/utils.py
+--- full status ---
+ M COMEBin/main.py
+ M COMEBin/utils.py
+?? tests/
+> build · big-pickle
+[0m$ [0mcd /vol/data/repos/COMEBin-v11 && cat .gitignore 2>/dev/null | head -20; echo "=== check pycache ignored? ==="; git check-ignore -v COMEBin/__pycache__/x 2>&1 | head -2
+/data/
+
+# Python bytecode and cache directories
+__pycache__/
+*.py[cod]
+
+# Editor swap files
+*.swp
+*.swo
+
+# Local Markdown documents except the public README
+*.md
+!/README.md
+=== check pycache ignored? ===
+.gitignore:4:__pycache__/	COMEBin/__pycache__/x
+> build · big-pickle
+[0m$ [0mcd /vol/data/repos/COMEBin-v11 && git add COMEBin/main.py COMEBin/utils.py tests/test_marker_seed_empty_result.py && git status --short && echo "=== staged files (must be exactly 3) ===" && git diff --cached --name-only
+M  COMEBin/main.py
+M  COMEBin/utils.py
+A  tests/test_marker_seed_empty_result.py
+=== staged files (must be exactly 3) ===
+COMEBin/main.py
+COMEBin/utils.py
+tests/test_marker_seed_empty_result.py
+> build · big-pickle
+[0m$ [0mcd /vol/data/repos/COMEBin-v11 && git commit -q -F - <<'EOF'
+Report 0 bins instead of erroring when no marker seed set exists
+
+An assembly can have plenty of bacar marker hits that map to its contigs and
+still yield no usable single-copy marker seed set: every hit is either shorter
+than --contig_len or covers less than 40 % of its protein. In that case
+auxiliary/test_getmarker_2quarter.pl exits 3 (or 2 / 4), and _run_external_command
+turned that into
+
+  RuntimeError: Marker seed generation failed with status 3
+  ...
+  Clustering exited with status 1.
+
+dying after a full 200-epoch training run, with no explanation beyond the
+script's status code.
+
+Those statuses describe a legitimate EMPTY result for the input, not an internal
+error, so gen_seed() now reports zero seeds and logs what happened, and the
+`bin` and `get_result` subcommands report 0 bins and exit 0. run_comebin.sh then
+completes normally instead of aborting, and callers can distinguish "this input
+has no bins" from a crash. Genuine failures (a missing tool, a crashing
+FragGeneScan/hmmsearch, zero marker hits, or an unusable cached seed file) still
+raise.
+
+Marker script statuses now tolerated: 2 (hits matched no input contig ids),
+3 (hits matched contigs but none passed the length / 40 % coverage filters),
+4 (parsing finished but wrote an empty seed file).
+
+tests/test_marker_seed_empty_result.py covers all three statuses plus the happy
+path: the empty cases return 0 without publishing a seed file, and a normal
+input still produces seeds and runs through main.py bin/get_result with exit 0.
+EOF
+git log --oneline -2
+41606c8 Report 0 bins instead of erroring when no marker seed set exists
+95f5ea8 batch1 (v1.1.0 base): sequential bin numbering, drop empty/missing bins
+> build · big-pickle
+Now the full no-regression run on the real benchmark dataset with the patched code:
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && nohup env SRC_COMEBIN=/vol/data/repos/COMEBin-v11 \
+  DATA=/tmp/opencode/realdata/ds SEED=42 EPOCHS=30 BATCH_SIZE=256 EMB_SIZE=512 \
+  bash scripts/run_small_test.sh /vol/data/benchmark/runs/small_v11_issue28_regression 8 \
+  > /tmp/opencode/small_regression.log 2>&1 &
+echo "launched pid $!"; sleep 45; tail -20 /tmp/opencode/small_regression.log
+launched pid 2137085
+2026-09-28 12:51:06,181 - NN training: epoch=13/200, batches=1, loss=6.071208, top1=1.1589, elapsed=0.987s, process_memory={'VmPeak': '2287524 kB', 'VmRSS': '610192 kB'}, gpu_memory=None.
+  0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  1.09it/s]100%|██████████| 1/1 [00:00<00:00,  1.02it/s]
+2026-09-28 12:51:07,166 - NN training: epoch=14/200, batches=1, loss=5.9579592, top1=1.5365, elapsed=0.984s, process_memory={'VmPeak': '2287524 kB', 'VmRSS': '619276 kB'}, gpu_memory=None.
+  0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  1.04it/s]100%|██████████| 1/1 [00:01<00:00,  1.02s/it]
+2026-09-28 12:51:08,194 - NN training: epoch=15/200, batches=1, loss=5.9107571, top1=1.6276, elapsed=1.027s, process_memory={'VmPeak': '2290596 kB', 'VmRSS': '616340 kB'}, gpu_memory=None.
+  0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  1.06it/s]100%|██████████| 1/1 [00:00<00:00,  1.00it/s]
+2026-09-28 12:51:09,200 - NN training: epoch=16/200, batches=1, loss=5.8424101, top1=1.9401, elapsed=1.005s, process_memory={'VmPeak': '2290596 kB', 'VmRSS': '610200 kB'}, gpu_memory=None.
+  0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  1.10it/s]100%|██████████| 1/1 [00:00<00:00,  1.03it/s]
+2026-09-28 12:51:10,176 - NN training: epoch=17/200, batches=1, loss=5.8003116, top1=2.0964, elapsed=0.976s, process_memory={'VmPeak': '2290596 kB', 'VmRSS': '619284 kB'}, gpu_memory=None.
+  0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  1.07it/s]100%|██████████| 1/1 [00:00<00:00,  1.00it/s]
+2026-09-28 12:51:11,178 - NN training: epoch=18/200, batches=1, loss=5.7683768, top1=2.4349, elapsed=1.001s, process_memory={'VmPeak': '2293668 kB', 'VmRSS': '619416 kB'}, gpu_memory=None.
+  0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  1.06it/s]100%|██████████| 1/1 [00:00<00:00,  1.01it/s]
+2026-09-28 12:51:12,176 - NN training: epoch=19/200, batches=1, loss=5.7508192, top1=2.2266, elapsed=0.997s, process_memory={'VmPeak': '2293668 kB', 'VmRSS': '610200 kB'}, gpu_memory=None.
+  0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  1.09it/s]100%|██████████| 1/1 [00:00<00:00,  1.02it/s]
+2026-09-28 12:51:13,166 - NN training: epoch=20/200, batches=1, loss=5.6915798, top1=2.6042, elapsed=0.989s, process_memory={'VmPeak': '2293668 kB', 'VmRSS': '610208 kB'}, gpu_memory=None.
+  0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  1.05it/s]100%|██████████| 1/1 [00:01<00:00,  1.01s/it]
+2026-09-28 12:51:14,183 - NN training: epoch=21/200, batches=1, loss=5.6854, top1=2.7995, elapsed=1.016s, process_memory={'VmPeak': '2293668 kB', 'VmRSS': '610208 kB'}, gpu_memory=None.
+  0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  1.10it/s]100%|██████████| 1/1 [00:00<00:00,  1.04it/s]
+2026-09-28 12:51:15,154 - NN training: epoch=22/200, batches=1, loss=5.6571264, top1=2.3568, elapsed=0.971s, process_memory={'VmPeak': '2293668 kB', 'VmRSS': '619292 kB'}, gpu_memory=None.
+  0%|          | 0/1 [00:00<?, ?it/s]
+> build · big-pickle
+While that runs, let me address the second real degradation: `supervise-alive.sh` is a live cron job with no source in the repo, and C1b only checks repo→bin, so this class of drift is invisible.
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && grep -n "C1b_deploy\|^# ---- C1b" -n scripts/meta-watchdog.sh | head; echo "=== tail of small run ==="; grep -E "Marker seed generation|Reporting 0 bins|Published marker seed|Finished|bin$" /tmp/opencode/small_regression.log | tail -8; tail -3 /tmp/opencode/small_regression.log | cut -c1-200
+142:# ---- C1b: installed pipeline scripts match repo source ---------------------- #
+170:    check C1b_deploy ok "deploy deferred: benchmark run pid $deploy_pid is live; pending:$deploy_bad"
+198:      check C1b_deploy ok "re-deployed:$deploy_bad"
+200:      check C1b_deploy broken "deploy failed, still stale:$deploy_still (was:$deploy_bad)"
+204:  check C1b_deploy ok "installed pipeline scripts identical to repo source"
+=== tail of small run ===
+  0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  1.08it/s]100%|██████████| 1/1 [00:00<00:00,  1.02it/s]
+2026-09-28 12:51:28,279 - NN training: epoch=35/200, batches=1, loss=5.2797899, top1=4.0234, elapsed=0.988s, process_memory={'VmPeak': '2296740 kB', 'VmRSS': '610208 kB'}, gpu_memory=None.
+  0%|          | 0/1 [00:00<?, ?it/s]
+> build · big-pickle
+Let me add the missing script to the repo source and make C1b catch this drift class:
+[0m$ [0mcp /vol/data/benchmark/bin/supervise-alive.sh /vol/data/repos/metagenomic-binning-benchmark/scripts/supervise-alive.sh && chmod 755 /vol/data/repos/metagenomic-binning-benchmark/scripts/supervise-alive.sh && cmp -s /vol/data/benchmark/bin/supervise-alive.sh /vol/data/repos/metagenomic-binning-benchmark/scripts/supervise-alive.sh && echo "BYTE-IDENTICAL to the live installed copy" && bash -n /vol/data/repos/metagenomic-binning-benchmark/scripts/supervise-alive.sh && echo "SYNTAX OK"
+BYTE-IDENTICAL to the live installed copy
+SYNTAX OK
+> build · big-pickle
+[0m→ [0mRead /vol/data/repos/metagenomic-binning-benchmark/scripts/meta-watchdog.sh [90m[limit=14, offset=196][0m
+> build · big-pickle
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/scripts/meta-watchdog.sh
+Index: /vol/data/repos/metagenomic-binning-benchmark/scripts/meta-watchdog.sh
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/scripts/meta-watchdog.sh
++++ /vol/data/repos/metagenomic-binning-benchmark/scripts/meta-watchdog.sh
+@@ -203,8 +203,31 @@
+ else
+   check C1b_deploy ok "installed pipeline scripts identical to repo source"
+ fi
+ 
++# ---- C1c: no unsourced executables installed in bin ------------------------- #
++# C1b only walks repo/scripts -> bin. The reverse direction is invisible to it, so
++# a script that is executed from bin but has no source in the repo (it was written
++# straight into bin, or its source was deleted) stays unversioned, unreviewable and
++# unreproducible, and no future edit can ever reach it. That is exactly how
++# supervise-alive.sh — a live cron job — ended up with no source.
++# Nothing here can be auto-fixed: the only correct repair is to add the source to
++# the repo, which is a judgement call, so report it and let the supervisor decide.
++orphan=""
++for installed in "$BENCH"/bin/*; do
++  [ -f "$installed" ] || continue
++  job=$(basename "$installed")
++  case "$job" in
++    .*|__pycache__|*.pyc|*.pyo) continue ;;
++  esac
++  [ -f "$REPO/scripts/$job" ] || orphan="$orphan $job"
++done
++if [ -n "$orphan" ]; then
++  check C1c_unsourced_bin degraded "installed in bin but absent from repo/scripts:$(printf '%s' "$orphan" | tr -s ' ')"
++else
++  check C1c_unsourced_bin ok "every installed bin script has source in repo/scripts"
++fi
++
+ # ---- C2: OpenCode service status + real API health -------------------------- #
+ if service_pid=$(service_pid); then
+   check C2_service ok "pid $service_pid; service status + /api/info healthy"
+ else
+
+> build · big-pickle
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && bash -n scripts/meta-watchdog.sh && echo "SYNTAX OK"; echo "=== small run progress ==="; grep -E "Marker seed|Published marker|Reporting 0 bins|^\[|exit" /tmp/opencode/small_regression.log | tail -5; tail -2 /tmp/opencode/small_regression.log | cut -c1-160
+SYNTAX OK
+=== small run progress ===
+2026-09-28 12:51:42,469 - NN training: epoch=49/200, batches=1, loss=5.1089478, top1=5.3646, elapsed=1.024s, process_memory={'VmPeak': '2296740 kB', 'VmRSS': '6
+  0%|          | 0/1 [00:00<?, ?it/s]
+> build · big-pickle
+Let me verify the new C1c detection logic works, including that it would have caught the orphan:
+[0m$ [0mcd /tmp/opencode && cat > c1c_test.sh <<'EOF'
+set -u
+BENCH=/vol/data/benchmark
+REPO=/vol/data/repos/metagenomic-binning-benchmark
+detect() {
+  orphan=""
+  for installed in "$BENCH"/bin/*; do
+    [ -f "$installed" ] || continue
+    job=$(basename "$installed")
+    case "$job" in
+      .*|__pycache__|*.pyc|*.pyo) continue ;;
+    esac
+    [ -f "$REPO/scripts/$job" ] || orphan="$orphan $job"
+  done
+  if [ -n "$orphan" ]; then
+    echo "degraded: installed in bin but absent from repo/scripts:$(printf '%s' "$orphan" | tr -s ' ')"
+  else
+    echo "ok: every installed bin script has source in repo/scripts"
+  fi
+}
+echo "--- now (supervise-alive.sh added to repo) ---"; detect
+echo "--- simulated pre-fix state (orphan back in bin only) ---"
+mv "$REPO/scripts/supervise-alive.sh" /tmp/opencode/sa.bak
+detect
+mv /tmp/opencode/sa.bak "$REPO/scripts/supervise-alive.sh"
+echo "--- restored ---"; detect
+EOF
+bash c1c_test.sh
+--- now (supervise-alive.sh added to repo) ---
+ok: every installed bin script has source in repo/scripts
+--- simulated pre-fix state (orphan back in bin only) ---
+degraded: installed in bin but absent from repo/scripts: supervise-alive.sh
+--- restored ---
+ok: every installed bin script has source in repo/scripts
+> build · big-pickle
+C1c works. Let me check the benchmark regression run:
