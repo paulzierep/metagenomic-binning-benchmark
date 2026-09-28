@@ -6,6 +6,13 @@
 > Live copy: `/vol/data/benchmark/PROGRESS.md` (keep both in sync: edit both, or copy
 > one over the other after each update).
 
+> ⚠️ **Before any git operation on `paulzierep/COMEBin` (branch, commit, push, rebase),
+> read [`docs/12-comebin-master-divergence.md`](docs/12-comebin-master-divergence.md).**
+> `master` tracks the upstream v1.1.0 baseline: never force-push it, never reset it
+> backwards, always `git fetch` before branching. 4 of the 5 older pre-v1.1.0 bug
+> fixes are already fixed upstream in v1.1.0 — re-porting them conflicts and is
+> wasted work. Keep this note when you rewrite the file.
+
 ## Task definition
 
 Benchmark multiple metagenomic genome binners, starting with COMEBin
