@@ -59345,3 +59345,634 @@ def _process_memory_status():
 def configure_reproducibility(seed: Optional[int]) -> None:
     if seed is None:
         return
+> build · big-pickle
+Now let me implement the fix. First, `utils.py`:
+[0m→ [0mRead /vol/data/repos/COMEBin-v11/COMEBin/utils.py [90m[limit=20, offset=176][0m
+> build · big-pickle
+[0m← [0mEdit /vol/data/repos/COMEBin-v11/COMEBin/utils.py
+Index: /vol/data/repos/COMEBin-v11/COMEBin/utils.py
+===================================================================
+--- /vol/data/repos/COMEBin-v11/COMEBin/utils.py
++++ /vol/data/repos/COMEBin-v11/COMEBin/utils.py
+@@ -172,9 +172,16 @@
+     except OSError:
+         return ''
+ 
+ 
+-def _run_external_command(logger, label, command, stdout_path, stderr_path):
++def _run_external_command(logger, label, command, stdout_path, stderr_path, allowed_returncodes=frozenset()):
++    """Run an external tool, raising unless it succeeded or returned an allowed status.
++
++    ``allowed_returncodes`` names exit statuses that carry a meaningful, expected
++    outcome for the caller rather than an internal failure. They are logged as
++    warnings and the CompletedProcess is returned so the caller can handle the
++    result itself; every other non-zero status still raises.
++    """
+     command = [str(argument) for argument in command]
+     logger.info("%s command: %s", label, shlex.join(command))
+     try:
+         with open(stdout_path, 'w') as stdout_handle, open(stderr_path, 'w') as stderr_handle:
+@@ -182,8 +189,12 @@
+     except OSError as error:
+         raise RuntimeError(f"{label} could not be started: {error}") from error
+     logger.info("%s exited with status %d; stderr=%s.", label, completed.returncode, stderr_path)
+     if completed.returncode != 0:
++        if completed.returncode in allowed_returncodes:
++            logger.warning("%s exited with status %d (an expected empty result for this input); stderr=%s; tail=%s.",
++                           label, completed.returncode, stderr_path, _stderr_tail(stderr_path) or '<empty>')
++            return completed
+         stderr_tail = _stderr_tail(stderr_path)
+         detail = f"; tail={stderr_tail}" if stderr_tail else ''
+         raise RuntimeError(f"{label} failed with status {completed.returncode}; stderr={stderr_path}{detail}")
+     return completed
+
+> build · big-pickle
+Now the `gen_seed` function itself:
+[0m← [0mEdit /vol/data/repos/COMEBin-v11/COMEBin/utils.py
+Index: /vol/data/repos/COMEBin-v11/COMEBin/utils.py
+===================================================================
+--- /vol/data/repos/COMEBin-v11/COMEBin/utils.py
++++ /vol/data/repos/COMEBin-v11/COMEBin/utils.py
+@@ -20,9 +20,19 @@
+ DEFAULT_RANDOM_SEED = None
+ COMEBIN_DIR = Path(__file__).resolve().parent
+ AUXILIARY_DIR = COMEBIN_DIR.parent / 'auxiliary'
+ 
++# Exit statuses of auxiliary/test_getmarker_<quarter>.pl that mean "this input
++# cannot yield a usable marker seed set". These are legitimate EMPTY results for
++# an input that has no usable single-copy marker genes, not internal errors, so
++# gen_seed() reports them as zero seeds instead of raising:
++#   2 — marker hits were found, but none matched the input contig identifiers
++#   3 — hits mapped to contigs, but none survived the contig-length and 40 %
++#       per-protein coverage filters
++#   4 — parsing finished but wrote an empty seed file
++MARKER_NO_SEED_EXIT_CODES = frozenset({2, 3, 4})
+ 
++
+ def _process_memory_status():
+     status = {}
+     try:
+         with open('/proc/self/status') as status_file:
+
+> build · big-pickle
+[0m→ [0mRead /vol/data/repos/COMEBin-v11/COMEBin/utils.py [90m[limit=30, offset=240][0m
+> build · big-pickle
+[0m← [0mEdit /vol/data/repos/COMEBin-v11/COMEBin/utils.py
+Index: /vol/data/repos/COMEBin-v11/COMEBin/utils.py
+===================================================================
+--- /vol/data/repos/COMEBin-v11/COMEBin/utils.py
++++ /vol/data/repos/COMEBin-v11/COMEBin/utils.py
+@@ -251,9 +251,13 @@
+     :param contig_length_threshold: The contig length threshold.
+     :param marker_name: The marker name (default: "marker").
+     :param quarter: The quarter identifier (default: "3quarter").
+     :param hmm_evalue: Sequence E-value used when the marker HMM does not define TC cutoffs.
+-    :return: The number of candidate seeds generated.
++    :return: The number of candidate seeds generated, or 0 when the input has no
++        usable marker seed set (see MARKER_NO_SEED_EXIT_CODES). A return of 0 is a
++        normal empty result, not an error: callers report zero bins and exit 0.
++    :raises RuntimeError: if an external tool is missing, crashes, or produces no
++        marker hits at all, or if an existing seed file is unusable.
+     """
+     hmm_evalue = float(hmm_evalue)
+     if not np.isfinite(hmm_evalue) or hmm_evalue <= 0:
+         raise ValueError(f"hmm_evalue must be a finite positive number, got {hmm_evalue}.")
+
+> build · big-pickle
+Now the core change — the marker seed generation call site:
+[0m← [0mEdit /vol/data/repos/COMEBin-v11/COMEBin/utils.py
+Index: /vol/data/repos/COMEBin-v11/COMEBin/utils.py
+===================================================================
+--- /vol/data/repos/COMEBin-v11/COMEBin/utils.py
++++ /vol/data/repos/COMEBin-v11/COMEBin/utils.py
+@@ -328,15 +328,24 @@
+                 hmm_temp.unlink()
+ 
+     seed_temp = _temporary_result_path(seed_result)
+     try:
+-        _run_external_command(
++        seed_run = _run_external_command(
+             logger, 'Marker seed generation',
+             [perl_executable, marker_script, hmm_result, contig_file, contig_length_threshold, seed_temp],
+-            str(seed_result) + '.out', str(seed_result) + '.err')
+-        seed_count = _count_seed_lines(seed_temp)
++            str(seed_result) + '.out', str(seed_result) + '.err',
++            allowed_returncodes=MARKER_NO_SEED_EXIT_CODES)
++        seed_count = _count_seed_lines(seed_temp) if seed_temp.exists() else 0
+         if seed_count == 0:
+-            raise RuntimeError(f"Marker parsing completed but produced an empty seed set; hmm_hits={hit_count}; stderr={seed_result}.err")
++            # The marker script ran to completion but this assembly has no usable
++            # single-copy marker seed set, so COMEBin cannot build a binning axis.
++            # That is an empty result for this input, not a failure: report zero
++            # seeds so the caller reports zero bins and exits 0.
++            logger.warning(
++                "No usable marker seeds for %s (marker script status %d, hmm_hits=%d, stderr=%s.err). "
++                "COMEBin cannot build a binning axis for this input and will report 0 bins.",
++                contig_file, seed_run.returncode, hit_count, seed_result)
++            return 0
+         os.replace(seed_temp, seed_result)
+         logger.info("Published marker seed file %s with %d seeds.", seed_result, seed_count)
+     finally:
+         if seed_temp.exists():
+
+> build · big-pickle
+Now `main.py` — the `bin` and `get_result` stages must report 0 bins and exit 0:
+[0m← [0mEdit /vol/data/repos/COMEBin-v11/COMEBin/main.py
+Index: /vol/data/repos/COMEBin-v11/COMEBin/main.py
+===================================================================
+--- /vol/data/repos/COMEBin-v11/COMEBin/main.py
++++ /vol/data/repos/COMEBin-v11/COMEBin/main.py
+@@ -294,10 +294,16 @@
+         logger.info('bin')
+         from utils import gen_seed
+ 
+         num_threads = args.num_threads
+-        _ = gen_seed(logger, args.contig_file, num_threads, args.contig_len, marker_name="bacar_marker",
+-                     quarter="2quarter", hmm_evalue=args.hmm_evalue)
++        seed_count = gen_seed(logger, args.contig_file, num_threads, args.contig_len, marker_name="bacar_marker",
++                              quarter="2quarter", hmm_evalue=args.hmm_evalue)
++        if seed_count == 0:
++            logger.warning(
++                "Reporting 0 bins for %s: no usable marker seed set, so no binning axis can be built. "
++                "This is an empty result for this input, not an error.",
++                args.contig_file)
++            return
+ 
+         cluster(logger, args)
+ 
+ 
+
+> build · big-pickle
+[0m→ [0mRead /vol/data/repos/COMEBin-v11/COMEBin/main.py [90m[limit=18, offset=372][0m
+> build · big-pickle
+[0m← [0mEdit /vol/data/repos/COMEBin-v11/COMEBin/main.py
+Index: /vol/data/repos/COMEBin-v11/COMEBin/main.py
+===================================================================
+--- /vol/data/repos/COMEBin-v11/COMEBin/main.py
++++ /vol/data/repos/COMEBin-v11/COMEBin/main.py
+@@ -378,8 +378,14 @@
+ 
+         num_threads = args.num_threads
+         seed_num = gen_seed(logger, args.contig_file, num_threads, args.contig_len, marker_name="bacar_marker",
+                             quarter="2quarter", hmm_evalue=args.hmm_evalue)
++        if seed_num == 0:
++            logger.warning(
++                "Reporting 0 bins for %s: no usable marker seed set, so no bins can be selected. "
++                "This is an empty result for this input, not an error.",
++                args.contig_file)
++            return
+ 
+         run_get_final_result(logger, args, seed_num, num_threads, ignore_kmeans_res=True)
+ 
+ 
+
+> build · big-pickle
+Now let me verify the changes compile and review the diff:
+[0m$ [0mcd /vol/data/repos/COMEBin-v11 && python3 -m py_compile COMEBin/utils.py COMEBin/main.py && echo "COMPILE OK"; echo "=== DIFF ==="; git diff
+COMPILE OK
+=== DIFF ===
+diff --git a/COMEBin/main.py b/COMEBin/main.py
+index 60217a2..fead4b4 100644
+--- a/COMEBin/main.py
++++ b/COMEBin/main.py
+@@ -295,8 +295,14 @@ def main():
+         from utils import gen_seed
+ 
+         num_threads = args.num_threads
+-        _ = gen_seed(logger, args.contig_file, num_threads, args.contig_len, marker_name="bacar_marker",
+-                     quarter="2quarter", hmm_evalue=args.hmm_evalue)
++        seed_count = gen_seed(logger, args.contig_file, num_threads, args.contig_len, marker_name="bacar_marker",
++                              quarter="2quarter", hmm_evalue=args.hmm_evalue)
++        if seed_count == 0:
++            logger.warning(
++                "Reporting 0 bins for %s: no usable marker seed set, so no binning axis can be built. "
++                "This is an empty result for this input, not an error.",
++                args.contig_file)
++            return
+ 
+         cluster(logger, args)
+ 
+@@ -373,6 +379,12 @@ def main():
+         num_threads = args.num_threads
+         seed_num = gen_seed(logger, args.contig_file, num_threads, args.contig_len, marker_name="bacar_marker",
+                             quarter="2quarter", hmm_evalue=args.hmm_evalue)
++        if seed_num == 0:
++            logger.warning(
++                "Reporting 0 bins for %s: no usable marker seed set, so no bins can be selected. "
++                "This is an empty result for this input, not an error.",
++                args.contig_file)
++            return
+ 
+         run_get_final_result(logger, args, seed_num, num_threads, ignore_kmeans_res=True)
+ 
+diff --git a/COMEBin/utils.py b/COMEBin/utils.py
+index a8ff229..b7d6335 100644
+--- a/COMEBin/utils.py
++++ b/COMEBin/utils.py
+@@ -21,6 +21,16 @@ DEFAULT_RANDOM_SEED = None
+ COMEBIN_DIR = Path(__file__).resolve().parent
+ AUXILIARY_DIR = COMEBIN_DIR.parent / 'auxiliary'
+ 
++# Exit statuses of auxiliary/test_getmarker_<quarter>.pl that mean "this input
++# cannot yield a usable marker seed set". These are legitimate EMPTY results for
++# an input that has no usable single-copy marker genes, not internal errors, so
++# gen_seed() reports them as zero seeds instead of raising:
++#   2 — marker hits were found, but none matched the input contig identifiers
++#   3 — hits mapped to contigs, but none survived the contig-length and 40 %
++#       per-protein coverage filters
++#   4 — parsing finished but wrote an empty seed file
++MARKER_NO_SEED_EXIT_CODES = frozenset({2, 3, 4})
++
+ 
+ def _process_memory_status():
+     status = {}
+@@ -173,7 +183,14 @@ def _stderr_tail(path, line_count=20):
+         return ''
+ 
+ 
+-def _run_external_command(logger, label, command, stdout_path, stderr_path):
++def _run_external_command(logger, label, command, stdout_path, stderr_path, allowed_returncodes=frozenset()):
++    """Run an external tool, raising unless it succeeded or returned an allowed status.
++
++    ``allowed_returncodes`` names exit statuses that carry a meaningful, expected
++    outcome for the caller rather than an internal failure. They are logged as
++    warnings and the CompletedProcess is returned so the caller can handle the
++    result itself; every other non-zero status still raises.
++    """
+     command = [str(argument) for argument in command]
+     logger.info("%s command: %s", label, shlex.join(command))
+     try:
+@@ -183,6 +200,10 @@ def _run_external_command(logger, label, command, stdout_path, stderr_path):
+         raise RuntimeError(f"{label} could not be started: {error}") from error
+     logger.info("%s exited with status %d; stderr=%s.", label, completed.returncode, stderr_path)
+     if completed.returncode != 0:
++        if completed.returncode in allowed_returncodes:
++            logger.warning("%s exited with status %d (an expected empty result for this input); stderr=%s; tail=%s.",
++                           label, completed.returncode, stderr_path, _stderr_tail(stderr_path) or '<empty>')
++            return completed
+         stderr_tail = _stderr_tail(stderr_path)
+         detail = f"; tail={stderr_tail}" if stderr_tail else ''
+         raise RuntimeError(f"{label} failed with status {completed.returncode}; stderr={stderr_path}{detail}")
+@@ -231,7 +252,11 @@ def gen_seed(logger, contig_file: str, threads: int, contig_length_threshold: in
+     :param marker_name: The marker name (default: "marker").
+     :param quarter: The quarter identifier (default: "3quarter").
+     :param hmm_evalue: Sequence E-value used when the marker HMM does not define TC cutoffs.
+-    :return: The number of candidate seeds generated.
++    :return: The number of candidate seeds generated, or 0 when the input has no
++        usable marker seed set (see MARKER_NO_SEED_EXIT_CODES). A return of 0 is a
++        normal empty result, not an error: callers report zero bins and exit 0.
++    :raises RuntimeError: if an external tool is missing, crashes, or produces no
++        marker hits at all, or if an existing seed file is unusable.
+     """
+     hmm_evalue = float(hmm_evalue)
+     if not np.isfinite(hmm_evalue) or hmm_evalue <= 0:
+@@ -304,13 +329,22 @@ def gen_seed(logger, contig_file: str, threads: int, contig_length_threshold: in
+ 
+     seed_temp = _temporary_result_path(seed_result)
+     try:
+-        _run_external_command(
++        seed_run = _run_external_command(
+             logger, 'Marker seed generation',
+             [perl_executable, marker_script, hmm_result, contig_file, contig_length_threshold, seed_temp],
+-            str(seed_result) + '.out', str(seed_result) + '.err')
+-        seed_count = _count_seed_lines(seed_temp)
++            str(seed_result) + '.out', str(seed_result) + '.err',
++            allowed_returncodes=MARKER_NO_SEED_EXIT_CODES)
++        seed_count = _count_seed_lines(seed_temp) if seed_temp.exists() else 0
+         if seed_count == 0:
+-            raise RuntimeError(f"Marker parsing completed but produced an empty seed set; hmm_hits={hit_count}; stderr={seed_result}.err")
++            # The marker script ran to completion but this assembly has no usable
++            # single-copy marker seed set, so COMEBin cannot build a binning axis.
++            # That is an empty result for this input, not a failure: report zero
++            # seeds so the caller reports zero bins and exits 0.
++            logger.warning(
++                "No usable marker seeds for %s (marker script status %d, hmm_hits=%d, stderr=%s.err). "
++                "COMEBin cannot build a binning axis for this input and will report 0 bins.",
++                contig_file, seed_run.returncode, hit_count, seed_result)
++            return 0
+         os.replace(seed_temp, seed_result)
+         logger.info("Published marker seed file %s with %d seeds.", seed_result, seed_count)
+     finally:
+> build · big-pickle
+Now let me write a regression test that reproduces the exact failure from issue #28.
+[0m$ [0mwhich perl hmmsearch FragGeneScan run_FragGeneScan.pl 2>&1; echo "---"; cd /vol/data/repos/COMEBin-v11 && grep -n "_count_hmm_hits" -A14 COMEBin/utils.py | head -20; echo "=== tests dir? ==="; ls tests 2>&1 | head
+/usr/bin/perl
+---
+221:def _count_hmm_hits(hmm_path):
+222-    with open(hmm_path) as handle:
+223-        return sum(1 for line in handle if line.strip() and not line.startswith('#'))
+224-
+225-
+226-def _count_seed_lines(seed_path):
+227-    with open(seed_path) as handle:
+228-        return sum(1 for line in handle if line.strip())
+229-
+230-
+231-def _hmm_models_have_tc_cutoffs(hmm_file):
+232-    model_count = 0
+233-    tc_count = 0
+234-    with open(hmm_file) as handle:
+235-        for line in handle:
+--
+298:        hit_count = _count_hmm_hits(hmm_result)
+299-        if hit_count == 0:
+300-            raise RuntimeError(f"Existing HMMsearch result contains zero marker hits: {hmm_result}")
+301-        logger.info("Reusing HMMsearch result %s with %d hits; --hmm_evalue applies only when HMMsearch runs and cached thresholds are not compared.",
+=== tests dir? ===
+ls: cannot access 'tests': No such file or directory
+> build · big-pickle
+[0m$ [0mcd /vol/data/repos/COMEBin-v11 && sed -n '/bin_parser/,/nocontrast_parser/p' COMEBin/main.py | head -50
+{"exit":0,"truncated":false,"output":"","status":"completed"}
+> build · big-pickle
+[0m$ [0mcd /vol/data/repos/COMEBin-v11 && grep -n "add_parser\|add_argument" COMEBin/main.py | sed -n '1,70p'
+30:    parser.add_argument('-v','--version',
+42:    CLtraining_subparsers = subparsers.add_parser('train',
+45:    CLtraining_subparsers.add_argument('--data', metavar='DIR', default='/home/wzy/data/STEC_data/for_new_method/data_augmentation_clean/',
+47:    CLtraining_subparsers.add_argument('--output_path', metavar='DIR', default='output',
+49:    CLtraining_subparsers.add_argument('--epochs', default=200, type=int, metavar='N',
+52:    CLtraining_subparsers.add_argument('-b', '--batch_size', default=1024, type=int,
+57:    CLtraining_subparsers.add_argument('--lr', '--learning-rate', default=0.001, type=float,
+59:    CLtraining_subparsers.add_argument('--wd', '--weight-decay', default=1e-4, type=float,
+62:    CLtraining_subparsers.add_argument('--out_dim', default=128, type=int,
+65:    CLtraining_subparsers.add_argument('--dropout_value', default=0.2, type=float,
+67:    CLtraining_subparsers.add_argument('--emb_szs', default=2048, type=int,
+69:    CLtraining_subparsers.add_argument('--n_layer', default=3, type=int,
+72:    CLtraining_subparsers.add_argument('--emb_szs_forcov', default=2048, type=int,
+74:    CLtraining_subparsers.add_argument('--out_dim_forcov', default=128, type=int,
+76:    CLtraining_subparsers.add_argument('--n_layer_forcov', default=3, type=int,
+79:    CLtraining_subparsers.add_argument('--earlystop', action="store_true",
+82:    CLtraining_subparsers.add_argument('--addvars', action="store_true",
+84:    CLtraining_subparsers.add_argument('--vars_sqrt', action="store_true",
+87:    CLtraining_subparsers.add_argument('--log-every-n-steps', default=20, type=int,
+90:    CLtraining_subparsers.add_argument(
+94:    CLtraining_subparsers.add_argument('--n_views', default=6, type=int, metavar='N',
+96:    CLtraining_subparsers.add_argument('--contig_len', default = 1000, type=int, metavar='N',
+98:    CLtraining_subparsers.add_argument('--notuse_scheduler', action='store_true',
+100:    CLtraining_subparsers.add_argument('--fp16-precision', action='store_true',
+102:    CLtraining_subparsers.add_argument('--device', default='cuda',
+105:    CLtraining_subparsers.add_argument('--cov_meannormalize', action='store_true',
+107:    CLtraining_subparsers.add_argument('--cov_minmaxnormalize', action='store_true',
+109:    CLtraining_subparsers.add_argument('--cov_standardization', action='store_true',
+111:    CLtraining_subparsers.add_argument('--notuseaug0', action='store_true',
+113:    CLtraining_subparsers.add_argument('--num_threads', default=10, type=int,
+115:    CLtraining_subparsers.add_argument('--seed', default=DEFAULT_RANDOM_SEED, type=int,
+124:    NoContrast_subparsers = subparsers.add_parser('nocontrast',
+127:    NoContrast_subparsers.add_argument('--contig_file', type=str, help=("The contigs file."))
+128:    NoContrast_subparsers.add_argument('--seed_file', type=str, help=("The marker seed file."))
+129:    NoContrast_subparsers.add_argument('--data', metavar='DIR', default='/home/wzy/data/STEC_data/for_new_method/data_augmentation_clean/',
+131:    NoContrast_subparsers.add_argument('--output_path', type=str, default='temp_output', help=("The output path"))
+133:    NoContrast_subparsers.add_argument('--cluster_num', default=0, type=int,
+136:    NoContrast_subparsers.add_argument('--not_run_infomap', action='store_true',
+139:    NoContrast_subparsers.add_argument('--not_l2normaize', action='store_true',
+142:    NoContrast_subparsers.add_argument('--contig_len', default = 1001, type=int, metavar='N',
+144:    NoContrast_subparsers.add_argument('--num_threads', default=10, type=int,
+146:    NoContrast_subparsers.add_argument('--leiden_workers', default=None, type=int,
+148:    NoContrast_subparsers.add_argument('--max_edges', default=100, type=int,
+150:    NoContrast_subparsers.add_argument('--seed', default=DEFAULT_RANDOM_SEED, type=int,
+159:    generate_aug_data_subparsers = subparsers.add_parser('generate_aug_data',
+161:    generate_aug_data_subparsers.add_argument('--contig_file', type=str, help=("The original contigs file."))
+162:    generate_aug_data_subparsers.add_argument('--out_augdata_path', type=str, help=("The output path to save the augmentation data"))
+163:    generate_aug_data_subparsers.add_argument('--n_views', default=6, type=int,
+165:    generate_aug_data_subparsers.add_argument('--bam_file_path', type=str, help=("The path to access the bam files."))
+168:    generate_aug_data_subparsers.add_argument('--contig_len', default = 1000, type=int, metavar='N',
+170:    generate_aug_data_subparsers.add_argument('--num_threads', default=10, type=int,
+172:    generate_aug_data_subparsers.add_argument('--seed', default=DEFAULT_RANDOM_SEED, type=int,
+179:    clustering_subparsers = subparsers.add_parser('bin',
+182:    clustering_subparsers.add_argument('--contig_file', type=str, help=("The contigs file."))
+183:    clustering_subparsers.add_argument('--seed_file', type=str, help=("The marker seed file."))
+184:    clustering_subparsers.add_argument('--emb_file', type=str,
+186:    clustering_subparsers.add_argument('--output_path', type=str, help=("The output path"))
+188:    clustering_subparsers.add_argument('--cluster_num', default=0, type=int,
+191:    clustering_subparsers.add_argument('--not_run_infomap', action='store_true',
+193:    clustering_subparsers.add_argument('--not_l2normaize', action='store_true',
+197:    clustering_subparsers.add_argument('--contig_len', default = 1001, type=int, metavar='N',
+199:    clustering_subparsers.add_argument('--num_threads', default=10, type=int,
+201:    clustering_subparsers.add_argument('--leiden_workers', default=None, type=int,
+203:    clustering_subparsers.add_argument('--max_edges', default=100, type=int,
+205:    clustering_subparsers.add_argument('--hmm_evalue', default=DEFAULT_HMM_EVALUE, type=float,
+207:    clustering_subparsers.add_argument('--seed', default=DEFAULT_RANDOM_SEED, type=int,
+215:    get_result_subparsers = subparsers.add_parser('get_result',
+218:    get_result_subparsers.add_argument('--contig_file', type=str, help=("The contigs file."))
+219:    get_result_subparsers.add_argument('--seed_file', type=str, help=("The marker seed file."))
+220:    get_result_subparsers.add_argument('--emb_file', type=str,
+> build · big-pickle
+Now let me write and run a regression test that reproduces the exact failure:
+[0m← [0mWrite /tmp/opencode/test_issue28_marker_seed.py
+Created file successfully: /tmp/opencode/test_issue28_marker_seed.py
+> build · big-pickle
+[0m$ [0mcd /tmp/opencode && timeout 300 python3 test_issue28_marker_seed.py 2>&1 | tail -70
+Traceback (most recent call last):
+  File "/tmp/opencode/test_issue28_marker_seed.py", line 209, in <module>
+    sys.exit(main())
+             ^^^^^^
+  File "/tmp/opencode/test_issue28_marker_seed.py", line 119, in main
+    contig1 = prepare_case(
+              ^^^^^^^^^^^^^
+  File "/tmp/opencode/test_issue28_marker_seed.py", line 80, in prepare_case
+    make_hmmout(root / 'assembly.fasta.bacar_marker.hmmout', hits)
+  File "/tmp/opencode/test_issue28_marker_seed.py", line 63, in make_hmmout
+    handle.write('# ' + ' '.join(f'{"target name":<16}', "query name", "aln dom") + '\n')
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: str.join() takes exactly one argument (3 given)
+> build · big-pickle
+[0m← [0mEdit /tmp/opencode/test_issue28_marker_seed.py
+Index: /tmp/opencode/test_issue28_marker_seed.py
+===================================================================
+--- /tmp/opencode/test_issue28_marker_seed.py
++++ /tmp/opencode/test_issue28_marker_seed.py
+@@ -59,9 +59,9 @@
+     keeps a contig as a seed when (env_to - env_from) / target_length >= 0.4.
+     """
+     with open(path, 'w') as handle:
+         handle.write('# hmmscan --domtblout test fixture\n')
+-        handle.write('# ' + ' '.join(f'{"target name":<16}', "query name", "aln dom") + '\n')
++        handle.write('# target name        query name           aln dom\n')
+         for i, (target, target_len, env_from, env_to) in enumerate(hits, start=1):
+             fields = [
+                 target, f'q{i}', '1', '1', '1', str(target_len), '1', '1', '1', '1',
+                 str(env_from), str(env_to), '1', '1', '1', '1', '1', '1', '1', '1',
+
+> build · big-pickle
+[0m$ [0mcd /tmp/opencode && timeout 300 python3 test_issue28_marker_seed.py 2>&1 | tail -80
+--- case 1 (no usable seed set; perl exits 3) ---
+Traceback (most recent call last):
+  File "<string>", line 4, in <module>
+  File "/vol/data/repos/COMEBin-v11/COMEBin/utils.py", line 2, in <module>
+    from Bio import SeqIO
+ModuleNotFoundError: No module named 'Bio'
+
+[FAIL] case1: gen_seed did not raise :: rc=1 stderr=Traceback (most recent call last):
+  File "<string>", line 4, in <module>
+  File "/vol/data/repos/COMEBin-v11/COMEBin/utils.py", line 2, in <module>
+    from Bio import SeqIO
+ModuleNotFoundError: No module named 'Bio'
+
+[FAIL] case1: gen_seed reported 0 seeds
+[FAIL] case1: warned instead of erroring
+[PASS] case1: no seed file was published
+[FAIL] case1: no traceback in output
+--- case 2 (no hits match contig ids; perl exits 2) ---
+Traceback (most recent call last):
+  File "<string>", line 4, in <module>
+  File "/vol/data/repos/COMEBin-v11/COMEBin/utils.py", line 2, in <module>
+    from Bio import SeqIO
+ModuleNotFoundError: No module named 'Bio'
+
+[FAIL] case2: gen_seed reported 0 seeds :: rc=1 out= err=Traceback (most recent call last):
+  File "<string>", line 4, in <module>
+  File "/vol/data/repos/COMEBin-v11/COMEBin/utils.py", line 2, in <module>
+    from Bio import SeqIO
+ModuleNotFoundError: No module named 'Bio'
+
+--- case 3 (usable seed present) ---
+Traceback (most recent call last):
+  File "<string>", line 4, in <module>
+  File "/vol/data/repos/COMEBin-v11/COMEBin/utils.py", line 2, in <module>
+    from Bio import SeqIO
+ModuleNotFoundError: No module named 'Bio'
+
+[FAIL] case3: gen_seed returned a positive seed count :: rc=1 out= err=Traceback (most recent call last):
+  File "<string>", line 4, in <module>
+  File "/vol/data/repos/COMEBin-v11/COMEBin/utils.py", line 2, in <module>
+    from Bio import SeqIO
+ModuleNotFoundError: No module named 'Bio'
+
+[FAIL] case3: seed file published
+--- case 4 (main.py bin, no usable seed) ---
+Traceback (most recent call last):
+  File "/vol/data/repos/COMEBin-v11/COMEBin/main.py", line 7, in <module>
+    import numpy as np
+ModuleNotFoundError: No module named 'numpy'
+
+[FAIL] case4: main.py bin exited 0 :: rc=1 stderr=Traceback (most recent call last):
+  File "/vol/data/repos/COMEBin-v11/COMEBin/main.py", line 7, in <module>
+    import numpy as np
+ModuleNotFoundError: No module named 'numpy'
+
+[FAIL] case4: main.py reported 0 bins
+[FAIL] case4: no traceback
+--- case 5 (main.py get_result, no usable seed) ---
+Traceback (most recent call last):
+  File "/vol/data/repos/COMEBin-v11/COMEBin/main.py", line 7, in <module>
+    import numpy as np
+ModuleNotFoundError: No module named 'numpy'
+
+[FAIL] case5: main.py get_result exited 0 :: rc=1 stderr=Traceback (most recent call last):
+  File "/vol/data/repos/COMEBin-v11/COMEBin/main.py", line 7, in <module>
+    import numpy as np
+ModuleNotFoundError: No module named 'numpy'
+
+[FAIL] case5: main.py get_result reported 0 bins
+
+FAILED (12): ['case1: gen_seed did not raise', 'case1: gen_seed reported 0 seeds', 'case1: warned instead of erroring', 'case1: no traceback in output', 'case2: gen_seed reported 0 seeds', 'case3: gen_seed returned a positive seed count', 'case3: seed file published', 'case4: main.py bin exited 0', 'case4: main.py reported 0 bins', 'case4: no traceback', 'case5: main.py get_result exited 0', 'case5: main.py get_result reported 0 bins']
+> build · big-pickle
+[0m$ [0mls /vol/data/envs/ 2>&1; echo "---"; ls /vol/data/envs/*/bin/python* 2>/dev/null | head; echo "--- which python3 default ---"; which -a python3; python3 -c "import numpy" 2>&1 | tail -1
+checkm
+checkm2
+comebin
+---
+/vol/data/envs/checkm/bin/python
+/vol/data/envs/checkm/bin/python3
+/vol/data/envs/checkm/bin/python3-config
+/vol/data/envs/checkm/bin/python3.1
+/vol/data/envs/checkm/bin/python3.14
+/vol/data/envs/checkm/bin/python3.14-config
+/vol/data/envs/checkm2/bin/python
+/vol/data/envs/checkm2/bin/python3
+/vol/data/envs/checkm2/bin/python3-config
+/vol/data/envs/checkm2/bin/python3.1
+--- which python3 default ---
+/usr/bin/python3
+/bin/python3
+ModuleNotFoundError: No module named 'numpy'
+> build · big-pickle
+[0m$ [0m/vol/data/envs/comebin/bin/python -c "import numpy, Bio, torch; print('deps OK', numpy.__version__, torch.__version__)" 2>&1 | tail -3; echo "--- perl in env ---"; ls /vol/data/envs/comebin/bin/perl 2>&1; ls /vol/data/envs/comebin/bin/hmmsearch 2>&1
+deps OK 1.23.5 2.13.0
+--- perl in env ---
+/vol/data/envs/comebin/bin/perl
+/vol/data/envs/comebin/bin/hmmsearch
+> build · big-pickle
+[0m← [0mEdit /tmp/opencode/test_issue28_marker_seed.py
+Index: /tmp/opencode/test_issue28_marker_seed.py
+===================================================================
+--- /tmp/opencode/test_issue28_marker_seed.py
++++ /tmp/opencode/test_issue28_marker_seed.py
+@@ -21,8 +21,9 @@
+ 
+ COMEBIN_REPO = Path(os.environ.get('COMEBIN_REPO', '/vol/data/repos/COMEBin-v11'))
+ COMEBIN_DIR = COMEBIN_REPO / 'COMEBin'
+ AUXILIARY = COMEBIN_REPO / 'auxiliary'
++PYTHON = os.environ.get('COMEBIN_PYTHON', '/vol/data/envs/comebin/bin/python')
+ 
+ failures = []
+ 
+ 
+
+> build · big-pickle
+[0m$ [0mcd /tmp/opencode && sed -i "s|sys.executable, '-c', driver|PYTHON, '-c', driver|; s|sys.executable, str(COMEBIN_DIR / 'main.py')|PYTHON, str(COMEBIN_DIR / 'main.py')|g" test_issue28_marker_seed.py && grep -n "PYTHON, " test_issue28_marker_seed.py
+99:    return subprocess.run([PYTHON, '-c', driver], cwd=str(workdir), env=env,
+176:    cmd = [PYTHON, str(COMEBIN_DIR / 'main.py'), 'bin',
+189:    cmd5 = [PYTHON, str(COMEBIN_DIR / 'main.py'), 'get_result',
+> build · big-pickle
+[0m$ [0mcd /tmp/opencode && timeout 400 python3 test_issue28_marker_seed.py 2>&1 | tail -80
+--- case 1 (no usable seed set; perl exits 3) ---
+mp/issue28-h0as_sse/stubs/hmmsearch, perl=/usr/bin/perl, marker_script=/vol/data/repos/COMEBin-v11/auxiliary/test_getmarker_2quarter.pl, marker_hmm=/vol/data/repos/COMEBin-v11/auxiliary/bacar_marker.hmm.
+Reusing FragGeneScan protein file: /tmp/issue28-h0as_sse/case1/assembly.fasta.frag.faa.
+Reusing HMMsearch result /tmp/issue28-h0as_sse/case1/assembly.fasta.bacar_marker.hmmout with 1 hits; --hmm_evalue applies only when HMMsearch runs and cached thresholds are not compared.
+Marker seed generation command: /usr/bin/perl /vol/data/repos/COMEBin-v11/auxiliary/test_getmarker_2quarter.pl /tmp/issue28-h0as_sse/case1/assembly.fasta.bacar_marker.hmmout /tmp/issue28-h0as_sse/case1/assembly.fasta 1001 /tmp/issue28-h0as_sse/case1/.assembly.fasta.bacar_marker.2quarter_lencutoff_1001.seed.2135493.swqgsksk.tmp
+Marker seed generation exited with status 2; stderr=/tmp/issue28-h0as_sse/case1/assembly.fasta.bacar_marker.2quarter_lencutoff_1001.seed.err.
+Marker seed generation exited with status 2 (an expected empty result for this input); stderr=/tmp/issue28-h0as_sse/case1/assembly.fasta.bacar_marker.2quarter_lencutoff_1001.seed.err; tail=Marker hits were found, but none matched input contig identifiers..
+No usable marker seeds for /tmp/issue28-h0as_sse/case1/assembly.fasta (marker script status 2, hmm_hits=1, stderr=/tmp/issue28-h0as_sse/case1/assembly.fasta.bacar_marker.2quarter_lencutoff_1001.seed.err). COMEBin cannot build a binning axis for this input and will report 0 bins.
+SEED_COUNT=0
+
+[PASS] case1: gen_seed did not raise
+[PASS] case1: gen_seed reported 0 seeds
+[PASS] case1: warned instead of erroring
+[PASS] case1: no seed file was published
+[PASS] case1: no traceback in output
+--- case 2 (no hits match contig ids; perl exits 2) ---
+HMMsearch result /tmp/issue28-h0as_sse/case2/assembly.fasta.bacar_marker.hmmout with 1 hits; --hmm_evalue applies only when HMMsearch runs and cached thresholds are not compared.
+Marker seed generation command: /usr/bin/perl /vol/data/repos/COMEBin-v11/auxiliary/test_getmarker_2quarter.pl /tmp/issue28-h0as_sse/case2/assembly.fasta.bacar_marker.hmmout /tmp/issue28-h0as_sse/case2/assembly.fasta 1001 /tmp/issue28-h0as_sse/case2/.assembly.fasta.bacar_marker.2quarter_lencutoff_1001.seed.2135578.7w_3res0.tmp
+Marker seed generation exited with status 2; stderr=/tmp/issue28-h0as_sse/case2/assembly.fasta.bacar_marker.2quarter_lencutoff_1001.seed.err.
+Marker seed generation exited with status 2 (an expected empty result for this input); stderr=/tmp/issue28-h0as_sse/case2/assembly.fasta.bacar_marker.2quarter_lencutoff_1001.seed.err; tail=Marker hits were found, but none matched input contig identifiers..
+No usable marker seeds for /tmp/issue28-h0as_sse/case2/assembly.fasta (marker script status 2, hmm_hits=1, stderr=/tmp/issue28-h0as_sse/case2/assembly.fasta.bacar_marker.2quarter_lencutoff_1001.seed.err). COMEBin cannot build a binning axis for this input and will report 0 bins.
+SEED_COUNT=0
+
+[PASS] case2: gen_seed reported 0 seeds
+--- case 3 (usable seed present) ---
+HMMsearch result /tmp/issue28-h0as_sse/case3/assembly.fasta.bacar_marker.hmmout with 1 hits; --hmm_evalue applies only when HMMsearch runs and cached thresholds are not compared.
+Marker seed generation command: /usr/bin/perl /vol/data/repos/COMEBin-v11/auxiliary/test_getmarker_2quarter.pl /tmp/issue28-h0as_sse/case3/assembly.fasta.bacar_marker.hmmout /tmp/issue28-h0as_sse/case3/assembly.fasta 1001 /tmp/issue28-h0as_sse/case3/.assembly.fasta.bacar_marker.2quarter_lencutoff_1001.seed.2135581.vimgdf_6.tmp
+Marker seed generation exited with status 2; stderr=/tmp/issue28-h0as_sse/case3/assembly.fasta.bacar_marker.2quarter_lencutoff_1001.seed.err.
+Marker seed generation exited with status 2 (an expected empty result for this input); stderr=/tmp/issue28-h0as_sse/case3/assembly.fasta.bacar_marker.2quarter_lencutoff_1001.seed.err; tail=Marker hits were found, but none matched input contig identifiers..
+No usable marker seeds for /tmp/issue28-h0as_sse/case3/assembly.fasta (marker script status 2, hmm_hits=1, stderr=/tmp/issue28-h0as_sse/case3/assembly.fasta.bacar_marker.2quarter_lencutoff_1001.seed.err). COMEBin cannot build a binning axis for this input and will report 0 bins.
+SEED_COUNT=0
+
+[FAIL] case3: gen_seed returned a positive seed count :: rc=0 out=2quarter_lencutoff_1001.seed.err; tail=Marker hits were found, but none matched input contig identifiers..
+No usable marker seeds for /tmp/issue28-h0as_sse/case3/assembly.fasta (marker script status 2, hmm_hits=1, stderr=/tmp/issue28-h0as_sse/case3/assembly.fasta.bacar_marker.2quarter_lencutoff_1001.seed.err). COMEBin cannot build a binning axis for this input and will report 0 bins.
+SEED_COUNT=0
+ err=
+[FAIL] case3: seed file published
+--- case 4 (main.py bin, no usable seed) ---
+ing HMMsearch result /tmp/issue28-h0as_sse/case4/assembly.fasta.bacar_marker.hmmout with 1 hits; --hmm_evalue applies only when HMMsearch runs and cached thresholds are not compared.
+2026-09-28 12:47:46,897 - Marker seed generation command: /usr/bin/perl /vol/data/repos/COMEBin-v11/auxiliary/test_getmarker_2quarter.pl /tmp/issue28-h0as_sse/case4/assembly.fasta.bacar_marker.hmmout /tmp/issue28-h0as_sse/case4/assembly.fasta 1001 /tmp/issue28-h0as_sse/case4/.assembly.fasta.bacar_marker.2quarter_lencutoff_1001.seed.2135583.ay0i8e2u.tmp
+2026-09-28 12:47:46,904 - Marker seed generation exited with status 2; stderr=/tmp/issue28-h0as_sse/case4/assembly.fasta.bacar_marker.2quarter_lencutoff_1001.seed.err.
+2026-09-28 12:47:46,904 - Marker seed generation exited with status 2 (an expected empty result for this input); stderr=/tmp/issue28-h0as_sse/case4/assembly.fasta.bacar_marker.2quarter_lencutoff_1001.seed.err; tail=Marker hits were found, but none matched input contig identifiers..
+2026-09-28 12:47:46,904 - No usable marker seeds for /tmp/issue28-h0as_sse/case4/assembly.fasta (marker script status 2, hmm_hits=1, stderr=/tmp/issue28-h0as_sse/case4/assembly.fasta.bacar_marker.2quarter_lencutoff_1001.seed.err). COMEBin cannot build a binning axis for this input and will report 0 bins.
+2026-09-28 12:47:46,904 - Reporting 0 bins for /tmp/issue28-h0as_sse/case4/assembly.fasta: no usable marker seed set, so no binning axis can be built. This is an empty result for this input, not an error.
+
+[PASS] case4: main.py bin exited 0
+[FAIL] case4: main.py reported 0 bins
+[PASS] case4: no traceback
+--- case 5 (main.py get_result, no usable seed) ---
+ Reusing HMMsearch result /tmp/issue28-h0as_sse/case4/assembly.fasta.bacar_marker.hmmout with 1 hits; --hmm_evalue applies only when HMMsearch runs and cached thresholds are not compared.
+2026-09-28 12:47:49,907 - Marker seed generation command: /usr/bin/perl /vol/data/repos/COMEBin-v11/auxiliary/test_getmarker_2quarter.pl /tmp/issue28-h0as_sse/case4/assembly.fasta.bacar_marker.hmmout /tmp/issue28-h0as_sse/case4/assembly.fasta 1001 /tmp/issue28-h0as_sse/case4/.assembly.fasta.bacar_marker.2quarter_lencutoff_1001.seed.2135585.tlydiox7.tmp
+2026-09-28 12:47:49,913 - Marker seed generation exited with status 2; stderr=/tmp/issue28-h0as_sse/case4/assembly.fasta.bacar_marker.2quarter_lencutoff_1001.seed.err.
+2026-09-28 12:47:49,913 - Marker seed generation exited with status 2 (an expected empty result for this input); stderr=/tmp/issue28-h0as_sse/case4/assembly.fasta.bacar_marker.2quarter_lencutoff_1001.seed.err; tail=Marker hits were found, but none matched input contig identifiers..
+2026-09-28 12:47:49,913 - No usable marker seeds for /tmp/issue28-h0as_sse/case4/assembly.fasta (marker script status 2, hmm_hits=1, stderr=/tmp/issue28-h0as_sse/case4/assembly.fasta.bacar_marker.2quarter_lencutoff_1001.seed.err). COMEBin cannot build a binning axis for this input and will report 0 bins.
+2026-09-28 12:47:49,913 - Reporting 0 bins for /tmp/issue28-h0as_sse/case4/assembly.fasta: no usable marker seed set, so no bins can be selected. This is an empty result for this input, not an error.
+
+[PASS] case5: main.py get_result exited 0
+[FAIL] case5: main.py get_result reported 0 bins
+
+FAILED (4): ['case3: gen_seed returned a positive seed count', 'case3: seed file published', 'case4: main.py reported 0 bins', 'case5: main.py get_result reported 0 bins']
+> build · big-pickle
