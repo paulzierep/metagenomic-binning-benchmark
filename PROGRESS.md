@@ -627,6 +627,37 @@ included; fixes land on branch `comebin-optimizations` in this repo.
   itself was deregistered by the sibling. Run slot still busy; no new runs
   launched (sweep = plan only until slot free).
 
+### 2026-09-28 #25 sweep LAUNCHED (slot freed)
+
+- Sibling cleared `.active_run` (~13:06Z) and posted the #28 fix delivery
+  (`41606c8`, graceful 0-bin + no `Clustering exited status 1`). Run slot free.
+- Created two pinned, clean worktrees for the sweep:
+  - `COMEBin-v11-sweep` @ `95f5ea8` (reference base = commit behind
+    `medium_v11_20260924`; detached, clean)
+  - `COMEBin-master904` @ `904f649` (unmodified upstream master; CPU-only, no
+    `-d`/`-s` flags in its `run_comebin.sh` → harness guards skip them cleanly,
+    exactly matching the original unseeded baseline semantics)
+- Harness `run_comebin_fix.sh`: fixed `set -u` bug (a `[ -n "$VAR" ]` on unset
+  sweep vars aborted every cell with `TEMP: unbound variable`), added `N_VIEWS`
+  forwarding (cells 15/16) + `sweep:` meta line + `n_views:` meta; all gated on
+  `grep -q` support checks so older sources run unchanged. Re-synced to repo.
+- `scripts/run_sweep_medium.sh` (NEW): 24-cell medium grid driver, detached +
+  resumable. Per-cell seed column (cell 24 = seed 7; rest 42), wait-active_clear
+  gate (never overlaps a registered run, polls up to WAIT_MAX_S=4 h), RESUME
+  branch evals orphaned rc=0 runs with no results CSV, SKIPs non-zero-exit runs
+  for manual triage, never overwrites existing run dirs, evals each cell via
+  `run_eval.sh` (CheckM2 + CheckM + results CSV + per-bin plots), syncs per-bin
+  artifacts into the repo run dir. docs/13 cell 23 replaced `sweep_023_noearly`
+  (early-stop is hardcoded, not a CLI flag) with `sweep_023_embcov512_batch512`.
+- **Launch state:** cell 1 `sweep_001_ref` (v11-sweep@95f5ea8, seed 42, 8
+  threads, 3000 contigs) RUNNING since 13:09Z — `.active_run` pid 2185694,
+  `main.py train ... --device cpu --num_threads 8 --seed 42` verified. Driver
+  relaunched at 13:11Z is polling wait-active_clear; when cell 1 exits it
+  EVALs the orphaned run then proceeds cells 2–24 serially. Sweep log =
+  `/vol/data/benchmark/status/sweep_medium.log`. Test artifact `runs/fix_v11`
+  (created by an `env -i` harness smoke test) was removed — not a real run
+  (`fix_v11_20260924` untouched).
+
 ## Watchdog / restart
 
 `scripts/agent-watchdog.sh` (installed at `/vol/data/benchmark/bin/`, cron `*/5 * * * *`):

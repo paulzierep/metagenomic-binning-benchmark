@@ -62,7 +62,7 @@ DIRTY=$(git -C "$SRC" status --porcelain --untracked-files=no | wc -l)
 BRANCH=$(git -C "$SRC" branch --show-current)
 echo "source: $SRC (branch $BRANCH) commit: $COMMIT (dirty files: $DIRTY)"
 [ "$DIRTY" -eq 0 ] || { echo "REFUSING: source tree has uncommitted changes; commit them first"; exit 1; }
-COMEBIN_ARGS=(-a "$CONTIGS" -p "$BAMDIR" -o "$RUNDIR/comebin_out" -n 6 -t "$THREADS")
+COMEBIN_ARGS=(-a "$CONTIGS" -p "$BAMDIR" -o "$RUNDIR/comebin_out" -n "${N_VIEWS:-6}" -t "$THREADS")
 if grep -q -- '-d STR.*device' "$SRC/COMEBin/run_comebin.sh"; then
   COMEBIN_ARGS+=(-d cpu)
 fi
@@ -72,26 +72,26 @@ fi
 # ---- issue #25 sweep: forward optional training/compute params ------------ #
 # Map env vars -> run_comebin.sh flags ONLY if the invoked copy supports them
 # (avoids "illegal option" on older/mismatched sources). Defaults = upstream
-# reference values (current medium_v11_20260924 run).
-if [ -n "$TEMP" ]; then
+# reference values (current medium_v11_20260924 run). `${X:-}` guards set -u.
+if [ -n "${TEMP:-}" ]; then
   grep -q -- '-l FLOAT' "$SRC/COMEBin/run_comebin.sh" && COMEBIN_ARGS+=(-l "$TEMP")
 fi
-if [ -n "$EMB" ]; then
+if [ -n "${EMB:-}" ]; then
   grep -q -- '-e INT' "$SRC/COMEBin/run_comebin.sh" && COMEBIN_ARGS+=(-e "$EMB")
 fi
-if [ -n "$EMB_COV" ]; then
+if [ -n "${EMB_COV:-}" ]; then
   grep -q -- '-c INT' "$SRC/COMEBin/run_comebin.sh" && COMEBIN_ARGS+=(-c "$EMB_COV")
 fi
-if [ -n "$BATCH" ]; then
+if [ -n "${BATCH:-}" ]; then
   grep -q -- '-b INT' "$SRC/COMEBin/run_comebin.sh" && COMEBIN_ARGS+=(-b "$BATCH")
 fi
-if [ -n "$MAX_EDGES" ]; then
+if [ -n "${MAX_EDGES:-}" ]; then
   grep -q -- '-m INT' "$SRC/COMEBin/run_comebin.sh" && COMEBIN_ARGS+=(-m "$MAX_EDGES")
 fi
-if [ -n "$LEIDEN_WORKERS" ]; then
+if [ -n "${LEIDEN_WORKERS:-}" ]; then
   grep -q -- '-w INT' "$SRC/COMEBin/run_comebin.sh" && COMEBIN_ARGS+=(-w "$LEIDEN_WORKERS")
 fi
-if [ -n "$HMM_EVALUE" ]; then
+if [ -n "${HMM_EVALUE:-}" ]; then
   grep -q -- '-E FLOAT' "$SRC/COMEBin/run_comebin.sh" && COMEBIN_ARGS+=(-E "$HMM_EVALUE")
 fi
 CMD_TEXT=$(printf '%q ' "$MM" run -p "$ENV" bash run_comebin.sh "${COMEBIN_ARGS[@]}")
@@ -103,8 +103,9 @@ CMD_TEXT=$(printf '%q ' "$MM" run -p "$ENV" bash run_comebin.sh "${COMEBIN_ARGS[
   echo "contigs:    $CONTIGS"
   echo "bamdir:     $BAMDIR"
   echo "threads:    $THREADS"
+  echo "n_views:    ${N_VIEWS:-6}"
   echo "seed:       ${SEED:-unset}"
-  echo "sweep:      temp=${TEMP:-ref} emb=${EMB:-ref} emb_cov=${EMB_COV:-ref} batch=${BATCH:-ref} max_edges=${MAX_EDGES:-ref} leiden_workers=${LEIDEN_WORKERS:-ref} hmm_evalue=${HMM_EVALUE:-ref}"
+  echo "sweep:      temp=${TEMP:-ref} emb=${EMB:-ref} emb_cov=${EMB_COV:-ref} batch=${BATCH:-ref} max_edges=${MAX_EDGES:-ref} leiden_workers=${LEIDEN_WORKERS:-ref} hmm_evalue=${HMM_EVALUE:-ref} n_views=${N_VIEWS:-6}"
   echo "host:       $(nproc) cores, $(free -g | awk '/Mem:/{print $2}')G RAM, gpu=$(nvidia-smi -L 2>/dev/null || echo none)"
   echo "cmd_wrapper: $CMD_TEXT"
 } | tee "$RUNDIR/run_meta.txt"

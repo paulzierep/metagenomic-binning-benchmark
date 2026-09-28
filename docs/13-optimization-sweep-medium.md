@@ -69,7 +69,7 @@ leiden_workers = threads).
 | 20 | hmm_evalue `-E` | 1e-7 | `sweep_020_eval1e7` |
 | 21 | combo | temp 0.3 + emb 1024 + batch 512 | `sweep_021_comboA` |
 | 22 | combo | temp 0.05 + emb 4096 + batch 2048 | `sweep_022_comboB` |
-| 23 | earlystop | explicit early-stop off (if flag exposed) | `sweep_023_noearly` |
+| 23 | combo | emb_cov 512 + batch 512 (early-stop disabled — `--earlystop` is hardcoded in `run_comebin.sh`, not a CLI flag — so this cell tests the small-emb-cov regime instead) | `sweep_023_embcov512_batch512` |
 | 24 | seed sanity | seed 7 (reproducibility check) | `sweep_024_seed7` |
 
 ## Ranking rule (owner's order)
