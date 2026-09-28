@@ -204,6 +204,29 @@ else
   check C1b_deploy ok "installed pipeline scripts identical to repo source"
 fi
 
+# ---- C1c: no unsourced executables installed in bin ------------------------- #
+# C1b only walks repo/scripts -> bin. The reverse direction is invisible to it, so
+# a script that is executed from bin but has no source in the repo (it was written
+# straight into bin, or its source was deleted) stays unversioned, unreviewable and
+# unreproducible, and no future edit can ever reach it. That is exactly how
+# supervise-alive.sh — a live cron job — ended up with no source.
+# Nothing here can be auto-fixed: the only correct repair is to add the source to
+# the repo, which is a judgement call, so report it and let the supervisor decide.
+orphan=""
+for installed in "$BENCH"/bin/*; do
+  [ -f "$installed" ] || continue
+  job=$(basename "$installed")
+  case "$job" in
+    .*|__pycache__|*.pyc|*.pyo) continue ;;
+  esac
+  [ -f "$REPO/scripts/$job" ] || orphan="$orphan $job"
+done
+if [ -n "$orphan" ]; then
+  check C1c_unsourced_bin degraded "installed in bin but absent from repo/scripts:$(printf '%s' "$orphan" | tr -s ' ')"
+else
+  check C1c_unsourced_bin ok "every installed bin script has source in repo/scripts"
+fi
+
 # ---- C2: OpenCode service status + real API health -------------------------- #
 if service_pid=$(service_pid); then
   check C2_service ok "pid $service_pid; service status + /api/info healthy"
