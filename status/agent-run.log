@@ -96910,3 +96910,282 @@ driver pid: 2184109
 CLEAR
 === cell 1 dir? ===
 runs/sweep_001_ref
+> build · big-pickle
+All cells failed instantly — something's wrong. Let me inspect the cell output:
+[0m$ [0mcd /vol/data/benchmark
+echo "=== cell1 come bin out ==="
+cat status/sweep_001_ref.comebin.out 2>/dev/null | head -30
+echo "=== cell1 run dir ==="
+ls runs/sweep_001_ref/ 2>/dev/null
+echo "=== full sweep log head ==="
+head -12 status/sweep_medium.log
+touch .heartbeat
+=== cell1 come bin out ===
+preflight_free_gb: run_fs=314 tmp_fs=13 floor=2
+source: /vol/data/benchmark/../repos/COMEBin-v11-sweep (branch ) commit: 95f5ea820f9a4e76f5c2911c0b5ed507ab67b015 (dirty files: 0)
+/vol/data/benchmark/bin/run_comebin_fix.sh: line 76: TEMP: unbound variable
+=== cell1 run dir ===
+logs
+=== full sweep log head ===
+[2026-09-28T13:07:50Z] START sweep_001_ref src=COMEBin-v11-sweep @ 95f5ea8 threads=8 seed=42 temp=ref emb=ref emb_cov=ref batch=ref max_edges=ref lw=ref heval=ref n_views=6
+[2026-09-28T13:07:50Z] FAIL sweep_001_ref: run_comebin_fix.sh rc=1
+[2026-09-28T13:07:50Z] START sweep_002_master src=COMEBin-master904 @ 904f649 threads=8 seed=none temp=ref emb=ref emb_cov=ref batch=ref max_edges=ref lw=ref heval=ref n_views=6
+[2026-09-28T13:07:50Z] FAIL sweep_002_master: run_comebin_fix.sh rc=1
+[2026-09-28T13:07:50Z] START sweep_003_issue28fix src=COMEBin-v11 @ 41606c8 threads=8 seed=42 temp=ref emb=ref emb_cov=ref batch=ref max_edges=ref lw=ref heval=ref n_views=6
+[2026-09-28T13:07:50Z] FAIL sweep_003_issue28fix: run_comebin_fix.sh rc=1
+[2026-09-28T13:07:50Z] START sweep_004_temp005 src=COMEBin-v11-sweep @ 95f5ea8 threads=8 seed=42 temp=0.05 emb=ref emb_cov=ref batch=ref max_edges=ref lw=ref heval=ref n_views=6
+[2026-09-28T13:07:50Z] FAIL sweep_004_temp005: run_comebin_fix.sh rc=1
+[2026-09-28T13:07:50Z] START sweep_005_temp030 src=COMEBin-v11-sweep @ 95f5ea8 threads=8 seed=42 temp=0.30 emb=ref emb_cov=ref batch=ref max_edges=ref lw=ref heval=ref n_views=6
+[2026-09-28T13:07:50Z] FAIL sweep_005_temp030: run_comebin_fix.sh rc=1
+[2026-09-28T13:07:50Z] START sweep_006_temp050 src=COMEBin-v11-sweep @ 95f5ea8 threads=8 seed=42 temp=0.50 emb=ref emb_cov=ref batch=ref max_edges=ref lw=ref heval=ref n_views=6
+[2026-09-28T13:07:50Z] FAIL sweep_006_temp050: run_comebin_fix.sh rc=1
+> build · big-pickle
+Found the bug: the harness I edited uses `[ -n "$TEMP" ]` under `set -u`, which aborts when the var is unset. Fix with `${TEMP:-}` everywhere:
+[0m← [0mEdit /vol/data/benchmark/bin/run_comebin_fix.sh
+Index: /vol/data/benchmark/bin/run_comebin_fix.sh
+===================================================================
+--- /vol/data/benchmark/bin/run_comebin_fix.sh
++++ /vol/data/benchmark/bin/run_comebin_fix.sh
+@@ -71,28 +71,28 @@
+ fi
+ # ---- issue #25 sweep: forward optional training/compute params ------------ #
+ # Map env vars -> run_comebin.sh flags ONLY if the invoked copy supports them
+ # (avoids "illegal option" on older/mismatched sources). Defaults = upstream
+-# reference values (current medium_v11_20260924 run).
+-if [ -n "$TEMP" ]; then
++# reference values (current medium_v11_20260924 run). `${X:-}` guards set -u.
++if [ -n "${TEMP:-}" ]; then
+   grep -q -- '-l FLOAT' "$SRC/COMEBin/run_comebin.sh" && COMEBIN_ARGS+=(-l "$TEMP")
+ fi
+-if [ -n "$EMB" ]; then
++if [ -n "${EMB:-}" ]; then
+   grep -q -- '-e INT' "$SRC/COMEBin/run_comebin.sh" && COMEBIN_ARGS+=(-e "$EMB")
+ fi
+-if [ -n "$EMB_COV" ]; then
++if [ -n "${EMB_COV:-}" ]; then
+   grep -q -- '-c INT' "$SRC/COMEBin/run_comebin.sh" && COMEBIN_ARGS+=(-c "$EMB_COV")
+ fi
+-if [ -n "$BATCH" ]; then
++if [ -n "${BATCH:-}" ]; then
+   grep -q -- '-b INT' "$SRC/COMEBin/run_comebin.sh" && COMEBIN_ARGS+=(-b "$BATCH")
+ fi
+-if [ -n "$MAX_EDGES" ]; then
++if [ -n "${MAX_EDGES:-}" ]; then
+   grep -q -- '-m INT' "$SRC/COMEBin/run_comebin.sh" && COMEBIN_ARGS+=(-m "$MAX_EDGES")
+ fi
+-if [ -n "$LEIDEN_WORKERS" ]; then
++if [ -n "${LEIDEN_WORKERS:-}" ]; then
+   grep -q -- '-w INT' "$SRC/COMEBin/run_comebin.sh" && COMEBIN_ARGS+=(-w "$LEIDEN_WORKERS")
+ fi
+-if [ -n "$HMM_EVALUE" ]; then
++if [ -n "${HMM_EVALUE:-}" ]; then
+   grep -q -- '-E FLOAT' "$SRC/COMEBin/run_comebin.sh" && COMEBIN_ARGS+=(-E "$HMM_EVALUE")
+ fi
+ CMD_TEXT=$(printf '%q ' "$MM" run -p "$ENV" bash run_comebin.sh "${COMEBIN_ARGS[@]}")
+ {
+
+> build · big-pickle
+Now clean the failed partial cell dirs (they only contain `logs/`, no results) and verify the guard logic, then re-launch:
+[0m$ [0mcd /vol/data/benchmark
+echo "=== what's in failed cell dirs ==="
+ls -R runs/sweep_001_ref/ 2>/dev/null | head -8
+echo "=== run_comebin_fix.sh overwrite guard ==="
+sed -n '30,42p' bin/run_comebin_fix.sh
+echo "=== remove the 24 failed partial dirs (only logs/, no results/run_meta) ==="
+cnt=0
+for d in runs/sweep_*; do
+  [ -d "$d" ] || continue
+  if [ ! -f "$d/run_meta.txt" ] && [ ! -d "$d/comebin_out" ]; then
+    rm -rf "$d"; cnt=$((cnt+1))
+  else
+    echo "KEEP $d (has results/run_meta)"
+  fi
+done
+echo "removed $cnt partial dirs"
+ls -d runs/sweep_* 2>/dev/null || echo "all sweep dirs cleaned"
+touch .heartbeat
+=== what's in failed cell dirs ===
+runs/sweep_001_ref/:
+logs
+
+runs/sweep_001_ref/logs:
+=== run_comebin_fix.sh overwrite guard ===
+    exit 1
+  fi
+  old_rc=$(grep -m1 '^exit_code:' "${active_dir:-/nonexistent}/run_meta.txt" 2>/dev/null | awk '{print $2}' || true)
+  [ "${old_rc:-}" = "0" ] || { echo "ERROR: stale failed run requires benchmark-watchdog triage: $active_dir"; exit 1; }
+  rm -f "$ACTIVE"
+fi
+if [ -f "$RUNDIR/run_meta.txt" ] || [ -d "$RUNDIR/comebin_out" ]; then
+  echo "ERROR: refusing to overwrite existing run directory: $RUNDIR"
+  exit 1
+fi
+
+# Pre-flight free space.  A full filesystem does not fail at launch: it silently
+# poisons CheckM's marker tables and then kills get_result hours later.
+=== remove the 24 failed partial dirs (only logs/, no results/run_meta) ===
+removed 24 partial dirs
+all sweep dirs cleaned
+> build · big-pickle
+Partial dirs cleaned. Let me verify the harness creates needed subdirs, then re-launch the sweep:
+[0m$ [0mcd /vol/data/benchmark
+echo "=== harness: run dir setup (mkdir logs etc) ==="
+grep -nE "mkdir|RUNDIR" bin/run_comebin_fix.sh | head -10
+bash -n bin/run_comebin_fix.sh && echo "harness syntax OK"
+cp bin/run_comebin_fix.sh /vol/data/repos/metagenomic-binning-benchmark/scripts/run_comebin_fix.sh
+echo "=== quick sanity: TEMP env unset no longer aborts ==="
+env -i bash bin/run_comebin_fix.sh 2>&1 | head -3 || true
+echo "(expected 'usage' error, not 'unbound variable')"
+touch .heartbeat
+=== harness: run dir setup (mkdir logs etc) ===
+16:RUNDIR=$(realpath -m "${1:-/vol/data/benchmark/runs/fix_v11}")
+36:if [ -f "$RUNDIR/run_meta.txt" ] || [ -d "$RUNDIR/comebin_out" ]; then
+37:  echo "ERROR: refusing to overwrite existing run directory: $RUNDIR"
+48:RUN_FS=$(df -Pk "$(dirname "$RUNDIR")" 2>/dev/null | awk 'NR==2{print int($4/1048576)}')
+59:mkdir -p "$RUNDIR/logs"
+65:COMEBIN_ARGS=(-a "$CONTIGS" -p "$BAMDIR" -o "$RUNDIR/comebin_out" -n "${N_VIEWS:-6}" -t "$THREADS")
+99:  echo "run:        $RUNDIR"
+111:} | tee "$RUNDIR/run_meta.txt"
+118:  "$RUNDIR/comebin_run.log" "$RUNDIR" "$(date +%s)" "$MODE" "$SRC" "$CONTIGS" "$BAMDIR" > "$ACTIVE.tmp.$$"
+141:    read -r pids cpu_pct rss_kb <<<"$(ps -eo pid=,pcpu=,rss=,args= | awk -v out="$RUNDIR/comebin_out" '
+harness syntax OK
+=== quick sanity: TEMP env unset no longer aborts ===
+preflight_free_gb: run_fs=314 tmp_fs=13 floor=2
+source: /vol/data/repos/COMEBin-v11 (branch comebin-optimizations-v11) commit: 41606c8e154aa62c01d361361d04b74f18f225ab (dirty files: 0)
+run:        /vol/data/benchmark/runs/fix_v11
+(expected 'usage' error, not 'unbound variable')
+> build · big-pickle
+That test succeeded past the variable issue but I need to confirm it did NOT touch the existing `fix_v11` run (the guard should have aborted). Let me verify:
+[0m$ [0mcd /vol/data/benchmark
+echo "=== fix_v11 untouched? ==="
+grep -E "exit_code|bins:|source:" runs/fix_v11/run_meta.txt 2>/dev/null | head -3
+stat -c '%y' runs/fix_v11/run_meta.txt 2>/dev/null
+echo "=== did the test spawn anything? ==="
+ps -eo pid,args | grep -E "main.py train|run_comebin" | grep -v grep | head -3 || echo "no processes"
+echo "=== .active_run clear? ==="
+cat .active_run 2>/dev/null || echo CLEAR
+touch .heartbeat
+=== fix_v11 untouched? ===
+source:     /vol/data/repos/COMEBin-v11 (branch comebin-optimizations-v11)
+2026-09-28 13:08:16.906000000 +0000
+=== did the test spawn anything? ===
+=== .active_run clear? ===
+CLEAR
+> build · big-pickle
+The `env -i` test may have touched `fix_v11` (its run_meta timestamp is 13:08:16 — now). Let me check whether it overwrote or refused:
+[0m$ [0mcd /vol/data/benchmark
+echo "=== full fix_v11 run_meta (was it overwritten? does it have exit_code?) ==="
+ls runs/fix_v11/
+echo "---- run_meta content ----"
+cat runs/fix_v11/run_meta.txt 2>/dev/null | head -20
+echo "=== comebin_out present? (guard would refuse if so) ==="
+ls -d runs/fix_v11/comebin_out 2>/dev/null || echo "no comebin_out dir"
+touch .heartbeat
+=== full fix_v11 run_meta (was it overwritten? does it have exit_code?) ===
+logs
+run_meta.txt
+---- run_meta content ----
+run:        /vol/data/benchmark/runs/fix_v11
+source:     /vol/data/repos/COMEBin-v11 (branch comebin-optimizations-v11)
+date:       2026-09-28T13:08:16+00:00
+commit:     41606c8e154aa62c01d361361d04b74f18f225ab
+contigs:    /vol/data/datasets/comebin_test_data/BATS_SAMN07137077_METAG.scaffolds.min500.fasta.f1k.fasta
+bamdir:     /vol/data/datasets/comebin_test_data/bamfiles
+threads:    32
+n_views:    6
+seed:       unset
+sweep:      temp=ref emb=ref emb_cov=ref batch=ref max_edges=ref leiden_workers=ref hmm_evalue=ref n_views=6
+=== comebin_out present? (guard would refuse if so) ===
+no comebin_out dir
+> build · big-pickle
+The `env -i` sanity test wrote a stale `run_meta.txt` into `runs/fix_v11` (mtime exactly now) — I need to check whether that directory pre-existed before my test, and clean up if I created it.
+[0m$ [0mcd /vol/data/benchmark
+echo "=== does repo track runs/fix_v11? (repo runs dir) ==="
+ls /vol/data/repos/metagenomic-binning-benchmark/runs/ 2>/dev/null | grep -i fix_v11 || echo "no fix_v11 in repo runs/"
+echo "=== PROGRESS.md mentions of fix_v11 ==="
+grep -n "runs/fix_v11\|fix_v11\b" PROGRESS.md | head -5 || echo "no direct mention"
+echo "=== git history: was runs/fix_v11 ever committed? ==="
+git -C /vol/data/repos/metagenomic-binning-benchmark log --oneline --all -- runs/fix_v11 2>/dev/null | head -3 || echo "never committed"
+echo "=== current fix_v11 content ==="
+find runs/fix_v11 -type f 2>/dev/null | head
+echo "=== was log dir created at 13:08 too? ==="
+stat -c '%y %n' runs/fix_v11/logs 2>/dev/null
+touch .heartbeat
+=== does repo track runs/fix_v11? (repo runs dir) ===
+fix_v11_20260924
+=== PROGRESS.md mentions of fix_v11 ===
+363:- [x] **COMPLETE: fix_v11 full-large benchmark + evaluation (2026-09-24/25)** —
+364:      `runs/fix_v11_20260924` registered at 2026-09-24T10:37Z, source COMEBin-v11
+375:      `runs/fix_v11_20260924/per_bin_results.csv`, `per_bins.png` and refreshed
+424:      medium validation, parameter tuning on small sets first; fix_v11 passed that gate
+534:      eval. Same-dataset comparisons accumulate (fix_v11 vs baseline once live).
+=== git history: was runs/fix_v11 ever committed? ===
+=== current fix_v11 content ===
+runs/fix_v11/run_meta.txt
+=== was log dir created at 13:08 too? ===
+2026-09-28 13:08:16.890000000 +0000 runs/fix_v11/logs
+> build · big-pickle
+`runs/fix_v11` (undated) was never tracked, never mentioned in PROGRESS.md, and both `logs/` and `run_meta.txt` were created at 13:08:16 today — it's purely my `env -i` test artifact. The real run is `fix_v11_20260924`. Removing my accidental dir, then re-launching the sweep with the fixed harness:
+[0m$ [0mcd /vol/data/benchmark
+rm -rf runs/fix_v11
+echo "removed accidental fix_v11 test dir; remaining fix_v11* :"
+ls -d runs/fix_v11* 2>/dev/null
+echo "=== sanity: harness runs clean under env -i with explicit fresh rundir, no TEMP unbound ==="
+env -i bash bin/run_comebin_fix.sh /vol/data/benchmark/runs/__probe__ 2>&1 | head -6 || true
+echo "=== probe dir content (should have refused or preflighted only) ==="
+ls /vol/data/benchmark/runs/__probe__ 2>/dev/null || echo "probe dir not created (refused)"
+rm -rf /vol/data/benchmark/runs/__probe__ 2>/dev/null
+touch .heartbeat
+removed accidental fix_v11 test dir; remaining fix_v11* :
+runs/fix_v11_20260924
+=== sanity: harness runs clean under env -i with explicit fresh rundir, no TEMP unbound ===
+preflight_free_gb: run_fs=314 tmp_fs=13 floor=2
+source: /vol/data/repos/COMEBin-v11 (branch comebin-optimizations-v11) commit: 41606c8e154aa62c01d361361d04b74f18f225ab (dirty files: 0)
+run:        /vol/data/benchmark/runs/__probe__
+source:     /vol/data/repos/COMEBin-v11 (branch comebin-optimizations-v11)
+date:       2026-09-28T13:09:24+00:00
+commit:     41606c8e154aa62c01d361361d04b74f18f225ab
+=== probe dir content (should have refused or preflighted only) ===
+logs
+run_meta.txt
+> build · big-pickle
+Harness is fixed. Now launching the sweep driver detached:
+[0m$ [0mcd /vol/data/benchmark
+rm -rf runs/__probe__
+echo "=== launch sweep driver DETACHED (24-cell medium grid) ==="
+nohup bash /vol/data/repos/metagenomic-binning-benchmark/scripts/run_sweep_medium.sh > /vol/data/benchmark/status/sweep-driver.out 2>&1 &
+echo "launcher pid: $!"
+sleep 15
+echo "=== driver processes ==="
+pgrep -af "run_sweep_medium.sh" | grep -v pgrep | head -3 || echo "driver gone"
+echo "=== sweep log (should show cell 1 START, no FAIL yet) ==="
+tail -8 /vol/data/benchmark/status/sweep_medium.log 2>/dev/null || echo "(no log)"
+echo "=== .active_run (should be REGISTERED by run_comebin_fix for cell 1) ==="
+cat .active_run 2>/dev/null || echo "CLEAR"
+echo "=== cell 1 run dir ==="
+ls runs/sweep_001_ref/ 2>/dev/null | head
+grep -E "exit_code|bins:" runs/sweep_001_ref/run_meta.txt 2>/dev/null || echo "(still running: no exit yet)"
+touch .heartbeat
+=== launch sweep driver DETACHED (24-cell medium grid) ===
+launcher pid: 2185685
+=== driver processes ===
+2185685 bash /vol/data/repos/metagenomic-binning-benchmark/scripts/run_sweep_medium.sh
+=== sweep log (should show cell 1 START, no FAIL yet) ===
+[2026-09-28T13:07:51Z] START sweep_022_comboB src=COMEBin-v11-sweep @ 95f5ea8 threads=8 seed=42 temp=0.05 emb=4096 emb_cov=ref batch=2048 max_edges=ref lw=ref heval=ref n_views=6
+[2026-09-28T13:07:51Z] FAIL sweep_022_comboB: run_comebin_fix.sh rc=1
+[2026-09-28T13:07:51Z] START sweep_023_embcov512_batch512 src=COMEBin-v11-sweep @ 95f5ea8 threads=8 seed=42 temp=ref emb=ref emb_cov=512 batch=512 max_edges=ref lw=ref heval=ref n_views=6
+[2026-09-28T13:07:51Z] FAIL sweep_023_embcov512_batch512: run_comebin_fix.sh rc=1
+[2026-09-28T13:07:51Z] START sweep_024_seed7 src=COMEBin-v11-sweep @ 95f5ea8 threads=8 seed=42 temp=ref emb=ref emb_cov=ref batch=ref max_edges=ref lw=ref heval=ref n_views=6
+[2026-09-28T13:07:51Z] FAIL sweep_024_seed7: run_comebin_fix.sh rc=1
+[2026-09-28T13:07:51Z] SWEEP COMPLETE (24 cells processed)
+[2026-09-28T13:09:26Z] START sweep_001_ref src=COMEBin-v11-sweep @ 95f5ea8 threads=8 seed=42 temp=ref emb=ref emb_cov=ref batch=ref max_edges=ref lw=ref heval=ref n_views=6
+=== .active_run (should be REGISTERED by run_comebin_fix for cell 1) ===
+2185694 2185683 /vol/data/benchmark/runs/sweep_001_ref/comebin_run.log /vol/data/benchmark/runs/sweep_001_ref 1790600967 medium /vol/data/benchmark/../repos/COMEBin-v11-sweep /vol/data/datasets/comebin_medium/contigs.fa /vol/data/datasets/comebin_medium/bamfiles
+=== cell 1 run dir ===
+comebin_out
+comebin_run.log
+logs
+run_meta.txt
+(still running: no exit yet)
+> build · big-pickle
+The sweep is live: cell 1 (`sweep_001_ref`) is registered in `.active_run` and running. Let me confirm real progress (COMBin training process, log growth) before finalizing the turn:
