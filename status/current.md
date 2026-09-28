@@ -3,10 +3,10 @@
 | | |
 |---|---|
 | Status | 🟢 `running` |
-| ⏱ Updated (Europe/Berlin) | `2026-09-28T15:18 CEST` |
-| 🏃 Live benchmark | `sweep_001_ref` — **epoch 32/200** · loss `5.804840087890625` · top1 acc `9.036458015441895` (log 4s fresh) |
+| ⏱ Updated (Europe/Berlin) | `2026-09-28T15:20 CEST` |
+| 🏃 Live benchmark | `sweep_001_ref` — **epoch 41/200** · loss `5.536392688751221` · top1 acc `13.756509780883789` (log 2s fresh) |
 | 🧠 Model (last turn) | `big-pickle` (watchdog rotates to free models on quota) |
-| 📌 Agent note · **2 min old** | 2026-09-25T12:16:00Z | marine_v11_20260925 active: epoch 147/200, COMEBin-v11@95f5ea8, cami2 mode; heartbeat touched; PROGRESS synced
+| 📌 Agent note · **4 min old** | 2026-09-25T12:16:00Z | marine_v11_20260925 active: epoch 147/200, COMEBin-v11@95f5ea8, cami2 mode; heartbeat touched; PROGRESS synced
 2026-09-25T15:34:55Z | issues triaged: #12 reporting auto-plots confirmed complete; #8 Zenodo record active with continuous-update workflow; marine run completed; no active run
 2026-09-25T20:49:23Z | issues triaged: #12 auto-plots complete; #8 zenodo record published with continuous-update workflow; marine run completed; no active run; agent resumed for CAMI III prep
 2026-09-25T21:11:13Z | issues #12 and #8 triaged: reporting auto-plots confirmed complete and Zenodo continuous-update workflow verified; no active runs; preparing for CAMI III dataset prep
@@ -81,9 +81,9 @@ delayed closeout: PROGRESS synced after 2nd edit; delivery comments #19/#22/#24/
 [2026-09-28T13:11:55Z] #25 sweep live: cell1 train ok; driver waiting; commit 2dc7a43d pushed
 [2026-09-28T13:15:10Z] #24+#19 owner feedback actioned; PROGRESS synced; delivery comments next
 [2026-09-28T13:15:35Z] #24+#19 delivered (aa1bd565); sweep cell1 still training; driver waiting |
-| ⚙️ Load · uptime | `8.00 6.58 4.21` · 4 days, 23 hours, 42 minutes — 32 cores, 62 GiB, no GPU |
-| 💾 RAM used/total | `7040/64295 MB` |
+| ⚙️ Load · uptime | `7.84 6.97 4.64` · 4 days, 23 hours, 44 minutes — 32 cores, 62 GiB, no GPU |
+| 💾 RAM used/total | `7226/64295 MB` |
 | 🔗 Session | `ses_f31799c77ffeTq9gcYgqc4hBhg` |
-| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `dcc60a14 status: yes — sweep_001_ref epoch 25/200 loss 6.039702892303467 acc 5` |
+| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `32659bd4 status: yes — sweep_001_ref epoch 32/200 loss 5.804840087890625 acc 9` |
 | 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `9678074 B` — every run, command & tool result |
 | 📈 Timeline | [status/status.log](status/status.log) |
