@@ -89706,3 +89706,1425 @@ Logging improvements noted. Current benchmark infrastructure mirrors per-run log
 check: already triaged in prior session
 --- 2026-09-26T15:28:24Z paulzierep ---
 test comment
+> build · big-pickle
+All nine issues already have owner/agent comments (posted by a prior session before the latch), but **#27 and #28 have none** — those need fresh responses. The existing comments are mostly descriptive, not delivered; the owner's real asks (20-run sweep, README restructure a–f, all-runs table, stacked 4-panel plot, major-steps log, #28 fix) are still open. Kicking off the biggest item — the #28 code fix — by inspecting the source and repo state:
+[0m$ [0mecho "=== fork repo state ==="
+git -C /vol/data/repos/COMEBin log --oneline -3 2>&1
+git -C /vol/data/repos/COMEBin/COMEBin-worktree log --oneline -3 2>&1 || true
+git -C /vol/data/repos/COMEBin branch -a 2>&1 | head
+ls /vol/data/repos/COMEBin/
+echo "=== v11 worktree ==="
+git -C /vol/data/repos/COMEBin-v11 log --oneline -4 2>&1
+git -C /vol/data/repos/COMEBin-v11 status --porcelain 2>&1 | head
+echo "=== gen_seed in v1.1.0 (baseline master) ==="
+grep -n "def gen_seed\|marker seed\|no usable\|RuntimeError\|returncode" /vol/data/repos/COMEBin/COMEBin/utils.py 2>/dev/null | head
+ls /vol/data/repos/COMEBin/COMEBin/*.py 2>/dev/null | head
+touch /vol/data/benchmark/.heartbeat
+=== fork repo state ===
+358ddd8 fix: remove n_jobs from KMeans for sklearn >=1.0 compatibility
+904f649 Fix: initialize covIdxArr with np.zeros instead of np.empty to prevent IndexError from uninitialized garbage values in get_kmer_coverage
+ee2e507 Fix KeyError in gen_var.py: skip contigs not present in aug_seq_info_dict
+fatal: cannot change to '/vol/data/repos/COMEBin/COMEBin-worktree': No such file or directory
++ comebin-optimizations
++ comebin-optimizations-v11
++ comebin-small-fix
+* master
+  remotes/origin/HEAD -> origin/master
+  remotes/origin/comebin-optimizations
+  remotes/origin/comebin-optimizations-v11
+  remotes/origin/comebin-small-fix
+  remotes/origin/docs/bam-bowtie-input
+  remotes/origin/docs/dependencies-and-resources
+COMEBin
+LICENSE.txt
+README.md
+__init__.py
+auxiliary
+bin
+comebin_env.yaml
+overview.png
+=== v11 worktree ===
+95f5ea8 batch1 (v1.1.0 base): sequential bin numbering, drop empty/missing bins
+1b476a4 Clarify PyTorch installation options
+fd7ff06 Update Bioconda CUDA installation example
+ad6ceb3 Release v1.1.0
+=== gen_seed in v1.1.0 (baseline master) ===
+50:        raise RuntimeError("Unknown type of file: '{}".format(fastx_file))
+62:        raise RuntimeError("Invalid sequence file: '{}".format(fastx_file))
+200:def gen_seed(logger, contig_file: str, threads: int, contig_length_threshold: int,
+/vol/data/repos/COMEBin/COMEBin/__init__.py
+/vol/data/repos/COMEBin/COMEBin/cluster.py
+/vol/data/repos/COMEBin/COMEBin/comebin_version.py
+/vol/data/repos/COMEBin/COMEBin/filter_small_bins.py
+/vol/data/repos/COMEBin/COMEBin/get_augfeature.py
+/vol/data/repos/COMEBin/COMEBin/get_final_result.py
+/vol/data/repos/COMEBin/COMEBin/main.py
+/vol/data/repos/COMEBin/COMEBin/simclr.py
+/vol/data/repos/COMEBin/COMEBin/train_CLmodel.py
+/vol/data/repos/COMEBin/COMEBin/utils.py
+> build · big-pickle
+Continuing from the inspection: the baseline fork master sits at `358ddd8` with a few fixes already merged, and the v11 fix worktree is at `/vol/data/repos/COMEBin-v11` (95f5ea8). Now I need the failure path in `gen_seed`/`main.py`, the harness contract for launching runs, and the medium dataset facts before implementing the #28 fix and the #25 sweep.
+[0m$ [0mcd /vol/data/repos
+echo "=== repos dir ==="
+ls -la /vol/data/repos/ | head -20
+echo "=== worktree list ==="
+git -C /vol/data/repos/COMEBin worktree list 2>&1 | head
+echo "=== v11 worktree contents ==="
+ls /vol/data/repos/COMEBin-v11/ 2>&1 | head -20
+echo "=== medium dataset ==="
+ls /vol/data/datasets/ 2>&1
+du -sh /vol/data/datasets/comebin_medium* 2>/dev/null
+touch /vol/data/benchmark/.heartbeat
+=== repos dir ===
+total 28
+drwxrwxr-x 7 ubuntu ubuntu 4096 Sep 24 00:59 .
+drwxr-xr-x 9 ubuntu ubuntu 4096 Sep 26 04:47 ..
+drwxrwxr-x 6 ubuntu ubuntu 4096 Sep 23 13:56 COMEBin
+drwxrwxr-x 5 ubuntu ubuntu 4096 Sep 23 15:41 COMEBin-opt
+drwxrwxr-x 5 ubuntu ubuntu 4096 Sep 24 00:59 COMEBin-small-fix
+drwxrwxr-x 4 ubuntu ubuntu 4096 Sep 23 18:46 COMEBin-v11
+drwxrwxr-x 8 ubuntu ubuntu 4096 Sep 28 12:42 metagenomic-binning-benchmark
+=== worktree list ===
+/vol/data/repos/COMEBin            358ddd8 [master]
+/vol/data/repos/COMEBin-opt        03670d6 [comebin-optimizations]
+/vol/data/repos/COMEBin-small-fix  c8f22e4 [comebin-small-fix]
+/vol/data/repos/COMEBin-v11        95f5ea8 [comebin-optimizations-v11]
+=== v11 worktree contents ===
+COMEBin
+LICENSE.txt
+README.md
+auxiliary
+comebin_env.yaml
+overview.png
+=== medium dataset ===
+cami_II
+cami_III
+cami_II_human
+comebin_medium
+comebin_small
+comebin_test_data
+comebin_test_data.zip
+comebin_tiny
+comebin_tiny_101
+424M	/vol/data/datasets/comebin_medium
+> build · big-pickle
+Master is at `358ddd8` and already includes the KMeans/covIdxArray/gen_var fixes; the v11 worktree is the fix-development branch. Now let me examine the `gen_seed` failure path and the error propagation that produces the crash from #28:
+[0m$ [0mcd /vol/data/repos/COMEBin-v11/COMEBin
+echo "=== gen_seed definition (utils.py around line 200) ==="
+sed -n '190,290p' utils.py
+touch /vol/data/benchmark/.heartbeat
+=== gen_seed definition (utils.py around line 200) ===
+
+
+def _temporary_result_path(final_path):
+    final_path = Path(final_path)
+    descriptor, temp_name = tempfile.mkstemp(prefix=f'.{final_path.name}.{os.getpid()}.', suffix='.tmp',
+                                             dir=final_path.parent)
+    os.close(descriptor)
+    return Path(temp_name)
+
+
+def _count_hmm_hits(hmm_path):
+    with open(hmm_path) as handle:
+        return sum(1 for line in handle if line.strip() and not line.startswith('#'))
+
+
+def _count_seed_lines(seed_path):
+    with open(seed_path) as handle:
+        return sum(1 for line in handle if line.strip())
+
+
+def _hmm_models_have_tc_cutoffs(hmm_file):
+    model_count = 0
+    tc_count = 0
+    with open(hmm_file) as handle:
+        for line in handle:
+            if line.startswith('NAME'):
+                model_count += 1
+            elif line.startswith('TC'):
+                tc_count += 1
+    return model_count > 0 and tc_count == model_count
+
+
+def gen_seed(logger, contig_file: str, threads: int, contig_length_threshold: int,
+             marker_name: str = "marker", quarter: str = "3quarter",
+             hmm_evalue: float = DEFAULT_HMM_EVALUE):
+    """
+    Generate seed sequences from contigs using FragGeneScan, HMMsearch, and custom markers.
+
+    :param contig_file: Path to the input contig file.
+    :param threads: The number of threads to use for processing.
+    :param contig_length_threshold: The contig length threshold.
+    :param marker_name: The marker name (default: "marker").
+    :param quarter: The quarter identifier (default: "3quarter").
+    :param hmm_evalue: Sequence E-value used when the marker HMM does not define TC cutoffs.
+    :return: The number of candidate seeds generated.
+    """
+    hmm_evalue = float(hmm_evalue)
+    if not np.isfinite(hmm_evalue) or hmm_evalue <= 0:
+        raise ValueError(f"hmm_evalue must be a finite positive number, got {hmm_evalue}.")
+
+    seed_result = Path(contig_file + f'.{marker_name}.{quarter}_lencutoff_{contig_length_threshold}.seed')
+    if seed_result.is_file() and seed_result.stat().st_size > 0:
+        seed_count = _count_seed_lines(seed_result)
+        if seed_count == 0:
+            raise RuntimeError(f"Existing marker seed file contains no usable seeds: {seed_result}")
+        logger.info("Reusing marker seed file %s with %d seeds; --hmm_evalue applies only when HMMsearch runs and cached thresholds are not compared.",
+                    seed_result, seed_count)
+        return seed_count
+
+    fragscan_wrapper = _require_executable('run_FragGeneScan.pl')
+    # The upstream wrapper rebuilds a shell command, so invoke its sibling binary directly to preserve path arguments.
+    fragscan_executable = _require_sibling_executable(fragscan_wrapper, 'FragGeneScan')
+    hmmsearch_executable = _require_executable('hmmsearch')
+    perl_executable = _require_executable('perl')
+    marker_script = _require_file(AUXILIARY_DIR / f'test_getmarker_{quarter}.pl', 'Marker script')
+    marker_hmm = _require_file(AUXILIARY_DIR / f'{marker_name}.hmm', 'Marker HMM database')
+    logger.info("Marker tools: FragGeneScan=%s, wrapper=%s, hmmsearch=%s, perl=%s, marker_script=%s, marker_hmm=%s.",
+                fragscan_executable, fragscan_wrapper, hmmsearch_executable, perl_executable, marker_script, marker_hmm)
+
+    frag_prefix = contig_file + '.frag'
+    frag_result = Path(frag_prefix + '.faa')
+    if not frag_result.is_file() or frag_result.stat().st_size == 0:
+        _run_external_command(
+            logger, 'FragGeneScan',
+            [fragscan_executable, '-s', contig_file, '-o', frag_prefix, '-w', '0', '-t', 'complete', '-p', threads],
+            contig_file + '.frag.out', contig_file + '.frag.err')
+        if not frag_result.is_file() or frag_result.stat().st_size == 0:
+            raise RuntimeError(f"FragGeneScan completed but produced no proteins: {frag_result}")
+    else:
+        logger.info("Reusing FragGeneScan protein file: %s.", frag_result)
+
+    hmm_result = Path(contig_file + f'.{marker_name}.hmmout')
+    if hmm_result.is_file() and hmm_result.stat().st_size > 0:
+        hit_count = _count_hmm_hits(hmm_result)
+        if hit_count == 0:
+            raise RuntimeError(f"Existing HMMsearch result contains zero marker hits: {hmm_result}")
+        logger.info("Reusing HMMsearch result %s with %d hits; --hmm_evalue applies only when HMMsearch runs and cached thresholds are not compared.",
+                    hmm_result, hit_count)
+    else:
+        if _hmm_models_have_tc_cutoffs(marker_hmm):
+            cutoff_arguments = ['--cut_tc']
+            logger.info("Marker HMM %s defines TC cutoffs for every model; using --cut_tc and ignoring --hmm_evalue=%g.",
+                        marker_hmm, hmm_evalue)
+        else:
+            hmm_evalue_argument = format(hmm_evalue, '.15g')
+            cutoff_arguments = ['-E', hmm_evalue_argument]
+            logger.warning("Marker HMM %s does not define TC cutoffs for every model; using -E %s.",
+                           marker_hmm, hmm_evalue_argument)
+
+        hmm_temp = _temporary_result_path(hmm_result)
+        try:
+> build · big-pickle
+[0m$ [0mcd /vol/data/repos/COMEBin-v11/COMEBin
+echo "=== gen_seed continued (lines 290-420) ==="
+sed -n '290,420p' utils.py
+touch /vol/data/benchmark/.heartbeat
+=== gen_seed continued (lines 290-420) ===
+        try:
+            _run_external_command(
+                logger, 'HMMsearch',
+                [hmmsearch_executable, '--domtblout', hmm_temp, *cutoff_arguments, '--cpu', threads,
+                 marker_hmm, frag_result],
+                str(hmm_result) + '.out', str(hmm_result) + '.err')
+            hit_count = _count_hmm_hits(hmm_temp)
+            if hit_count == 0:
+                raise RuntimeError(f"HMMsearch completed but found zero marker hits: {hmm_temp}")
+            os.replace(hmm_temp, hmm_result)
+            logger.info("Published HMMsearch result %s with %d hits.", hmm_result, hit_count)
+        finally:
+            if hmm_temp.exists():
+                hmm_temp.unlink()
+
+    seed_temp = _temporary_result_path(seed_result)
+    try:
+        _run_external_command(
+            logger, 'Marker seed generation',
+            [perl_executable, marker_script, hmm_result, contig_file, contig_length_threshold, seed_temp],
+            str(seed_result) + '.out', str(seed_result) + '.err')
+        seed_count = _count_seed_lines(seed_temp)
+        if seed_count == 0:
+            raise RuntimeError(f"Marker parsing completed but produced an empty seed set; hmm_hits={hit_count}; stderr={seed_result}.err")
+        os.replace(seed_temp, seed_result)
+        logger.info("Published marker seed file %s with %d seeds.", seed_result, seed_count)
+    finally:
+        if seed_temp.exists():
+            seed_temp.unlink()
+    return seed_count
+> build · big-pickle
+[0m$ [0mcd /vol/data/repos/COMEBin-v11/COMEBin
+echo "=== search for marker seed failure messages ==="
+grep -rn "no usable marker seed\|Marker seed generation failed\|exited at exit status\|exit status" *.py | head -20
+echo "=== main.py binning/seed flow ==="
+grep -n "gen_seed\|RuntimeError\|Clustering\|cluster\|except" main.py | head -40
+touch /vol/data/benchmark/.heartbeat
+=== search for marker seed failure messages ===
+=== main.py binning/seed flow ===
+11:from cluster import cluster
+121:    ############################################ cluster NoContrast #####################################
+133:    NoContrast_subparsers.add_argument('--cluster_num', default=0, type=int,
+134:                                       help='Add cluster number to run partial seed method (default: 0)')
+143:                                       help='mininum contig length for clustering')
+151:                                       help='optional random seed for reproducible clustering.')
+176:    ############################################ cluster #####################################
+177:    ### Command-line arguments and options for running the Leiden-based clustering.
+179:    clustering_subparsers = subparsers.add_parser('bin',
+182:    clustering_subparsers.add_argument('--contig_file', type=str, help=("The contigs file."))
+183:    clustering_subparsers.add_argument('--seed_file', type=str, help=("The marker seed file."))
+184:    clustering_subparsers.add_argument('--emb_file', type=str,
+186:    clustering_subparsers.add_argument('--output_path', type=str, help=("The output path"))
+188:    clustering_subparsers.add_argument('--cluster_num', default=0, type=int,
+189:                                       help='Add cluster number to run partial seed method (default: 0)')
+191:    clustering_subparsers.add_argument('--not_run_infomap', action='store_true',
+193:    clustering_subparsers.add_argument('--not_l2normaize', action='store_true',
+197:    clustering_subparsers.add_argument('--contig_len', default = 1001, type=int, metavar='N',
+198:                                       help='mininum contig length for clustering')
+199:    clustering_subparsers.add_argument('--num_threads', default=10, type=int,
+201:    clustering_subparsers.add_argument('--leiden_workers', default=None, type=int,
+203:    clustering_subparsers.add_argument('--max_edges', default=100, type=int,
+205:    clustering_subparsers.add_argument('--hmm_evalue', default=DEFAULT_HMM_EVALUE, type=float,
+207:    clustering_subparsers.add_argument('--seed', default=DEFAULT_RANDOM_SEED, type=int,
+208:                                       help='optional random seed for reproducible clustering.')
+213:    ### Command-line arguments and options for generating the final binning result from the Leiden clustering results.
+216:                                                  help='Generate the final results from the Leiden clustering results.')
+223:    get_result_subparsers.add_argument('--binning_res_path', type=str, help=("The path to get Leiden clustering results"))
+225:                                       help='mininum contig length for clustering')
+251:        - Subcommands perform various tasks such as data augmentation, training and clustering.
+288:        except Exception:
+289:            logger.exception("Training failed.")
+292:    ## clustering
+295:        from utils import gen_seed
+298:        _ = gen_seed(logger, args.contig_file, num_threads, args.contig_len, marker_name="bacar_marker",
+301:        cluster(logger, args)
+304:    ## clustering NoContrast
+307:        from cluster import cluster_features, prepare_cluster_axis
+313:            prepare_cluster_axis(
+334:        cluster_features(
+> build · big-pickle
+The v11 code raises `RuntimeError` from an empty seed set, which bubbles up through main.py (only "Training failed" is caught). But the owner's #28 log shows a *newer* codebase ("Marker seed generation failed with status 3"). Let me compare with the master repo's version and the marker script to be precise:
+[0m$ [0mcd /vol/data/repos/COMEBin
+echo "=== master gen_seed (lines 200-340) ==="
+grep -n "def gen_seed\|def _run_external_command\|status 3\|no usable marker\|Marker seed generation failed\|empty seed set\|Clustering exited" COMEBin/utils.py COMEBin/main.py COMEBin/cluster.py 2>/dev/null | head -20
+echo "=== master main.py bin flow 285-310 ==="
+sed -n '285,310p' COMEBin/main.py
+touch /vol/data/benchmark/.heartbeat
+=== master gen_seed (lines 200-340) ===
+COMEBin/utils.py:200:def gen_seed(logger, contig_file: str, threads: int, contig_length_threshold: int,
+COMEBin/cluster.py:118:def gen_seed_idx(seedURL: str, contig_id_list: List[str]) -> List[int]:
+=== master main.py bin flow 285-310 ===
+
+    ## training
+    if args.subcmd == 'train':
+        logger.info('train')
+        train_CLmodel(logger,args)
+
+    ## clustering
+    if args.subcmd == 'bin':
+        logger.info('bin')
+        from utils import gen_seed
+
+        num_threads = args.num_threads
+        _ = gen_seed(logger, args.contig_file, num_threads, args.contig_len, marker_name="bacar_marker", quarter="2quarter")
+
+        cluster(logger, args)
+
+
+    ## clustering NoContrast
+    if args.subcmd == 'nocontrast':
+        logger.info('NoContrast mode')
+        from utils import get_kmer_coverage_aug0
+
+        X_t, covMat, compositMat, namelist = get_kmer_coverage_aug0(args.data)
+
+        X_t_df = pd.DataFrame(X_t, index=namelist)
+        os.makedirs(args.output_path+'/combine_novars', exist_ok=True)
+> build · big-pickle
+[0m$ [0mcd /vol/data/repos/COMEBin
+echo "=== grep for bin/seed failure messages across all versions ==="
+grep -rn "exit status\|status 3\|seed generation failed\|no usable marker\|Marker seed\|Clustering exited\|Cluster exited" COMEBin/ bin/ auxiliary/ 2>/dev/null | head
+echo "=== v11 same search ==="
+grep -rn "exit status\|status 3\|seed generation failed\|no usable marker\|Marker seed\|Clustering exited\|Cluster exited" /vol/data/repos/COMEBin-v11/COMEBin/ /vol/data/repos/COMEBin-v11/bin/ /vol/data/repos/COMEBin-v11/auxiliary/ 2>/dev/null | grep -v ".pyc" | head
+touch /vol/data/benchmark/.heartbeat
+=== grep for bin/seed failure messages across all versions ===
+=== v11 same search ===
+/vol/data/repos/COMEBin-v11/COMEBin/utils.py:308:            logger, 'Marker seed generation',
+/vol/data/repos/COMEBin-v11/auxiliary/test_getmarker_2quarter.pl:20:	print STDERR "Marker hits mapped to input contigs, but no usable marker seed set could be generated.\n";
+> build · big-pickle
+The owner's log messages ("Marker seed generation failed with status 3", "Clustering exited with status 1") don't exist in v1.1.0 — they're from a newer codebase. Let me check the marker script's exit codes and the master git history to reconcile versions:
+[0m$ [0mcd /vol/data/repos/COMEBin
+echo "=== git log master (15) ==="
+git log --oneline -15 | cut -c1-100
+echo "=== tags ==="
+git tag | tail -5
+echo "=== perl script exit handling ==="
+sed -n '1,40p' auxiliary/test_getmarker_2quarter.pl
+echo "=== _run_external_command in v11 utils ==="
+grep -n "def _run_external_command" -A 25 /vol/data/repos/COMEBin-v11/COMEBin/utils.py | head -40
+touch /vol/data/benchmark/.heartbeat
+=== git log master (15) ===
+358ddd8 fix: remove n_jobs from KMeans for sklearn >=1.0 compatibility
+904f649 Fix: initialize covIdxArr with np.zeros instead of np.empty to prevent IndexError from unini
+ee2e507 Fix KeyError in gen_var.py: skip contigs not present in aug_seq_info_dict
+47c1449 Fix KeyError in gen_cov.py: skip contigs not present in aug_seq_info_dict
+586c7f7 fix: gen_seed_idx handles FileNotFoundError when seed file missing (hmmsearch --cut_tc produ
+987db95 Improve thread usage in cluster.py
+236b986 control thread usage better; support the datasets with fewer than 1024 contigs;
+b6708e5 control thread usage better; support the datasets with fewer than 1024 contigs;
+d0267b7 support the datasets with fewer than 1024 contigs;DataLoader: drop_last=True
+6e5a6c6 support the datasets with fewer than 1024 contigs; DataLoader: drop_last=False
+24d5195 Update README.md
+f8c74d7 Update README.md
+0fc9b87 Add execute permissions to dependency files
+b532a55 Update README.md
+a31291c Update README.md
+=== tags ===
+1.0.0
+1.0.1
+1.0.2
+1.0.3
+1.0.4
+=== perl script exit handling ===
+#!/usr/bin/env perl
+use strict;
+
+my $COV_CUTOFF = 0.4;
+
+gethmmmarker($ARGV[0], $ARGV[1], $ARGV[2], $ARGV[3]);
+#countmarker($ARGV[0], $ARGV[1], $ARGV[2], $ARGV[3], $ARGV[4]);
+
+# void gethmmmarker(input hmm output, fasta file, min seq length, output, is_harder);
+sub gethmmmarker
+{
+
+	my $hmm = $_[0];
+	my $fasta_f = $_[1];
+	my $min_seq_len = $_[2];
+	my $out = $_[3];
+	my $max_effort = 0;
+	if (defined($_[4]))
+	{
+		$max_effort = $_[4];
+	}
+	my $localine;
+	my @arr;
+	my $i;
+	my $j;
+	my $inlinehmm;
+	my $current = "";
+	my %lenhash;
+	my %tmphash;
+	my %queryhash;
+	my $querycount = 0;
+	my @queryseq;
+	my @queryseqnum;
+	my @querylen;
+	my $tmp1;
+
+	# Read fasta file
+	open(LOCALFILE, "<$fasta_f");
+	while(defined($localine = <LOCALFILE>))
+	{
+=== _run_external_command in v11 utils ===
+176:def _run_external_command(logger, label, command, stdout_path, stderr_path):
+177-    command = [str(argument) for argument in command]
+178-    logger.info("%s command: %s", label, shlex.join(command))
+179-    try:
+180-        with open(stdout_path, 'w') as stdout_handle, open(stderr_path, 'w') as stderr_handle:
+181-            completed = subprocess.run(command, stdout=stdout_handle, stderr=stderr_handle, check=False)
+182-    except OSError as error:
+183-        raise RuntimeError(f"{label} could not be started: {error}") from error
+184-    logger.info("%s exited with status %d; stderr=%s.", label, completed.returncode, stderr_path)
+185-    if completed.returncode != 0:
+186-        stderr_tail = _stderr_tail(stderr_path)
+187-        detail = f"; tail={stderr_tail}" if stderr_tail else ''
+188-        raise RuntimeError(f"{label} failed with status {completed.returncode}; stderr={stderr_path}{detail}")
+189-    return completed
+190-
+191-
+192-def _temporary_result_path(final_path):
+193-    final_path = Path(final_path)
+194-    descriptor, temp_name = tempfile.mkstemp(prefix=f'.{final_path.name}.{os.getpid()}.', suffix='.tmp',
+195-                                             dir=final_path.parent)
+196-    os.close(descriptor)
+197-    return Path(temp_name)
+198-
+199-
+200-def _count_hmm_hits(hmm_path):
+201-    with open(hmm_path) as handle:
+> build · big-pickle
+The v1.1.0 `_run_external_command` raises everything as `RuntimeError` — and the owner's log lines ("Clustering exited with status 1", "Training resources:...") come from a *newer* COMEBin than any local copy. Let me understand how the seed feeds `cluster` and how a graceful "no bins" result should be shaped, then check the wrapper entrypoint:
+[0m$ [0mcd /vol/data/repos/COMEBin-v11/COMEBin
+echo "=== cluster.py: seed handling + main flow ==="
+grep -n "gen_seed_idx\|seed_file\|def cluster\b\|args.seed\|args.seed_file\|Leiden\|empty\|Error\|except" cluster.py | head -40
+echo "=== get_final_result.py ==="
+grep -n "def \|empty\|bins" get_final_result.py | head -20
+echo "=== wrapper entrypoint in repo root bin/ ==="
+ls /vol/data/repos/COMEBin-v11/bin/
+touch /vol/data/benchmark/.heartbeat
+=== cluster.py: seed handling + main flow ===
+66:        raise ValueError('num_threads must be greater than zero.')
+122:    centers = np.empty((n_clusters, n_features), dtype=X.dtype)
+238:        raise ValueError(f'Clustering requires the canonical embeddings.npy file: {embedding_file}')
+243:def read_seed_names(seed_file, logger):
+248:    with open(seed_file, encoding='utf-8') as input_handle:
+260:        raise ValueError(f'No seed identifiers found in {seed_file}.')
+262:        logger.warning("Ignored %d duplicate seed identifiers in %s.", duplicate_count, seed_file)
+287:        raise ValueError('No seed contigs remain on the filtered clustering axis.')
+291:def prepare_cluster_axis(contig_ids, contig_lengths, seed_file, contig_len, logger):
+295:        raise ValueError('Contig identifiers and lengths must be aligned one-dimensional arrays.')
+299:    seed_names = read_seed_names(seed_file, logger)
+306:        raise ValueError(f'Clustering features must be two-dimensional; received shape {features.shape}.')
+308:        raise ValueError('Contig identifiers and lengths must be one-dimensional.')
+310:        raise ValueError(
+314:        raise ValueError('No contigs remain on the clustering axis.')
+319:        raise ValueError('Seed cluster count must be greater than zero.')
+321:        raise ValueError(
+331:            raise ValueError(
+340:    except (AttributeError, OSError):
+346:        raise ValueError('num_threads must be greater than zero.')
+349:        raise ValueError('leiden_workers must be greater than zero.')
+356:        raise ValueError(
+368:    except (OSError, ValueError, IndexError):
+383:    """Prepare all read-only Leiden graph families before forking one worker pool."""
+390:        raise ValueError('HNSW neighbor arrays do not match max_edges.')
+393:        raise ValueError('Unsupported Leiden distance mode: ' + str(lmode))
+428:    """Run one Leiden parameter combination using inputs inherited through fork."""
+430:        raise RuntimeError('Leiden worker context is not initialized.')
+457:    """Run all pending Leiden job tuples in one persistent fork pool."""
+463:        raise ValueError('Leiden worker count must be greater than zero.')
+478:                "Leiden completed %d/%d: ratio=%s, bandwidth=%s, resolution=%s, improvement=%.12g, elapsed=%.3fs, rows=%d, worker_pid=%d, worker_rss_mib=%.1f, worker_pss_mib=%.1f, output=%s.",
+483:    except BaseException:
+494:def cluster(logger, args, prefix=None):
+501:        contig_ids, contig_lengths, args.seed_file, args.contig_len, logger)
+520:        raise ValueError('Retained seed indexes must be a nonempty one-dimensional array.')
+522:        raise ValueError('Retained seed indexes fall outside the clustering axis.')
+545:                         args.seed, args.contig_len)
+555:    if args.seed is not None:
+556:        logger.info("Clustering reproducibility: seed=%d.", args.seed)
+560:        "Leiden settings: consider_comms=ALL_NEIGH_COMMS, refine_consider_comms=ALL_NEIGH_COMMS, n_iterations=-1 (until no improvement).")
+=== get_final_result.py ===
+7:from bin_writer import save_assignments_atomic, write_bins_from_labels
+8:from cluster_labels import kmeans_bins_name, kmeans_label_name, read_legacy_cluster_labels
+20:def get_binstats(bin_contig_names, markers):
+25:def get_bin_quality(orig_bins, methods_sorted, markers):
+31:        stats = _empty_stats()
+32:        for contig_names in orig_bins[method_id].values():
+33:            comp, cont = get_binstats(contig_names, markers)
+46:def _empty_stats():
+51:def _record_quality(stats, comp, cont):
+60:def _finish_stats(stats):
+65:def marker_contig_indexes(contig_ids, markers):
+84:def score_marker_labels(labels, marker_indexes, marker_names, markers):
+85:    marker_bins = defaultdict(list)
+87:        marker_bins[int(label)].append(contig_name)
+88:    stats = _empty_stats()
+90:    for label, contig_names in marker_bins.items():
+91:        comp, cont = get_binstats(contig_names, markers)
+98:def write_estimated_bin_quality(bin_quality_dict, output_file):
+110:def _canonical_result_axis(args):
+120:def _legacy_result_axis(first_result, contig_file):
+=== wrapper entrypoint in repo root bin/ ===
+ls: cannot access '/vol/data/repos/COMEBin-v11/bin/': No such file or directory
+> build · big-pickle
+The v1.1.0 codebase doesn't contain the owner's newer log strings. Let me check whether the fork or upstream has a newer COMEBin with those messages, and look at the actual upstream repo state:
+[0m$ [0mcd /vol/data/repos/COMEBin
+echo "=== all branches+commits containing key strings ==="
+git log --all --oneline -i --grep="seed\|augment\|status 3\|zero bin\|no bin" | head -10
+echo "=== fetch state / remotes ==="
+git remote -v
+echo "=== main.py bin wrapper (how Clustering exited might appear) ==="
+grep -n "def main\|Clustering exited\|exit status\|sys.exit\|except Exception\|except BaseException" COMEBin/main.py COMEBin/cluster.py COMEBin/__init__.py | head
+echo "=== search newer versions on disk ==="
+find /vol/data -maxdepth 4 -name "main.py" -path "*COMEBin*" 2>/dev/null | head
+find / -maxdepth 6 -name "main.py" -path "*COMEBin*" 2>/dev/null | grep -v "/vol/data/repos" | head
+touch /vol/data/benchmark/.heartbeat
+=== all branches+commits containing key strings ===
+c8f22e4 fix: remove n_jobs from KMeans for sklearn >=1.0 compatibility
+358ddd8 fix: remove n_jobs from KMeans for sklearn >=1.0 compatibility
+586c7f7 fix: gen_seed_idx handles FileNotFoundError when seed file missing (hmmsearch --cut_tc produces no marker hits)
+92c5ac4 Guard cluster() against missing seed file
+0020319 Fix simclr.py: compute batch_size from features shape instead of args.batch_size
+ab4cbaf Add unit tests for small-data fixes
+84b56b3 Gracefully handle small datasets with too few contigs
+=== fetch state / remotes ===
+origin	https://github.com/paulzierep/COMEBin.git (fetch)
+origin	https://github.com/paulzierep/COMEBin.git (push)
+=== main.py bin wrapper (how Clustering exited might appear) ===
+COMEBin/main.py:255:def main():
+=== search newer versions on disk ===
+/vol/data/repos/COMEBin-small-fix/COMEBin/main.py
+/vol/data/repos/COMEBin-v11/COMEBin/main.py
+/vol/data/repos/COMEBin/COMEBin/main.py
+/vol/data/repos/COMEBin-opt/COMEBin/main.py
+/tmp/comebin_upstream/COMEBin/main.py
+> build · big-pickle
+There's an upstream checkout at `/tmp/comebin_upstream`. Let me check its version and whether it has the owner's newer log strings:
+[0m$ [0mcd /tmp/comebin_upstream
+echo "=== upstream repo ==="
+git remote -v 2>/dev/null | head -2
+git log --oneline -5 2>/dev/null
+echo "=== version ==="
+cat COMEBin/comebin_version.py 2>/dev/null | head; cat COMEBin/__init__.py 2>/dev/null | head -20
+echo "=== search newer messages ==="
+grep -rn "Marker seed generation failed\|Clustering exited\|Clustering failed\|without a fixed seed\|exit status 3\|no usable marker" COMEBin/ 2>/dev/null | head -10
+touch /vol/data/benchmark/.heartbeat
+=== upstream repo ===
+origin	https://github.com/paulzierep/COMEBin.git (fetch)
+origin	https://github.com/paulzierep/COMEBin.git (push)
+987db95 Improve thread usage in cluster.py
+236b986 control thread usage better; support the datasets with fewer than 1024 contigs;
+b6708e5 control thread usage better; support the datasets with fewer than 1024 contigs;
+d0267b7 support the datasets with fewer than 1024 contigs;DataLoader: drop_last=True
+6e5a6c6 support the datasets with fewer than 1024 contigs; DataLoader: drop_last=False
+=== version ===
+__version__ = '1.0.2'=== search newer messages ===
+> build · big-pickle
+The owner's #28 log comes from a newer COMEBin codebase not present locally. Before implementing, let me check whether the fork origin has moved (owner said they update the fork) and how the real upstream handles this — then look at the `bin` flow's result-writing to place the graceful no-bins path:
+[0m$ [0mcd /vol/data/repos/COMEBin
+echo "=== fetch origin (quiet) ==="
+timeout 120 git fetch origin --quiet 2>&1 | tail -2
+echo "=== origin/master head ==="
+git log origin/master --oneline -5 | cut -c1-90
+echo "=== local master behind? ==="
+git rev-list --left-right --count master...origin/master
+echo "=== does origin have newer main.py messages? ==="
+git show origin/master:COMEBin/co
+me
+bin_version.py 2>/dev/null
+git ls-tree origin/master COMEBin/ | head -20
+touch /vol/data/benchmark/.heartbeat
+=== fetch origin (quiet) ===
+=== origin/master head ===
+1b476a4 Clarify PyTorch installation options
+fd7ff06 Update Bioconda CUDA installation example
+ad6ceb3 Release v1.1.0
+987db95 Improve thread usage in cluster.py
+236b986 control thread usage better; support the datasets with fewer than 1024 contigs;
+=== local master behind? ===
+5	3
+=== does origin have newer main.py messages? ===
+fatal: path 'COMEBin/co' does not exist in 'origin/master'
+/bin/bash: line 10: me: command not found
+100644 blob e69de29bb2d1d6434b8b29ae775ad8c2e48c5391	COMEBin/__init__.py
+100644 blob 66071d012ea2ab9d0f8da96acf1454f7138677c1	COMEBin/bin_writer.py
+100644 blob e04fd60432850b4fcdc72bdd87dcaceeb6fd97e7	COMEBin/cluster.py
+100644 blob 48ba3599e8be9ba5927f77f1f1d56c51b5ca92da	COMEBin/cluster_labels.py
+100644 blob 1a72d32e57b3d7ead84775b388bf7e39456dde01	COMEBin/comebin_version.py
+040000 tree b2cdfda125ce32758dd648c0dce0d312b2dfdc6f	COMEBin/data_aug
+100644 blob 3b207c895a0cbd8e0327bf4c5753c2cac9383339	COMEBin/embedding_bundle.py
+100644 blob 6ebd652f8274795041e1084740af3d2e832937a5	COMEBin/feature_bundle.py
+100644 blob 0e6f9f2d6e97d836a10ac8103e0434b28cfbea17	COMEBin/filter_small_bins.py
+100644 blob dfe022e69432b0c08e348457ea81fddff0545a3b	COMEBin/get_augfeature.py
+100644 blob 41865abb012e04f02ee24429f934f208d0acdef2	COMEBin/get_final_result.py
+100644 blob e530440a9f45484fb089a0dcd94ec85ded883605	COMEBin/leiden_grid.py
+100644 blob 60217a235939294393ce42d0593375b12898616f	COMEBin/main.py
+040000 tree 5c856f6600141d3bfc50ce9c5be341a8755f3c6e	COMEBin/models
+100644 blob fbcc5a28d3c1a5fced2445b168a249816fa4a4a0	COMEBin/run_comebin.sh
+040000 tree 8292366552cfa6d434ccbd334b320f7d510b3fb7	COMEBin/scripts
+100644 blob 0fa5ef47d5a5c35fc3055bd16bd192a4c977a43e	COMEBin/sequence_stats.py
+100644 blob 5288e671e65c7dc588c3257a4520469c0ef5de72	COMEBin/simclr.py
+100644 blob db2c30f9d55d93e325dfce88ccb895291a231fec	COMEBin/train_CLmodel.py
+100644 blob a8ff2298f6d26568d662d3d3ebfba887c392dc85	COMEBin/utils.py
+> build · big-pickle
+origin/master is at `1b476a4` (v1.1.0) while local master is 5 ahead (our fixes). The owner's #28 log is from a newer COMEBin (Python 3.13, richer logging). Let me trace the full `bin`-chain so the graceful no-bins path lands in the right place:
+[0m$ [0mcd /vol/data/repos/COMEBin-v11/COMEBin
+echo "=== main.py: subcommand dispatch (lines 240-320) ==="
+sed -n '240,340p' main.py
+echo "=== run_comebin.sh (how binning result is produced) ==="
+cat ../COM
+EBin/run_comebin.sh 2>/dev/null | head -30 || cat run_comebin.sh 2>/dev/null | head -30
+touch /vol/data/benchmark/.heartbeat
+=== main.py: subcommand dispatch (lines 240-320) ===
+
+
+
+def main():
+    """
+    The main function of the COMEBin program.
+
+    Functionality:
+        - Initializes logging for the program.
+        - Executes different subcommands based on user input.
+        - Subcommands include: 'train', 'bin', 'nocontrast', 'generate_aug_data', and 'get_result'.
+        - Subcommands perform various tasks such as data augmentation, training and clustering.
+    """
+    args = arguments()
+
+    # logging
+    logger = logging.getLogger('COMEBin\t'+ver)
+    logger.setLevel(logging.INFO)
+
+    formatter = logging.Formatter('%(asctime)s - %(message)s')
+    console_hdr = logging.StreamHandler()
+    console_hdr.setFormatter(formatter)
+
+    logger.addHandler(console_hdr)
+
+    if args.subcmd == 'generate_aug_data':
+        args.output_path = args.out_augdata_path
+
+    output_path = Path(args.output_path).expanduser().resolve()
+    output_path.mkdir(parents=True, exist_ok=True)
+    args.output_path = str(output_path)
+    handler = logging.FileHandler(output_path / 'comebin.log')
+    handler.setLevel(logging.INFO)
+    handler.setFormatter(formatter)
+    logger.addHandler(handler)
+    faulthandler.enable(file=handler.stream, all_threads=True)
+    if args.seed is not None:
+        logger.info("Configure reproducibility: start with seed=%d, pid=%d.", args.seed, os.getpid())
+        configure_reproducibility(args.seed)
+        logger.info("Configure reproducibility: finished; seed=%d, PYTHONHASHSEED=%s, CUBLAS_WORKSPACE_CONFIG=%s.",
+                    args.seed, os.environ.get('PYTHONHASHSEED', 'not set'),
+                    os.environ.get('CUBLAS_WORKSPACE_CONFIG', 'not set'))
+
+    ## training
+    if args.subcmd == 'train':
+        logger.info('train')
+        try:
+            train_CLmodel(logger, args)
+        except Exception:
+            logger.exception("Training failed.")
+            raise
+
+    ## clustering
+    if args.subcmd == 'bin':
+        logger.info('bin')
+        from utils import gen_seed
+
+        num_threads = args.num_threads
+        _ = gen_seed(logger, args.contig_file, num_threads, args.contig_len, marker_name="bacar_marker",
+                     quarter="2quarter", hmm_evalue=args.hmm_evalue)
+
+        cluster(logger, args)
+
+
+    ## clustering NoContrast
+    if args.subcmd == 'nocontrast':
+        logger.info('NoContrast mode')
+        from cluster import cluster_features, prepare_cluster_axis
+        from get_augfeature import load_nocontrast_view0
+
+        coverage, kmer, contig_ids, contig_lengths = load_nocontrast_view0(
+            args.data, logger)
+        retained, contig_ids, contig_lengths, seed_indexes, seed_count, n50 = \
+            prepare_cluster_axis(
+                contig_ids, contig_lengths, args.seed_file,
+                args.contig_len, logger)
+        logger.info(
+            'Prepared shared nocontrast axis: retained_contigs=%d, '
+            'unique_seeds=%d, retained_seeds=%d.',
+            len(contig_ids), seed_count, len(seed_indexes))
+        if not retained.all():
+            coverage = coverage[retained]
+            kmer = kmer[retained]
+
+        original_output = Path(args.output_path)
+        combined = np.empty(
+            (len(contig_ids), coverage.shape[1] + kmer.shape[1]),
+            dtype=np.float32)
+        combined[:, :coverage.shape[1]] = coverage
+        combined[:, coverage.shape[1]:] = kmer
+
+        logger.info('NoContrast mode (combine) bin')
+        combined_args = copy.copy(args)
+        combined_args.output_path = str(original_output / 'combine_novars')
+        cluster_features(
+            logger, combined_args, combined, contig_ids, contig_lengths,
+            seed_indexes, seed_count, n50)
+        del combined
+
+        logger.info('NoContrast mode (coverage) bin')
+        coverage_args = copy.copy(args)
+=== run_comebin.sh (how binning result is produced) ===
+cat: ../COM: No such file or directory
+> build · big-pickle
+[0m$ [0mcd /vol/data/repos/COMEBin-v11/COMEBin
+echo "=== cluster() tail (what it writes) ==="
+sed -n '494,620p' cluster.py
+touch /vol/data/benchmark/.heartbeat
+=== cluster() tail (what it writes) ===
+def cluster(logger, args, prefix=None):
+    """Load the canonical clustering input and dispatch the aligned array core."""
+    logger.info("Start clustering.")
+    features, contig_ids, contig_lengths = load_cluster_input(args.emb_file)
+    logger.info("Loaded clustering input: mode=binary-bundle, contigs=%d, features=%d, dtype=%s.",
+                len(contig_ids), features.shape[1], features.dtype)
+    retained, contig_ids, contig_lengths, seed_indexes, seed_count, n50 = prepare_cluster_axis(
+        contig_ids, contig_lengths, args.seed_file, args.contig_len, logger)
+    logger.info(
+        "Prepared clustering axis: retained_contigs=%d, unique_seeds=%d, retained_seeds=%d.",
+        len(contig_ids), seed_count, len(seed_indexes))
+    if not retained.all():
+        features = features[retained]
+    return cluster_features(
+        logger, args, features, contig_ids, contig_lengths, seed_indexes, seed_count, n50, prefix)
+
+
+def cluster_features(logger, args, features, contig_ids, contig_lengths,
+                     seed_indexes, seed_count, n50, prefix=None):
+    """Cluster complete aligned arrays without reading feature, FASTA, or seed files."""
+    features = np.asarray(features)
+    contig_ids = np.asarray(contig_ids)
+    contig_lengths = np.asarray(contig_lengths)
+    seed_indexes = np.asarray(seed_indexes, dtype=np.int64)
+    validate_cluster_features(features, contig_ids, contig_lengths)
+    if seed_indexes.ndim != 1 or seed_indexes.size == 0:
+        raise ValueError('Retained seed indexes must be a nonempty one-dimensional array.')
+    if seed_indexes.min() < 0 or seed_indexes.max() >= len(contig_ids):
+        raise ValueError('Retained seed indexes fall outside the clustering axis.')
+
+    logger.info('N50:\t' + str(n50))
+    length_weight = contig_lengths.tolist()
+    output_path = args.output_path + '/cluster_res/'
+
+    if args.not_l2normaize:
+        norm_embeddings = features
+    else:
+        norm_embeddings = normalize(features)
+    os.makedirs(output_path, exist_ok=True)
+
+    mode = 'weight_seed_kmeans'
+    if prefix:
+        mode = mode + '_' + prefix
+    logger.info("Run weighted seed k-means for obtaining the SCG information of the contigs within a manageable time during the final step.")
+    bin_nums = get_kmeans_cluster_counts(seed_count, args.cluster_num, len(seed_indexes), len(contig_ids))
+
+    logger.info("Bin_numbers:\t"+str(bin_nums))
+    for bin_number in bin_nums:
+        logger.info(bin_number)
+        seed_kmeans_full(logger, args.contig_file, contig_ids, output_path, norm_embeddings,
+                         bin_number, mode, length_weight, contig_lengths, seed_indexes,
+                         args.seed, args.contig_len)
+
+    available_cpu_count = _available_cpu_count()
+    hnsw_num_threads, requested_leiden_workers, leiden_num_workers = resolve_clustering_worker_counts(
+        args.num_threads, args.leiden_workers, available_cpu_count)
+    max_edges = args.max_edges
+    validate_max_edges(max_edges, len(contig_ids))
+    logger.info(
+        "Clustering workers: requested_hnsw_threads=%d, effective_hnsw_threads=%d, requested_leiden_workers=%d, effective_leiden_workers=%d, available_cpus=%d.",
+        args.num_threads, hnsw_num_threads, requested_leiden_workers, leiden_num_workers, available_cpu_count)
+    if args.seed is not None:
+        logger.info("Clustering reproducibility: seed=%d.", args.seed)
+    else:
+        logger.info("Clustering reproducibility: random seed is not fixed.")
+    logger.info(
+        "Leiden settings: consider_comms=ALL_NEIGH_COMMS, refine_consider_comms=ALL_NEIGH_COMMS, n_iterations=-1 (until no improvement).")
+
+    jobs = []
+    for partgraph_ratio in LEIDEN_PARTGRAPH_RATIOS:
+        for bandwidth in LEIDEN_BANDWIDTHS:
+            for resolution in LEIDEN_RESOLUTIONS:
+                output_file = os.path.join(
+                    output_path, leiden_output_name(max_edges, partgraph_ratio, bandwidth, resolution))
+                if os.path.exists(output_file):
+                    labels = validate_cluster_labels(output_file, len(contig_ids))
+                    del labels
+                else:
+                    jobs.append((output_file, partgraph_ratio, bandwidth, resolution))
+
+    if jobs:
+        p = fit_hnsw_index(logger, norm_embeddings, num_threads=hnsw_num_threads,
+                           ef=max_edges * 10, random_seed=args.seed)
+        time_start = time.time()
+        logger.info("Query completed HNSW index with %d threads.", hnsw_num_threads)
+        ann_neighbor_indices, ann_distances = p.knn_query(norm_embeddings, max_edges + 1, num_threads=hnsw_num_threads)
+        time_end = time.time()
+        logger.info('knn query time cost:\t' + str(time_end - time_start) + "s")
+        del p
+
+        is_membership_fixed = np.zeros(len(contig_ids), dtype=bool)
+        is_membership_fixed[seed_indexes] = True
+        is_membership_fixed = is_membership_fixed.tolist()
+
+        context = prepare_leiden_context(
+            contig_ids, ann_neighbor_indices, ann_distances, length_weight, max_edges,
+            is_membership_fixed, jobs, lmode='l2')
+        del ann_neighbor_indices, ann_distances
+        context['seed'] = args.seed
+        for partgraph_ratio, graph in context['graphs'].items():
+            logger.info(
+                "Leiden graph resources: ratio=%s, vertices=%d, edges=%d.",
+                partgraph_ratio, graph.vcount(), graph.ecount())
+        effective_pool_workers = min(leiden_num_workers, len(jobs))
+        parent_rss_mib, parent_pss_mib = _process_memory_mib()
+        logger.info(
+            "Leiden pool resources: jobs=%d, requested_workers=%d, effective_workers=%d, graph_families=%d, weight_families=%d, parent_rss_mib=%.1f, parent_pss_mib=%.1f, available_memory_mib=%.1f.",
+            len(jobs), requested_leiden_workers, effective_pool_workers, len(context['graphs']),
+            len(context['weights']), parent_rss_mib, parent_pss_mib, _available_memory_mib())
+        pool_start = time.monotonic()
+        results = run_leiden_jobs(logger, context, jobs, effective_pool_workers)
+        logger.info(
+            "Leiden pool completed: completed=%d/%d, elapsed=%.3fs.",
+            len(results), len(jobs), time.monotonic() - pool_start)
+        del results, context
+        gc.collect()
+        released_rss_mib, released_pss_mib = _process_memory_mib()
+        logger.info(
+            "Leiden pool released: parent_rss_mib=%.1f, parent_pss_mib=%.1f, available_memory_mib=%.1f.",
+            released_rss_mib, released_pss_mib, _available_memory_mib())
+    else:
+        logger.info('All Leiden outputs already exist for max_edges=' + str(max_edges) + '.')
+
+    validated_names, validated_rows = validate_leiden_output_set(
+        output_path, max_edges, expected_rows=len(contig_ids))
+    logger.info(
+        "Validated complete Leiden result grid: max_edges=%d, files=%d, rows_per_file=%d.",
+> build · big-pickle
+The owner's #28 log is from a newer COMEBin with richer logging than any local copy. Let me read the full issue body and the marker script's exit-status logic to design the fix precisely:
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark
+echo "===== FULL #28 BODY ====="
+gh issue view 28 -R paulzierep/metagenomic-binning-benchmark --json body --jq '.body'
+echo "===== marker script exit logic ====="
+grep -n "exit\|no usable\|COV_CUTOFF\|seed" /vol/data/repos/COMEBin-v11/auxiliary/test_getmarker_2quarter.pl | head -25
+touch /vol/data/benchmark/.heartbeat
+===== FULL #28 BODY =====
+I found this error 
+```
+2026-09-25 14:14:22,256 - generate_aug_data: fastafile
+2026-09-25 14:14:22,264 - Generate augmentation view 1/5 without a fixed seed.
+2026-09-25 14:14:22,264 - Generate augmentation view 2/5 without a fixed seed.
+2026-09-25 14:14:22,264 - Generate augmentation view 3/5 without a fixed seed.
+2026-09-25 14:14:22,264 - Generate augmentation view 4/5 without a fixed seed.
+2026-09-25 14:14:22,264 - Generate augmentation view 5/5 without a fixed seed.
+2026-09-25 14:15:37,758 - Generated binary augmentation features: assembly_contigs=635858, assembly_n50=644, retained_contigs=68260, views=6, kmer_features=136.
+2026-09-25 14:15:37,898 - Coverage requested 32 workers but only 1 BAM files exist; using 1 workers.
+2026-09-25 14:15:37,898 - Coverage inputs: contigs=68260, views=6, BAMs=1, workers=1.
+2026-09-25 14:23:22,366 - Published binary coverage features: BAMs=1, views=6, contigs=68260, dtype=float64.
+2026-09-25 14:23:25,083 - train
+2026-09-25 14:23:25,090 - Training resources: device=cpu, PyTorch intra-op threads=32, DataLoader workers=4 (fixed). KMeans, NumPy, scikit-learn, BLAS, OpenMP, and other native runtime pools are not controlled by --num_threads.
+2026-09-25 14:23:25,090 - Training diagnostics: pid=128, Python=3.13.15, PyTorch=2.13.0, CUDA=None, cuDNN=None.
+2026-09-25 14:23:25,090 - Generate features: start; data=/data/jwd06/main/000/113/398/113398681/working/outputs/data_augmentation, views=6, process_memory={'VmPeak': '973280 kB', 'VmRSS': '373512 kB'}.
+2026-09-25 14:23:25,090 - Load features from /data/jwd06/main/000/113/398/113398681/working/outputs/data_augmentation.
+2026-09-25 14:23:25,116 - Feature assembly: validated binary bundle; contigs=68260, views=6, BAMs=1.
+2026-09-25 14:23:26,854 - Feature assembly: binary tensor ready; shape=(6, 68260, 138), dtype=float32, column_order=variance|coverage|kmer.
+2026-09-25 14:23:26,880 - Use user-specified temperature=0.15.
+2026-09-25 14:23:26,881 - Generate features: finished; contigs=68260, views=6, shapes=[(68260, 138), (68260, 138), (68260, 138), (68260, 138), (68260, 138), (68260, 138)], dtypes=['torch.float32', 'torch.float32', 'torch.float32', 'torch.float32', 'torch.float32', 'torch.float32'], process_memory={'VmPeak': '1870012 kB', 'VmRSS': '603148 kB'}.
+2026-09-25 14:23:26,881 - DataLoader drop_last=True will discard 676 of 68260 trainable contigs in each epoch because batch_size=1024.
+2026-09-25 14:23:26,881 - Build DataLoader: all_contigs=68260, trainable_contigs=68260, batch_size=1024, workers=4, drop_last=True.
+2026-09-25 14:23:26,881 - DataLoader constructed; workers start when the first batch is requested. process_memory={'VmPeak': '1870012 kB', 'VmRSS': '603148 kB'}.
+2026-09-25 14:23:26,881 - Initialize combined k-mer and coverage network: coverage_dimensions=2, device=cpu.
+2026-09-25 14:23:28,266 - NN setup: move model to cpu; parameters=17891712.
+2026-09-25 14:23:28,270 - NN setup: create TensorBoard writer in /data/jwd06/main/000/113/398/113398681/working/outputs/comebin_res.
+2026-09-25 14:23:28,273 - NN setup finished; loss function and training state are ready.
+2026-09-25 14:23:28,275 - NN training preflight: mode=combined-model, epochs=200, samples=68260, batches_per_epoch=66, batch_size=1024, device=cpu, fp16=False, process_memory={'VmPeak': '1870012 kB', 'VmRSS': '745712 kB'}, gpu_memory=None.
+2026-09-25 14:23:28,275 - NN training: enter combined-model loop and request the first DataLoader batch.
+
+  0%|          | 0/66 [00:00<?, ?it/s]2026-09-25 14:23:28,388 - NN training: first combined-model batch received; view_shapes=[(1024, 138), (1024, 138), (1024, 138), (1024, 138), (1024, 138), (1024, 138)].
+2026-09-25 14:23:28,432 - NN training: first combined-model batch moved to cpu; shape=(6144, 138).
+2026-09-25 14:23:29,388 - NN training: first combined-model forward pass finished; loss=8.485572814941406.
+2026-09-25 14:23:30,015 - NN training: first combined-model backward pass and optimizer step finished.
+
+  2%|▏         | 1/66 [00:01<01:53,  1.74s/it]
+  3%|▎         | 2/66 [00:03<01:39,  1.55s/it]
+  5%|▍         | 3/66 [00:04<01:34,  1.50s/it]
+  6%|▌         | 4/66 [00:05<01:22,  1.34s/it]
+  8%|▊         | 5/66 [00:06<01:17,  1.27s/it]
+  9%|▉         | 6/66 [00:08<01:15,  1.25s/it]
+ 11%|█         | 7/66 [00:09<01:13,  1.24s/it]
+ 12%|█▏        | 8/66 [00:10<01:12,  1.24s/it]
+ 14%|█▎        | 9/66 [00:11<01:10,  1.23s/it]
+ 15%|█▌        | 10/66 [00:12<01:07,  1.20s/it]
+ 17%|█▋        | 11/66 [00:14<01:05,  1.18s/it]
+ 18%|█▊        | 12/66 [00:15<01:04,  1.20s/it]
+ 20%|█▉        | 13/66 [00:16<01:04,  1.21s/it]
+ 21%|██        | 14/66 [00:17<01:04,  1.23s/it]
+ 23%|██▎       | 15/66 [00:19<01:03,  1.24s/it]
+ 24%|██▍       | 16/66 [00:20<01:03,  1.27s/it]
+ 26%|██▌       | 17/66 [00:21<00:59,  1.21s/it]
+ 27%|██▋       | 18/66 [00:22<00:56,  1.17s/it]
+ 29%|██▉       | 19/66 [00:23<00:53,  1.14s/it]
+ 30%|███       | 20/66 [00:24<00:52,  1.14s/it]
+ 32%|███▏      | 21/66 [00:25<00:51,  1.15s/it]
+ 33%|███▎      | 22/66 [00:27<00:50,  1.15s/it]
+ 35%|███▍      | 23/66 [00:28<00:49,  1.15s/it]
+ 36%|███▋      | 24/66 [00:29<00:48,  1.15s/it]
+ 38%|███▊      | 25/66 [00:30<00:48,  1.17s/it]
+ 39%|███▉      | 26/66 [00:31<00:46,  1.16s/it]
+ 41%|████      | 27/66 [00:32<00:45,  1.15s/it]
+ 42%|████▏     | 28/66 [00:34<00:44,  1.18s/it]
+ 44%|████▍     | 29/66 [00:35<00:44,  1.20s/it]
+ 45%|████▌     | 30/66 [00:36<00:43,  1.20s/it]
+ 47%|████▋     | 31/66 [00:37<00:42,  1.22s/it]
+ 48%|████▊     | 32/66 [00:39<00:42,  1.24s/it]
+ 50%|█████     | 33/66 [00:40<00:41,  1.26s/it]
+ 52%|█████▏    | 34/66 [00:41<00:41,  1.28s/it]
+ 53%|█████▎    | 35/66 [00:43<00:40,  1.31s/it]
+ 55%|█████▍    | 36/66 [00:44<00:40,  1.35s/it]
+ 56%|█████▌    | 37/66 [00:45<00:37,  1.28s/it]
+ 58%|█████▊    | 38/66 [00:46<00:34,  1.22s/it]
+ 59%|█████▉    | 39/66 [00:47<00:31,  1.18s/it]
+ 61%|██████    | 40/66 [00:48<00:29,  1.15s/it]
+ 62%|██████▏   | 41/66 [00:49<00:28,  1.13s/it]
+ 64%|██████▎   | 42/66 [00:51<00:27,  1.14s/it]
+ 65%|██████▌   | 43/66 [00:52<00:26,  1.14s/it]
+ 67%|██████▋   | 44/66 [00:53<00:24,  1.14s/it]
+ 68%|██████▊   | 45/66 [00:54<00:23,  1.12s/it]
+ 70%|██████▉   | 46/66 [00:55<00:22,  1.11s/it]
+ 71%|███████   | 47/66 [00:56<00:21,  1.11s/it]
+ 73%|███████▎  | 48/66 [00:57<00:19,  1.11s/it]
+ 74%|███████▍  | 49/66 [00:58<00:18,  1.12s/it]
+ 76%|███████▌  | 50/66 [01:00<00:17,  1.12s/it]
+ 77%|███████▋  | 51/66 [01:01<00:16,  1.12s/it]
+ 79%|███████▉  | 52/66 [01:02<00:15,  1.11s/it]
+ 80%|████████  | 53/66 [01:03<00:14,  1.11s/it]
+ 82%|████████▏ | 54/66 [01:04<00:13,  1.11s/it]
+ 83%|████████▎ | 55/66 [01:05<00:12,  1.11s/it]
+ 85%|████████▍ | 56/66 [01:06<00:11,  1.12s/it]
+ 86%|████████▋ | 57/66 [01:07<00:10,  1.12s/it]
+ 88%|████████▊ | 58/66 [01:08<00:09,  1.13s/it]
+ 89%|████████▉ | 59/66 [01:10<00:07,  1.14s/it]
+ 91%|█████████ | 60/66 [01:11<00:06,  1.14s/it]
+ 92%|█████████▏| 61/66 [01:12<00:05,  1.15s/it]
+ 94%|█████████▍| 62/66 [01:13<00:04,  1.17s/it]
+ 95%|█████████▌| 63/66 [01:14<00:03,  1.17s/it]
+ 97%|█████████▋| 64/66 [01:15<00:02,  1.16s/it]
+ 98%|█████████▊| 65/66 [01:17<00:01,  1.17s/it]
+100%|██████████| 66/66 [01:18<00:00,  1.18s/it]Traceback (most recent call last):
+Traceback (most recent call last):
+Traceback (most recent call last):
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.13/multiprocessing/util.py", line 371, in _run_finalizers
+    finalizer()
+    ~~~~~~~~~^^
+  File "/usr/local/lib/python3.13/multiprocessing/util.py", line 371, in _run_finalizers
+    finalizer()
+    ~~~~~~~~~^^
+  File "/usr/local/lib/python3.13/multiprocessing/util.py", line 295, in __call__
+    res = self._callback(*self._args, **self._kwargs)
+  File "/usr/local/lib/python3.13/multiprocessing/util.py", line 371, in _run_finalizers
+    finalizer()
+    ~~~~~~~~~^^
+  File "/usr/local/lib/python3.13/multiprocessing/util.py", line 371, in _run_finalizers
+    finalizer()
+    ~~~~~~~~~^^
+  File "/usr/local/lib/python3.13/multiprocessing/util.py", line 295, in __call__
+    res = self._callback(*self._args, **self._kwargs)
+  File "/usr/local/lib/python3.13/multiprocessing/util.py", line 147, in _remove_temp_dir
+    rmtree(tempdir)
+    ~~~~~~^^^^^^^^^
+  File "/usr/local/lib/python3.13/multiprocessing/util.py", line 295, in __call__
+    res = self._callback(*self._args, **self._kwargs)
+  File "/usr/local/lib/python3.13/shutil.py", line 763, in rmtree
+    _rmtree_safe_fd(stack, onexc)
+    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.13/multiprocessing/util.py", line 295, in __call__
+    res = self._callback(*self._args, **self._kwargs)
+  File "/usr/local/lib/python3.13/multiprocessing/util.py", line 147, in _remove_temp_dir
+    rmtree(tempdir)
+    ~~~~~~^^^^^^^^^
+  File "/usr/local/lib/python3.13/multiprocessing/util.py", line 147, in _remove_temp_dir
+    rmtree(tempdir)
+    ~~~~~~^^^^^^^^^
+  File "/usr/local/lib/python3.13/shutil.py", line 707, in _rmtree_safe_fd
+    onexc(func, path, err)
+    ~~~~~^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.13/multiprocessing/util.py", line 147, in _remove_temp_dir
+    rmtree(tempdir)
+    ~~~~~~^^^^^^^^^
+  File "/usr/local/lib/python3.13/shutil.py", line 763, in rmtree
+    _rmtree_safe_fd(stack, onexc)
+    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.13/shutil.py", line 763, in rmtree
+    _rmtree_safe_fd(stack, onexc)
+    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.13/shutil.py", line 700, in _rmtree_safe_fd
+    onexc(os.unlink, fullname, err)
+    ~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.13/shutil.py", line 763, in rmtree
+    _rmtree_safe_fd(stack, onexc)
+    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.13/shutil.py", line 707, in _rmtree_safe_fd
+    onexc(func, path, err)
+    ~~~~~^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.13/shutil.py", line 707, in _rmtree_safe_fd
+    onexc(func, path, err)
+    ~~~~~^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.13/shutil.py", line 696, in _rmtree_safe_fd
+    os.unlink(entry.name, dir_fd=topfd)
+    ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.13/shutil.py", line 707, in _rmtree_safe_fd
+    onexc(func, path, err)
+    ~~~~~^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.13/shutil.py", line 700, in _rmtree_safe_fd
+    onexc(os.unlink, fullname, err)
+    ~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.13/shutil.py", line 700, in _rmtree_safe_fd
+    onexc(os.unlink, fullname, err)
+    ~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.13/shutil.py", line 700, in _rmtree_safe_fd
+    onexc(os.unlink, fullname, err)
+    ~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.13/shutil.py", line 696, in _rmtree_safe_fd
+    os.unlink(entry.name, dir_fd=topfd)
+    ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.13/shutil.py", line 696, in _rmtree_safe_fd
+    os.unlink(entry.name, dir_fd=topfd)
+    ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.13/shutil.py", line 696, in _rmtree_safe_fd
+    os.unlink(entry.name, dir_fd=topfd)
+    ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+OSError: [Errno 16] Device or resource busy: '/data/jwd06/main/000/113/398/113398681/tmp/pymp-incq5pru'
+OSError: [Errno 16] Device or resource busy: '/data/jwd06/main/000/113/398/113398681/tmp/pymp-wurb91l8'
+OSError: [Errno 16] Device or resource busy: '/data/jwd06/main/000/113/398/113398681/tmp/pymp-zpzyua8s'
+OSError: [Errno 16] Device or resource busy: '/data/jwd06/main/000/113/398/113398681/tmp/pymp-qo4auqpa'
+
+100%|██████████| 66/66 [01:18<00:00,  1.19s/it]
+2026-09-25 14:24:46,714 - NN training: epoch=1/200, batches=66, loss=6.8294172, top1=3.1445, elapsed=78.439s, process_memory={'VmPeak': '10434184 kB', 'VmRSS': '1915140 kB'}, gpu_memory=None.
+
+  0%|          | 0/66 [00:00<?, ?it/s]
+  2%|▏         | 1/66 [00:01<01:54,  1.77s/it]
+  3%|▎         | 2/66 [00:03<01:35,  1.50s/it]
+  5%|▍         | 3/66 [00:04<01:26,  1.38s/it]
+  6%|▌         | 4/66 [00:05<01:20,  1.30s/it]
+  8%|▊         | 5/66 [00:06<01:17,  1.27s/it]
+  9%|▉         | 6/66 [00:07<01:14,  1.24s/it]
+ 11%|█         | 7/66 [00:09<01:12,  1.22s/it]
+ 12%|█▏        | 8/66 [00:10<01:10,  1.21s/it]
+ 14%|█▎        | 9/66 [00:11<01:08,  1.21s/it]
+ 15%|█▌        | 10/66 [00:12<01:07,  1.20s/it]
+ 17%|█▋        | 11/66 [00:13<01:06,  1.21s/it]
+ 18%|█▊        | 12/66 [00:15<01:05,  1.22s/it]
+ 20%|█▉        | 13/66 [00:16<01:03,  1.20s/it]
+ 21%|██        | 14/66 [00:17<01:02,  1.21s/it]
+ 23%|██▎       | 15/66 [00:18<01:01,  1.20s/it]
+ 24%|██▍       | 16/66 [00:19<00:59,  1.20s/it]
+ 26%|██▌       | 17/66 [00:21<00:59,  1.21s/it]
+ 27%|██▋       | 18/66 [00:22<00:57,  1.20s/it]
+ 29%|██▉       | 19/66 [00:23<00:56,  1.19s/it]
+ 30%|███       | 20/66 [00:24<00:54,  1.18s/it]
+ 32%|███▏      | 21/66 [00:25<00:52,  1.17s/it]
+ 33%|███▎      | 22/66 [00:26<00:51,  1.17s/it]
+ 35%|███▍      | 23/66 [00:28<00:51,  1.20s/it]
+ 36%|███▋      | 24/66 [00:29<00:50,  1.21s/it]
+ 38%|███▊      | 25/66 [00:30<00:49,  1.21s/it]
+ 39%|███▉      | 26/66 [00:31<00:48,  1.21s/it]
+ 41%|████      | 27/66 [00:33<00:46,  1.20s/it]
+ 42%|████▏     | 28/66 [00:34<00:45,  1.21s/it]
+ 44%|████▍     | 29/66 [00:35<00:44,  1.20s/it]
+ 45%|████▌     | 30/66 [00:36<00:43,  1.20s/it]
+ 47%|████▋     | 31/66 [00:37<00:41,  1.19s/it]
+ 48%|████▊     | 32/66 [00:38<00:40,  1.18s/it]
+ 50%|█████     | 33/66 [00:40<00:38,  1.17s/it]
+ 52%|█████▏    | 34/66 [00:41<00:36,  1.15s/it]
+ 53%|█████▎    | 35/66 [00:42<00:35,  1.15s/it]
+ 55%|█████▍    | 36/66 [00:43<00:36,  1.22s/it]
+ 56%|█████▌    | 37/66 [00:45<00:36,  1.26s/it]
+ 58%|█████▊    | 38/66 [00:46<00:35,  1.28s/it]
+ 59%|█████▉    | 39/66 [00:47<00:34,  1.29s/it]
+ 61%|██████    | 40/66 [00:49<00:33,  1.30s/it]
+ 62%|██████▏   | 41/66 [00:50<00:32,  1.29s/it]
+ 64%|██████▎   | 42/66 [00:51<00:30,  1.29s/it]
+ 65%|██████▌   | 43/66 [00:53<00:30,  1.31s/it]
+ 67%|██████▋   | 44/66 [00:54<00:29,  1.35s/it]
+ 68%|██████▊   | 45/66 [00:55<00:28,  1.36s/it]
+ 70%|██████▉   | 46/66 [00:57<00:27,  1.37s/it]
+ 71%|███████   | 47/66 [00:58<00:26,  1.37s/it]
+ 73%|███████▎  | 48/66 [00:59<00:24,  1.37s/it]
+ 74%|███████▍  | 49/66 [01:01<00:22,  1.30s/it]
+ 76%|███████▌  | 50/66 [01:02<00:19,  1.23s/it]
+ 77%|███████▋  | 51/66 [01:03<00:17,  1.17s/it]
+ 79%|███████▉  | 52/66 [01:04<00:16,  1.15s/it]
+ 80%|████████  | 53/66 [01:05<00:14,  1.12s/it]
+ 82%|████████▏ | 54/66 [01:06<00:13,  1.11s/it]
+ 83%|████████▎ | 55/66 [01:07<00:12,  1.09s/it]
+ 85%|████████▍ | 56/66 [01:08<00:10,  1.08s/it]
+ 86%|████████▋ | 57/66 [01:09<00:09,  1.07s/it]
+ 88%|████████▊ | 58/66 [01:10<00:08,  1.08s/it]
+ 89%|████████▉ | 59/66 [01:11<00:07,  1.08s/it]
+ 91%|█████████ | 60/66 [01:12<00:06,  1.07s/it]
+ 92%|█████████▏| 61/66 [01:13<00:05,  1.06s/it]
+ 94%|█████████▍| 62/66 [01:14<00:04,  1.06s/it]
+ 95%|█████████▌| 63/66 [01:15<00:03,  1.05s/it]
+ 97%|█████████▋| 64/66 [01:16<00:02,  1.05s/it]
+ 98%|█████████▊| 65/66 [01:18<00:01,  1.05s/it]
+100%|██████████| 66/66 [01:19<00:00,  1.05s/it]Traceback (most r
+..
+^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.13/shutil.py", line 700, in _rmtree_safe_fd
+    onexc(os.unlink, fullname, err)
+    ~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.13/shutil.py", line 696, in _rmtree_safe_fd
+    os.unlink(entry.name, dir_fd=topfd)
+    ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+OSError: [Errno 16] Device or resource busy: '/data/jwd06/main/000/113/398/113398681/tmp/pymp-z2irr_se'
+Traceback (most recent call last):
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.13/multiprocessing/util.py", line 371, in _run_finalizers
+    finalizer()
+    ~~~~~~~~~^^
+  File "/usr/local/lib/python3.13/multiprocessing/util.py", line 295, in __call__
+    res = self._callback(*self._args, **self._kwargs)
+  File "/usr/local/lib/python3.13/multiprocessing/util.py", line 147, in _remove_temp_dir
+    rmtree(tempdir)
+    ~~~~~~^^^^^^^^^
+  File "/usr/local/lib/python3.13/shutil.py", line 763, in rmtree
+    _rmtree_safe_fd(stack, onexc)
+    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.13/shutil.py", line 707, in _rmtree_safe_fd
+    onexc(func, path, err)
+    ~~~~~^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.13/shutil.py", line 700, in _rmtree_safe_fd
+    onexc(os.unlink, fullname, err)
+    ~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.13/shutil.py", line 696, in _rmtree_safe_fd
+    os.unlink(entry.name, dir_fd=topfd)
+    ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+OSError: [Errno 16] Device or resource busy: '/data/jwd06/main/000/113/398/113398681/tmp/pymp-_ag6p2w8'
+  File "/usr/local/lib/python3.13/multiprocessing/util.py", line 371, in _run_finalizers
+    finalizer()
+    ~~~~~~~~~^^
+  File "/usr/local/lib/python3.13/multiprocessing/util.py", line 295, in __call__
+    res = self._callback(*self._args, **self._kwargs)
+  File "/usr/local/lib/python3.13/multiprocessing/util.py", line 147, in _remove_temp_dir
+    rmtree(tempdir)
+    ~~~~~~^^^^^^^^^
+  File "/usr/local/lib/python3.13/shutil.py", line 763, in rmtree
+    _rmtree_safe_fd(stack, onexc)
+    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.13/shutil.py", line 707, in _rmtree_safe_fd
+    onexc(func, path, err)
+    ~~~~~^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.13/shutil.py", line 700, in _rmtree_safe_fd
+    onexc(os.unlink, fullname, err)
+    ~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.13/shutil.py", line 696, in _rmtree_safe_fd
+    os.unlink(entry.name, dir_fd=topfd)
+    ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+OSError: [Errno 16] Device or resource busy: '/data/jwd06/main/000/113/398/113398681/tmp/pymp-wsjwq8s5'
+  File "/usr/local/lib/python3.13/multiprocessing/util.py", line 371, in _run_finalizers
+    finalizer()
+    ~~~~~~~~~^^
+  File "/usr/local/lib/python3.13/multiprocessing/util.py", line 295, in __call__
+    res = self._callback(*self._args, **self._kwargs)
+  File "/usr/local/lib/python3.13/multiprocessing/util.py", line 147, in _remove_temp_dir
+    rmtree(tempdir)
+    ~~~~~~^^^^^^^^^
+  File "/usr/local/lib/python3.13/shutil.py", line 763, in rmtree
+    _rmtree_safe_fd(stack, onexc)
+    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.13/shutil.py", line 707, in _rmtree_safe_fd
+    onexc(func, path, err)
+    ~~~~~^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.13/shutil.py", line 700, in _rmtree_safe_fd
+    onexc(os.unlink, fullname, err)
+    ~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.13/shutil.py", line 696, in _rmtree_safe_fd
+    os.unlink(entry.name, dir_fd=topfd)
+    ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+OSError: [Errno 16] Device or resource busy: '/data/jwd06/main/000/113/398/113398681/tmp/pymp-m1cqkgam'
+
+100%|██████████| 66/66 [01:12<00:00,  1.09s/it]
+2026-09-25 19:30:18,223 - NN training: epoch=199/200, batches=66, loss=3.0599372, top1=98.8151, elapsed=72.276s, process_memory={'VmPeak': '10571072 kB', 'VmRSS': '1938004 kB'}, gpu_memory=None.
+
+  0%|          | 0/66 [00:00<?, ?it/s]
+  2%|▏         | 1/66 [00:01<01:40,  1.55s/it]
+  3%|▎         | 2/66 [00:02<01:28,  1.39s/it]
+  5%|▍         | 3/66 [00:03<01:18,  1.25s/it]
+  6%|▌         | 4/66 [00:04<01:13,  1.18s/it]
+  8%|▊         | 5/66 [00:06<01:09,  1.14s/it]
+  9%|▉         | 6/66 [00:07<01:06,  1.11s/it]
+ 11%|█         | 7/66 [00:08<01:04,  1.09s/it]
+ 12%|█▏        | 8/66 [00:09<01:03,  1.09s/it]
+ 14%|█▎        | 9/66 [00:10<01:01,  1.09s/it]
+ 15%|█▌        | 10/66 [00:11<01:00,  1.09s/it]
+ 17%|█▋        | 11/66 [00:12<00:59,  1.08s/it]
+ 18%|█▊        | 12/66 [00:13<00:58,  1.08s/it]
+ 20%|█▉        | 13/66 [00:14<00:57,  1.08s/it]
+ 21%|██        | 14/66 [00:15<00:56,  1.08s/it]
+ 23%|██▎       | 15/66 [00:16<00:54,  1.08s/it]
+ 24%|██▍       | 16/66 [00:17<00:53,  1.07s/it]
+ 26%|██▌       | 17/66 [00:18<00:52,  1.07s/it]
+ 27%|██▋       | 18/66 [00:19<00:51,  1.07s/it]
+ 29%|██▉       | 19/66 [00:21<00:50,  1.07s/it]
+ 30%|███       | 20/66 [00:22<00:49,  1.07s/it]
+ 32%|███▏      | 21/66 [00:23<00:48,  1.07s/it]
+ 33%|███▎      | 22/66 [00:24<00:46,  1.07s/it]
+ 35%|███▍      | 23/66 [00:25<00:45,  1.07s/it]
+ 36%|███▋      | 24/66 [00:26<00:44,  1.07s/it]
+ 38%|███▊      | 25/66 [00:27<00:44,  1.07s/it]
+ 39%|███▉      | 26/66 [00:28<00:42,  1.07s/it]
+ 41%|████      | 27/66 [00:29<00:41,  1.07s/it]
+ 42%|████▏     | 28/66 [00:30<00:40,  1.07s/it]
+ 44%|████▍     | 29/66 [00:31<00:39,  1.07s/it]
+ 45%|████▌     | 30/66 [00:32<00:38,  1.07s/it]
+ 47%|████▋     | 31/66 [00:33<00:37,  1.06s/it]
+ 48%|████▊     | 32/66 [00:34<00:36,  1.06s/it]
+ 50%|█████     | 33/66 [00:35<00:35,  1.06s/it]
+ 52%|█████▏    | 34/66 [00:37<00:33,  1.06s/it]
+ 53%|█████▎    | 35/66 [00:38<00:32,  1.06s/it]
+ 55%|█████▍    | 36/66 [00:39<00:31,  1.06s/it]
+ 56%|█████▌    | 37/66 [00:40<00:30,  1.06s/it]
+ 58%|█████▊    | 38/66 [00:41<00:29,  1.07s/it]
+ 59%|█████▉    | 39/66 [00:42<00:29,  1.09s/it]
+ 61%|██████    | 40/66 [00:43<00:28,  1.11s/it]
+ 62%|██████▏   | 41/66 [00:44<00:28,  1.13s/it]
+ 64%|██████▎   | 42/66 [00:45<00:27,  1.16s/it]
+ 65%|██████▌   | 43/66 [00:47<00:26,  1.17s/it]
+ 67%|██████▋   | 44/66 [00:48<00:25,  1.18s/it]
+ 68%|██████▊   | 45/66 [00:49<00:24,  1.17s/it]
+ 70%|██████▉   | 46/66 [00:50<00:22,  1.14s/it]
+ 71%|███████   | 47/66 [00:51<00:21,  1.13s/it]
+ 73%|███████▎  | 48/66 [00:52<00:20,  1.12s/it]
+ 74%|███████▍  | 49/66 [00:53<00:18,  1.11s/it]
+ 76%|███████▌  | 50/66 [00:54<00:17,  1.11s/it]
+ 77%|███████▋  | 51/66 [00:56<00:16,  1.11s/it]
+ 79%|███████▉  | 52/66 [00:57<00:15,  1.10s/it]
+ 80%|████████  | 53/66 [00:58<00:14,  1.10s/it]
+ 82%|████████▏ | 54/66 [00:59<00:13,  1.09s/it]
+ 83%|████████▎ | 55/66 [01:00<00:12,  1.10s/it]
+ 85%|████████▍ | 56/66 [01:01<00:11,  1.12s/it]
+ 86%|████████▋ | 57/66 [01:02<00:10,  1.12s/it]
+ 88%|████████▊ | 58/66 [01:03<00:08,  1.10s/it]
+ 89%|████████▉ | 59/66 [01:04<00:07,  1.09s/it]
+ 91%|█████████ | 60/66 [01:05<00:06,  1.09s/it]
+ 92%|█████████▏| 61/66 [01:07<00:05,  1.09s/it]
+ 94%|█████████▍| 62/66 [01:08<00:04,  1.08s/it]
+ 95%|█████████▌| 63/66 [01:09<00:03,  1.08s/it]
+ 97%|█████████▋| 64/66 [01:10<00:02,  1.08s/it]
+ 98%|█████████▊| 65/66 [01:11<00:01,  1.08s/it]
+100%|██████████| 66/66 [01:12<00:00,  1.08s/it]Traceback (most recent call last):
+Traceback (most recent call last):
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.13/multiprocessing/util.py", line 371, in _run_finalizers
+    finalizer()
+    ~~~~~~~~~^^
+  File "/usr/local/lib/python3.13/multiprocessing/util.py", line 295, in __call__
+    res = self._callback(*self._args, **self._kwargs)
+  File "/usr/local/lib/python3.13/multiprocessing/util.py", line 147, in _remove_temp_dir
+    rmtree(tempdir)
+    ~~~~~~^^^^^^^^^
+  File "/usr/local/lib/python3.13/shutil.py", line 763, in rmtree
+    _rmtree_safe_fd(stack, onexc)
+    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.13/shutil.py", line 707, in _rmtree_safe_fd
+    onexc(func, path, err)
+    ~~~~~^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.13/shutil.py", line 700, in _rmtree_safe_fd
+    onexc(os.unlink, fullname, err)
+    ~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.13/shutil.py", line 696, in _rmtree_safe_fd
+    os.unlink(entry.name, dir_fd=topfd)
+    ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+OSError: [Errno 16] Device or resource busy: '/data/jwd06/main/000/113/398/113398681/tmp/pymp-95gvf36e'
+  File "/usr/local/lib/python3.13/multiprocessing/util.py", line 371, in _run_finalizers
+    finalizer()
+    ~~~~~~~~~^^
+  File "/usr/local/lib/python3.13/multiprocessing/util.py", line 295, in __call__
+    res = self._callback(*self._args, **self._kwargs)
+  File "/usr/local/lib/python3.13/multiprocessing/util.py", line 147, in _remove_temp_dir
+    rmtree(tempdir)
+    ~~~~~~^^^^^^^^^
+  File "/usr/local/lib/python3.13/shutil.py", line 763, in rmtree
+    _rmtree_safe_fd(stack, onexc)
+    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.13/shutil.py", line 707, in _rmtree_safe_fd
+    onexc(func, path, err)
+    ~~~~~^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.13/shutil.py", line 700, in _rmtree_safe_fd
+    onexc(os.unlink, fullname, err)
+    ~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.13/shutil.py", line 696, in _rmtree_safe_fd
+    os.unlink(entry.name, dir_fd=topfd)
+    ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+Traceback (most recent call last):
+OSError: [Errno 16] Device or resource busy: '/data/jwd06/main/000/113/398/113398681/tmp/pymp-uqteynlr'
+  File "/usr/local/lib/python3.13/multiprocessing/util.py", line 371, in _run_finalizers
+    finalizer()
+    ~~~~~~~~~^^
+  File "/usr/local/lib/python3.13/multiprocessing/util.py", line 295, in __call__
+    res = self._callback(*self._args, **self._kwargs)
+  File "/usr/local/lib/python3.13/multiprocessing/util.py", line 147, in _remove_temp_dir
+    rmtree(tempdir)
+    ~~~~~~^^^^^^^^^
+  File "/usr/local/lib/python3.13/shutil.py", line 763, in rmtree
+    _rmtree_safe_fd(stack, onexc)
+    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.13/shutil.py", line 707, in _rmtree_safe_fd
+    onexc(func, path, err)
+    ~~~~~^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.13/shutil.py", line 700, in _rmtree_safe_fd
+    onexc(os.unlink, fullname, err)
+    ~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.13/shutil.py", line 696, in _rmtree_safe_fd
+    os.unlink(entry.name, dir_fd=topfd)
+    ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+OSError: [Errno 16] Device or resource busy: '/data/jwd06/main/000/113/398/113398681/tmp/pymp-1vdt7eux'
+  File "/usr/local/lib/python3.13/multiprocessing/util.py", line 371, in _run_finalizers
+    finalizer()
+    ~~~~~~~~~^^
+  File "/usr/local/lib/python3.13/multiprocessing/util.py", line 295, in __call__
+    res = self._callback(*self._args, **self._kwargs)
+  File "/usr/local/lib/python3.13/multiprocessing/util.py", line 147, in _remove_temp_dir
+    rmtree(tempdir)
+    ~~~~~~^^^^^^^^^
+  File "/usr/local/lib/python3.13/shutil.py", line 763, in rmtree
+    _rmtree_safe_fd(stack, onexc)
+    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.13/shutil.py", line 707, in _rmtree_safe_fd
+    onexc(func, path, err)
+    ~~~~~^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.13/shutil.py", line 700, in _rmtree_safe_fd
+    onexc(os.unlink, fullname, err)
+    ~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.13/shutil.py", line 696, in _rmtree_safe_fd
+    os.unlink(entry.name, dir_fd=topfd)
+    ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+OSError: [Errno 16] Device or resource busy: '/data/jwd06/main/000/113/398/113398681/tmp/pymp-h8x0ko62'
+
+100%|██████████| 66/66 [01:12<00:00,  1.10s/it]
+2026-09-25 19:31:30,791 - NN training: epoch=200/200, batches=66, loss=3.0704067, top1=98.3594, elapsed=72.567s, process_memory={'VmPeak': '10571072 kB', 'VmRSS': '1970772 kB'}, gpu_memory=None.
+2026-09-25 19:31:31,062 - Final inference: start one traversal; contigs=68260, batch_size=1024, embedding_dimensions=128, coverage_dimensions=128.
+2026-09-25 19:31:31,104 - Final inference: first batch published to temporary targets; rows=1024, process_memory={'VmPeak': '10571072 kB', 'VmRSS': '1972040 kB'}, gpu_memory=None.
+2026-09-25 19:31:32,580 - Final inference: published complete binary embedding bundle; contigs=68260.
+2026-09-25 19:31:32,582 - Finish training.
+2026-09-25 19:31:36,173 - bin
+2026-09-25 19:31:36,174 - Marker tools: FragGeneScan=/usr/local/bin/FragGeneScan, wrapper=/usr/local/bin/run_FragGeneScan.pl, hmmsearch=/usr/local/bin/hmmsearch, perl=/usr/local/bin/perl, marker_script=/usr/local/bin/auxiliary/test_getmarker_2quarter.pl, marker_hmm=/usr/local/bin/auxiliary/bacar_marker.hmm.
+2026-09-25 19:31:36,175 - FragGeneScan command: /usr/local/bin/FragGeneScan -s /data/jwd06/main/000/113/398/113398681/working/ERR9966616.fasta -o /data/jwd06/main/000/113/398/113398681/working/ERR9966616.fasta.frag -w 0 -t complete -p 32
+2026-09-25 19:32:52,137 - FragGeneScan exited with status 0; stderr=/data/jwd06/main/000/113/398/113398681/working/ERR9966616.fasta.frag.err.
+2026-09-25 19:32:52,150 - Marker HMM /usr/local/bin/auxiliary/bacar_marker.hmm does not define TC cutoffs for every model; using -E 1e-05.
+2026-09-25 19:32:52,151 - HMMsearch command: /usr/local/bin/hmmsearch --domtblout /data/jwd06/main/000/113/398/113398681/working/.ERR9966616.fasta.bacar_marker.hmmout.28193.cit65zng.tmp -E 1e-05 --cpu 32 /usr/local/bin/auxiliary/bacar_marker.hmm /data/jwd06/main/000/113/398/113398681/working/ERR9966616.fasta.frag.faa
+2026-09-25 19:33:08,272 - HMMsearch exited with status 0; stderr=/data/jwd06/main/000/113/398/113398681/working/ERR9966616.fasta.bacar_marker.hmmout.err.
+2026-09-25 19:33:08,274 - Published HMMsearch result /data/jwd06/main/000/113/398/113398681/working/ERR9966616.fasta.bacar_marker.hmmout with 497 hits.
+2026-09-25 19:33:08,276 - Marker seed generation command: /usr/local/bin/perl /usr/local/bin/auxiliary/test_getmarker_2quarter.pl /data/jwd06/main/000/113/398/113398681/working/ERR9966616.fasta.bacar_marker.hmmout /data/jwd06/main/000/113/398/113398681/working/ERR9966616.fasta 1001 /data/jwd06/main/000/113/398/113398681/working/.ERR9966616.fasta.bacar_marker.2quarter_lencutoff_1001.seed.28193.xdu5qe1_.tmp
+2026-09-25 19:33:09,622 - Marker seed generation exited with status 3; stderr=/data/jwd06/main/000/113/398/113398681/working/ERR9966616.fasta.bacar_marker.2quarter_lencutoff_1001.seed.err.
+Traceback (most recent call last):
+  File "/usr/local/bin/COMEBin/main.py", line 381, in <module>
+    main()
+    ~~~~^^
+  File "/usr/local/bin/COMEBin/main.py", line 298, in main
+    _ = gen_seed(logger, args.contig_file, num_threads, args.contig_len, marker_name="bacar_marker",
+                 quarter="2quarter", hmm_evalue=args.hmm_evalue)
+  File "/usr/local/bin/COMEBin/utils.py", line 307, in gen_seed
+    _run_external_command(
+    ~~~~~~~~~~~~~~~~~~~~~^
+        logger, 'Marker seed generation',
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        [perl_executable, marker_script, hmm_result, contig_file, contig_length_threshold, seed_temp],
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        str(seed_result) + '.out', str(seed_result) + '.err')
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/bin/COMEBin/utils.py", line 188, in _run_external_command
+    raise RuntimeError(f"{label} failed with status {completed.returncode}; stderr={stderr_path}{detail}")
+RuntimeError: Marker seed generation failed with status 3; stderr=/data/jwd06/main/000/113/398/113398681/working/ERR9966616.fasta.bacar_marker.2quarter_lencutoff_1001.seed.err; tail=Marker hits mapped to input contigs, but no usable marker seed set could be generated.
+Clustering exited with status 1.
+```
+
+Can you fix it, a valid fix would also to report no bins but do not error out, I want this fix with the other updates tested on the benchark data, then merged in the master branch ready to release in bioconda
+===== marker script exit logic =====
+4:my $COV_CUTOFF = 0.4;
+9:	exit 64;
+16:	exit 2;
+20:	print STDERR "Marker hits mapped to input contigs, but no usable marker seed set could be generated.\n";
+21:	exit 3;
+25:	print STDERR "Marker parsing completed but produced an empty seed set.\n";
+26:	exit 4;
+28:exit 0;
+123:				if ($i / $arr[5] >= $COV_CUTOFF)
+221:			open(LOCALOUT, ">", $out) || die "Cannot write marker seed file $out\n";
+264:		open(LOCALOUT, ">", $out) || die "Cannot write marker seed file $out\n";
+399:			if ((defined $binhash{$1}) && $j / $arr[5] >= $COV_CUTOFF)
+580:			if ((defined $binhash{$1}) && $j / $arr[5] >= $COV_CUTOFF)
+709:			if ((defined $binhash{$1}) && $j / $arr[5] >= $COV_CUTOFF)
+> build · big-pickle
