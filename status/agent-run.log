@@ -1,95 +1,7 @@
-... truncated: this file shows only the last 262144 bytes of /vol/data/benchmark/logs/agent-run.log (9673677 bytes in total).
+... truncated: this file shows only the last 262144 bytes of /vol/data/benchmark/logs/agent-run.log (9678074 bytes in total).
 ... the complete log is on disk at the path above and in the git history of this repository.
 
-ch_baseline/comebin_run.log /tmp/opencode/small_v11_prepatch_baseline 1790600298 small /tmp/opencode/comebin_prepatch
-=== run_comebin_fix.sh params (vars grid support?) ===
-11:CONTIGS=${CONTIGS:-"$DATA/BATS_SAMN07137077_METAG.scaffolds.min500.fasta.f1k.fasta"}
-12:BAMDIR=${BAMDIR:-"$DATA/bamfiles"}
-13:MODE=${MODE:-fix}
-14:[ -f "$CONTIGS" ] || { echo "ERROR: contigs file not found: $CONTIGS"; exit 1; }
-15:[ -d "$BAMDIR" ] || { echo "ERROR: bamdir not found: $BAMDIR"; exit 1; }
-18:SEED=${SEED:-}
-=== existing #25 doc? ===
-00-setup.md
-01-datasets.md
-02-comebin-baseline.md
-03-fixes.md
-04-evaluation.md
-05-agent-restart.md
-06-benchmark-commands.md
-07-fix-batches.md
-08-dataset-space-plan.md
-09-optimization-strategy.md
-10-data-preservation.md
-11-run-results.md
-12-comebin-master-divergence.md
-docs/01-datasets.md
-docs/06-benchmark-commands.md
-docs/08-dataset-space-plan.md
-docs/10-data-preservation.md
-docs/11-run-results.md
-docs/12-comebin-master-divergence.md
-> build · big-pickle
-`.active_run` has changed — the sibling has deregistered the #28 regression run and registered a new run `small_v11_prepatch_baseline`. So no new runs can be launched; the #25 grid stays plan-only. Let me look at the sweep harness params and current strategy doc to design the grid.
-$ cd /vol/data/benchmark
-echo "=== run_comebin_fix.sh full (vars + flags) ==="
-cat bin/run_comebin_fix.sh | sed -n '1,60p'
-echo "=== docs/09 strategy (head) ==="
-head -40 /vol/data/repos/metagenomic-binning-benchmark/docs/09-optimization-strategy.md
-touch .heartbeat
-=== run_comebin_fix.sh full (vars + flags) ===
-#!/usr/bin/env bash
-# run_comebin_fix.sh — run a FIXED COMEBin source tree on the demo dataset and
-# record the run exactly like the baseline. The default is the current v1.1.0
-# optimization worktree; override with SRC_COMEBIN=/path/to/repo.
-set -euo pipefail
-
-MM=/vol/data/tools/bin/micromamba
-ENV=/vol/data/envs/comebin
-SRC=${SRC_COMEBIN:-/vol/data/repos/COMEBin-v11}
-DATA=${DATA:-/vol/data/datasets/comebin_test_data}
-CONTIGS=${CONTIGS:-"$DATA/BATS_SAMN07137077_METAG.scaffolds.min500.fasta.f1k.fasta"}
-BAMDIR=${BAMDIR:-"$DATA/bamfiles"}
-MODE=${MODE:-fix}
-[ -f "$CONTIGS" ] || { echo "ERROR: contigs file not found: $CONTIGS"; exit 1; }
-[ -d "$BAMDIR" ] || { echo "ERROR: bamdir not found: $BAMDIR"; exit 1; }
-RUNDIR=$(realpath -m "${1:-/vol/data/benchmark/runs/fix_v11}")
-THREADS=${THREADS:-32}
-SEED=${SEED:-}
-START_LOCK=/tmp/benchmark-start.lock
-ACTIVE=/vol/data/benchmark/.active_run
-[ -f "$SRC/COMEBin/run_comebin.sh" ] || { echo "ERROR: invalid SRC_COMEBIN repo root: $SRC"; exit 1; }
-
-exec 9>"$START_LOCK"
-flock -n 9 || { echo "ERROR: another benchmark launch holds $START_LOCK"; exit 1; }
-if [ -f "$ACTIVE" ] && [ "${BENCHMARK_WATCHDOG_REPLACE:-0}" != "1" ]; then
-  read -r active_pid active_pgid active_log active_dir active_start active_mode active_src < "$ACTIVE" || true
-  active_state=$(ps -o stat= -p "${active_pid:-0}" 2>/dev/null | tr -d ' ' || true)
-  if [ -n "${active_pid:-}" ] && kill -0 "$active_pid" 2>/dev/null && [[ "$active_state" != Z* ]]; then
-    echo "ERROR: benchmark already active: pid=$active_pid dir=$active_dir mode=${active_mode:-baseline}"
-    exit 1
-  fi
-  old_rc=$(grep -m1 '^exit_code:' "${active_dir:-/nonexistent}/run_meta.txt" 2>/dev/null | awk '{print $2}' || true)
-  [ "${old_rc:-}" = "0" ] || { echo "ERROR: stale failed run requires benchmark-watchdog triage: $active_dir"; exit 1; }
-  rm -f "$ACTIVE"
-fi
-if [ -f "$RUNDIR/run_meta.txt" ] || [ -d "$RUNDIR/comebin_out" ]; then
-  echo "ERROR: refusing to overwrite existing run directory: $RUNDIR"
-  exit 1
-fi
-
-# Pre-flight free space.  A full filesystem does not fail at launch: it silently
-# poisons CheckM's marker tables and then kills get_result hours later.
-# cami3_v11_20260926 burned 6,677 s and produced 0 bins because prep leftovers
-# (13.8 GB in /tmp) had filled / to 100%.  Fail fast, before the run starts.
-# Placed before the .active_run registration, so a refusal cannot be mistaken by
-# benchmark-watchdog for a crashed run and restarted.
-MIN_FREE_GB=${MIN_FREE_GB:-2}
-RUN_FS=$(df -Pk "$(dirname "$RUNDIR")" 2>/dev/null | awk 'NR==2{print int($4/1048576)}')
-TMP_FS=$(df -Pk /tmp 2>/dev/null | awk 'NR==2{print int($4/1048576)}')
-echo "preflight_free_gb: run_fs=${RUN_FS:-unknown} tmp_fs=${TMP_FS:-unknown} floor=${MIN_FREE_GB}"
-for fs_avail in "$RUN_FS" "$TMP_FS"; do
-  if [ -n "$fs_avail" ] && [ "$fs_avail" -lt "$MIN_FREE_GB" ]; then
+] && [ "$fs_avail" -lt "$MIN_FREE_GB" ]; then
     echo "ERROR: only ${fs_avail} GiB free, need >= ${MIN_FREE_GB} GiB (stale prep leftovers in /tmp are the usual cause)"
     echo "Free space first, or override deliberately with MIN_FREE_GB=0"
     exit 1
@@ -4075,3 +3987,71 @@ tiny_test_n101
 Sweep cell 1 still training — no overlapping work possible on the run slot. The best non-overlapping progress is building the **#25 ranking tool** (rank finished sweep cells by bin stats → runtime), which will be needed the moment cells complete. Let me check the documented ranking rule:
 → Read /vol/data/repos/metagenomic-binning-benchmark/docs/13-optimization-sweep-medium.md 
 > build · big-pickle
+The sweep is launched but docs/13 still says "not yet launched" — that needs updating. And the ranking tool doesn't exist yet. Let me check the results CSV columns to build it:
+$ cd /vol/data/repos/metagenomic-binning-benchmark
+echo "=== results CSV header ==="
+head -1 results/medium_v11_20260924.csv
+echo "=== sample row ==="
+sed -n '2p' results/medium_v11_20260924.csv
+echo "=== run_meta for a sweep-style run (sample sweep line) ==="
+grep -E "sweep:|wall_s|bins:|seed:|threads:" /vol/data/benchmark/runs/sweep_001_ref/run_meta.txt 2>/dev/null || echo "(cell1 still running)"
+=== results CSV header ===
+run,source_commit,dataset,threads,total_time_s,n_bins,checkm2_mean_completeness,checkm2_mean_contamination,checkm2_HQ,checkm2_MQ,checkm_mean_completeness,checkm_mean_contamination,checkm_HQ,checkm_MQ
+=== sample row ===
+medium_v11_20260924,95f5ea820f9a4e76f5c2911c0b5ed507ab67b015,"COMEBin medium (3,000 contigs)",32,2326,16,35.93,4.67,0,2,33.83,6.03,0,3
+=== run_meta for a sweep-style run (sample sweep line) ===
+threads:    8
+seed:       42
+sweep:      temp=ref emb=ref emb_cov=ref batch=ref max_edges=ref leiden_workers=ref hmm_evalue=ref n_views=6
+> build · big-pickle
+Now I'll build the #25 ranking tool (per the documented rule: bin stats first — CheckM2 comp/cont/HQ/MQ + F1 — then runtime tiebreak) and fix docs/13's stale "not yet launched" status:
+← Write /vol/data/repos/metagenomic-binning-benchmark/scripts/rank_sweep_medium.py
+Created file successfully: /vol/data/repos/metagenomic-binning-benchmark/scripts/rank_sweep_medium.py
+> build · big-pickle
+$ cd /vol/data/benchmark
+echo "=== time ==="
+date -u +%FT%TZ
+echo "=== .active_run ==="
+cat .active_run 2>/dev/null || echo CLEAR
+echo "=== sweep driver / train ==="
+pgrep -af "run_sweep_medium.sh" | grep -v pgrep | head -1 || echo "no driver"
+pgrep -af "main.py train" | grep -v pgrep | head -1 | cut -c1-120 || echo "no train"
+echo "=== sweep log tail ==="
+tail -5 status/sweep_medium.log 2>/dev/null
+echo "=== cell1 meta ==="
+grep -E "exit_code|bins:|wall_s:" runs/sweep_001_ref/run_meta.txt 2>/dev/null || echo "cell1 still running"
+echo "=== issues: benchmark repo ==="
+gh issue list -R paulzierep/metagenomic-binning-benchmark --state open --json number,title,updatedAt --jq '.[] | "#\(.number) [\(.updatedAt)] \(.title)"' 2>/dev/null
+echo "=== issues: COMEBin repo ==="
+gh issue list -R paulzierep/COMEBin --state open --json number,title,updatedAt --jq '.[] | "#\(.number) [\(.updatedAt)] \(.title)"' 2>/dev/null
+touch .heartbeat
+=== time ===
+2026-09-28T13:16:49Z
+=== .active_run ===
+2185694 2185683 /vol/data/benchmark/runs/sweep_001_ref/comebin_run.log /vol/data/benchmark/runs/sweep_001_ref 1790600967 medium /vol/data/benchmark/../repos/COMEBin-v11-sweep /vol/data/datasets/comebin_medium/contigs.fa /vol/data/datasets/comebin_medium/bamfiles
+=== sweep driver / train ===
+2186812 bash /vol/data/repos/metagenomic-binning-benchmark/scripts/run_sweep_medium.sh
+2186490 python /vol/data/repos/COMEBin-v11-sweep/COMEBin/main.py train --data /vol/data/benchmark/runs/sweep_001_ref/com
+=== sweep log tail ===
+[2026-09-28T13:13:12Z] wait: foreign run pid=2185694 active (120s elapsed); sleeping 60
+[2026-09-28T13:14:12Z] wait: foreign run pid=2185694 active (180s elapsed); sleeping 60
+[2026-09-28T13:15:12Z] wait: foreign run pid=2185694 active (240s elapsed); sleeping 60
+[2026-09-28T13:16:12Z] wait: foreign run pid=2185694 active (300s elapsed); sleeping 60
+[2026-09-28T13:16:43Z] ABORT: sweep driver pid=2186812 already running; singleton guard, not starting a second
+=== cell1 meta ===
+cell1 still running
+=== issues: benchmark repo ===
+#28 [2026-09-28T13:11:47Z] Fix this issue
+#27 [2026-09-28T12:52:42Z] Are u ok ?
+#26 [2026-09-28T13:00:08Z] Improve logging
+#25 [2026-09-28T13:11:51Z] Improve optimization
+#24 [2026-09-28T13:15:15Z] Main readme needs cleaning
+#23 [2026-09-28T13:02:38Z] Where does the assembly for cami3 come from
+#22 [2026-09-28T13:00:05Z] is there a summary table for all runs
+#21 [2026-09-28T13:02:14Z] use a seed for all runs
+#20 [2026-09-28T13:02:13Z] what are your ideas for further optimization ?
+#19 [2026-09-28T13:15:17Z] better plots
+#6 [2026-09-26T07:56:10Z] Optimization
+#1 [2026-09-23T14:53:13Z] Idea inbox: benchmark ideas, COMEBin fixes, dataset requests
+=== issues: COMEBin repo ===
+Error: Rate limit exceeded. Please try again later.
