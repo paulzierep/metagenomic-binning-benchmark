@@ -93007,3 +93007,763 @@ U are running cami Iii afaik no gold standart assembly is released yet, how do y
 ----- comments on #23 -----
 unexpected token "|"
 > build · big-pickle
+The `gh` loop broke on my jq syntax. Let me re-fetch comments properly and inspect the heartbeat's README edit region so I don't conflict with it.
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark
+echo "=== heartbeat README edit region 155-220 ==="
+sed -n '155,220p' scripts/status-heartbeat.sh
+touch /vol/data/benchmark/.heartbeat
+=== heartbeat README edit region 155-220 ===
+sig="alive=$alive|state=$state|note=$note|tsize=$tsize|wsize=$wsize|model=$last_model|epoch=$run_epoch|loss=$run_loss|acc=$run_acc|run=$run_name|run_registered=$run_registered"
+old_sig=$(cat "$SIGFILE" 2>/dev/null || echo "")
+changed=0
+[ "$sig" != "$old_sig" ] && changed=1
+
+if [ "$changed" = "1" ]; then
+    # ---- 1. README banner ------------------------------------------------ #
+    if [ -n "$run_epoch" ] && [ "$run_registered" -eq 1 ]; then
+        perf="train ${run_name}: epoch ${run_epoch}/${run_total:-200} · loss ${run_loss:-—} · top1 ${run_acc:-—}"
+    elif [ -n "$run_epoch" ]; then
+        perf="last run ${run_name}: epoch ${run_epoch}/${run_total:-200} · not active"
+    else
+        perf="no active benchmark"
+    fi
+    if [ "$(head -1 README.md)" = "$MARKER" ]; then
+        sed '1,4d' README.md > README.tmp
+    else
+        cp README.md README.tmp
+    fi
+    grep -v "^$MARKER" README.tmp > README.new || true
+    rm -f README.tmp
+    {
+      echo "$MARKER"
+      echo
+      echo "> $dot **Agent status:** \`$state\` · ⏱ \`$now\` · 🏃 $perf · 🧠 \`$last_model\` · [status.log](status/status.log)"
+      echo
+      cat README.new
+    } > README.staged && mv README.staged README.md
+    rm -f README.new README.staged
+
+    # ---- 1b. README "Benchmark runs — performance" table Status cell ------ #
+    # Replace ONLY the final (Status) cell of the row for the observed run.
+    if [ -n "$run_epoch" ]; then
+        if [ "$run_registered" -eq 1 ]; then
+            st="⏳ running · epoch ${run_epoch}/${run_total:-200} · loss ${run_loss:-—} · top1 ${run_acc:-—}"
+        else
+            st="⏹ not active · last observed epoch ${run_epoch}/${run_total:-200}"
+        fi
+        awk -v rn="$run_name" -v st="$st" '
+          $0 ~ "^\\| *`" rn "` *\\|" {
+            n = split($0, a, "|")
+            # The performance table has 11 columns. Do not rewrite same-named
+            # rows in the narrower run-history table.
+            if (n != 13) { print; next }
+            out = a[1]
+            for (i = 2; i <= n - 2; i++) out = out "|" a[i]
+            out = out "| " st " |"
+            print out
+            next
+          }
+          { print }
+        ' README.md > README.tbl && mv README.tbl README.md
+    fi
+
+    # ---- 2. status/current.md -------------------------------------------- #
+    load=$(cut -d' ' -f1-3 /proc/loadavg)
+    mem=$(free -m | awk '/Mem:/{printf "%d/%d MB", $3, $2}')
+    upt=$(uptime -p 2>/dev/null | sed 's/^up //')
+    session="ses_f31799c77ffeTq9gcYgqc4hBhg"
+    {
+      echo "# 🤖 Agent status"
+      echo
+      echo "| | |"
+      echo "|---|---|"
+      echo "| Status | $dot \`$state\` |"
+      echo "| ⏱ Updated (Europe/Berlin) | \`$now\` |"
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark
+for n in 24 22 26 19 25 21 20 23 6; do
+  echo "===== #$n comments ====="
+  gh issue view "$n" -R paulzierep/metagenomic-binning-benchmark --json comments --jq '.comments[] | "\(.createdAt) by \(.author.login): " + (.body[0:300])'
+done
+touch /vol/data/benchmark/.heartbeat
+===== #24 comments =====
+2026-09-26T10:49:14Z by paulzierep: Thank you for the clean-up needed on the main README. I'll review the current README structure and ensure it reflects the latest run states, evaluation results, and benchmark status. The README currently has Current/Next sections, run history, and optimization strategy documentation that should stay
+2026-09-26T12:31:09Z by paulzierep: README cleanup in progress. Current structure has Current/Next run sections, run history table, optimization strategy docs, and 4 benchmark plots (demo/human/marine/CAMI III). The run history at results/main_runs_table.md tracks 14+ runs with dataset, threads, commit, branch, bins, CheckM2/HQ/MQ, wa
+===== #22 comments =====
+2026-09-26T08:48:01Z by paulzierep: I want this at the bottom of the readme table for all runs - also old once: failed once, small all of the, with run date, duration benchmark dataset + zenodo or public link, comebin branch + commit used for run, benchmark size (GB, contigs), # of Bins, checkm2 results + HQ,MQ + F1, One line comment 
+2026-09-26T08:51:21Z by paulzierep: Yes, a summary table for all runs (including small tests) would be very helpful. The repository already has per-run CSVs in  and aggregated tables in , but a unified table covering all datasets (demo, small, medium, human, marine, CAMI III) with consistent metrics (bins, completeness, contamination,
+2026-09-26T12:31:20Z by paulzierep: Summary table for all runs (including small tests) is tracked at results/main_runs_table.md, with one row per run: dataset, contigs, threads, COMEBin branch/commit, exit_code, wall_s, bins, CheckM2 mean completeness/contamination (HQ,MQ), CheckM v1 mean completeness/contamination (HQ,MQ), Zenodo lin
+===== #26 comments =====
+2026-09-26T10:49:14Z by paulzierep: Thank you for the issue. I'll look into improving logging for the benchmark. This relates to ongoing optimization work on COMEBin and the benchmark infrastructure. I'll check the current logging setup and determine what improvements would be most helpful for reproducibility and debugging.
+2026-09-26T12:30:59Z by paulzierep: Logging improvements noted. Current benchmark infrastructure mirrors per-run logs (run_meta.txt, comebin_run.log, resources.tsv) into the repo, with status heartbeat updating every 2 min. The live epoch probe in status/current.md now shows epoch N/200 · x/28 batches to prevent frozen appearance. Con
+2026-09-26T15:03:07Z by paulzierep: check: already triaged in prior session
+2026-09-26T15:28:24Z by paulzierep: test comment
+===== #19 comments =====
+2026-09-26T08:34:18Z by paulzierep: make it 4 and add cami3 as the fourth, to make sure each dataset comparison should be a seperate plot and all 4 should be shown below each other
+2026-09-26T08:51:21Z by paulzierep: The combined bar plot () already shows 2 rows (completeness <5%/<10%) × 3 columns (demo/human/marine) with run+branch labeling. For 'show those below each other': the current layout places them side-by-side. A vertical stack would improve comparability across datasets. Also, the per-dataset subplots
+2026-09-26T12:31:40Z by paulzierep: Combined bar plot (results/figures/combined_bar_plot.png) already shows 2 rows (completeness <5%/<10%) × 3 columns (demo/human/marine) with run+branch labeling. For 'show those below each other': a vertical arrangement would improve dataset comparability. The per-dataset subplots in docs/09 could be
+===== #25 comments =====
+2026-09-26T10:49:14Z by paulzierep: Thank you for the optimization ideas. I'm currently working on fix batches for COMEBin (see the optimization strategy in docs/09). Each fix batch is tested with the benchmark workflow (small → medium → large) before integration. What specific optimization areas are you most interested in? Current ca
+2026-09-26T12:31:03Z by paulzierep: Optimization batch workflow confirmed: small → medium → large validation before integration, per docs/09-optimization-strategy.md. Current fix batches address: sequential bin numbering, float64 coverage depth consistency, sklearn KMeans compatibility, DataLoader drop_last edge case, and RNG seed rep
+===== #21 comments =====
+2026-09-26T08:51:21Z by paulzierep: Good point on seeds for reproducibility. The project already uses seed 42 for COMEBin runs (as seen in run_meta.txt across benchmarks), and the optimization fix batches commit / on the  branch addressed sklearn KMeans compatibility. For full reproducibility, we should also ensure Python/RNG states a
+2026-09-26T12:31:26Z by paulzierep: Seed 42 is used consistently across COMEBin runs (demo, small, medium, human, marine, CAMI III). For full reproducibility, the project should also seed Python RNG states (numpy, PyTorch) and the Leiden optimizer at the start of each run, complementing the existing seed=42 approach. This would make a
+===== #20 comments =====
+2026-09-26T08:51:21Z by paulzierep: For optimization ideas: the project has already addressed several performance bugs (fractional bedtools depth, bin numbering, RNG seeds, DataLoader drop_last, etc.) in fix batches on branch . Current optimization candidates from the code review include: vectorizing k-mer counting in , closed-form co
+2026-09-26T12:31:32Z by paulzierep: Optimization candidates from code review (items 10-14): (1) vectorize k-mer counting in gen_kmer.py (currently pure-Python itertools.tee sliding window), (2) closed-form covariance computation in gen_cov.py/gen_var.py (currently materialize per-base depth lists), (3) set-based membership scans in cl
+===== #23 comments =====
+2026-09-26T10:02:00Z by paulzierep: For CAMI III, the assembly is obtained through the preparation pipeline ( and ), which extracts top-N longest contigs from the pooled GSA assemblies, builds bwa indices, and maps both BAM files. The preparation step creates the input assembly (, , and mapped BAMs) that COMEBin then bins. There is no
+2026-09-26T10:02:00Z by paulzierep: For CAMI III, the assembly is obtained through the preparation pipeline ( and ), which extracts top-N longest contigs from the pooled GSA assemblies, builds bwa indices, and maps both BAM files. The preparation step creates the input assembly (, , and mapped BAMs) that COMEBin then bins. There is no
+2026-09-26T10:02:15Z by paulzierep: For CAMI III, the assembly is obtained through the preparation pipeline ( and ), which extracts top-N longest contigs from the pooled GSA assemblies, builds bwa indices, and maps both BAM files. The preparation step creates the input assembly that COMEBin then bins. There is no 'gold standard' assem
+2026-09-26T12:31:12Z by paulzierep: CAMI III assembly preparation pipeline verified: top-5000 longest contigs from pooled GSA assemblies, bwa index built, both samples' BAMs mapped and indexed. The input assembly (contigs.fa) is ~1.1 GB for toy human gut dataset. No gold standard assembly released separately — the prepared input is th
+===== #6 comments =====
+2026-09-23T20:56:21Z by paulzierep: Triage + plan (agent). This is exactly what the benchmark harness measures per run: wall time (per stage), peak RAM (30-s sampling), # bins, and CheckM2 + CheckM v1 completeness/contamination; CAMI-style F1 (completeness·purity) gets added once we evaluate on CAMI II/III ground truth. First optimiza
+2026-09-26T07:56:10Z by paulzierep: ### CAMI III toy human gut — run complete (2026-09-26)
+
+Newest dataset results, per the run-logging protocol (full history: [docs/11-run-results.md](https://github.com/paulzierep/metagenomic-binning-benchmark/blob/main/docs/11-run-results.md)).
+
+**`cami3_v11_20260926_rerun`** — CAMI III toy human gu
+> build · big-pickle
+The heartbeat rewrites the README banner block (lines 1–4) and the 11-column performance table row. I'll plan the restructure to keep those intact. Let me read the full README and the data needed for the all-runs table and the 4-panel plot.
+[0m→ [0mRead /vol/data/repos/metagenomic-binning-benchmark/README.md 
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark
+echo "=== all run dirs on disk ==="
+ls /vol/data/benchmark/runs/
+echo "=== results CSVs headers ==="
+for f in results/*.csv; do echo "--- $f"; head -2 "$f"; done
+touch /vol/data/benchmark/.heartbeat
+=== all run dirs on disk ===
+baseline_rerun
+baseline_rerun_autorestart1
+baseline_unmodified
+cami3_v11_20260926
+cami3_v11_20260926_rerun
+fix_v11_20260924
+human_v11_20260925
+marine_v11_20260925
+medium_v11_20260924
+small_test
+small_test_v2
+small_test_v3
+small_test_v4
+small_v11_issue28_regression
+tiny_test_n100
+tiny_test_n101
+=== results CSVs headers ===
+--- results/baseline_rerun_autorestart1.csv
+run,source_commit,dataset,threads,total_time_s,n_bins,checkm2_mean_completeness,checkm2_mean_contamination,checkm2_HQ,checkm2_MQ,checkm_mean_completeness,checkm_mean_contamination,checkm_HQ,checkm_MQ
+baseline_rerun_autorestart1,904f649ef5cbb4582a6f0e5ec8b0b1f45778d85b,"COMEBin demo (29,434 contigs)",32,24327,60,25.01,2.98,0,7,21.23,3.40,0,9
+--- results/cami3_v11_20260926_rerun.csv
+run,source_commit,dataset,threads,total_time_s,n_bins,checkm2_mean_completeness,checkm2_mean_contamination,checkm2_HQ,checkm2_MQ,checkm_mean_completeness,checkm_mean_contamination,checkm_HQ,checkm_MQ
+cami3_v11_20260926_rerun,95f5ea820f9a4e76f5c2911c0b5ed507ab67b015,CAMI III,32,5392,492,35.97,11.42,53,112,32.46,13.38,54,100
+--- results/fix_v11_20260924.csv
+run,source_commit,dataset,threads,total_time_s,n_bins,checkm2_mean_completeness,checkm2_mean_contamination,checkm2_HQ,checkm2_MQ,checkm_mean_completeness,checkm_mean_contamination,checkm_HQ,checkm_MQ
+fix_v11_20260924,95f5ea820f9a4e76f5c2911c0b5ed507ab67b015,"COMEBin demo (29,434 contigs)",32,24741,71,24.38,3.78,1,6,21.62,5.18,0,8
+--- results/human_v11_20260925.csv
+run,source_commit,dataset,threads,total_time_s,n_bins,checkm2_mean_completeness,checkm2_mean_contamination,checkm2_HQ,checkm2_MQ,checkm_mean_completeness,checkm_mean_contamination,checkm_HQ,checkm_MQ
+human_v11_20260925,95f5ea820f9a4e76f5c2911c0b5ed507ab67b015,human_sample0_input,32,4912,107,35.31,5.13,20,29,32.64,4.65,21,29
+--- results/marine_v11_20260925.csv
+run,source_commit,dataset,threads,total_time_s,n_bins,checkm2_mean_completeness,checkm2_mean_contamination,checkm2_HQ,checkm2_MQ,checkm_mean_completeness,checkm_mean_contamination,checkm_HQ,checkm_MQ
+marine_v11_20260925,95f5ea820f9a4e76f5c2911c0b5ed507ab67b015,marine_sample0_input,32,31406,152,50.60,4.10,35,60,46.36,5.09,37,60
+--- results/medium_v11_20260924.csv
+run,source_commit,dataset,threads,total_time_s,n_bins,checkm2_mean_completeness,checkm2_mean_contamination,checkm2_HQ,checkm2_MQ,checkm_mean_completeness,checkm_mean_contamination,checkm_HQ,checkm_MQ
+medium_v11_20260924,95f5ea820f9a4e76f5c2911c0b5ed507ab67b015,"COMEBin medium (3,000 contigs)",32,2326,16,35.93,4.67,0,2,33.83,6.03,0,3
+--- results/small_test_v4.csv
+run,source_commit,dataset,threads,total_time_s,n_bins,checkm2_mean_completeness,checkm2_mean_contamination,checkm2_HQ,checkm2_MQ,checkm_mean_completeness,checkm_mean_contamination,checkm_HQ,checkm_MQ
+small_test_v4,c8f22e4935a66a0fd58b794489a9021671b15437,comebin_small,8,122,3,26.07,2.02,0,0,29.08,0.71,0,0
+--- results/tiny_test_n101.csv
+run,source_commit,dataset,threads,total_time_s,n_bins,checkm2_mean_completeness,checkm2_mean_contamination,checkm2_HQ,checkm2_MQ,checkm_mean_completeness,checkm_mean_contamination,checkm_HQ,checkm_MQ
+tiny_test_n101,c8f22e4935a66a0fd58b794489a9021671b15437,comebin_tiny_101,8,85,1,63.89,9.05,0,1,46.58,6.35,0,0
+> build · big-pickle
+Now let me read the plot script (for the #19 4-panel stacked view) and gather run metadata for the all-runs table (#22/#24-e) including failed/small runs and F1 computation.
+[0m→ [0mRead /vol/data/repos/metagenomic-binning-benchmark/scripts/make_combined_bar_plot.py 
+[0m$ [0mcd /vol/data/benchmark
+for d in baseline_rerun baseline_rerun_autorestart1 baseline_unmodified cami3_v11_20260926 cami3_v11_20260926_rerun fix_v11_20260924 human_v11_20260925 marine_v11_20260925 medium_v11_20260924 small_test small_test_v2 small_test_v3 small_test_v4 tiny_test_n100 tiny_test_n101 small_v11_issue28_regression; do
+  echo "===== $d ====="
+  sed -n '1,16p' "runs/$d/run_meta.txt" 2>/dev/null | grep -E "run:|date:|source:|branch:|commit:|contigs:|bamdir:|threads:|seed:|dataset|exit_code:|wall|size|host:" | head -14
+  echo "-- exit: $(grep -m1 '^exit_code:' runs/$d/run_meta.txt 2>/dev/null) -- bins: $(grep -m1 BINS runs/$d/run_meta.txt 2>/dev/null)"
+done
+touch .heartbeat
+===== baseline_rerun =====
+-- exit:  -- bins: 
+===== baseline_rerun_autorestart1 =====
+run:        /vol/data/benchmark/runs/baseline_rerun_autorestart1
+date:       2026-09-24T00:30:01+00:00
+source:     /vol/data/repos/COMEBin
+commit:     904f649ef5cbb4582a6f0e5ec8b0b1f45778d85b
+contigs:    /vol/data/datasets/comebin_test_data/BATS_SAMN07137077_METAG.scaffolds.min500.fasta.f1k.fasta
+bamdir:     /vol/data/datasets/comebin_test_data/bamfiles
+threads:    32
+host:       32 cores, 62G RAM, gpu=none
+cmd_wrapper: bash run_comebin.sh -a /vol/data/datasets/comebin_test_data/BATS_SAMN07137077_METAG.scaffolds.min500.fasta.f1k.fasta -p /vol/data/datasets/comebin_test_data/bamfiles -o /vol/data/benchmark/runs/baseline_rerun_autorestart1/comebin_out -n 6 -t 32  # via: micromamba run -p /vol/data/envs/comebin
+exit_code:  0
+wall_s:     24327
+-- exit: exit_code:  0 -- bins: 
+===== baseline_unmodified =====
+run:        /vol/data/benchmark/runs/baseline_unmodified
+date:       2026-09-23T14:36:06+00:00
+commit:     987db95d8d399f30b7c82a5f5f40ed6bfdc906c7
+contigs:    /vol/data/datasets/comebin_test_data/BATS_SAMN07137077_METAG.scaffolds.min500.fasta.f1k.fasta
+bamdir:     /vol/data/datasets/comebin_test_data/bamfiles
+threads:    32
+host:       32 cores, 62G RAM, gpu=none
+cmd_wrapper:  bash run_comebin.sh -a /vol/data/datasets/comebin_test_data/BATS_SAMN07137077_METAG.scaffolds.min500.fasta.f1k.fasta -p /vol/data/datasets/comebin_test_data/bamfiles -o /vol/data/benchmark/runs/baseline_unmodified/comebin_out -n 6 -t 32  # via: micromamba run -p /vol/data/envs/comebin
+cmd_train_py: python main.py train --data /vol/data/benchmark/runs/baseline_unmodified/comebin_out/data_augmentation --temperature 0.15 --emb_szs_forcov 2048 --batch_size 1024 --emb_szs 2048 --n_views 6 --add_model_for_coverage --output_path /vol/data/benchmark/runs/baseline_unmodified/comebin_out/comebin_res --earlystop --addvars --vars_sqrt --num_threads 32
+-- exit:  -- bins: 
+===== cami3_v11_20260926 =====
+run:        /vol/data/benchmark/runs/cami3_v11_20260926
+source:     /vol/data/repos/COMEBin-v11 (branch comebin-optimizations-v11)
+date:       2026-09-26T02:45:13+00:00
+commit:     95f5ea820f9a4e76f5c2911c0b5ed507ab67b015
+contigs:    /vol/data/datasets/cami_III/toy_human_input_2samples/contigs.fa
+bamdir:     /vol/data/datasets/cami_III/toy_human_input_2samples/bamfiles
+threads:    32
+seed:       42
+host:       32 cores, 62G RAM, gpu=none
+cmd_wrapper: /vol/data/tools/bin/micromamba run -p /vol/data/envs/comebin bash run_comebin.sh -a /vol/data/datasets/cami_III/toy_human_input_2samples/contigs.fa -p /vol/data/datasets/cami_III/toy_human_input_2samples/bamfiles -o /vol/data/benchmark/runs/cami3_v11_20260926/comebin_out -n 6 -t 32 -d cpu -s 42 
+exit_code:  1
+wall_s:     6677
+cmd_from_log: 2026-09-26 04:00:02,783 - HMMsearch command: /vol/data/envs/comebin/bin/hmmsearch --domtblout /vol/data/datasets/cami_III/toy_human_input_2samples/.contigs.fa.bacar_marker.hmmout.3261151.roiuabj9.tmp -E 1e-05 --cpu 32 /vol/data/repos/COMEBin-v11/auxiliary/bacar_marker.hmm /vol/data/datasets/cami_III/toy_human_input_2samples/contigs.fa.frag.faa
+-- exit: exit_code:  1 -- bins: 
+===== cami3_v11_20260926_rerun =====
+run:        /vol/data/benchmark/runs/cami3_v11_20260926_rerun
+source:     /vol/data/repos/COMEBin-v11 (branch comebin-optimizations-v11)
+date:       2026-09-26T04:48:24+00:00
+commit:     95f5ea820f9a4e76f5c2911c0b5ed507ab67b015
+contigs:    /vol/data/datasets/cami_III/toy_human_input_2samples/contigs.fa
+bamdir:     /vol/data/datasets/cami_III/toy_human_input_2samples/bamfiles
+threads:    32
+seed:       42
+host:       32 cores, 62G RAM, gpu=none
+cmd_wrapper: /vol/data/tools/bin/micromamba run -p /vol/data/envs/comebin bash run_comebin.sh -a /vol/data/datasets/cami_III/toy_human_input_2samples/contigs.fa -p /vol/data/datasets/cami_III/toy_human_input_2samples/bamfiles -o /vol/data/benchmark/runs/cami3_v11_20260926_rerun/comebin_out -n 6 -t 32 -d cpu -s 42 
+exit_code:  0
+wall_s:     5392
+-- exit: exit_code:  0 -- bins: 
+===== fix_v11_20260924 =====
+run:        /vol/data/benchmark/runs/fix_v11_20260924
+source:     /vol/data/repos/COMEBin-v11 (branch comebin-optimizations-v11)
+date:       2026-09-24T10:37:15+00:00
+commit:     95f5ea820f9a4e76f5c2911c0b5ed507ab67b015
+contigs:    /vol/data/datasets/comebin_test_data/BATS_SAMN07137077_METAG.scaffolds.min500.fasta.f1k.fasta
+bamdir:     /vol/data/datasets/comebin_test_data/bamfiles
+threads:    32
+seed:       42
+host:       32 cores, 62G RAM, gpu=none
+cmd_wrapper: /vol/data/tools/bin/micromamba run -p /vol/data/envs/comebin bash run_comebin.sh -a /vol/data/datasets/comebin_test_data/BATS_SAMN07137077_METAG.scaffolds.min500.fasta.f1k.fasta -p /vol/data/datasets/comebin_test_data/bamfiles -o /vol/data/benchmark/runs/fix_v11_20260924/comebin_out -n 6 -t 32 -d cpu -s 42 
+exit_code:  0
+wall_s:     24741
+checkm2_rc: 0 checkm2_wall_s: 71
+-- exit: exit_code:  0 -- bins: 
+===== human_v11_20260925 =====
+run:        /vol/data/benchmark/runs/human_v11_20260925
+source:     /vol/data/repos/COMEBin-v11 (branch comebin-optimizations-v11)
+date:       2026-09-25T02:17:20+00:00
+commit:     95f5ea820f9a4e76f5c2911c0b5ed507ab67b015
+contigs:    /vol/data/datasets/cami_II_human/human_sample0_input/contigs.fa
+bamdir:     /vol/data/datasets/cami_II_human/human_sample0_input/bamfiles
+threads:    32
+seed:       42
+host:       32 cores, 62G RAM, gpu=none
+cmd_wrapper: /vol/data/tools/bin/micromamba run -p /vol/data/envs/comebin bash run_comebin.sh -a /vol/data/datasets/cami_II_human/human_sample0_input/contigs.fa -p /vol/data/datasets/cami_II_human/human_sample0_input/bamfiles -o /vol/data/benchmark/runs/human_v11_20260925/comebin_out -n 6 -t 32 -d cpu -s 42 
+exit_code:  0
+wall_s:     4912
+cmd_from_log: 2026-09-25 03:34:22,252 - HMMsearch command: /vol/data/envs/comebin/bin/hmmsearch --domtblout /vol/data/datasets/cami_II_human/human_sample0_input/.contigs.fa.bacar_marker.hmmout.1473618.91h4_894.tmp -E 1e-05 --cpu 32 /vol/data/repos/COMEBin-v11/auxiliary/bacar_marker.hmm /vol/data/datasets/cami_II_human/human_sample0_input/contigs.fa.frag.faa
+-- exit: exit_code:  0 -- bins: 
+===== marine_v11_20260925 =====
+run:        /vol/data/benchmark/runs/marine_v11_20260925
+source:     /vol/data/repos/COMEBin-v11 (branch comebin-optimizations-v11)
+date:       2026-09-25T04:14:49+00:00
+commit:     95f5ea820f9a4e76f5c2911c0b5ed507ab67b015
+contigs:    /vol/data/datasets/cami_II/marine_sample0_input/contigs.fa
+bamdir:     /vol/data/datasets/cami_II/marine_sample0_input/bamfiles
+threads:    32
+seed:       42
+host:       32 cores, 62G RAM, gpu=none
+cmd_wrapper: /vol/data/tools/bin/micromamba run -p /vol/data/envs/comebin bash run_comebin.sh -a /vol/data/datasets/cami_II/marine_sample0_input/contigs.fa -p /vol/data/datasets/cami_II/marine_sample0_input/bamfiles -o /vol/data/benchmark/runs/marine_v11_20260925/comebin_out -n 6 -t 32 -d cpu -s 42 
+exit_code:  0
+wall_s:     31406
+cmd_from_log: 2026-09-25 12:47:35,855 - HMMsearch command: /vol/data/envs/comebin/bin/hmmsearch --domtblout /vol/data/datasets/cami_II/marine_sample0_input/.contigs.fa.bacar_marker.hmmout.2018231.2fwfgpzp.tmp -E 1e-05 --cpu 32 /vol/data/repos/COMEBin-v11/auxiliary/bacar_marker.hmm /vol/data/datasets/cami_II/marine_sample0_input/contigs.fa.frag.faa
+-- exit: exit_code:  0 -- bins: 
+===== medium_v11_20260924 =====
+run:        /vol/data/benchmark/runs/medium_v11_20260924
+source:     /vol/data/repos/COMEBin-v11 (branch comebin-optimizations-v11)
+date:       2026-09-24T09:25:50+00:00
+commit:     95f5ea820f9a4e76f5c2911c0b5ed507ab67b015
+contigs:    /vol/data/datasets/comebin_medium/contigs.fa
+bamdir:     /vol/data/datasets/comebin_medium/bamfiles
+threads:    32
+seed:       42
+host:       32 cores, 62G RAM, gpu=none
+cmd_wrapper: /vol/data/tools/bin/micromamba run -p /vol/data/envs/comebin bash run_comebin.sh -a /vol/data/datasets/comebin_medium/contigs.fa -p /vol/data/datasets/comebin_medium/bamfiles -o /vol/data/benchmark/runs/medium_v11_20260924/comebin_out -n 6 -t 32 -d cpu -s 42 
+exit_code:  0
+wall_s:     2326
+cmd_from_log: 2026-09-24 10:03:18,148 - HMMsearch command: /vol/data/envs/comebin/bin/hmmsearch --domtblout /vol/data/datasets/comebin_medium/.contigs.fa.bacar_marker.hmmout.755574.0g1jp8k9.tmp -E 1e-05 --cpu 32 /vol/data/repos/COMEBin-v11/auxiliary/bacar_marker.hmm /vol/data/datasets/comebin_medium/contigs.fa.frag.faa
+-- exit: exit_code:  0 -- bins: 
+===== small_test =====
+run:        /vol/data/benchmark/runs/small_test
+date:       2026-09-23T23:09:40+00:00
+source:     /vol/data/repos/COMEBin
+branch:     master
+commit:     ee2e5079ae8fd04caa381486a4bba8c2d2a34a14
+contigs:    /vol/data/datasets/comebin_small/contigs.fa  (300 contigs, 3.5M)
+bamdir:     /vol/data/datasets/comebin_small/bamfiles
+threads:    8
+batch_size: 256
+emb_size:   512
+seed:       unset
+host:       32 cores, 62G RAM
+cmd_wrapper: /vol/data/tools/bin/micromamba run -p /vol/data/envs/comebin bash run_comebin.sh -a /vol/data/datasets/comebin_small/contigs.fa -p /vol/data/datasets/comebin_small/bamfiles -o /vol/data/benchmark/runs/small_test/comebin_out -n 6 -t 8 -b 256 -e 512 -c 512 
+exit_code:  1
+-- exit: exit_code:  1 -- bins: 
+===== small_test_v2 =====
+run:        /vol/data/benchmark/runs/small_test_v2
+date:       2026-09-23T23:37:13+00:00
+source:     /vol/data/repos/COMEBin
+branch:     master
+commit:     904f649ef5cbb4582a6f0e5ec8b0b1f45778d85b
+contigs:    /vol/data/datasets/comebin_small/contigs.fa  (300 contigs, 3.5M)
+bamdir:     /vol/data/datasets/comebin_small/bamfiles
+threads:    8
+batch_size: 256
+emb_size:   512
+seed:       unset
+host:       32 cores, 62G RAM
+cmd_wrapper: /vol/data/tools/bin/micromamba run -p /vol/data/envs/comebin bash run_comebin.sh -a /vol/data/datasets/comebin_small/contigs.fa -p /vol/data/datasets/comebin_small/bamfiles -o /vol/data/benchmark/runs/small_test_v2/comebin_out -n 6 -t 8 -b 256 -e 512 -c 512 
+exit_code:  1
+-- exit: exit_code:  1 -- bins: 
+===== small_test_v3 =====
+run:        /vol/data/benchmark/runs/small_test_v3
+date:       2026-09-24T08:45:18+00:00
+source:     /vol/data/repos/COMEBin-small-fix
+branch:     comebin-small-fix
+commit:     a0be243187c674b4e62b980ef100f8f2e8b83f54
+contigs:    /vol/data/datasets/comebin_small/contigs.fa  (300 contigs, 3.5M)
+bamdir:     /vol/data/datasets/comebin_small/bamfiles
+threads:    8
+batch_size: 256
+emb_size:   512
+seed:       42
+host:       32 cores, 62G RAM
+cmd_wrapper: /vol/data/tools/bin/micromamba run -p /vol/data/envs/comebin bash run_comebin.sh -a /vol/data/datasets/comebin_small/contigs.fa -p /vol/data/datasets/comebin_small/bamfiles -o /vol/data/benchmark/runs/small_test_v3/comebin_out -n 6 -t 8 -b 256 -e 512 -c 512 -E 30 
+exit_code:  0
+-- exit: exit_code:  0 -- bins: 
+===== small_test_v4 =====
+run:        /vol/data/benchmark/runs/small_test_v4
+date:       2026-09-24T08:48:33+00:00
+source:     /vol/data/repos/COMEBin-small-fix
+branch:     comebin-small-fix
+commit:     c8f22e4935a66a0fd58b794489a9021671b15437
+contigs:    /vol/data/datasets/comebin_small/contigs.fa  (300 contigs, 3.5M)
+bamdir:     /vol/data/datasets/comebin_small/bamfiles
+threads:    8
+batch_size: 256
+emb_size:   512
+seed:       42
+host:       32 cores, 62G RAM
+cmd_wrapper: /vol/data/tools/bin/micromamba run -p /vol/data/envs/comebin bash run_comebin.sh -a /vol/data/datasets/comebin_small/contigs.fa -p /vol/data/datasets/comebin_small/bamfiles -o /vol/data/benchmark/runs/small_test_v4/comebin_out -n 6 -t 8 -b 256 -e 512 -c 512 -E 30 
+exit_code:  0
+-- exit: exit_code:  0 -- bins: 
+===== tiny_test_n100 =====
+run:        /vol/data/benchmark/runs/tiny_test_n100
+date:       2026-09-25T01:41:52+00:00
+source:     /vol/data/repos/COMEBin-small-fix
+branch:     comebin-small-fix
+commit:     c8f22e4935a66a0fd58b794489a9021671b15437
+contigs:    /vol/data/datasets/comebin_tiny/contigs.fa  (100 contigs, 1.8M)
+bamdir:     /vol/data/datasets/comebin_tiny/bamfiles
+threads:    8
+batch_size: 256
+emb_size:   512
+seed:       unset
+host:       32 cores, 62G RAM
+cmd_wrapper: /vol/data/tools/bin/micromamba run -p /vol/data/envs/comebin bash run_comebin.sh -a /vol/data/datasets/comebin_tiny/contigs.fa -p /vol/data/datasets/comebin_tiny/bamfiles -o /vol/data/benchmark/runs/tiny_test_n100/comebin_out -n 6 -t 8 -b 256 -e 512 -c 512 -E 30 
+exit_code:  1
+-- exit: exit_code:  1 -- bins: 
+===== tiny_test_n101 =====
+run:        /vol/data/benchmark/runs/tiny_test_n101
+date:       2026-09-25T01:46:33+00:00
+source:     /vol/data/repos/COMEBin-small-fix
+branch:     comebin-small-fix
+commit:     c8f22e4935a66a0fd58b794489a9021671b15437
+contigs:    /vol/data/datasets/comebin_tiny_101/contigs.fa  (101 contigs, 1.8M)
+bamdir:     /vol/data/datasets/comebin_tiny_101/bamfiles
+threads:    8
+batch_size: 256
+emb_size:   512
+seed:       unset
+host:       32 cores, 62G RAM
+cmd_wrapper: /vol/data/tools/bin/micromamba run -p /vol/data/envs/comebin bash run_comebin.sh -a /vol/data/datasets/comebin_tiny_101/contigs.fa -p /vol/data/datasets/comebin_tiny_101/bamfiles -o /vol/data/benchmark/runs/tiny_test_n101/comebin_out -n 6 -t 8 -b 256 -e 512 -c 512 -E 30 
+exit_code:  0
+-- exit: exit_code:  0 -- bins: 
+===== small_v11_issue28_regression =====
+run:        /vol/data/benchmark/runs/small_v11_issue28_regression
+date:       2026-09-28T12:50:30+00:00
+source:     /vol/data/repos/COMEBin-v11
+branch:     comebin-optimizations-v11
+commit:     41606c8e154aa62c01d361361d04b74f18f225ab
+contigs:    /tmp/opencode/realdata/ds/contigs.fa  (300 contigs, 3.5M)
+bamdir:     /tmp/opencode/realdata/ds/bamfiles
+threads:    8
+batch_size: 256
+emb_size:   512
+seed:       42
+host:       32 cores, 62G RAM
+-- exit:  -- bins:
+> build · big-pickle
+Now let me understand the remaining pieces: heartbeat push behavior, dataset links/sizes (for the #22 table with zoom links), and which runs have `per_bin_results.csv` (for plot inclusion).
+[0m✱ [0mGrep "zenodo|10.5281|doi.org|cami_II|cami_III|sample_0|gastrooral|SRA|ENA" [90min /vol/data/repos/metagenomic-binning-benchmark/docs/01-datasets.md · 12 matches[0m
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark
+echo "=== heartbeat tail (push?) 220-300 ==="
+sed -n '220,300p' scripts/status-heartbeat.sh
+echo "=== dataset sizes ==="
+du -sh /vol/data/datasets/comebin_test_data /vol/data/datasets/comebin_small /vol/data/datasets/comebin_medium 2>/dev/null
+du -sh /vol/data/datasets/cami_II_human /vol/data/datasets/cami_II/marine_sample0_input /vol/data/datasets/cami_III/toy_human_input_2samples 2>/dev/null
+echo "=== contigs.fa sizes ==="
+for f in /vol/data/datasets/comebin_test_data/BATS_SAMN07137077_METAG.scaffolds.min500.fasta.f1k.fasta /vol/data/datasets/comebin_small/contigs.fa /vol/data/datasets/comebin_medium/contigs.fa /vol/data/datasets/cami_II_human/human_sample0_input/contigs.fa /vol/data/datasets/cami_II/marine_sample0_input/contigs.fa /vol/data/datasets/cami_III/toy_human_input_2samples/contigs.fa; do
+  [ -f "$f" ] && stat -c '%s %n' "$f"
+done
+touch /vol/data/benchmark/.heartbeat
+=== heartbeat tail (push?) 220-300 ===
+      echo "| ⏱ Updated (Europe/Berlin) | \`$now\` |"
+      if [ -n "$run_epoch" ] && [ "$run_registered" -eq 1 ]; then
+          echo "| 🏃 Live benchmark | \`$run_name\` — **epoch ${run_epoch}/${run_total:-200}** · loss \`${run_loss:-—}\` · top1 acc \`${run_acc:-—}\` (log ${train_log_age:-?}s fresh) |"
+      elif [ -n "$run_epoch" ]; then
+          echo "| 🏃 Last benchmark (not active) | \`$run_name\` — last observed **epoch ${run_epoch}/${run_total:-200}** (log ${train_log_age:-?}s old) |"
+      else
+          echo "| 🏃 Benchmark | no active run |"
+      fi
+      echo "| 🧠 Model (last turn) | \`$last_model\` (watchdog rotates to free models on quota) |"
+      if [ -n "$act_age_min" ]; then
+          echo "| 📌 Agent note · **${act_age_min} min old** | $note |"
+      else
+          echo "| 📌 Agent note | $note |"
+      fi
+      echo "| ⚙️ Load · uptime | \`$load\` · $upt — 32 cores, 62 GiB, no GPU |"
+      echo "| 💾 RAM used/total | \`$mem\` |"
+      echo "| 🔗 Session | \`$session\` |"
+      echo "| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push \`$lastcommit\` |"
+      echo "| 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · \`${tsize} B\` — every run, command & tool result |"
+      echo "| 📈 Timeline | [status/status.log](status/status.log) |"
+    } > status/current.md
+
+    # ---- 3. timeline (one line PER CHANGE, not per tick) ------------------- #
+    printf '%s\talive=%s\tmem=%s\tload=%s\ttranscript=%sB\twatchdog=%sB\tmodel=%s\tepoch=%s/%s\tloss=%s\tacc=%s\t%s\n' \
+        "$now" "$alive" "${mem:-?}" "${load:-?}" "$tsize" "$wsize" "$last_model" \
+        "${run_epoch:--}" "${run_total:--}" "${run_loss:--}" "${run_acc:--}" "$note" >> status/status.log
+
+    echo "$sig" > "$SIGFILE"
+fi
+
+# ---- 4. sync per-run detailed logs into the repo (small files only) ------- #
+sync_run_logs() {
+    for d in "$BENCH"/runs/*/; do
+        [ -d "$d" ] || continue
+        name=$(basename "$d")
+        # Do not create empty repo-side run directories for refused/aborted
+        # launches whose optional evidence files were never produced.
+        m() {
+          local src="$d/$2"
+          [ -f "$src" ] || return 0
+          mkdir -p "runs/$name/$(dirname "$1")" && cp "$src" "runs/$name/$1"
+        }
+        m run_meta.txt run_meta.txt 2>/dev/null
+        m comebin_run.log comebin_run.log 2>/dev/null
+        m logs/resources.tsv logs/resources.tsv 2>/dev/null
+        m logs/sampler.out logs/sampler.out 2>/dev/null
+        m comebin_res/comebin.log comebin_out/comebin_res/comebin.log 2>/dev/null
+        m comebin_res/training.log comebin_out/comebin_res/training.log 2>/dev/null
+        m comebin_res/config.yml comebin_out/comebin_res/config.yml 2>/dev/null
+    done
+}
+sync_run_logs
+
+# ---- commit + push ONLY if something actually changed ------------------------ #
+git add README.md status/current.md status/status.log status/agent-activity.log runs
+[ -e status/agent-run.log ] && git add status/agent-run.log
+[ -e status/watchdog.log ] && git add status/watchdog.log
+[ -e status/supervisor-run.log ] && git add status/supervisor-run.log
+[ -n "$(find status/meta -maxdepth 1 -type f 2>/dev/null | head -1)" ] && git add status/meta
+
+if git diff --cached --quiet -- README.md status runs; then
+    echo "$(date -Is) no change to commit (alive=$alive epoch=${run_epoch:-—} model=$last_model)" >>"$SLOG"
+    exit 0
+fi
+
+ok=0
+for i in 1 2 3; do
+    ready=0
+    if git diff --cached --quiet -- README.md status runs; then
+        ready=1
+    elif git commit -q --only -m "status: $alive — ${run_name:-agent} epoch ${run_epoch:-—}/${run_total:-200} loss ${run_loss:-—} acc ${run_acc:-—} model $last_model — $(echo "$note" | cut -c1-40)" -- README.md status runs; then
+        ready=1
+    fi
+    if [ "$ready" -eq 1 ] && git push -q; then
+        head=$(git rev-parse HEAD)
+        remote=$(git ls-remote origin refs/heads/main 2>/dev/null | awk 'NR==1{print $1}')
+        [ -n "$remote" ] && [ "$head" = "$remote" ] && { ok=1; break; }
+    fi
+    sleep 3
+done
+if [ "$ok" = "1" ]; then
+=== dataset sizes ===
+6.4G	/vol/data/datasets/comebin_test_data
+100M	/vol/data/datasets/comebin_small
+424M	/vol/data/datasets/comebin_medium
+25G	/vol/data/datasets/cami_II_human
+5.9G	/vol/data/datasets/cami_II/marine_sample0_input
+15G	/vol/data/datasets/cami_III/toy_human_input_2samples
+=== contigs.fa sizes ===
+53280988 /vol/data/datasets/comebin_test_data/BATS_SAMN07137077_METAG.scaffolds.min500.fasta.f1k.fasta
+3651343 /vol/data/datasets/comebin_small/contigs.fa
+14354233 /vol/data/datasets/comebin_medium/contigs.fa
+168826102 /vol/data/datasets/cami_II_human/human_sample0_input/contigs.fa
+320310469 /vol/data/datasets/cami_II/marine_sample0_input/contigs.fa
+1145571604 /vol/data/datasets/cami_III/toy_human_input_2samples/contigs.fa
+> build · big-pickle
+Let me check which runs have per-bin data (for the plot), read the current main_runs_table, and compute F1 values from the aggregate CSVs.
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark
+echo "=== python compute F1 + extra columns ==="
+python3 - <<'EOF'
+import csv, glob
+for path in sorted(glob.glob('results/*.csv')):
+    with open(path) as f:
+        row = next(csv.DictReader(f))
+    def f1(comp, cont):
+        try:
+            c, n = float(comp), float(cont)
+        except (TypeError, ValueError):
+            return '-'
+        p = max(0.0, 1.0 - n)
+        return round(2*c*p/(c+p), 2) if (c+p) > 0 else 0.0
+    print(f"{row['run']:34s} comp2={row.get('checkm2_mean_completeness','-'):>6s} cont2={row.get('checkm2_mean_contamination','-'):>6s} F1={f1(row.get('checkm2_mean_completeness'),row.get('checkm2_mean_contamination'))} bins={row.get('n_bins','-')} time={row.get('total_time_s','-')}")
+EOF
+touch /vol/data/benchmark/.heartbeat
+=== python compute F1 + extra columns ===
+baseline_rerun_autorestart1        comp2= 25.01 cont2=  2.98 F1=0.0 bins=60 time=24327
+cami3_v11_20260926_rerun           comp2= 35.97 cont2= 11.42 F1=0.0 bins=492 time=5392
+fix_v11_20260924                   comp2= 24.38 cont2=  3.78 F1=0.0 bins=71 time=24741
+human_v11_20260925                 comp2= 35.31 cont2=  5.13 F1=0.0 bins=107 time=4912
+marine_v11_20260925                comp2= 50.60 cont2=  4.10 F1=0.0 bins=152 time=31406
+medium_v11_20260924                comp2= 35.93 cont2=  4.67 F1=0.0 bins=16 time=2326
+small_test_v4                      comp2= 26.07 cont2=  2.02 F1=0.0 bins=3 time=122
+tiny_test_n101                     comp2= 63.89 cont2=  9.05 F1=0.0 bins=1 time=85
+[0m$ [0mcd /vol/data/benchmark
+echo "=== per_bin_results.csv presence ==="
+for d in runs/*/; do n=$(basename "$d"); if [ -f "runs/$n/per_bin_results.csv" ]; then echo "$n: yes ($(wc -l < runs/$n/per_bin_results.csv) rows)"; else echo "$n: NO"; fi; done
+echo "=== baseline_rerun & baseline_unmodified run_meta exist? ==="
+ls -la runs/baseline_rerun/run_meta.txt runs/baseline_unmodified/run_meta.txt 2>&1 | head
+echo "=== what does baseline_unmodified contain ==="
+ls runs/baseline_unmodified/ 2>/dev/null | head
+ls runs/baseline_rerun/ 2>/dev/null | head
+touch .heartbeat
+=== per_bin_results.csv presence ===
+baseline_rerun: NO
+baseline_rerun_autorestart1: NO
+baseline_unmodified: NO
+cami3_v11_20260926: NO
+cami3_v11_20260926_rerun: NO
+fix_v11_20260924: NO
+human_v11_20260925: NO
+marine_v11_20260925: NO
+medium_v11_20260924: NO
+small_test: NO
+small_test_v2: NO
+small_test_v3: NO
+small_test_v4: NO
+small_v11_issue28_regression: NO
+tiny_test_n100: NO
+tiny_test_n101: NO
+=== baseline_rerun & baseline_unmodified run_meta exist? ===
+ls: cannot access 'runs/baseline_rerun/run_meta.txt': No such file or directory
+-rw-rw-r-- 1 ubuntu ubuntu 1152 Sep 23 21:42 runs/baseline_unmodified/run_meta.txt
+=== what does baseline_unmodified contain ===
+comebin_out
+comebin_run.log
+logs
+run_meta.txt
+out.txt
+> build · big-pickle
+The F1 values were miscalculated (percent vs fraction). Per-bin CSVs weren't found where I looked — let me find them and check how the plot script resolves run data, plus confirm the plot still works today.
+[0m$ [0mcd /vol/data/benchmark
+echo "=== find per_bin_results.csv anywhere ==="
+find /vol/data/benchmark/runs -maxdepth 2 -name "per_bin_results.csv" 2>/dev/null | head
+echo "=== contents of a evaluated run dir (marine) ==="
+ls runs/marine_v11_20260925/ 2>/dev/null
+ls runs/fix_v11_20260924/ 2>/dev/null | head
+echo "=== repo runs dir (what plot reads) ==="
+ls /vol/data/repos/metagenomic-binning-benchmark/runs/ | head -20
+echo "=== does repo have per_bin csv? ==="
+find /vol/data/repos/metagenomic-binning-benchmark/runs -maxdepth 2 -name "per_bin_results.csv" 2>/dev/null | head
+touch .heartbeat
+=== find per_bin_results.csv anywhere ===
+=== contents of a evaluated run dir (marine) ===
+comebin_out
+comebin_run.log
+eval
+logs
+run_meta.txt
+comebin_out
+comebin_run.log
+eval
+logs
+run_meta.txt
+=== repo runs dir (what plot reads) ===
+README.md
+baseline_rerun
+baseline_rerun_autorestart1
+baseline_unmodified
+cami3_v11_20260926
+cami3_v11_20260926_rerun
+fix_v11_20260924
+human_v11_20260925
+marine_v11_20260925
+medium_v11_20260924
+small_test
+small_test_v2
+small_test_v3
+small_test_v4
+small_v11_issue28_regression
+tiny_test_n100
+tiny_test_n101
+=== does repo have per_bin csv? ===
+/vol/data/repos/metagenomic-binning-benchmark/runs/baseline_rerun_autorestart1/per_bin_results.csv
+/vol/data/repos/metagenomic-binning-benchmark/runs/human_v11_20260925/per_bin_results.csv
+/vol/data/repos/metagenomic-binning-benchmark/runs/small_test_v4/per_bin_results.csv
+/vol/data/repos/metagenomic-binning-benchmark/runs/marine_v11_20260925/per_bin_results.csv
+/vol/data/repos/metagenomic-binning-benchmark/runs/medium_v11_20260924/per_bin_results.csv
+/vol/data/repos/metagenomic-binning-benchmark/runs/cami3_v11_20260926_rerun/per_bin_results.csv
+/vol/data/repos/metagenomic-binning-benchmark/runs/fix_v11_20260924/per_bin_results.csv
+/vol/data/repos/metagenomic-binning-benchmark/runs/tiny_test_n101/per_bin_results.csv
+> build · big-pickle
+Per-bin CSVs live in the **repo** runs dir — good, the plot script can already see them. Now let me grab dataset source links (for the #22 table "zenodo or public link" column) from docs/01.
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark
+echo "=== docs/01-datasets.md dataset summary rows ==="
+grep -nE "^\| .*(CAMI|zenodo|doi|CyVerse|cauldron|link|URL|download|archive)" docs/01-datasets.md | head -40
+echo "=== cami3 provenance lines ==="
+sed -n '168,200p' docs/01-datasets.md
+touch /vol/data/benchmark/.heartbeat
+=== docs/01-datasets.md dataset summary rows ===
+7:| Origin | Google Drive link in the [COMEBin README](https://github.com/paulzierep/COMEBin), file id `1xWpN2z8JTaAzWW4TcOl0Lr4Y_x--Fs5s` |
+105:| Source | CAMI II challenge (2021), assembly records on Zenodo |
+106:| Assemblies record | https://doi.org/10.5281/zenodo.5013479 |
+110:| Short reads (marine) | https://frl.publisso.de/data/frl:6425521/marine/ (challenge download page) |
+121:| `short_read/marmgCAMI2_sample_N_{reads,bam,contigs}.tar.gz` | reads 5.2 G, bam 4.6–4.7 G, contigs 360–436 M | COMEBin input (bam = coverage; contigs = assembly) |
+122:| `long_read/marmgCAMI2_sample_N_{reads,bam,contigs}.tar.gz` | bam 5.9 G, reads 4.4 G, contigs 315–380 M | same, long-read mode |
+124:| `marmgCAMI2_genomes.tar.gz` | 798 M | gold-standard reference genomes |
+159:| Source | **CAMI II Toy Human Microbiome Project** (CAMISIM simulation of HMP body sites), block 2 = gastrointestinal + oral — `https://frl.publisso.de/data/frl:6425518/` |
+166:| Ground truth | ⚠️ `binning_gs.tsv` is **not** inside `sample_0.tar.gz` (only the gsa name maps) → bin quality is scored with CheckM2 + CheckM v1 like every other run; the gold-standard binning lives in `setup.tar.gz` (1.8 GB) / the CAMI goldstandard bundle → **TODO** if a recall/ARI evaluation is wanted |
+175:| Datasets released | **Human gut only so far** — no CAMI III marine/plant yet: (a) *Longitudinal Human Gut* (9 individuals × 4 time points), (b) *Toy Longitudinal Human Gut* (10 individuals × 2 time points = **20 samples**). Both short **and** long reads. |
+176:| Download lists | `https://cami-challenge.org/static/CAMI3_toy_dataset_download.list` (short, 86 URLs) · `…_long_download.list` (long) → `wget -i` |
+182:| Ground truth | gold-standard pooled assembly + per-sample `gsa`/`gsa_mapping` (details to confirm on download) |
+183:| Key difference vs CAMI II | **per-sample BAM archives are published** → if the BAM references match the published sample contigs, no `bwa mem` remap is needed (must verify first — CAMI II's BAMs were per-genome and unusable) |
+184:| Status | **to download after the CAMI II marine run**; sample-0 sizes verified; DOI "TBA" (cite the datasets page meanwhile) |
+=== cami3 provenance lines ===
+
+## 3. CAMI III challenge data (planned)
+
+**Verified 2026-09-25 from <https://cami-challenge.org/datasets/> (HTTP):**
+
+| | |
+|---|---|
+| Datasets released | **Human gut only so far** — no CAMI III marine/plant yet: (a) *Longitudinal Human Gut* (9 individuals × 4 time points), (b) *Toy Longitudinal Human Gut* (10 individuals × 2 time points = **20 samples**). Both short **and** long reads. |
+| Download lists | `https://cami-challenge.org/static/CAMI3_toy_dataset_download.list` (short, 86 URLs) · `…_long_download.list` (long) → `wget -i` |
+| Object store | `https://s3.bi.denbi.de/swift/v1/cami3__human-gut-toy/{short,long}/` — per-sample `sample_N_{bam,contigs,gsa,reads}.tar.gz` (N = 0..19) + pooled `gsa_pooled.fasta.gz`, `coverages.tar.gz`, `taxonomic_profiles.tar.gz`, `source_genomes.tar.gz`, `sample_subject_mapping.tsv` |
+| Sample IDs | `cami3_toy_human_gut_short_read_sample_[0..19]`; `…_pooled_assembly` = gold-standard pooled assembly |
+| Sizes measured (HTTP HEAD, 2026-09-25) | sample 0 short: `bam` **3.6 GB** · `contigs` **277 MB** · `reads` **4.6 GB** · `gsa` **131 MB** → ≈ **8.6 GB/sample**; `gsa_pooled.fasta.gz` 1.2 GB; `coverages.tar.gz` 105 KB → one sample ≈ 8.6 GB, two ≈ 17 GB (budget ≤ 50 GB ✅) |
+| Spec | Illumina HiSeq 2×150 bp, 100 Gbp total (short); ONT ~4 kb mean, 100 Gbp (long) |
+| Taxonomy | NCBI taxdump `taxdmp_2025-08-01.zip` |
+| Ground truth | gold-standard pooled assembly + per-sample `gsa`/`gsa_mapping` (details to confirm on download) |
+| Key difference vs CAMI II | **per-sample BAM archives are published** → if the BAM references match the published sample contigs, no `bwa mem` remap is needed (must verify first — CAMI II's BAMs were per-genome and unusable) |
+| Status | **to download after the CAMI II marine run**; sample-0 sizes verified; DOI "TBA" (cite the datasets page meanwhile) |
+> build · big-pickle
+The sibling session owns #28 (fix committed, regression run active and registered). I'll deliver the non-colliding documentation/plot/README items: #19 (4-dataset stacked plot incl. CAMI III), #22 (all-runs table), #24 (README restructure a–f), #26 (major-steps log + last-10 + README link). Let me verify git state first.
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark
+echo "=== branch + remote ==="
+git branch --show-current
+git remote -v | head -2
+echo "=== HEAD ==="
+git log --oneline -3 | cut -c1-100
+echo "=== plots env has matplotlib? ==="
+/vol/data/tools/bin/micromamba run -p /vol/data/envs/comebin python -c "import matplotlib, numpy; print('matplotlib', matplotlib.__version__)" 2>&1 | tail -1
+echo "=== active run still going ==="
+ps -p 2137087 -o pid,etimes,args --no-headers 2>/dev/null | cut -c1-80 || echo "run finished"
+tail -3 /vol/data/benchmark/runs/small_v11_issue28_regression/comebin_run.log 2>/dev/null | cut -c1-100
+touch /vol/data/benchmark/.heartbeat
+=== branch + remote ===
+main
+origin	https://github.com/paulzierep/metagenomic-binning-benchmark (fetch)
+origin	https://github.com/paulzierep/metagenomic-binning-benchmark (push)
+=== HEAD ===
+14260c32 status: yes — small_v11_issue28_regression epoch 185/200 loss 2.4964568614959717 acc 47.2
+0855151e status: yes — small_v11_issue28_regression epoch 67/200 loss 4.762070178985596 acc 7.8255
+e646dd12 status: yes — cami3_v11_20260926_rerun epoch 199/200 loss 1.4088499546051025 acc 74.94791
+=== plots env has matplotlib? ===
+matplotlib 3.10.9
+=== active run still going ===
+[2026-09-28 12:55:03] INFO: { Current stage: 0:00:00.214 || Total: 0:00:00.214 }
+2026-09-28 12:55:04,014 - Final result:	/vol/data/benchmark/runs/small_v11_issue28_regression/comebi
+2026-09-28 12:55:04,015 - Stream winning Leiden bins from /tmp/opencode/realdata/ds/contigs.fa.
+> build · big-pickle
+The sibling's run is nearly done. Meanwhile I have everything I need for the doc deliverables. Let me start with the plot script (#19: 4 datasets stacked below each other), then regenerate.
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/scripts/make_combined_bar_plot.py
+Index: /vol/data/repos/metagenomic-binning-benchmark/scripts/make_combined_bar_plot.py
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/scripts/make_combined_bar_plot.py
++++ /vol/data/repos/metagenomic-binning-benchmark/scripts/make_combined_bar_plot.py
+@@ -1,19 +1,21 @@
+ #!/usr/bin/env python3
+-"""make_combined_bar_plot.py [--datasets demo human marine]
++"""make_combined_bar_plot.py [--datasets demo human marine cami3]
+ 
+-Issue #12 (owner request 2026-09-05..25): FAIRyMAGs-style combined bar plot for
+-the MAIN benchmark datasets, focused on three datasets:
++Issue #12 + #19 (owner requests 2026-09-05..28): FAIRyMAGs-style combined bar
++plot for the MAIN benchmark datasets, four datasets:
+ 
+     demo   — COMEBin demo large set (BATS, 29,434 contigs)
+     human  — CAMI II human host-associated (4,900 contigs)
+     marine — CAMI II marine (41,988 contigs)
++    cami3  — CAMI III toy human gut (5,000 contigs)
+ 
+-Figure layout (mirrors FAIRyMAGs `combined_bar_plot.png`, extended to the three
+-main datasets):
++Figure layout (mirrors FAIRyMAGs `combined_bar_plot.png`; #19 "show them below
++each other"):
+ 
+-  * 2 rows x 3 columns of subplots — one subplot per benchmark dataset (the
+-    columns), rows = contamination cutoffs (top < 5 %, bottom < 10 %).
++  * 4 rows x 2 columns of subplots — one ROW per benchmark dataset (all four
++    datasets stacked below each other), columns = contamination cutoffs
++    (left < 5 %, right < 10 %).
+   * Horizontal stacked bars, one bar per evaluated run of that dataset,
+     segments = CheckM2 completeness thresholds (">90", ">80", ">70", ">60",
+     ">50", plus "<50" so the bar end equals ALL bins passing the contamination
+     cutoff) in the FAIRyMAGs teal palette.
+
+> build · big-pickle
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/scripts/make_combined_bar_plot.py
+Index: /vol/data/repos/metagenomic-binning-benchmark/scripts/make_combined_bar_plot.py
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/scripts/make_combined_bar_plot.py
++++ /vol/data/repos/metagenomic-binning-benchmark/scripts/make_combined_bar_plot.py
+@@ -60,16 +60,17 @@
+ RUNS = os.path.join(REPO, "runs")
+ RESULTS = os.path.join(REPO, "results")
+ FIGDIR = os.path.join(RESULTS, "figures")
+ 
+-# The three main benchmark datasets (issue #12: "focus only on 3 from now on").
++# The four main benchmark datasets (issue #12 + #19: "add cami3 as the fourth").
+ # key -> (substring matched against run_meta `contigs:`, display name)
+ DATASETS = {
+     "demo": ("BATS_SAMN07137077", "COMEBin demo (29,434 contigs)"),
+     "human": ("cami_II_human", "CAMI II human (4,900 contigs)"),
+     "marine": ("cami_II/marine", "CAMI II marine (41,988 contigs)"),
++    "cami3": ("cami_III", "CAMI III toy human gut (5,000 contigs)"),
+ }
+-DEFAULT_ORDER = ["demo", "human", "marine"]
++DEFAULT_ORDER = ["demo", "human", "marine", "cami3"]
+ 
+ # FAIRyMAGs combined_bar_plot style
+ THRESHOLDS = [">90", ">80", ">70", ">60", ">50", "<50"]
+ COLORS = ["#004c4c", "#006666", "#008080", "#33a3a3", "#99d6d6", "#cce6e6"]
+
+> build · big-pickle
