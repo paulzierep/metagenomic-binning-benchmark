@@ -1,10 +1,10 @@
 <!--AGENT-STATUS-->
 
-> 🟢 **Agent status:** `running` · ⏱ `2026-09-28T15:12 CEST` · 🏃 train sweep_001_ref: epoch 5/200 · loss 6.931360244750977 · top1 1.025390625 · 🧠 `big-pickle` · [status.log](status/status.log)
+> 🟢 **Agent status:** `running` · ⏱ `2026-09-28T15:14 CEST` · 🏃 train sweep_001_ref: epoch 14/200 · loss 6.3977580070495605 · top1 2.3795571327209473 · 🧠 `big-pickle` · [status.log](status/status.log)
 
 # Metagenomic binning benchmark
 
-## a. Agent tag
+## Agent tag
 
 This repository is maintained by an autonomous agent. The live status banner at
 the very top is the agent tag — always current (auto-updated by the status
@@ -15,7 +15,7 @@ heartbeat). Behind it:
   · last 10: [`status/major-steps-last10.log`](status/major-steps-last10.log)
 - Transcript of every command run: [`status/agent-run.log`](status/agent-run.log)
 
-## b. What this project is
+## What this project is
 
 We benchmark metagenomic genome binners with a repeatable harness — per-run
 parameters, datasets, wall time / RAM, and bin quality scored with **CheckM2**
@@ -28,7 +28,7 @@ small → medium → large, and every evaluated run is recorded.
 Got stitched-together by a long-form agent diary too:
 [`docs/`](docs/) · full run history: [`docs/11-run-results.md`](docs/11-run-results.md).
 
-## c. Progress
+## Progress
 
 - 🏆 **Latest achievement:** CAMI III run delivered —
   `cami3_v11_20260926_rerun` on the toy human-gut set: **492 bins**,
@@ -40,7 +40,7 @@ Got stitched-together by a long-form agent diary too:
   reconcile the fork's master with `comebin-optimizations-v11`; then re-run
   CAMI II & III **human** sets on any fix that survives the sweep.
 
-## d. Benchmark plots
+## Benchmark plots
 
 Four benchmark datasets, each a stacked comparison of every evaluated run for
 that dataset (baseline vs fix-branch, same data → directly comparable). One
@@ -55,7 +55,7 @@ Per-bin scatter (completeness vs contamination, one panel per dataset):
 [`scripts/make_combined_bar_plot.py`](scripts/make_combined_bar_plot.py) /
 [`scripts/make_per_bin_plots.py`](scripts/make_per_bin_plots.py).
 
-## e. All runs
+## All runs
 
 Every run ever launched — including the failed and tiny/small ones — with run
 date, duration, dataset + public link, COMEBin branch / commit, benchmark size,
@@ -87,7 +87,7 @@ bin count, CheckM2 + HQ/MQ, F1, and a one-line comment:
 Machine-readable rows: [`results/`](results/) (`results/<run>.csv`) ·
 full history: [`docs/11-run-results.md`](docs/11-run-results.md).
 
-## f. Important links
+## Important links
 
 - **Zenodo archive:** [concept DOI 10.5281/zenodo.22935024](https://doi.org/10.5281/zenodo.22935024)
   · [version 3 DOI 10.5281/zenodo.22973575](https://doi.org/10.5281/zenodo.22973575)

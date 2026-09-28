@@ -97599,3 +97599,392 @@ touch .heartbeat
 24
 [2026-09-28T13:11:12Z] wait: foreign run pid=2185694 active (0s elapsed); sleeping 60
 > build · big-pickle
+All deliverable checks pass. This turn is complete.
+
+## Turn summary
+
+**Situation at start:** `.active_run` still held the sibling's stale `small_v11_prepatch_baseline` registration, blocking the #25 sweep. During the turn the sibling cleared the slot and posted their #28 delivery (`41606c8`), freeing the run slot for me.
+
+**What I did this turn:**
+
+1. **Confirmed the slot freed** — `.active_run` gone, no active COMEBin processes; triaged issues on both repos (no new owner comments; #28 handled by the sibling; no COMEBin-repo issues).
+
+2. **Launched the #25 24-cell medium optimization sweep** (the pending item from PROGRESS.md):
+   - Created two clean pinned worktrees: `COMEBin-v11-sweep @ 95f5ea8` (reference base = the commit behind `medium_v11_20260924`) and `COMEBin-master904 @ 904f649` (unmodified upstream, CPU-only/unseeded); cell 3 uses the sibling's v11 @ `41606c8` as a no-regression check.
+   - Fixed two harness bugs found during launch: a `set -u` `TEMP: unbound variable` abort when sweep vars are unset, and missing `N_VIEWS` forwarding (needed for cells 15/16) + `n_views` meta recording. All sweep flags are gated per-source.
+   - Wrote `scripts/run_sweep_medium.sh` — detached, resumable driver with per-cell seed column (cell 24 = seed 7), a wait-active_clear gate (never overlaps a registered run, polls up to 4 h), RESUME eval of orphaned rc=0 runs, manual-triage-only on non-zero exits, and per-cell CheckM2/CheckM eval + results CSV + per-bin plots.
+   - docs/13 cell 23 adjusted: `noearly` → `embcov512_batch512`, since `--earlystop` is hardcoded in `run_comebin.sh` (not a CLI flag).
+
+3. **Launch verified live:** cell 1 `sweep_001_ref` training (`.`active_run` pid 2185694, `main.py train … --device cpu --num_threads 8 --seed 42`, 3000 contigs, epoch ~5/200, top1=0.9863); driver polling correctly; removed my accidental `env -i` test artifact `runs/fix_v11` (real `fix_v11_20260924` untouched).
+
+4. **Bookkeeping & delivery:** PROGRESS.md + `.activity` + `agent-activity.log` updated, `.heartbeat` touched, committed + pushed `2dc7a43d` (sweep driver, harness fix, docs/13) from `status/agent-activity.log` only intended paths under the repo lock; posted launch-status comment `5870551517` on #25. `TASK_COMPLETE` absent, README line 1 marker intact, local == remote.
+
+**Next:** the driver will eval cell 1 when it completes, then serially run + evaluate cells 2–24 (each ~1–2 h at 8 threads). Future turns triage while it runs; when all cells have results CSVs, rank by bin stats then runtime per the documented rule and report on #25.
+[0m
+> build · big-pickle
+[0m$ [0mcd /vol/data/benchmark
+echo "=== time ==="
+date -u +%FT%TZ
+echo "=== .active_run ==="
+cat .active_run 2>/dev/null || echo CLEAR
+echo "=== sweep driver + cell1 ==="
+pgrep -af "run_sweep_medium.sh" | grep -v pgrep | head -1 || echo "no driver"
+pgrep -af "main.py train" | grep -v pgrep | head -1 || echo "no train"
+echo "=== sweep log tail ==="
+tail -6 status/sweep_medium.log 2>/dev/null
+echo "=== cell1 run status ==="
+grep -E "exit_code|bins:" runs/sweep_001_ref/run_meta.txt 2>/dev/null || echo "cell1 still running (no exit yet)"
+echo "=== issues: benchmark repo ==="
+gh issue list -R paulzierep/metagenomic-binning-benchmark --state open --json number,title,updatedAt --jq '.[] | "#\(.number) [\(.updatedAt)] \(.title)"' 2>/dev/null
+echo "=== issues: COMEBin repo ==="
+gh issue list -R paulzierep/COMEBin --state open --json number,title,updatedAt --jq '.[] | "#\(.number) [\(.updatedAt)] \(.title)"' 2>/dev/null
+touch .heartbeat
+=== time ===
+2026-09-28T13:12:36Z
+=== .active_run ===
+2185694 2185683 /vol/data/benchmark/runs/sweep_001_ref/comebin_run.log /vol/data/benchmark/runs/sweep_001_ref 1790600967 medium /vol/data/benchmark/../repos/COMEBin-v11-sweep /vol/data/datasets/comebin_medium/contigs.fa /vol/data/datasets/comebin_medium/bamfiles
+=== sweep driver + cell1 ===
+2186812 bash /vol/data/repos/metagenomic-binning-benchmark/scripts/run_sweep_medium.sh
+2186490 python /vol/data/repos/COMEBin-v11-sweep/COMEBin/main.py train --data /vol/data/benchmark/runs/sweep_001_ref/comebin_out/data_augmentation --emb_szs_forcov 2048 --batch_size 1024 --emb_szs 2048 --n_views 6 --output_path /vol/data/benchmark/runs/sweep_001_ref/comebin_out/comebin_res --earlystop --addvars --vars_sqrt --device cpu --num_threads 8 --seed 42
+=== sweep log tail ===
+[2026-09-28T13:07:51Z] START sweep_024_seed7 src=COMEBin-v11-sweep @ 95f5ea8 threads=8 seed=42 temp=ref emb=ref emb_cov=ref batch=ref max_edges=ref lw=ref heval=ref n_views=6
+[2026-09-28T13:07:51Z] FAIL sweep_024_seed7: run_comebin_fix.sh rc=1
+[2026-09-28T13:07:51Z] SWEEP COMPLETE (24 cells processed)
+[2026-09-28T13:09:26Z] START sweep_001_ref src=COMEBin-v11-sweep @ 95f5ea8 threads=8 seed=42 temp=ref emb=ref emb_cov=ref batch=ref max_edges=ref lw=ref heval=ref n_views=6
+[2026-09-28T13:11:12Z] wait: foreign run pid=2185694 active (0s elapsed); sleeping 60
+[2026-09-28T13:12:12Z] wait: foreign run pid=2185694 active (60s elapsed); sleeping 60
+=== cell1 run status ===
+cell1 still running (no exit yet)
+=== issues: benchmark repo ===
+#28 [2026-09-28T13:11:47Z] Fix this issue
+#27 [2026-09-28T12:52:42Z] Are u ok ?
+#26 [2026-09-28T13:00:08Z] Improve logging
+#25 [2026-09-28T13:11:51Z] Improve optimization
+#24 [2026-09-28T13:08:59Z] Main readme needs cleaning
+#23 [2026-09-28T13:02:38Z] Where does the assembly for cami3 come from
+#22 [2026-09-28T13:00:05Z] is there a summary table for all runs
+#21 [2026-09-28T13:02:14Z] use a seed for all runs
+#20 [2026-09-28T13:02:13Z] what are your ideas for further optimization ?
+#19 [2026-09-28T13:07:13Z] better plots
+#6 [2026-09-26T07:56:10Z] Optimization
+#1 [2026-09-23T14:53:13Z] Idea inbox: benchmark ideas, COMEBin fixes, dataset requests
+=== issues: COMEBin repo ===
+> build · big-pickle
+Sweep is progressing well (cell 1 training, driver waiting). Let me check the most recently updated issues (#28 at 13:11:47, #25 at 13:11:51, #19 at 13:07:13) for new owner comments since my last turn:
+[0m$ [0mcd /vol/data/benchmark
+echo "=== #28 latest comments ==="
+gh issue view 28 -R paulzierep/metagenomic-binning-benchmark --json comments --jq '.comments[-2:] | .[] | "--- " + .createdAt + " " + .author.login + " ---\n" + (.body[0:600])' 2>/dev/null
+echo
+echo "=== #19 latest comment ==="
+gh issue view 19 -R paulzierep/metagenomic-binning-benchmark --json comments --jq '.comments[-1] | .createdAt + " " + .author.login + ": " + (.body[0:300])' 2>/dev/null
+echo
+echo "=== #25 latest comment timestamp ==="
+gh issue view 25 -R paulzierep/metagenomic-binning-benchmark --json comments --jq '.comments[-1] | .createdAt + " " + .author.login' 2>/dev/null
+touch .heartbeat
+=== #28 latest comments ===
+--- 2026-09-28T13:03:45Z paulzierep ---
+Fixed on `comebin-optimizations-v11` @ **`41606c8`** — COMEBin now reports **0 bins and exits 0** instead of raising, and the pipeline no longer dies with `Clustering exited with status 1`.
+
+### Root cause
+`auxiliary/test_getmarker_2quarter.pl` uses distinct exit codes to say "I could not build a usable seed set": `2` (no marker hit matches a contig), `3` (hits mapped, but no gene passes the completeness/coverage gate), `4` (no marker hits at all). `gen_seed()` treated every non-zero status as a hard tool failure, so a perfectly ordinary *empty result* — your case, `status 3` — was escalated t
+--- 2026-09-28T13:11:47Z paulzierep ---
+I would like to have this fix and the working optimization merged together and(after all has been tested on the medium dataset in master asap
+
+=== #19 latest comment ===
+2026-09-28T13:07:13Z paulzierep: make the plot a bit nicer and readable, the text on the y axis is too long
+
+=== #25 latest comment timestamp ===
+2026-09-28T13:11:51Z paulzierep
+> build · big-pickle
+The owner is actively replying now! #19 (plot y-axis too long — mine to fix), #28 (merge fix+optimization to master — sibling's), and #25 (13:11:51) need attention. Let me read the latest comments on the recently-touched issues:
+[0m$ [0mcd /vol/data/benchmark
+for n in 25 24 26 22 21 20 23; do
+  echo "=== #$n latest comment ==="
+  gh issue view $n -R paulzierep/metagenomic-binning-benchmark --json comments --jq '.comments[-1] | .createdAt + " " + .author.login + ":\n" + (.body[0:500])' 2>/dev/null
+  echo
+done
+touch .heartbeat
+=== #25 latest comment ===
+2026-09-28T13:11:51Z paulzierep:
+**Sweep is live** (2026-09-28 13:12 UTC) — the 24-cell medium grid is running.
+
+- Driver: [`scripts/run_sweep_medium.sh`](https://github.com/paulzierep/metagenomic-binning-benchmark/blob/main/scripts/run_sweep_medium.sh) — detached, resumable (skips done cells, evals orphaned ones), never overlaps the registered run slot, one cell at a time.
+- Sources: v11 @ `95f5ea8` (reference base, matches `medium_v11_20260924`), unmodified upstream master @ `904f649` (unseeded, as in the original baselines),
+
+=== #24 latest comment ===
+2026-09-28T13:08:59Z paulzierep:
+cool, remove the a,b,c keep the heading though
+
+=== #26 latest comment ===
+2026-09-28T13:00:08Z paulzierep:
+## Delivered — one human-readable major-steps log + last-10, linked in README ✅
+
+Commit `5cc93218`:
+- `status/major-steps.log` — one log file with simple human-readable major steps (derived from every run's run_meta + results CSV, plus curated milestones: Zenodo v2/v3 releases, issue resolutions, #28 fix).
+- `status/major-steps-last10.log` — just the last 10 steps.
+- Both linked from README **a** (agent tag) and **f** (important links).
+- Generator: `scripts/make_major_steps_log.py` (re-run afte
+
+=== #22 latest comment ===
+2026-09-28T13:00:05Z paulzierep:
+## Delivered — all-runs table at the bottom of the README ✅
+
+Commit `5cc93218`: the table is now in README **section e (All runs)** with one row per run *ever launched* — old ones, failed ones, and all small/tiny ones — exactly the columns requested:
+run date · duration · dataset + zenodo/public link · COMEBin branch + commit · benchmark size (GB, contigs) · #bins · CheckM2 comp/cont · HQ/MQ · **F1** · one-line comment.
+
+- Generator: `scripts/make_all_runs_table.py` → `results/all_runs_table.md`
+
+=== #21 latest comment ===
+2026-09-28T13:02:14Z paulzierep:
+## Seed 42 — status
+
+- **Every evaluated run uses seed 42**: baseline, small_test_v4, medium, fix_v11, human, marine, CAMI III rerun (recorded in each `run_meta.txt` `seed:`, and in results/main_runs_table.md). Demo/small were pre-seed; medium onward all seeded.
+- The v1.1.0 fork exposes `-s INT` (added to run_comebin.sh) — the harness passes `-s $SEED` when supported, and refuses silent unseeded runs.
+- **Remaining gap**: COMEBin's Python/PyTorch RNG (numpy, torch, random) is not explicitly see
+
+=== #20 latest comment ===
+2026-09-28T13:02:13Z paulzierep:
+## Concrete next optimization ideas (from code review + measured runs)
+
+What has already landed (fix batches on `comebin-optimizations-v11`): sequential bin numbering, float64/welford coverage depth, sklearn KMeans n_jobs removal, DataLoader drop_last edge case, seeds. Measured effect so far: fix_v11 on the demo = 71 bins vs 60 baseline at equal wall time; medium/human/marine/CAMI III all run at seed 42.
+
+Ranking for the **next** batch, by expected time×RAM payoff (will be verified on the medium
+
+=== #23 latest comment ===
+2026-09-28T13:02:38Z paulzierep:
+## CAMI III assembly provenance — precise chain ✅
+
+The CAMI III toy human gut input is **not** a single released assembly file; it is the **pooled GSA (genome sequence archive) assembly** from the CAMI III toy dataset, prepared locally. Chain (docs/01-datasets.md §CAMI III):
+
+1. **Source**: CAMI III *Toy Longitudinal Human Gut* — download lists from cami-challenge.org (`CAMI3_toy_dataset_download.list`, 86 URLs). Two samples’ per-sample **GSA assemblies** + their BAM archives.
+2. **Pooling**: th
+> build · big-pickle
+The owner has replied with concrete feedback:
+- **#24**: "cool, remove the a,b,c keep the heading though" — remove letter prefixes in README but keep section headings
+- **#19**: "make the plot a bit nicer and readable, the text on the y axis is too long"
+- **#28**: merge fix+optimization, test on medium, land in master ASAP (sibling-owned, but my sweep already includes the fix cell)
+
+Let me look at the README structure for the #24 change first:
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark
+echo "=== README headings with letter prefixes ==="
+grep -nE "^#{1,4} .*[a-f]\.? ?[A-Z]|^#{1,4} [a-f]\)|^#{1,4} [A-F]\. " README.md | head -20
+echo "=== README section headers (all ##) ==="
+grep -nE "^## |^### " README.md | head -40
+=== README headings with letter prefixes ===
+7:## a. Agent tag
+18:## b. What this project is
+31:## c. Progress
+43:## d. Benchmark plots
+58:## e. All runs
+90:## f. Important links
+=== README section headers (all ##) ===
+7:## a. Agent tag
+18:## b. What this project is
+31:## c. Progress
+43:## d. Benchmark plots
+58:## e. All runs
+90:## f. Important links
+> build · big-pickle
+Let me read the README sections to choose good heading names:
+[0m→ [0mRead /vol/data/repos/metagenomic-binning-benchmark/README.md [90m[offset=7, limit=60][0m
+> build · big-pickle
+The owner wants the `a.`/`b.`/`c.` letter prefixes removed from README headings. Let me check if any generator scripts reference the lettered headings before editing:
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark
+echo "=== references to lettered headings in scripts ==="
+grep -rn "Agent tag\|What this project\|Benchmark plots\|Important links\|## a\.\|## e\." scripts/ status-heartbeat* 2>/dev/null | grep -v Binary | head -10 || echo "none"
+echo "=== make_all_runs_table.py injection markers ==="
+grep -n "ALL-RUNS\|## " scripts/make_all_runs_table.py | head -10
+=== references to lettered headings in scripts ===
+=== make_all_runs_table.py injection markers ===
+247:        start = "<!--ALL-RUNS:START-->"
+248:        end = "<!--ALL-RUNS:END-->"
+> build · big-pickle
+No scripts depend on the lettered headings. Removing the `a.`–`f.` prefixes, keeping the heading text:
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/README.md
+Index: /vol/data/repos/metagenomic-binning-benchmark/README.md
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/README.md
++++ /vol/data/repos/metagenomic-binning-benchmark/README.md
+@@ -3,9 +3,9 @@
+ > 🟢 **Agent status:** `running` · ⏱ `2026-09-28T15:12 CEST` · 🏃 train sweep_001_ref: epoch 5/200 · loss 6.931360244750977 · top1 1.025390625 · 🧠 `big-pickle` · [status.log](status/status.log)
+ 
+ # Metagenomic binning benchmark
+ 
+-## a. Agent tag
++## Agent tag
+ 
+ This repository is maintained by an autonomous agent. The live status banner at
+ the very top is the agent tag — always current (auto-updated by the status
+ heartbeat). Behind it:
+
+> build · big-pickle
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/README.md
+Index: /vol/data/repos/metagenomic-binning-benchmark/README.md
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/README.md
++++ /vol/data/repos/metagenomic-binning-benchmark/README.md
+@@ -14,9 +14,9 @@
+ - Human-readable major steps: [`status/major-steps.log`](status/major-steps.log)
+   · last 10: [`status/major-steps-last10.log`](status/major-steps-last10.log)
+ - Transcript of every command run: [`status/agent-run.log`](status/agent-run.log)
+ 
+-## b. What this project is
++## What this project is
+ 
+ We benchmark metagenomic genome binners with a repeatable harness — per-run
+ parameters, datasets, wall time / RAM, and bin quality scored with **CheckM2**
+ and **CheckM (v1)**. From now on we **focus only on
+
+> build · big-pickle
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/README.md
+Index: /vol/data/repos/metagenomic-binning-benchmark/README.md
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/README.md
++++ /vol/data/repos/metagenomic-binning-benchmark/README.md
+@@ -27,9 +27,9 @@
+ 
+ Got stitched-together by a long-form agent diary too:
+ [`docs/`](docs/) · full run history: [`docs/11-run-results.md`](docs/11-run-results.md).
+ 
+-## c. Progress
++## Progress
+ 
+ - 🏆 **Latest achievement:** CAMI III run delivered —
+   `cami3_v11_20260926_rerun` on the toy human-gut set: **492 bins**,
+   CheckM2 35.97 % / 11.42 % (HQ 53 / MQ 112), wall 90 min; every evaluated run
+
+> build · big-pickle
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/README.md
+Index: /vol/data/repos/metagenomic-binning-benchmark/README.md
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/README.md
++++ /vol/data/repos/metagenomic-binning-benchmark/README.md
+@@ -39,9 +39,9 @@
+   20+ runs with varied parameters/commits, best by bin stats then runtime) and
+   reconcile the fork's master with `comebin-optimizations-v11`; then re-run
+   CAMI II & III **human** sets on any fix that survives the sweep.
+ 
+-## d. Benchmark plots
++## Benchmark plots
+ 
+ Four benchmark datasets, each a stacked comparison of every evaluated run for
+ that dataset (baseline vs fix-branch, same data → directly comparable). One
+ row per dataset, rows shown **below each other** (issue #19); every evaluated
+
+> build · big-pickle
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/README.md
+Index: /vol/data/repos/metagenomic-binning-benchmark/README.md
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/README.md
++++ /vol/data/repos/metagenomic-binning-benchmark/README.md
+@@ -54,9 +54,9 @@
+ · per-run bar charts: `runs/<run>/per_bins.png` · regenerated by
+ [`scripts/make_combined_bar_plot.py`](scripts/make_combined_bar_plot.py) /
+ [`scripts/make_per_bin_plots.py`](scripts/make_per_bin_plots.py).
+ 
+-## e. All runs
++## All runs
+ 
+ Every run ever launched — including the failed and tiny/small ones — with run
+ date, duration, dataset + public link, COMEBin branch / commit, benchmark size,
+ bin count, CheckM2 + HQ/MQ, F1, and a one-line comment:
+
+> build · big-pickle
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/README.md
+Index: /vol/data/repos/metagenomic-binning-benchmark/README.md
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/README.md
++++ /vol/data/repos/metagenomic-binning-benchmark/README.md
+@@ -86,9 +86,9 @@
+ 
+ Machine-readable rows: [`results/`](results/) (`results/<run>.csv`) ·
+ full history: [`docs/11-run-results.md`](docs/11-run-results.md).
+ 
+-## f. Important links
++## Important links
+ 
+ - **Zenodo archive:** [concept DOI 10.5281/zenodo.22935024](https://doi.org/10.5281/zenodo.22935024)
+   · [version 3 DOI 10.5281/zenodo.22973575](https://doi.org/10.5281/zenodo.22973575)
+   · small dataset [10.5281/zenodo.22935025](https://doi.org/10.5281/zenodo.22935025)
+
+> build · big-pickle
+Let me check for any broken anchor references to the old lettered headings:
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark
+echo "=== any remaining 'a.'/'f.' style heading refs or anchor links ==="
+grep -rn "#a-agent-tag\|#b-what\|#c-progress\|#d-benchmark\|#e-all-runs\|#f-important\|## [a-f]\. \|## a\.\|## b\." README.md scripts/ docs/ status/major-steps.log 2>/dev/null | head -8 || echo "no stale refs"
+echo "=== README line 1 intact ==="
+head -1 README.md
+echo "=== new headings ==="
+grep -nE "^## " README.md | head -8
+=== any remaining 'a.'/'f.' style heading refs or anchor links ===
+=== README line 1 intact ===
+<!--AGENT-STATUS-->
+=== new headings ===
+7:## Agent tag
+18:## What this project is
+31:## Progress
+43:## Benchmark plots
+58:## All runs
+90:## Important links
+> build · big-pickle
+#24 README done. Now #19 — the plot: y-axis text too long. Let me inspect the plotting script:
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark
+echo "=== make_combined_bar_plot.py structure ==="
+grep -nE "ylabel|y_label|set_ylabel|set_title|tick|rotate|fontsize|figsize|subplots|label" scripts/make_combined_bar_plot.py | head -40
+=== make_combined_bar_plot.py structure ===
+15:  * 4 rows x 2 columns of subplots — one ROW per benchmark dataset (all four
+22:  * Every bar is labelled on the y axis with run name + COMEBin commit (short)
+233:                    choices=sorted(DATASETS), help="datasets (subplots) to show")
+260:    fig, axs = plt.subplots(nrow, ncol,
+261:                            figsize=(6.4 * ncol, 4.6 * nrow),
+268:            ax.set_title(f"{DATASETS[key][1]}\n{row_title}",
+269:                         fontsize=14 if ncol > 1 else 16)
+273:                        fontsize=13, color="#666666")
+274:                ax.set_yticks([])
+283:                        label=thr, height=0.6)
+288:                        fontsize=13)
+290:            ax.set_yticks(y)
+291:            ax.set_yticklabels(names, fontsize=11)
+292:            ax.set_xlabel("#MAGs", fontsize=13)
+293:            ax.tick_params(axis="x", labelsize=12)
+297:    handles, labels = axs[0][ncol - 1].get_legend_handles_labels()
+301:                handles, labels = ax.get_legend_handles_labels()
+307:        axs[0][ncol - 1].legend(handles, labels, title="Completeness",
+308:                                loc="upper right", fontsize=12,
+309:                                title_fontsize=13)
+313:                 fontsize=16, y=1.0)
+> build · big-pickle
+[0m→ [0mRead /vol/data/repos/metagenomic-binning-benchmark/scripts/make_combined_bar_plot.py [90m[limit=80, offset=240][0m
+> build · big-pickle
+The y-axis labels `${name} · ${commit7} · ${branch}` (e.g. `cami3_v11_20260926_rerun · abc1234 · comebin-optimizations-v11`) are far too long. Let me read the script head to see the data structures:
+[0m→ [0mRead /vol/data/repos/metagenomic-binning-benchmark/scripts/make_combined_bar_plot.py [90m[limit=130, offset=1][0m
+> build · big-pickle
+[0m→ [0mRead /vol/data/repos/metagenomic-binning-benchmark/scripts/make_combined_bar_plot.py [90m[limit=110, offset=130][0m
+> build · big-pickle
+The y-axis labels `${name} · ${commit7} · ${branch}` are far too long. Let me see the actual run names to design compact labels:
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark
+echo "=== evaluated runs (have per_bin_results.csv) ==="
+for d in runs/*/; do
+  [ -f "$d/per_bin_results.csv" ] && basename "$d"
+done | sort
+echo "=== branches used ==="
+grep -h "^source:" runs/*/run_meta.txt 2>/dev/null | sed 's/.*branch //' | sort -u
+=== evaluated runs (have per_bin_results.csv) ===
+baseline_rerun_autorestart1
+cami3_v11_20260926_rerun
+fix_v11_20260924
+human_v11_20260925
+marine_v11_20260925
+medium_v11_20260924
+small_test_v4
+tiny_test_n101
+=== branches used ===
+)
+comebin-optimizations-v11)
+source:     /vol/data/repos/COMEBin
+source:     /vol/data/repos/COMEBin-small-fix
+source:     /vol/data/repos/COMEBin-v11
+> build · big-pickle
+Now I'll redesign the y-axis labels: map verbose run names to compact short names, put commit on a second line, and reserve a left margin so labels aren't clipped. Let me check the tail of the script first, then edit:
+[0m→ [0mRead /vol/data/repos/metagenomic-binning-benchmark/scripts/make_combined_bar_plot.py [90m[limit=40, offset=319][0m
+> build · big-pickle
