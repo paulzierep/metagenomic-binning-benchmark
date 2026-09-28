@@ -33,6 +33,7 @@ Run inside the comebin env (only env with matplotlib):
 import argparse
 import csv
 import os
+import re
 import subprocess
 import sys
 
@@ -227,6 +228,37 @@ def make_table(ordered_runs, agg):
     return "\n".join(lines) + "\n"
 
 
+def short_label(name):
+    """Compact, readable y-axis label for a run directory name.
+
+    Long scheme is `cami3_v11_20260926_rerun · 95f5ea8 · comebin-optimizations-v11`
+    (owner: "the text on the y axis is too long"). Strip the fixed version
+    infix, the trailing date and redundant qualifiers, keep an alias table so
+    historically named runs stay recognizable:
+      cami3_v11_20260926_rerun  -> cami3 (rerun)
+      marine_v11_20260925       -> marine
+      medium_v11_20260924       -> medium
+      fix_v11_20260924          -> fix v11
+      baseline_rerun_autorestart1 -> baseline (master)
+      small_test_v4             -> small v4
+    Sweep cells keep their number + parameter hint (e.g. sweep_012_batch2048).
+    """
+    aliases = {
+        "baseline_rerun_autorestart1": "baseline (master)",
+        "cami3_v11_20260926_rerun": "cami3 (rerun)",
+        "small_test_v4": "small v4",
+        "fix_v11_20260924": "fix v11",
+        "tiny_test_n101": "tiny n101",
+    }
+    if name in aliases:
+        return aliases[name]
+    n = name
+    n = re.sub(r"_v11", "", n)
+    n = re.sub(r"_\d{8}", "", n)
+    n = n.strip("_")
+    return n.replace("_", " ")
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--datasets", nargs="+", default=DEFAULT_ORDER,
@@ -256,9 +288,11 @@ def main():
     nrow = len(wanted)
     ncol = len(CUTOFFS)
     # Issue #19: "show those below each other" — one row per dataset (all four
-    # stacked vertically), columns = contamination cutoffs.
+    # stacked vertically), columns = contamination cutoffs. Y labels must stay
+    # short ("text on the y axis is too long"): compact run name on line 1,
+    # short commit on line 2, generous left margin.
     fig, axs = plt.subplots(nrow, ncol,
-                            figsize=(6.4 * ncol, 4.6 * nrow),
+                            figsize=(7.4 * ncol, 4.6 * nrow),
                             squeeze=False)
 
     for row_i, key in enumerate(wanted):
@@ -273,7 +307,7 @@ def main():
                         fontsize=13, color="#666666")
                 ax.set_yticks([])
                 continue
-            names = [f"{r['name']} · {r['commit7']} · {r['branch']}"
+            names = [f"{short_label(r['name'])}\n{r['commit7']}"
                      for r in runs]
             y = np.arange(len(runs))
             left = np.zeros(len(runs))
@@ -288,9 +322,18 @@ def main():
                         fontsize=13)
             ax.set_xlim(0, max(left.max(), 1) * 1.25)
             ax.set_yticks(y)
-            ax.set_yticklabels(names, fontsize=11)
+            ax.set_yticklabels(names, fontsize=10, linespacing=1.4)
             ax.set_xlabel("#MAGs", fontsize=13)
             ax.tick_params(axis="x", labelsize=12)
+
+    # Reserve enough left margin for the two-line y labels (longest run name
+    # among all subplots), so they are never clipped by tight_layout.
+    longest = 0
+    for key in wanted:
+        for r in found[key]:
+            longest = max(longest, len(short_label(r["name"])),
+                          len(r["commit7"]))
+    left_margin = min(0.30, 0.06 + longest * 0.012)
 
     # Legend: prefer the top-right subplot; fall back to the first subplot
     # that has data (top-right may be an unevaluated dataset).
@@ -311,7 +354,7 @@ def main():
     fig.suptitle("COMEBin benchmark — bins per completeness threshold "
                  "(CheckM2), by run and COMEBin version",
                  fontsize=16, y=1.0)
-    fig.tight_layout(rect=(0, 0, 1, 0.97))
+    fig.tight_layout(rect=(left_margin, 0, 1, 0.97))
     os.makedirs(os.path.dirname(args.png), exist_ok=True)
     fig.savefig(args.png, dpi=300, bbox_inches="tight")
     # Deterministic SVG: a fixed hashsalt plus a pinned metadata date keeps the

@@ -658,6 +658,24 @@ included; fixes land on branch `comebin-optimizations` in this repo.
   (created by an `env -i` harness smoke test) was removed — not a real run
   (`fix_v11_20260924` untouched).
 
+### 2026-09-28 Owner feedback round (13:07–13:12Z): #24 + #19 actioned
+
+- **#24**: owner "cool, remove the a,b,c keep the heading though" → removed the
+  `a.`–`f.` letter prefixes from the six README section headings, kept the
+  heading text (`## Agent tag`, `## What this project is`, `## Progress`,
+  `## Benchmark plots`, `## All runs`, `## Important links`). No scripts
+  reference the lettered headings or their anchors; heartbeat commit `e5e77831`
+  carried the README change. Delivery comment posted.
+- **#19**: owner "make the plot a bit nicer and readable, the text on the y
+  axis is too long" → `make_combined_bar_plot.py` now builds compact two-line
+  y ticks via `short_label()` (alias table for the old verbose names, strips
+  `_v11` + `_YYYYMMDD` suffixes; commit short-hash on line 2 instead of the
+  `name · commit · branch` triple), widens the figure (7.4×ncol) and reserves a
+  computed left margin (longest label → `left_margin`, capped 0.30) so labels
+  are never clipped. Regenerated PNG + SVG + `results/main_runs_table.md`;
+  bin copy synced so the next eval auto-regeneration uses it. Delivery comment
+  posted.
+
 ## Watchdog / restart
 
 `scripts/agent-watchdog.sh` (installed at `/vol/data/benchmark/bin/`, cron `*/5 * * * *`):
