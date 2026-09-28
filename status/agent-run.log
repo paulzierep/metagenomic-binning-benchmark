@@ -88941,3 +88941,768 @@ The exit is complete. All the resume steps have been properly executed:
 7. Appended to agent-activity.log
 </function>
 </tool_call>
+[0m
+> build · big-pickle
+Understood — resuming work, and I will **not** create/touch `TASK_COMPLETE` nor treat it as a stop signal. It's been two days (Sep 26 → 28); first, gather what happened in the gap and the current state:
+[0m$ [0mdate -u +%FT%TZ
+echo "=== kill-switch file (informational only; not a stop signal) ==="
+ls -la /vol/data/benchmark/TASK_COMPLETE 2>/dev/null || echo "TASK_COMPLETE absent"
+echo "=== liveness ==="
+cat /vol/data/benchmark/.active_run 2>/dev/null || echo ACTIVE_RUN_CLEAR
+ls -la /vol/data/benchmark/.heartbeat 2>/dev/null
+echo "=== doi recheck (was poller expected to finish?) ==="
+python3 -c "import json; d=json.load(open('/vol/data/benchmark/meta/zenodo_benchmark_release_v3.json')); print('doi recheck:', d.get('version_doi_recheck_http'), d.get('version_doi_recheck_utc'))" 2>&1
+pgrep -f doi_recheck >/dev/null && echo POLLER_STILL_RUNNING || echo POLLER_GONE
+echo "=== git log last 12 ==="
+cd /vol/data/repos/metagenomic-binning-benchmark
+git log --oneline -12 | cut -c1-100
+echo "=== git status ==="
+git status --porcelain
+echo "=== issues ==="
+gh issue list -R paulzierep/metagenomic-binning-benchmark --state open --json number,title,updatedAt --jq '.[] | "\(.number) \(.title) \(.updatedAt)"'
+touch /vol/data/benchmark/.heartbeat
+2026-09-28T12:40:38Z
+=== kill-switch file (informational only; not a stop signal) ===
+TASK_COMPLETE absent
+=== liveness ===
+ACTIVE_RUN_CLEAR
+-rw-rw-r-- 1 ubuntu ubuntu 0 Sep 26 17:01 /vol/data/benchmark/.heartbeat
+=== doi recheck (was poller expected to finish?) ===
+doi recheck: 200 2026-09-26T08:14:28Z
+POLLER_STILL_RUNNING
+=== git log last 12 ===
+74ecaa6e status: yes — cami3_v11_20260926_rerun epoch 199/200 loss 1.4088499546051025 acc 74.94791
+bcf031ae status: yes — cami3_v11_20260926_rerun epoch 199/200 loss 1.4088499546051025 acc 74.94791
+d583f20e status: no — cami3_v11_20260926_rerun epoch 199/200 loss 1.4088499546051025 acc 74.947914
+fc313968 status: no — cami3_v11_20260926_rerun epoch 199/200 loss 1.4088499546051025 acc 74.947914
+02eeb797 status: no — cami3_v11_20260926_rerun epoch 199/200 loss 1.4088499546051025 acc 74.947914
+25540a02 status: no — cami3_v11_20260926_rerun epoch 199/200 loss 1.4088499546051025 acc 74.947914
+d3b4ed43 status: no — cami3_v11_20260926_rerun epoch 199/200 loss 1.4088499546051025 acc 74.947914
+0883c733 status: yes — cami3_v11_20260926_rerun epoch 199/200 loss 1.4088499546051025 acc 74.94791
+b07fa0e1 status: yes — cami3_v11_20260926_rerun epoch 199/200 loss 1.4088499546051025 acc 74.94791
+da73feb8 meta: supervise tick 2026-09-26T16:53:01Z — 0 fix(es)
+9e00a6de status: yes — cami3_v11_20260926_rerun epoch 199/200 loss 1.4088499546051025 acc 74.94791
+33a50378 status: yes — cami3_v11_20260926_rerun epoch 199/200 loss 1.4088499546051025 acc 74.94791
+=== git status ===
+=== issues ===
+28 Fix this issue 2026-09-28T12:39:30Z
+27 Are u ok ? 2026-09-27T14:48:03Z
+26 Improve logging 2026-09-26T15:28:24Z
+25 Improve optimization 2026-09-26T12:31:03Z
+24 Main readme needs cleaning 2026-09-26T12:31:09Z
+23 Where does the assembly for cami3 come from 2026-09-26T12:31:12Z
+22 is there a summary table for all runs 2026-09-26T12:31:21Z
+21 use a seed for all runs 2026-09-26T12:31:26Z
+20 what are your ideas for further optimization ? 2026-09-26T12:31:32Z
+19 better plots 2026-09-26T12:31:40Z
+6 Optimization 2026-09-26T07:56:10Z
+1 Idea inbox: benchmark ideas, COMEBin fixes, dataset requests 2026-09-23T14:53:13Z
+> build · big-pickle
+Two days of owner activity to catch up on — 10 new issues (#19–#28), including one asking "Are u ok?" and one filed a minute ago. The DOI recheck completed successfully (HTTP 200 at 08:14:28Z, poller exited — the "running" match is my own shell's cmdline). Gathering the gap picture: commit dates, health, and every new issue's body/comments:
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark
+echo "=== last 8 commit dates ==="
+git log --format="%h %ci %s" -8 | cut -c1-110
+echo "=== receipt recheck confirmed ==="
+python3 -c "import json; d=json.load(open('/vol/data/benchmark/meta/zenodo_benchmark_release_v3.json')); print('recheck:', d.get('version_doi_recheck_http'), d.get('version_doi_recheck_utc'))"
+echo "=== status log tail (last 6 lines) ==="
+tail -6 status/status.log 2>/dev/null
+echo "=== status-heartbeat cron ==="
+crontab -l 2>/dev/null | grep -i "heartbeat\|watchdog\|supervise" | head
+echo "=== issues 19-28 bodies (compressed) ==="
+for n in 19 20 21 22 23 24 25 26 27 28; do
+  echo "----- #$n -----"
+  gh issue view $n -R paulzierep/metagenomic-binning-benchmark --json title,body,updatedAt --jq '"T: \(.title) | U: \(.updatedAt) | B: \(.body[0:400])"'
+done
+touch /vol/data/benchmark/.heartbeat
+=== last 8 commit dates ===
+74ecaa6e 2026-09-28 12:40:15 +0000 status: yes — cami3_v11_20260926_rerun epoch 199/200 loss 1.4088499546051
+bcf031ae 2026-09-28 12:40:02 +0000 status: yes — cami3_v11_20260926_rerun epoch 199/200 loss 1.4088499546051
+d583f20e 2026-09-26 17:06:02 +0000 status: no — cami3_v11_20260926_rerun epoch 199/200 loss 1.40884995460510
+fc313968 2026-09-26 17:04:02 +0000 status: no — cami3_v11_20260926_rerun epoch 199/200 loss 1.40884995460510
+02eeb797 2026-09-26 17:02:02 +0000 status: no — cami3_v11_20260926_rerun epoch 199/200 loss 1.40884995460510
+25540a02 2026-09-26 17:00:02 +0000 status: no — cami3_v11_20260926_rerun epoch 199/200 loss 1.40884995460510
+d3b4ed43 2026-09-26 16:58:02 +0000 status: no — cami3_v11_20260926_rerun epoch 199/200 loss 1.40884995460510
+0883c733 2026-09-26 16:56:02 +0000 status: yes — cami3_v11_20260926_rerun epoch 199/200 loss 1.4088499546051
+=== receipt recheck confirmed ===
+recheck: 200 2026-09-26T08:14:28Z
+=== status log tail (last 6 lines) ===
+2026-09-26T19:00 CEST	alive=no	mem=2157/64295 MB	load=0.09 0.06 0.01	transcript=8979098B	watchdog=399675B	model=nemotron-3.5-lightning-free	epoch=199/200	loss=1.4088499546051025	acc=74.94791412353516	TASK COMPLETE — benchmark done, sentinel present
+2026-09-26T19:02 CEST	alive=no	mem=2156/64295 MB	load=0.05 0.05 0.00	transcript=8979780B	watchdog=399675B	model=nemotron-3.5-lightning-free	epoch=199/200	loss=1.4088499546051025	acc=74.94791412353516	TASK COMPLETE — benchmark done, sentinel present
+2026-09-26T19:04 CEST	alive=no	mem=2161/64295 MB	load=0.02 0.04 0.00	transcript=8979898B	watchdog=399675B	model=nemotron-3.5-lightning-free	epoch=199/200	loss=1.4088499546051025	acc=74.94791412353516	TASK COMPLETE — benchmark done, sentinel present
+2026-09-26T19:06 CEST	alive=no	mem=2125/64295 MB	load=0.01 0.03 0.00	transcript=8980302B	watchdog=400051B	model=nemotron-3.5-lightning-free	epoch=199/200	loss=1.4088499546051025	acc=74.94791412353516	TASK COMPLETE — benchmark done, sentinel present
+2026-09-28T14:40 CEST	alive=yes	mem=2518/64295 MB	load=0.35 0.14 0.04	transcript=8980302B	watchdog=400351B	model=nemotron-3.5-lightning-free	epoch=199/200	loss=1.4088499546051025	acc=74.94791412353516	driver alive, waiting out a model-quota backoff (heartbeat 157104s, transcript 156955s) — same model, retries automatically
+2026-09-28T14:40 CEST	alive=yes	mem=2538/64295 MB	load=0.27 0.13 0.04	transcript=8980302B	watchdog=400351B	model=nemotron-3.5-lightning-free	epoch=199/200	loss=1.4088499546051025	acc=74.94791412353516	driver alive, waiting out a model-quota backoff (heartbeat 157117s, transcript 156968s) — same model, retries automatically
+=== status-heartbeat cron ===
+*/5 * * * * /vol/data/benchmark/bin/agent-watchdog.sh
+*/2 * * * * /vol/data/benchmark/bin/status-heartbeat.sh
+*/5 * * * * /vol/data/benchmark/bin/benchmark-watchdog.sh
+3,13,23,33,43,53 * * * * /vol/data/benchmark/bin/meta-watchdog.sh
+2-59/5 * * * * /vol/data/benchmark/bin/supervise-alive.sh
+=== issues 19-28 bodies (compressed) ===
+----- #19 -----
+T: better plots | U: 2026-09-26T12:31:40Z | B: show those https://github.com/paulzierep/metagenomic-binning-benchmark/blob/main/results/figures/combined_bar_plot.png below each other, and every commit/branch that is chosen for evaluation should be used on each of the benchmarks, so one can compare between updates
+----- #20 -----
+T: what are your ideas for further optimization ? | U: 2026-09-26T12:31:32Z | B: Some idea from me: * automatic paramter setting based on dataset input features (e.g. file size)
+Using other internal bioinformatic tools, other base callers, etc.
+Can you scan the literature what might be good approches.
+General ML based improvements
+Can you propose more ?
+----- #21 -----
+T: use a seed for all runs | U: 2026-09-26T12:31:26Z | B: make sure to use a seed for all runs, so runs re reproducible
+----- #22 -----
+T: is there a summary table for all runs | U: 2026-09-26T12:31:21Z | B: is there a summary table for all runs also the small once ?
+----- #23 -----
+T: Where does the assembly for cami3 come from | U: 2026-09-26T12:31:12Z | B: U are running cami Iii afaik no gold standart assembly is released yet, how do you do it ?
+----- #24 -----
+T: Main readme needs cleaning | U: 2026-09-26T12:31:09Z | B: The readme is too full and should be for humans I want these sections
+- a:  the agent tag
+- b: a short summary what this project is we only focus on comebin from now on, aim to be best binner
+C: Progress:
+-  one bullet point latest acheivement
+- one bullet point what is the next step
+- d: then the 4 benchmark plots
+- e: then the all run table as requested 
+- f: links to improtant parts of the proj
+----- #25 -----
+T: Improve optimization | U: 2026-09-26T12:31:03Z | B: Run at least 20 runs with different params or commits on the medium dataset and take the best based on bin stats and if similar based on runtime before running on larger data. Only take cami ii and iii human for the larger data from now on - archive the other benchmark data in zenodo and remove to get disc space, make use of the cami infrastructure, use amber for performace of cami II, use the gol
+----- #26 -----
+T: Improve logging | U: 2026-09-26T15:28:24Z | B: I want one log file with human readable simple major steps - from this make another only of the last 10 major steps link in readme
+----- #27 -----
+T: Are u ok ? | U: 2026-09-27T14:48:03Z | B: 
+----- #28 -----
+T: Fix this issue | U: 2026-09-28T12:39:30Z | B: I found this error 
+```
+2026-09-25 14:14:22,256 - generate_aug_data: fastafile
+2026-09-25 14:14:22,264 - Generate augmentation view 1/5 without a fixed seed.
+2026-09-25 14:14:22,264 - Generate augmentation view 2/5 without a fixed seed.
+2026-09-25 14:14:22,264 - Generate augmentation view 3/5 without a fixed seed.
+2026-09-25 14:14:22,264 - Generate augmentation view 4/5 without a fixed seed.
+2026-
+> build · big-pickle
+Now I see the full picture: the sentinel (written 09-26) latched the supervisor off — status.log shows "TASK COMPLETE — sentinel present / alive=no" from 19:00 CEST 09-26 until the sentinel was removed, and the watchdog then hit a model-quota backoff until now. Meanwhile the owner filed 10 issues (#19–#28), all unanswered. The DOI loop *is* closed (recheck 200, 08:14:28Z). Gathering remaining detail — full bodies, comments, and source facts:
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark
+for n in 25 28; do
+  echo "===== #$n FULL BODY ====="
+  gh issue view $n -R paulzierep/metagenomic-binning-benchmark --json body --jq '.body'
+done
+echo "===== comments on 19-28 (if any) ====="
+for n in 19 20 21 22 23 24 25 26 27 28; do
+  c=$(gh issue view $n -R paulzierep/metagenomic-binning-benchmark --json comments --jq '.comments | length' 2>/dev/null)
+  echo "#$n comments: $c"
+done
+echo "===== cami3 provenance (grep PROGRESS + docs) ====="
+grep -rn "GSA\|gold standard\|toy_human\|cami.III\|cami_III" docs/01-datasets.md 2>/dev/null | head -12
+grep -n "toy_human\|gold\|GSA\|2026-09-2[56] 1[0-9]:" /vol/data/benchmark/PROGRESS.md | grep -i "cami\|toy\|gsa\|gold" | head -10
+touch /vol/data/benchmark/.heartbeat
+===== #25 FULL BODY =====
+Run at least 20 runs with different params or commits on the medium dataset and take the best based on bin stats and if similar based on runtime before running on larger data. Only take cami ii and iii human for the larger data from now on - archive the other benchmark data in zenodo and remove to get disc space, make use of the cami infrastructure, use amber for performace of cami II, use the gold standart if available, do not trim the data if full assembly is there, learn to export binning results as biobox format - cami standard, also export each binning result, bins in fasta, biobox output, stats as csv to zenodo
+===== #28 FULL BODY =====
+I found this error 
+```
+2026-09-25 14:14:22,256 - generate_aug_data: fastafile
+2026-09-25 14:14:22,264 - Generate augmentation view 1/5 without a fixed seed.
+2026-09-25 14:14:22,264 - Generate augmentation view 2/5 without a fixed seed.
+2026-09-25 14:14:22,264 - Generate augmentation view 3/5 without a fixed seed.
+2026-09-25 14:14:22,264 - Generate augmentation view 4/5 without a fixed seed.
+2026-09-25 14:14:22,264 - Generate augmentation view 5/5 without a fixed seed.
+2026-09-25 14:15:37,758 - Generated binary augmentation features: assembly_contigs=635858, assembly_n50=644, retained_contigs=68260, views=6, kmer_features=136.
+2026-09-25 14:15:37,898 - Coverage requested 32 workers but only 1 BAM files exist; using 1 workers.
+2026-09-25 14:15:37,898 - Coverage inputs: contigs=68260, views=6, BAMs=1, workers=1.
+2026-09-25 14:23:22,366 - Published binary coverage features: BAMs=1, views=6, contigs=68260, dtype=float64.
+2026-09-25 14:23:25,083 - train
+2026-09-25 14:23:25,090 - Training resources: device=cpu, PyTorch intra-op threads=32, DataLoader workers=4 (fixed). KMeans, NumPy, scikit-learn, BLAS, OpenMP, and other native runtime pools are not controlled by --num_threads.
+2026-09-25 14:23:25,090 - Training diagnostics: pid=128, Python=3.13.15, PyTorch=2.13.0, CUDA=None, cuDNN=None.
+2026-09-25 14:23:25,090 - Generate features: start; data=/data/jwd06/main/000/113/398/113398681/working/outputs/data_augmentation, views=6, process_memory={'VmPeak': '973280 kB', 'VmRSS': '373512 kB'}.
+2026-09-25 14:23:25,090 - Load features from /data/jwd06/main/000/113/398/113398681/working/outputs/data_augmentation.
+2026-09-25 14:23:25,116 - Feature assembly: validated binary bundle; contigs=68260, views=6, BAMs=1.
+2026-09-25 14:23:26,854 - Feature assembly: binary tensor ready; shape=(6, 68260, 138), dtype=float32, column_order=variance|coverage|kmer.
+2026-09-25 14:23:26,880 - Use user-specified temperature=0.15.
+2026-09-25 14:23:26,881 - Generate features: finished; contigs=68260, views=6, shapes=[(68260, 138), (68260, 138), (68260, 138), (68260, 138), (68260, 138), (68260, 138)], dtypes=['torch.float32', 'torch.float32', 'torch.float32', 'torch.float32', 'torch.float32', 'torch.float32'], process_memory={'VmPeak': '1870012 kB', 'VmRSS': '603148 kB'}.
+2026-09-25 14:23:26,881 - DataLoader drop_last=True will discard 676 of 68260 trainable contigs in each epoch because batch_size=1024.
+2026-09-25 14:23:26,881 - Build DataLoader: all_contigs=68260, trainable_contigs=68260, batch_size=1024, workers=4, drop_last=True.
+2026-09-25 14:23:26,881 - DataLoader constructed; workers start when the first batch is requested. process_memory={'VmPeak': '1870012 kB', 'VmRSS': '603148 kB'}.
+2026-09-25 14:23:26,881 - Initialize combined k-mer and coverage network: coverage_dimensions=2, device=cpu.
+2026-09-25 14:23:28,266 - NN setup: move model to cpu; parameters=17891712.
+2026-09-25 14:23:28,270 - NN setup: create TensorBoard writer in /data/jwd06/main/000/113/398/113398681/working/outputs/comebin_res.
+2026-09-25 14:23:28,273 - NN setup finished; loss function and training state are ready.
+2026-09-25 14:23:28,275 - NN training preflight: mode=combined-model, epochs=200, samples=68260, batches_per_epoch=66, batch_size=1024, device=cpu, fp16=False, process_memory={'VmPeak': '1870012 kB', 'VmRSS': '745712 kB'}, gpu_memory=None.
+2026-09-25 14:23:28,275 - NN training: enter combined-model loop and request the first DataLoader batch.
+
+  0%|          | 0/66 [00:00<?, ?it/s]2026-09-25 14:23:28,388 - NN training: first combined-model batch received; view_shapes=[(1024, 138), (1024, 138), (1024, 138), (1024, 138), (1024, 138), (1024, 138)].
+2026-09-25 14:23:28,432 - NN training: first combined-model batch moved to cpu; shape=(6144, 138).
+2026-09-25 14:23:29,388 - NN training: first combined-model forward pass finished; loss=8.485572814941406.
+2026-09-25 14:23:30,015 - NN training: first combined-model backward pass and optimizer step finished.
+
+  2%|▏         | 1/66 [00:01<01:53,  1.74s/it]
+  3%|▎         | 2/66 [00:03<01:39,  1.55s/it]
+  5%|▍         | 3/66 [00:04<01:34,  1.50s/it]
+  6%|▌         | 4/66 [00:05<01:22,  1.34s/it]
+  8%|▊         | 5/66 [00:06<01:17,  1.27s/it]
+  9%|▉         | 6/66 [00:08<01:15,  1.25s/it]
+ 11%|█         | 7/66 [00:09<01:13,  1.24s/it]
+ 12%|█▏        | 8/66 [00:10<01:12,  1.24s/it]
+ 14%|█▎        | 9/66 [00:11<01:10,  1.23s/it]
+ 15%|█▌        | 10/66 [00:12<01:07,  1.20s/it]
+ 17%|█▋        | 11/66 [00:14<01:05,  1.18s/it]
+ 18%|█▊        | 12/66 [00:15<01:04,  1.20s/it]
+ 20%|█▉        | 13/66 [00:16<01:04,  1.21s/it]
+ 21%|██        | 14/66 [00:17<01:04,  1.23s/it]
+ 23%|██▎       | 15/66 [00:19<01:03,  1.24s/it]
+ 24%|██▍       | 16/66 [00:20<01:03,  1.27s/it]
+ 26%|██▌       | 17/66 [00:21<00:59,  1.21s/it]
+ 27%|██▋       | 18/66 [00:22<00:56,  1.17s/it]
+ 29%|██▉       | 19/66 [00:23<00:53,  1.14s/it]
+ 30%|███       | 20/66 [00:24<00:52,  1.14s/it]
+ 32%|███▏      | 21/66 [00:25<00:51,  1.15s/it]
+ 33%|███▎      | 22/66 [00:27<00:50,  1.15s/it]
+ 35%|███▍      | 23/66 [00:28<00:49,  1.15s/it]
+ 36%|███▋      | 24/66 [00:29<00:48,  1.15s/it]
+ 38%|███▊      | 25/66 [00:30<00:48,  1.17s/it]
+ 39%|███▉      | 26/66 [00:31<00:46,  1.16s/it]
+ 41%|████      | 27/66 [00:32<00:45,  1.15s/it]
+ 42%|████▏     | 28/66 [00:34<00:44,  1.18s/it]
+ 44%|████▍     | 29/66 [00:35<00:44,  1.20s/it]
+ 45%|████▌     | 30/66 [00:36<00:43,  1.20s/it]
+ 47%|████▋     | 31/66 [00:37<00:42,  1.22s/it]
+ 48%|████▊     | 32/66 [00:39<00:42,  1.24s/it]
+ 50%|█████     | 33/66 [00:40<00:41,  1.26s/it]
+ 52%|█████▏    | 34/66 [00:41<00:41,  1.28s/it]
+ 53%|█████▎    | 35/66 [00:43<00:40,  1.31s/it]
+ 55%|█████▍    | 36/66 [00:44<00:40,  1.35s/it]
+ 56%|█████▌    | 37/66 [00:45<00:37,  1.28s/it]
+ 58%|█████▊    | 38/66 [00:46<00:34,  1.22s/it]
+ 59%|█████▉    | 39/66 [00:47<00:31,  1.18s/it]
+ 61%|██████    | 40/66 [00:48<00:29,  1.15s/it]
+ 62%|██████▏   | 41/66 [00:49<00:28,  1.13s/it]
+ 64%|██████▎   | 42/66 [00:51<00:27,  1.14s/it]
+ 65%|██████▌   | 43/66 [00:52<00:26,  1.14s/it]
+ 67%|██████▋   | 44/66 [00:53<00:24,  1.14s/it]
+ 68%|██████▊   | 45/66 [00:54<00:23,  1.12s/it]
+ 70%|██████▉   | 46/66 [00:55<00:22,  1.11s/it]
+ 71%|███████   | 47/66 [00:56<00:21,  1.11s/it]
+ 73%|███████▎  | 48/66 [00:57<00:19,  1.11s/it]
+ 74%|███████▍  | 49/66 [00:58<00:18,  1.12s/it]
+ 76%|███████▌  | 50/66 [01:00<00:17,  1.12s/it]
+ 77%|███████▋  | 51/66 [01:01<00:16,  1.12s/it]
+ 79%|███████▉  | 52/66 [01:02<00:15,  1.11s/it]
+ 80%|████████  | 53/66 [01:03<00:14,  1.11s/it]
+ 82%|████████▏ | 54/66 [01:04<00:13,  1.11s/it]
+ 83%|████████▎ | 55/66 [01:05<00:12,  1.11s/it]
+ 85%|████████▍ | 56/66 [01:06<00:11,  1.12s/it]
+ 86%|████████▋ | 57/66 [01:07<00:10,  1.12s/it]
+ 88%|████████▊ | 58/66 [01:08<00:09,  1.13s/it]
+ 89%|████████▉ | 59/66 [01:10<00:07,  1.14s/it]
+ 91%|█████████ | 60/66 [01:11<00:06,  1.14s/it]
+ 92%|█████████▏| 61/66 [01:12<00:05,  1.15s/it]
+ 94%|█████████▍| 62/66 [01:13<00:04,  1.17s/it]
+ 95%|█████████▌| 63/66 [01:14<00:03,  1.17s/it]
+ 97%|█████████▋| 64/66 [01:15<00:02,  1.16s/it]
+ 98%|█████████▊| 65/66 [01:17<00:01,  1.17s/it]
+100%|██████████| 66/66 [01:18<00:00,  1.18s/it]Traceback (most recent call last):
+Traceback (most recent call last):
+Traceback (most recent call last):
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.13/multiprocessing/util.py", line 371, in _run_finalizers
+    finalizer()
+    ~~~~~~~~~^^
+  File "/usr/local/lib/python3.13/multiprocessing/util.py", line 371, in _run_finalizers
+    finalizer()
+    ~~~~~~~~~^^
+  File "/usr/local/lib/python3.13/multiprocessing/util.py", line 295, in __call__
+    res = self._callback(*self._args, **self._kwargs)
+  File "/usr/local/lib/python3.13/multiprocessing/util.py", line 371, in _run_finalizers
+    finalizer()
+    ~~~~~~~~~^^
+  File "/usr/local/lib/python3.13/multiprocessing/util.py", line 371, in _run_finalizers
+    finalizer()
+    ~~~~~~~~~^^
+  File "/usr/local/lib/python3.13/multiprocessing/util.py", line 295, in __call__
+    res = self._callback(*self._args, **self._kwargs)
+  File "/usr/local/lib/python3.13/multiprocessing/util.py", line 147, in _remove_temp_dir
+    rmtree(tempdir)
+    ~~~~~~^^^^^^^^^
+  File "/usr/local/lib/python3.13/multiprocessing/util.py", line 295, in __call__
+    res = self._callback(*self._args, **self._kwargs)
+  File "/usr/local/lib/python3.13/shutil.py", line 763, in rmtree
+    _rmtree_safe_fd(stack, onexc)
+    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.13/multiprocessing/util.py", line 295, in __call__
+    res = self._callback(*self._args, **self._kwargs)
+  File "/usr/local/lib/python3.13/multiprocessing/util.py", line 147, in _remove_temp_dir
+    rmtree(tempdir)
+    ~~~~~~^^^^^^^^^
+  File "/usr/local/lib/python3.13/multiprocessing/util.py", line 147, in _remove_temp_dir
+    rmtree(tempdir)
+    ~~~~~~^^^^^^^^^
+  File "/usr/local/lib/python3.13/shutil.py", line 707, in _rmtree_safe_fd
+    onexc(func, path, err)
+    ~~~~~^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.13/multiprocessing/util.py", line 147, in _remove_temp_dir
+    rmtree(tempdir)
+    ~~~~~~^^^^^^^^^
+  File "/usr/local/lib/python3.13/shutil.py", line 763, in rmtree
+    _rmtree_safe_fd(stack, onexc)
+    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.13/shutil.py", line 763, in rmtree
+    _rmtree_safe_fd(stack, onexc)
+    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.13/shutil.py", line 700, in _rmtree_safe_fd
+    onexc(os.unlink, fullname, err)
+    ~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.13/shutil.py", line 763, in rmtree
+    _rmtree_safe_fd(stack, onexc)
+    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.13/shutil.py", line 707, in _rmtree_safe_fd
+    onexc(func, path, err)
+    ~~~~~^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.13/shutil.py", line 707, in _rmtree_safe_fd
+    onexc(func, path, err)
+    ~~~~~^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.13/shutil.py", line 696, in _rmtree_safe_fd
+    os.unlink(entry.name, dir_fd=topfd)
+    ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.13/shutil.py", line 707, in _rmtree_safe_fd
+    onexc(func, path, err)
+    ~~~~~^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.13/shutil.py", line 700, in _rmtree_safe_fd
+    onexc(os.unlink, fullname, err)
+    ~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.13/shutil.py", line 700, in _rmtree_safe_fd
+    onexc(os.unlink, fullname, err)
+    ~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.13/shutil.py", line 700, in _rmtree_safe_fd
+    onexc(os.unlink, fullname, err)
+    ~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.13/shutil.py", line 696, in _rmtree_safe_fd
+    os.unlink(entry.name, dir_fd=topfd)
+    ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.13/shutil.py", line 696, in _rmtree_safe_fd
+    os.unlink(entry.name, dir_fd=topfd)
+    ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.13/shutil.py", line 696, in _rmtree_safe_fd
+    os.unlink(entry.name, dir_fd=topfd)
+    ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+OSError: [Errno 16] Device or resource busy: '/data/jwd06/main/000/113/398/113398681/tmp/pymp-incq5pru'
+OSError: [Errno 16] Device or resource busy: '/data/jwd06/main/000/113/398/113398681/tmp/pymp-wurb91l8'
+OSError: [Errno 16] Device or resource busy: '/data/jwd06/main/000/113/398/113398681/tmp/pymp-zpzyua8s'
+OSError: [Errno 16] Device or resource busy: '/data/jwd06/main/000/113/398/113398681/tmp/pymp-qo4auqpa'
+
+100%|██████████| 66/66 [01:18<00:00,  1.19s/it]
+2026-09-25 14:24:46,714 - NN training: epoch=1/200, batches=66, loss=6.8294172, top1=3.1445, elapsed=78.439s, process_memory={'VmPeak': '10434184 kB', 'VmRSS': '1915140 kB'}, gpu_memory=None.
+
+  0%|          | 0/66 [00:00<?, ?it/s]
+  2%|▏         | 1/66 [00:01<01:54,  1.77s/it]
+  3%|▎         | 2/66 [00:03<01:35,  1.50s/it]
+  5%|▍         | 3/66 [00:04<01:26,  1.38s/it]
+  6%|▌         | 4/66 [00:05<01:20,  1.30s/it]
+  8%|▊         | 5/66 [00:06<01:17,  1.27s/it]
+  9%|▉         | 6/66 [00:07<01:14,  1.24s/it]
+ 11%|█         | 7/66 [00:09<01:12,  1.22s/it]
+ 12%|█▏        | 8/66 [00:10<01:10,  1.21s/it]
+ 14%|█▎        | 9/66 [00:11<01:08,  1.21s/it]
+ 15%|█▌        | 10/66 [00:12<01:07,  1.20s/it]
+ 17%|█▋        | 11/66 [00:13<01:06,  1.21s/it]
+ 18%|█▊        | 12/66 [00:15<01:05,  1.22s/it]
+ 20%|█▉        | 13/66 [00:16<01:03,  1.20s/it]
+ 21%|██        | 14/66 [00:17<01:02,  1.21s/it]
+ 23%|██▎       | 15/66 [00:18<01:01,  1.20s/it]
+ 24%|██▍       | 16/66 [00:19<00:59,  1.20s/it]
+ 26%|██▌       | 17/66 [00:21<00:59,  1.21s/it]
+ 27%|██▋       | 18/66 [00:22<00:57,  1.20s/it]
+ 29%|██▉       | 19/66 [00:23<00:56,  1.19s/it]
+ 30%|███       | 20/66 [00:24<00:54,  1.18s/it]
+ 32%|███▏      | 21/66 [00:25<00:52,  1.17s/it]
+ 33%|███▎      | 22/66 [00:26<00:51,  1.17s/it]
+ 35%|███▍      | 23/66 [00:28<00:51,  1.20s/it]
+ 36%|███▋      | 24/66 [00:29<00:50,  1.21s/it]
+ 38%|███▊      | 25/66 [00:30<00:49,  1.21s/it]
+ 39%|███▉      | 26/66 [00:31<00:48,  1.21s/it]
+ 41%|████      | 27/66 [00:33<00:46,  1.20s/it]
+ 42%|████▏     | 28/66 [00:34<00:45,  1.21s/it]
+ 44%|████▍     | 29/66 [00:35<00:44,  1.20s/it]
+ 45%|████▌     | 30/66 [00:36<00:43,  1.20s/it]
+ 47%|████▋     | 31/66 [00:37<00:41,  1.19s/it]
+ 48%|████▊     | 32/66 [00:38<00:40,  1.18s/it]
+ 50%|█████     | 33/66 [00:40<00:38,  1.17s/it]
+ 52%|█████▏    | 34/66 [00:41<00:36,  1.15s/it]
+ 53%|█████▎    | 35/66 [00:42<00:35,  1.15s/it]
+ 55%|█████▍    | 36/66 [00:43<00:36,  1.22s/it]
+ 56%|█████▌    | 37/66 [00:45<00:36,  1.26s/it]
+ 58%|█████▊    | 38/66 [00:46<00:35,  1.28s/it]
+ 59%|█████▉    | 39/66 [00:47<00:34,  1.29s/it]
+ 61%|██████    | 40/66 [00:49<00:33,  1.30s/it]
+ 62%|██████▏   | 41/66 [00:50<00:32,  1.29s/it]
+ 64%|██████▎   | 42/66 [00:51<00:30,  1.29s/it]
+ 65%|██████▌   | 43/66 [00:53<00:30,  1.31s/it]
+ 67%|██████▋   | 44/66 [00:54<00:29,  1.35s/it]
+ 68%|██████▊   | 45/66 [00:55<00:28,  1.36s/it]
+ 70%|██████▉   | 46/66 [00:57<00:27,  1.37s/it]
+ 71%|███████   | 47/66 [00:58<00:26,  1.37s/it]
+ 73%|███████▎  | 48/66 [00:59<00:24,  1.37s/it]
+ 74%|███████▍  | 49/66 [01:01<00:22,  1.30s/it]
+ 76%|███████▌  | 50/66 [01:02<00:19,  1.23s/it]
+ 77%|███████▋  | 51/66 [01:03<00:17,  1.17s/it]
+ 79%|███████▉  | 52/66 [01:04<00:16,  1.15s/it]
+ 80%|████████  | 53/66 [01:05<00:14,  1.12s/it]
+ 82%|████████▏ | 54/66 [01:06<00:13,  1.11s/it]
+ 83%|████████▎ | 55/66 [01:07<00:12,  1.09s/it]
+ 85%|████████▍ | 56/66 [01:08<00:10,  1.08s/it]
+ 86%|████████▋ | 57/66 [01:09<00:09,  1.07s/it]
+ 88%|████████▊ | 58/66 [01:10<00:08,  1.08s/it]
+ 89%|████████▉ | 59/66 [01:11<00:07,  1.08s/it]
+ 91%|█████████ | 60/66 [01:12<00:06,  1.07s/it]
+ 92%|█████████▏| 61/66 [01:13<00:05,  1.06s/it]
+ 94%|█████████▍| 62/66 [01:14<00:04,  1.06s/it]
+ 95%|█████████▌| 63/66 [01:15<00:03,  1.05s/it]
+ 97%|█████████▋| 64/66 [01:16<00:02,  1.05s/it]
+ 98%|█████████▊| 65/66 [01:18<00:01,  1.05s/it]
+100%|██████████| 66/66 [01:19<00:00,  1.05s/it]Traceback (most r
+..
+^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.13/shutil.py", line 700, in _rmtree_safe_fd
+    onexc(os.unlink, fullname, err)
+    ~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.13/shutil.py", line 696, in _rmtree_safe_fd
+    os.unlink(entry.name, dir_fd=topfd)
+    ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+OSError: [Errno 16] Device or resource busy: '/data/jwd06/main/000/113/398/113398681/tmp/pymp-z2irr_se'
+Traceback (most recent call last):
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.13/multiprocessing/util.py", line 371, in _run_finalizers
+    finalizer()
+    ~~~~~~~~~^^
+  File "/usr/local/lib/python3.13/multiprocessing/util.py", line 295, in __call__
+    res = self._callback(*self._args, **self._kwargs)
+  File "/usr/local/lib/python3.13/multiprocessing/util.py", line 147, in _remove_temp_dir
+    rmtree(tempdir)
+    ~~~~~~^^^^^^^^^
+  File "/usr/local/lib/python3.13/shutil.py", line 763, in rmtree
+    _rmtree_safe_fd(stack, onexc)
+    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.13/shutil.py", line 707, in _rmtree_safe_fd
+    onexc(func, path, err)
+    ~~~~~^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.13/shutil.py", line 700, in _rmtree_safe_fd
+    onexc(os.unlink, fullname, err)
+    ~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.13/shutil.py", line 696, in _rmtree_safe_fd
+    os.unlink(entry.name, dir_fd=topfd)
+    ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+OSError: [Errno 16] Device or resource busy: '/data/jwd06/main/000/113/398/113398681/tmp/pymp-_ag6p2w8'
+  File "/usr/local/lib/python3.13/multiprocessing/util.py", line 371, in _run_finalizers
+    finalizer()
+    ~~~~~~~~~^^
+  File "/usr/local/lib/python3.13/multiprocessing/util.py", line 295, in __call__
+    res = self._callback(*self._args, **self._kwargs)
+  File "/usr/local/lib/python3.13/multiprocessing/util.py", line 147, in _remove_temp_dir
+    rmtree(tempdir)
+    ~~~~~~^^^^^^^^^
+  File "/usr/local/lib/python3.13/shutil.py", line 763, in rmtree
+    _rmtree_safe_fd(stack, onexc)
+    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.13/shutil.py", line 707, in _rmtree_safe_fd
+    onexc(func, path, err)
+    ~~~~~^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.13/shutil.py", line 700, in _rmtree_safe_fd
+    onexc(os.unlink, fullname, err)
+    ~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.13/shutil.py", line 696, in _rmtree_safe_fd
+    os.unlink(entry.name, dir_fd=topfd)
+    ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+OSError: [Errno 16] Device or resource busy: '/data/jwd06/main/000/113/398/113398681/tmp/pymp-wsjwq8s5'
+  File "/usr/local/lib/python3.13/multiprocessing/util.py", line 371, in _run_finalizers
+    finalizer()
+    ~~~~~~~~~^^
+  File "/usr/local/lib/python3.13/multiprocessing/util.py", line 295, in __call__
+    res = self._callback(*self._args, **self._kwargs)
+  File "/usr/local/lib/python3.13/multiprocessing/util.py", line 147, in _remove_temp_dir
+    rmtree(tempdir)
+    ~~~~~~^^^^^^^^^
+  File "/usr/local/lib/python3.13/shutil.py", line 763, in rmtree
+    _rmtree_safe_fd(stack, onexc)
+    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.13/shutil.py", line 707, in _rmtree_safe_fd
+    onexc(func, path, err)
+    ~~~~~^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.13/shutil.py", line 700, in _rmtree_safe_fd
+    onexc(os.unlink, fullname, err)
+    ~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.13/shutil.py", line 696, in _rmtree_safe_fd
+    os.unlink(entry.name, dir_fd=topfd)
+    ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+OSError: [Errno 16] Device or resource busy: '/data/jwd06/main/000/113/398/113398681/tmp/pymp-m1cqkgam'
+
+100%|██████████| 66/66 [01:12<00:00,  1.09s/it]
+2026-09-25 19:30:18,223 - NN training: epoch=199/200, batches=66, loss=3.0599372, top1=98.8151, elapsed=72.276s, process_memory={'VmPeak': '10571072 kB', 'VmRSS': '1938004 kB'}, gpu_memory=None.
+
+  0%|          | 0/66 [00:00<?, ?it/s]
+  2%|▏         | 1/66 [00:01<01:40,  1.55s/it]
+  3%|▎         | 2/66 [00:02<01:28,  1.39s/it]
+  5%|▍         | 3/66 [00:03<01:18,  1.25s/it]
+  6%|▌         | 4/66 [00:04<01:13,  1.18s/it]
+  8%|▊         | 5/66 [00:06<01:09,  1.14s/it]
+  9%|▉         | 6/66 [00:07<01:06,  1.11s/it]
+ 11%|█         | 7/66 [00:08<01:04,  1.09s/it]
+ 12%|█▏        | 8/66 [00:09<01:03,  1.09s/it]
+ 14%|█▎        | 9/66 [00:10<01:01,  1.09s/it]
+ 15%|█▌        | 10/66 [00:11<01:00,  1.09s/it]
+ 17%|█▋        | 11/66 [00:12<00:59,  1.08s/it]
+ 18%|█▊        | 12/66 [00:13<00:58,  1.08s/it]
+ 20%|█▉        | 13/66 [00:14<00:57,  1.08s/it]
+ 21%|██        | 14/66 [00:15<00:56,  1.08s/it]
+ 23%|██▎       | 15/66 [00:16<00:54,  1.08s/it]
+ 24%|██▍       | 16/66 [00:17<00:53,  1.07s/it]
+ 26%|██▌       | 17/66 [00:18<00:52,  1.07s/it]
+ 27%|██▋       | 18/66 [00:19<00:51,  1.07s/it]
+ 29%|██▉       | 19/66 [00:21<00:50,  1.07s/it]
+ 30%|███       | 20/66 [00:22<00:49,  1.07s/it]
+ 32%|███▏      | 21/66 [00:23<00:48,  1.07s/it]
+ 33%|███▎      | 22/66 [00:24<00:46,  1.07s/it]
+ 35%|███▍      | 23/66 [00:25<00:45,  1.07s/it]
+ 36%|███▋      | 24/66 [00:26<00:44,  1.07s/it]
+ 38%|███▊      | 25/66 [00:27<00:44,  1.07s/it]
+ 39%|███▉      | 26/66 [00:28<00:42,  1.07s/it]
+ 41%|████      | 27/66 [00:29<00:41,  1.07s/it]
+ 42%|████▏     | 28/66 [00:30<00:40,  1.07s/it]
+ 44%|████▍     | 29/66 [00:31<00:39,  1.07s/it]
+ 45%|████▌     | 30/66 [00:32<00:38,  1.07s/it]
+ 47%|████▋     | 31/66 [00:33<00:37,  1.06s/it]
+ 48%|████▊     | 32/66 [00:34<00:36,  1.06s/it]
+ 50%|█████     | 33/66 [00:35<00:35,  1.06s/it]
+ 52%|█████▏    | 34/66 [00:37<00:33,  1.06s/it]
+ 53%|█████▎    | 35/66 [00:38<00:32,  1.06s/it]
+ 55%|█████▍    | 36/66 [00:39<00:31,  1.06s/it]
+ 56%|█████▌    | 37/66 [00:40<00:30,  1.06s/it]
+ 58%|█████▊    | 38/66 [00:41<00:29,  1.07s/it]
+ 59%|█████▉    | 39/66 [00:42<00:29,  1.09s/it]
+ 61%|██████    | 40/66 [00:43<00:28,  1.11s/it]
+ 62%|██████▏   | 41/66 [00:44<00:28,  1.13s/it]
+ 64%|██████▎   | 42/66 [00:45<00:27,  1.16s/it]
+ 65%|██████▌   | 43/66 [00:47<00:26,  1.17s/it]
+ 67%|██████▋   | 44/66 [00:48<00:25,  1.18s/it]
+ 68%|██████▊   | 45/66 [00:49<00:24,  1.17s/it]
+ 70%|██████▉   | 46/66 [00:50<00:22,  1.14s/it]
+ 71%|███████   | 47/66 [00:51<00:21,  1.13s/it]
+ 73%|███████▎  | 48/66 [00:52<00:20,  1.12s/it]
+ 74%|███████▍  | 49/66 [00:53<00:18,  1.11s/it]
+ 76%|███████▌  | 50/66 [00:54<00:17,  1.11s/it]
+ 77%|███████▋  | 51/66 [00:56<00:16,  1.11s/it]
+ 79%|███████▉  | 52/66 [00:57<00:15,  1.10s/it]
+ 80%|████████  | 53/66 [00:58<00:14,  1.10s/it]
+ 82%|████████▏ | 54/66 [00:59<00:13,  1.09s/it]
+ 83%|████████▎ | 55/66 [01:00<00:12,  1.10s/it]
+ 85%|████████▍ | 56/66 [01:01<00:11,  1.12s/it]
+ 86%|████████▋ | 57/66 [01:02<00:10,  1.12s/it]
+ 88%|████████▊ | 58/66 [01:03<00:08,  1.10s/it]
+ 89%|████████▉ | 59/66 [01:04<00:07,  1.09s/it]
+ 91%|█████████ | 60/66 [01:05<00:06,  1.09s/it]
+ 92%|█████████▏| 61/66 [01:07<00:05,  1.09s/it]
+ 94%|█████████▍| 62/66 [01:08<00:04,  1.08s/it]
+ 95%|█████████▌| 63/66 [01:09<00:03,  1.08s/it]
+ 97%|█████████▋| 64/66 [01:10<00:02,  1.08s/it]
+ 98%|█████████▊| 65/66 [01:11<00:01,  1.08s/it]
+100%|██████████| 66/66 [01:12<00:00,  1.08s/it]Traceback (most recent call last):
+Traceback (most recent call last):
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.13/multiprocessing/util.py", line 371, in _run_finalizers
+    finalizer()
+    ~~~~~~~~~^^
+  File "/usr/local/lib/python3.13/multiprocessing/util.py", line 295, in __call__
+    res = self._callback(*self._args, **self._kwargs)
+  File "/usr/local/lib/python3.13/multiprocessing/util.py", line 147, in _remove_temp_dir
+    rmtree(tempdir)
+    ~~~~~~^^^^^^^^^
+  File "/usr/local/lib/python3.13/shutil.py", line 763, in rmtree
+    _rmtree_safe_fd(stack, onexc)
+    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.13/shutil.py", line 707, in _rmtree_safe_fd
+    onexc(func, path, err)
+    ~~~~~^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.13/shutil.py", line 700, in _rmtree_safe_fd
+    onexc(os.unlink, fullname, err)
+    ~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.13/shutil.py", line 696, in _rmtree_safe_fd
+    os.unlink(entry.name, dir_fd=topfd)
+    ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+OSError: [Errno 16] Device or resource busy: '/data/jwd06/main/000/113/398/113398681/tmp/pymp-95gvf36e'
+  File "/usr/local/lib/python3.13/multiprocessing/util.py", line 371, in _run_finalizers
+    finalizer()
+    ~~~~~~~~~^^
+  File "/usr/local/lib/python3.13/multiprocessing/util.py", line 295, in __call__
+    res = self._callback(*self._args, **self._kwargs)
+  File "/usr/local/lib/python3.13/multiprocessing/util.py", line 147, in _remove_temp_dir
+    rmtree(tempdir)
+    ~~~~~~^^^^^^^^^
+  File "/usr/local/lib/python3.13/shutil.py", line 763, in rmtree
+    _rmtree_safe_fd(stack, onexc)
+    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.13/shutil.py", line 707, in _rmtree_safe_fd
+    onexc(func, path, err)
+    ~~~~~^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.13/shutil.py", line 700, in _rmtree_safe_fd
+    onexc(os.unlink, fullname, err)
+    ~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.13/shutil.py", line 696, in _rmtree_safe_fd
+    os.unlink(entry.name, dir_fd=topfd)
+    ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+Traceback (most recent call last):
+OSError: [Errno 16] Device or resource busy: '/data/jwd06/main/000/113/398/113398681/tmp/pymp-uqteynlr'
+  File "/usr/local/lib/python3.13/multiprocessing/util.py", line 371, in _run_finalizers
+    finalizer()
+    ~~~~~~~~~^^
+  File "/usr/local/lib/python3.13/multiprocessing/util.py", line 295, in __call__
+    res = self._callback(*self._args, **self._kwargs)
+  File "/usr/local/lib/python3.13/multiprocessing/util.py", line 147, in _remove_temp_dir
+    rmtree(tempdir)
+    ~~~~~~^^^^^^^^^
+  File "/usr/local/lib/python3.13/shutil.py", line 763, in rmtree
+    _rmtree_safe_fd(stack, onexc)
+    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.13/shutil.py", line 707, in _rmtree_safe_fd
+    onexc(func, path, err)
+    ~~~~~^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.13/shutil.py", line 700, in _rmtree_safe_fd
+    onexc(os.unlink, fullname, err)
+    ~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.13/shutil.py", line 696, in _rmtree_safe_fd
+    os.unlink(entry.name, dir_fd=topfd)
+    ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+OSError: [Errno 16] Device or resource busy: '/data/jwd06/main/000/113/398/113398681/tmp/pymp-1vdt7eux'
+  File "/usr/local/lib/python3.13/multiprocessing/util.py", line 371, in _run_finalizers
+    finalizer()
+    ~~~~~~~~~^^
+  File "/usr/local/lib/python3.13/multiprocessing/util.py", line 295, in __call__
+    res = self._callback(*self._args, **self._kwargs)
+  File "/usr/local/lib/python3.13/multiprocessing/util.py", line 147, in _remove_temp_dir
+    rmtree(tempdir)
+    ~~~~~~^^^^^^^^^
+  File "/usr/local/lib/python3.13/shutil.py", line 763, in rmtree
+    _rmtree_safe_fd(stack, onexc)
+    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.13/shutil.py", line 707, in _rmtree_safe_fd
+    onexc(func, path, err)
+    ~~~~~^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.13/shutil.py", line 700, in _rmtree_safe_fd
+    onexc(os.unlink, fullname, err)
+    ~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.13/shutil.py", line 696, in _rmtree_safe_fd
+    os.unlink(entry.name, dir_fd=topfd)
+    ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+OSError: [Errno 16] Device or resource busy: '/data/jwd06/main/000/113/398/113398681/tmp/pymp-h8x0ko62'
+
+100%|██████████| 66/66 [01:12<00:00,  1.10s/it]
+2026-09-25 19:31:30,791 - NN training: epoch=200/200, batches=66, loss=3.0704067, top1=98.3594, elapsed=72.567s, process_memory={'VmPeak': '10571072 kB', 'VmRSS': '1970772 kB'}, gpu_memory=None.
+2026-09-25 19:31:31,062 - Final inference: start one traversal; contigs=68260, batch_size=1024, embedding_dimensions=128, coverage_dimensions=128.
+2026-09-25 19:31:31,104 - Final inference: first batch published to temporary targets; rows=1024, process_memory={'VmPeak': '10571072 kB', 'VmRSS': '1972040 kB'}, gpu_memory=None.
+2026-09-25 19:31:32,580 - Final inference: published complete binary embedding bundle; contigs=68260.
+2026-09-25 19:31:32,582 - Finish training.
+2026-09-25 19:31:36,173 - bin
+2026-09-25 19:31:36,174 - Marker tools: FragGeneScan=/usr/local/bin/FragGeneScan, wrapper=/usr/local/bin/run_FragGeneScan.pl, hmmsearch=/usr/local/bin/hmmsearch, perl=/usr/local/bin/perl, marker_script=/usr/local/bin/auxiliary/test_getmarker_2quarter.pl, marker_hmm=/usr/local/bin/auxiliary/bacar_marker.hmm.
+2026-09-25 19:31:36,175 - FragGeneScan command: /usr/local/bin/FragGeneScan -s /data/jwd06/main/000/113/398/113398681/working/ERR9966616.fasta -o /data/jwd06/main/000/113/398/113398681/working/ERR9966616.fasta.frag -w 0 -t complete -p 32
+2026-09-25 19:32:52,137 - FragGeneScan exited with status 0; stderr=/data/jwd06/main/000/113/398/113398681/working/ERR9966616.fasta.frag.err.
+2026-09-25 19:32:52,150 - Marker HMM /usr/local/bin/auxiliary/bacar_marker.hmm does not define TC cutoffs for every model; using -E 1e-05.
+2026-09-25 19:32:52,151 - HMMsearch command: /usr/local/bin/hmmsearch --domtblout /data/jwd06/main/000/113/398/113398681/working/.ERR9966616.fasta.bacar_marker.hmmout.28193.cit65zng.tmp -E 1e-05 --cpu 32 /usr/local/bin/auxiliary/bacar_marker.hmm /data/jwd06/main/000/113/398/113398681/working/ERR9966616.fasta.frag.faa
+2026-09-25 19:33:08,272 - HMMsearch exited with status 0; stderr=/data/jwd06/main/000/113/398/113398681/working/ERR9966616.fasta.bacar_marker.hmmout.err.
+2026-09-25 19:33:08,274 - Published HMMsearch result /data/jwd06/main/000/113/398/113398681/working/ERR9966616.fasta.bacar_marker.hmmout with 497 hits.
+2026-09-25 19:33:08,276 - Marker seed generation command: /usr/local/bin/perl /usr/local/bin/auxiliary/test_getmarker_2quarter.pl /data/jwd06/main/000/113/398/113398681/working/ERR9966616.fasta.bacar_marker.hmmout /data/jwd06/main/000/113/398/113398681/working/ERR9966616.fasta 1001 /data/jwd06/main/000/113/398/113398681/working/.ERR9966616.fasta.bacar_marker.2quarter_lencutoff_1001.seed.28193.xdu5qe1_.tmp
+2026-09-25 19:33:09,622 - Marker seed generation exited with status 3; stderr=/data/jwd06/main/000/113/398/113398681/working/ERR9966616.fasta.bacar_marker.2quarter_lencutoff_1001.seed.err.
+Traceback (most recent call last):
+  File "/usr/local/bin/COMEBin/main.py", line 381, in <module>
+    main()
+    ~~~~^^
+  File "/usr/local/bin/COMEBin/main.py", line 298, in main
+    _ = gen_seed(logger, args.contig_file, num_threads, args.contig_len, marker_name="bacar_marker",
+                 quarter="2quarter", hmm_evalue=args.hmm_evalue)
+  File "/usr/local/bin/COMEBin/utils.py", line 307, in gen_seed
+    _run_external_command(
+    ~~~~~~~~~~~~~~~~~~~~~^
+        logger, 'Marker seed generation',
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        [perl_executable, marker_script, hmm_result, contig_file, contig_length_threshold, seed_temp],
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        str(seed_result) + '.out', str(seed_result) + '.err')
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/bin/COMEBin/utils.py", line 188, in _run_external_command
+    raise RuntimeError(f"{label} failed with status {completed.returncode}; stderr={stderr_path}{detail}")
+RuntimeError: Marker seed generation failed with status 3; stderr=/data/jwd06/main/000/113/398/113398681/working/ERR9966616.fasta.bacar_marker.2quarter_lencutoff_1001.seed.err; tail=Marker hits mapped to input contigs, but no usable marker seed set could be generated.
+Clustering exited with status 1.
+```
+
+Can you fix it, a valid fix would also to report no bins but do not error out, I want this fix with the other updates tested on the benchark data, then merged in the master branch ready to release in bioconda
+===== comments on 19-28 (if any) =====
+#19 comments: 3
+#20 comments: 2
+#21 comments: 2
+#22 comments: 3
+#23 comments: 4
+#24 comments: 2
+#25 comments: 2
+#26 comments: 4
+#27 comments: 0
+#28 comments: 0
+===== cami3 provenance (grep PROGRESS + docs) =====
+164:| Input decision (issue #18: "1/6 the size of the big one") | 29,434 demo contigs / 6 ≈ 4,900 → **top 4,900 GSA contigs by length** (166.0 Mbp; the 4,900th is 4,733 bp; ≥5,000 bp would give 4,462) + **all** reads mapped `bwa mem -p -t 32` → `human_sample0_input/{contigs.fa,bamfiles/human.bam}` |
+178:| Sample IDs | `cami3_toy_human_gut_short_read_sample_[0..19]`; `…_pooled_assembly` = gold-standard pooled assembly |
+380:      (`scripts/prep_cami2_human.sh 4900`: top 4,900 longest GSA contigs of
+450:      `/vol/data/datasets/cami_III/toy_human_input_2samples/`: `contigs.fa`
+451:      (top-5000-longest of pooled GSA contigs, 1.1 GB), `input_meta.txt`,
+> build · big-pickle
+The gap picture is now clear, and #28 is a real code fix request (marker-seed generation hard-fails → should degrade to zero bins; owner wants it benchmark-tested and merged to master for bioconda). Before replying anywhere, I must read every existing comment on #19–#26:
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark
+for n in 19 20 21 22 23 24 25 26; do
+  echo "========== #$n comments =========="
+  gh issue view $n -R paulzierep/metagenomic-binning-benchmark --json comments --jq '.comments[] | "--- \(.createdAt) \(.author.login) ---\n\(.body[0:600])"'
+done
+touch /vol/data/benchmark/.heartbeat
+========== #19 comments ==========
+--- 2026-09-26T08:34:18Z paulzierep ---
+make it 4 and add cami3 as the fourth, to make sure each dataset comparison should be a seperate plot and all 4 should be shown below each other
+--- 2026-09-26T08:51:21Z paulzierep ---
+The combined bar plot () already shows 2 rows (completeness <5%/<10%) × 3 columns (demo/human/marine) with run+branch labeling. For 'show those below each other': the current layout places them side-by-side. A vertical stack would improve comparability across datasets. Also, the per-dataset subplots in  could be extended to show all runs for a dataset. I'll add a vertical-arrangement option and update the README rendering.
+--- 2026-09-26T12:31:40Z paulzierep ---
+Combined bar plot (results/figures/combined_bar_plot.png) already shows 2 rows (completeness <5%/<10%) × 3 columns (demo/human/marine) with run+branch labeling. For 'show those below each other': a vertical arrangement would improve dataset comparability. The per-dataset subplots in docs/09 could be extended to show all runs for each dataset vertically. I'll add a vertical-arrangement option and update the README rendering. CAMI III as fourth dataset would complete the set (currently demo 29,434 / human 4,900 / marine 41,988 contigs).
+========== #20 comments ==========
+--- 2026-09-26T08:51:21Z paulzierep ---
+For optimization ideas: the project has already addressed several performance bugs (fractional bedtools depth, bin numbering, RNG seeds, DataLoader drop_last, etc.) in fix batches on branch . Current optimization candidates from the code review include: vectorizing k-mer counting in , closed-form covariance computation in /, set-based  scans in , and Leiden pool pruning (120 unseeded runs). A good next step would be systematic profiling of the hot loops identified in the code review (items 10-14) and benchmarking parameter combinations on the small test set before applying to larger datasets.
+--- 2026-09-26T12:31:32Z paulzierep ---
+Optimization candidates from code review (items 10-14): (1) vectorize k-mer counting in gen_kmer.py (currently pure-Python itertools.tee sliding window), (2) closed-form covariance computation in gen_cov.py/gen_var.py (currently materialize per-base depth lists), (3) set-based membership scans in cluster.py (currently O(n·m) 'in' scans on arrays), (4) Leiden grid pruning: 120 unseeded runs in a Pool with grid 8×5×3, needs seeding/selection strategy. Recent fix batches have addressed: sequential bin numbering, float64 coverage depth, sklearn KMeans n_jobs removal, DataLoader drop_last edge case
+========== #21 comments ==========
+--- 2026-09-26T08:51:21Z paulzierep ---
+Good point on seeds for reproducibility. The project already uses seed 42 for COMEBin runs (as seen in run_meta.txt across benchmarks), and the optimization fix batches commit / on the  branch addressed sklearn KMeans compatibility. For full reproducibility, we should also ensure Python/RNG states are seeded at the start of each run (numpy, PyTorch, and the Leiden optimizer). This would complement the existing seed=42 approach and make across-run comparisons more reliable.
+--- 2026-09-26T12:31:26Z paulzierep ---
+Seed 42 is used consistently across COMEBin runs (demo, small, medium, human, marine, CAMI III). For full reproducibility, the project should also seed Python RNG states (numpy, PyTorch) and the Leiden optimizer at the start of each run, complementing the existing seed=42 approach. This would make across-run comparisons more reliable, especially when benchmarking fix batches. The optimization fix batches on branch comebin-optimizations-v11 already address KMeans n_jobs compatibility for sklearn >=1.0.
+========== #22 comments ==========
+--- 2026-09-26T08:48:01Z paulzierep ---
+I want this at the bottom of the readme table for all runs - also old once: failed once, small all of the, with run date, duration benchmark dataset + zenodo or public link, comebin branch + commit used for run, benchmark size (GB, contigs), # of Bins, checkm2 results + HQ,MQ + F1, One line comment if fail on not fail
+--- 2026-09-26T08:51:21Z paulzierep ---
+Yes, a summary table for all runs (including small tests) would be very helpful. The repository already has per-run CSVs in  and aggregated tables in , but a unified table covering all datasets (demo, small, medium, human, marine, CAMI III) with consistent metrics (bins, completeness, contamination, epochs, wall time) would streamline comparisons. I'll prioritize this after the current issue backlog. In the meantime,  provides a dataset-level summary.
+--- 2026-09-26T12:31:20Z paulzierep ---
+Summary table for all runs (including small tests) is tracked at results/main_runs_table.md, with one row per run: dataset, contigs, threads, COMEBin branch/commit, exit_code, wall_s, bins, CheckM2 mean completeness/contamination (HQ,MQ), CheckM v1 mean completeness/contamination (HQ,MQ), Zenodo link. Small-test results (tiny_test_n101: 1 bin, CheckM2 63.89/9.05, CheckM v1 46.58/6.35; small_test_v4: 3 bins, CheckM2 26.07/2.02, CheckM v1 29.08/0.71). Medium run (medium_v11_20260924: 16 bins, 35.93%/4.67%, 33.83%/6.03%).entu itges the primary reference; a concise bottom-of-README summary is bein
+========== #23 comments ==========
+--- 2026-09-26T10:02:00Z paulzierep ---
+For CAMI III, the assembly is obtained through the preparation pipeline ( and ), which extracts top-N longest contigs from the pooled GSA assemblies, builds bwa indices, and maps both BAM files. The preparation step creates the input assembly (, , and mapped BAMs) that COMEBin then bins. There is no 'gold standard' assembly released separately — the benchmarks use the prepared input generated by these scripts, which are the standard workflow for all CAMI datasets.
+--- 2026-09-26T10:02:00Z paulzierep ---
+For CAMI III, the assembly is obtained through the preparation pipeline ( and ), which extracts top-N longest contigs from the pooled GSA assemblies, builds bwa indices, and maps both BAM files. The preparation step creates the input assembly (, , and mapped BAMs) that COMEBin then bins. There is no 'gold standard' assembly released separately — the benchmarks use the prepared input generated by these scripts, which are the standard workflow for all CAMI datasets.
+--- 2026-09-26T10:02:15Z paulzierep ---
+For CAMI III, the assembly is obtained through the preparation pipeline ( and ), which extracts top-N longest contigs from the pooled GSA assemblies, builds bwa indices, and maps both BAM files. The preparation step creates the input assembly that COMEBin then bins. There is no 'gold standard' assembly released separately — the benchmarks use the prepared input generated by these scripts, which are the standard workflow for all CAMI datasets.
+--- 2026-09-26T12:31:12Z paulzierep ---
+CAMI III assembly preparation pipeline verified: top-5000 longest contigs from pooled GSA assemblies, bwa index built, both samples' BAMs mapped and indexed. The input assembly (contigs.fa) is ~1.1 GB for toy human gut dataset. No gold standard assembly released separately — the prepared input is the standard CAMI workflow. Key steps: gsa assembly → extract top-N contigs → bwa index → map reads (bwa mem -p) → sort/index → COMEBin input. This is consistent across cami_II and cami_III datasets.
+========== #24 comments ==========
+--- 2026-09-26T10:49:14Z paulzierep ---
+Thank you for the clean-up needed on the main README. I'll review the current README structure and ensure it reflects the latest run states, evaluation results, and benchmark status. The README currently has Current/Next sections, run history, and optimization strategy documentation that should stay in sync.
+--- 2026-09-26T12:31:09Z paulzierep ---
+README cleanup in progress. Current structure has Current/Next run sections, run history table, optimization strategy docs, and 4 benchmark plots (demo/human/marine/CAMI III). The run history at results/main_runs_table.md tracks 14+ runs with dataset, threads, commit, branch, bins, CheckM2/HQ/MQ, wall time, and exit code. Consider consolidating the 4 dataset-specific plots into a vertical arrangement per issue #19, and ensuring the 'Current/Next' banner reflects the latest completed run (cami3_v11_20260926_rerun: 492 bins, Zenodo v3 DOI 10.5281/zenodo.22973575).
+========== #25 comments ==========
+--- 2026-09-26T10:49:14Z paulzierep ---
+Thank you for the optimization ideas. I'm currently working on fix batches for COMEBin (see the optimization strategy in docs/09). Each fix batch is tested with the benchmark workflow (small → medium → large) before integration. What specific optimization areas are you most interested in? Current candidates include k-mer counting, coverage computation, clustering performance, and Leiden parameter sweeps.
+--- 2026-09-26T12:31:03Z paulzierep ---
+Optimization batch workflow confirmed: small → medium → large validation before integration, per docs/09-optimization-strategy.md. Current fix batches address: sequential bin numbering, float64 coverage depth consistency, sklearn KMeans compatibility, DataLoader drop_last edge case, and RNG seed reproducibility. Next candidates from code review: vectorized k-mer counting, closed-form covariance computation, set-based membership scans, and Leiden pool pruning (120 unseeded runs). Measuring per-stage wall time and peak RAM will guide priority ordering.
+========== #26 comments ==========
+--- 2026-09-26T10:49:14Z paulzierep ---
+Thank you for the issue. I'll look into improving logging for the benchmark. This relates to ongoing optimization work on COMEBin and the benchmark infrastructure. I'll check the current logging setup and determine what improvements would be most helpful for reproducibility and debugging.
+--- 2026-09-26T12:30:59Z paulzierep ---
+Logging improvements noted. Current benchmark infrastructure mirrors per-run logs (run_meta.txt, comebin_run.log, resources.tsv) into the repo, with status heartbeat updating every 2 min. The live epoch probe in status/current.md now shows epoch N/200 · x/28 batches to prevent frozen appearance. Consider adding structured log rotation and per-stage timing breakdowns for easier debugging across 200+ epoch runs.
+--- 2026-09-26T15:03:07Z paulzierep ---
+check: already triaged in prior session
+--- 2026-09-26T15:28:24Z paulzierep ---
+test comment
