@@ -93767,3 +93767,364 @@ Index: /vol/data/repos/metagenomic-binning-benchmark/scripts/make_combined_bar_p
  COLORS = ["#004c4c", "#006666", "#008080", "#33a3a3", "#99d6d6", "#cce6e6"]
 
 > build · big-pickle
+Now the layout change — datasets as rows (stacked below each other), cutoffs as columns:
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/scripts/make_combined_bar_plot.py
+Index: /vol/data/repos/metagenomic-binning-benchmark/scripts/make_combined_bar_plot.py
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/scripts/make_combined_bar_plot.py
++++ /vol/data/repos/metagenomic-binning-benchmark/scripts/make_combined_bar_plot.py
+@@ -252,15 +252,18 @@
+     if not ordered_runs:
+         sys.exit("ERROR: no evaluated runs found for datasets: "
+                  + ", ".join(wanted))
+ 
+-    ncol = len(wanted)
+-    fig, axs = plt.subplots(len(CUTOFFS), ncol,
+-                            figsize=(6.4 * ncol, 5.2 * len(CUTOFFS)),
++    nrow = len(wanted)
++    ncol = len(CUTOFFS)
++    # Issue #19: "show those below each other" — one row per dataset (all four
++    # stacked vertically), columns = contamination cutoffs.
++    fig, axs = plt.subplots(nrow, ncol,
++                            figsize=(6.4 * ncol, 4.6 * nrow),
+                             squeeze=False)
+ 
+-    for row_i, (cutoff, row_title) in enumerate(CUTOFFS):
+-        for col_i, key in enumerate(wanted):
++    for row_i, key in enumerate(wanted):
++        for col_i, (cutoff, row_title) in enumerate(CUTOFFS):
+             ax = axs[row_i][col_i]
+             runs = found[key]
+             ax.set_title(f"{DATASETS[key][1]}\n{row_title}",
+                          fontsize=14 if ncol > 1 else 16)
+
+> build · big-pickle
+Now regenerate the figure and table in the comebin env:
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark
+/vol/data/tools/bin/micromamba run -p /vol/data/envs/comebin python scripts/make_combined_bar_plot.py 2>&1 | tail -12
+echo "=== figures ==="
+ls -la results/figures/combined_bar_plot.png results/figures/combined_bar_plot.svg
+echo "=== main_runs_table.md ==="
+cat results/main_runs_table.md
+touch /vol/data/benchmark/.heartbeat
+wrote /vol/data/repos/metagenomic-binning-benchmark/results/figures/combined_bar_plot.png
+wrote /vol/data/repos/metagenomic-binning-benchmark/results/main_runs_table.md
+| Run | Dataset | COMEBin version | Seed | Wall time | Bins | CheckM2 comp / cont | CheckM2 HQ / MQ | CheckM v1 comp / cont | CheckM v1 HQ / MQ |
+|---|---|---|---|---|---|---|---|---|---|
+| `baseline_rerun_autorestart1` | COMEBin demo (29,434 contigs) | `904f649` (master) | - | 6h45m | 60 | 25.01 / 2.98 | 0 / 7 | 21.23 / 3.40 | 0 / 9 |
+| `fix_v11_20260924` | COMEBin demo (29,434 contigs) | `95f5ea8` (comebin-optimizations-v11) | 42 | 6h52m | 71 | 24.38 / 3.78 | 1 / 6 | 21.62 / 5.18 | 0 / 8 |
+| `human_v11_20260925` | CAMI II human (4,900 contigs) | `95f5ea8` (comebin-optimizations-v11) | 42 | 1h21m | 107 | 35.31 / 5.13 | 20 / 29 | 32.64 / 4.65 | 21 / 29 |
+| `marine_v11_20260925` | CAMI II marine (41,988 contigs) | `95f5ea8` (comebin-optimizations-v11) | 42 | 8h43m | 152 | 50.60 / 4.10 | 35 / 60 | 46.36 / 5.09 | 37 / 60 |
+| `cami3_v11_20260926_rerun` | CAMI III toy human gut (5,000 contigs) | `95f5ea8` (comebin-optimizations-v11) | 42 | 1h29m | 492 | 35.97 / 11.42 | 53 / 112 | 32.46 / 13.38 | 54 / 100 |
+
+=== figures ===
+-rw-rw-r-- 1 ubuntu ubuntu 490018 Sep 28 12:56 results/figures/combined_bar_plot.png
+-rw-rw-r-- 1 ubuntu ubuntu 146255 Sep 28 12:56 results/figures/combined_bar_plot.svg
+=== main_runs_table.md ===
+| Run | Dataset | COMEBin version | Seed | Wall time | Bins | CheckM2 comp / cont | CheckM2 HQ / MQ | CheckM v1 comp / cont | CheckM v1 HQ / MQ |
+|---|---|---|---|---|---|---|---|---|---|
+| `baseline_rerun_autorestart1` | COMEBin demo (29,434 contigs) | `904f649` (master) | - | 6h45m | 60 | 25.01 / 2.98 | 0 / 7 | 21.23 / 3.40 | 0 / 9 |
+| `fix_v11_20260924` | COMEBin demo (29,434 contigs) | `95f5ea8` (comebin-optimizations-v11) | 42 | 6h52m | 71 | 24.38 / 3.78 | 1 / 6 | 21.62 / 5.18 | 0 / 8 |
+| `human_v11_20260925` | CAMI II human (4,900 contigs) | `95f5ea8` (comebin-optimizations-v11) | 42 | 1h21m | 107 | 35.31 / 5.13 | 20 / 29 | 32.64 / 4.65 | 21 / 29 |
+| `marine_v11_20260925` | CAMI II marine (41,988 contigs) | `95f5ea8` (comebin-optimizations-v11) | 42 | 8h43m | 152 | 50.60 / 4.10 | 35 / 60 | 46.36 / 5.09 | 37 / 60 |
+| `cami3_v11_20260926_rerun` | CAMI III toy human gut (5,000 contigs) | `95f5ea8` (comebin-optimizations-v11) | 42 | 1h29m | 492 | 35.97 / 11.42 | 53 / 112 | 32.46 / 13.38 | 54 / 100 |
+> build · big-pickle
+The plot now has all 4 datasets stacked vertically with CAMI III included. Now let me build the all-runs table generator (#22 + #24-e). I'll make it read from disk so it's self-maintaining, with 12 data columns so the status-heartbeat's 11-column row remap never touches it.
+[0m← [0mWrite /vol/data/repos/metagenomic-binning-benchmark/scripts/make_all_runs_table.py
+Created file successfully: /vol/data/repos/metagenomic-binning-benchmark/scripts/make_all_runs_table.py
+> build · big-pickle
+I'll resume by verifying current state against disk, then continue the doc deliverables.
+[0m$ [0mcd /vol/data/benchmark
+echo "=== time ==="
+date -u +%FT%TZ
+echo "=== PROGRESS.md head ==="
+head -20 PROGRESS.md
+echo "=== .active_run ==="
+cat .active_run 2>/dev/null || echo CLEAR
+echo "=== sibling run alive? ==="
+ps -eo pid,etimes,args | grep -E "small_v11_issue28_regression|run_small_test" | grep -v grep | head -5
+echo "=== regression run meta (complete?) ==="
+tail -5 /vol/data/benchmark/runs/small_v11_issue28_regression/comebin_run.log 2>/dev/null | cut -c1-140
+ls /vol/data/benchmark/runs/small_v11_issue28_regression/ | head
+echo "=== heartbeat/status ==="
+git -C /vol/data/repos/metagenomic-binning-benchmark log --oneline -3
+touch .heartbeat
+=== time ===
+2026-09-28T12:56:58Z
+=== PROGRESS.md head ===
+# PROGRESS — metagenomic-binning-benchmark
+
+> **Resume document.** If you (the agent) are reading this after a restart, start here,
+> verify "Current state" against what is actually on disk under `/vol/data`, and
+> continue from the first unfinished step. Update this file after every meaningful step.
+> Live copy: `/vol/data/benchmark/PROGRESS.md` (keep both in sync: edit both, or copy
+> one over the other after each update).
+
+## Task definition
+
+Benchmark multiple metagenomic genome binners, starting with COMEBin
+(https://github.com/paulzierep/COMEBin). Document the whole process in this repo
+(https://github.com/paulzierep/metagenomic-binning-benchmark) so the work can be
+picked up later by anyone/any session.
+
+Requirements from the user:
+1. Modify COMEBin's source code to improve performance and fix bugs — **in a branch**,
+   **one commit per batch of fixes**.
+2. **Baseline first**: benchmark *unmodified* COMEBin, then apply fix batches,
+   re-running the benchmark after each batch.
+=== .active_run ===
+2137087 2137084 /vol/data/benchmark/runs/small_v11_issue28_regression/comebin_run.log /vol/data/benchmark/runs/small_v11_issue28_regression 1790599830 small /vol/data/repos/COMEBin-v11
+=== sibling run alive? ===
+=== regression run meta (complete?) ===
+    Finished parsing hits for 1 of 3 (33.33%) bins.    Finished parsing hits for 2 of 3 (66.67%) bins.    Finished parsing hits for 3 of 3
+[2026-09-28 12:55:03] INFO: QA information written to: /vol/data/benchmark/runs/small_v11_issue28_regression/comebin_out/comebin_res/cluster
+[2026-09-28 12:55:03] INFO: { Current stage: 0:00:00.214 || Total: 0:00:00.214 }
+2026-09-28 12:55:04,014 - Final result:	/vol/data/benchmark/runs/small_v11_issue28_regression/comebin_out/comebin_res/cluster_res/Leiden_ban
+2026-09-28 12:55:04,015 - Stream winning Leiden bins from /tmp/opencode/realdata/ds/contigs.fa.
+comebin_out
+comebin_run.log
+logs
+run_meta.txt
+=== heartbeat/status ===
+c4f1f2ed status: yes — small_v11_issue28_regression epoch 199/200 loss 2.6121292114257812 acc 44.85676956176758 model big-pickle — 2026-09-25T12:16:00Z | marine_v11_202609 2026-09-25T15:34:55Z | issues triaged: # 2026-09-25T20:49:23Z | issues triaged: # 2026-09-25T21:11:13Z | issues #12 and #8 2026-09-25T21:24:00Z | CAMI III prep scr 2026-09-25T21:54:00Z | agent: started CA 2026-09-26T00:49:54Z marine-eval-launche 2026-09-26T00:50:20Z marine-eval-launche 2026-09-26T00:50:42Z marine-eval-launche 2026-09-26T01:14:16Z marine-eval-retry-l 2026-09-26T01:41:50Z zenodo-v2-published 2026-09-26T01:46:27Z commit: pushed mari 2026-09-26T01:46:47Z delivery-comments-p 2026-09-26T01:47:11Z progress-committed 2026-09-26T01:49:18Z progress-synced 2026-09-26T02:02:36Z docs10-fix-committe 2026-09-26T02:41:03Z finish-prep-launche 2026-09-26T02:45:37Z cami3-run-launched 2026-09-26T02:45:58Z cami3-progress-comm 2026-09-26T02:54:43Z version-doi-verifie 2026-09-26T02:55:42Z doi-followup-commen 2026-09-26T02:56:38Z progress-committed 2026-09-26T02:57:25Z dryrun-tarball-dele 2026-09-26T02:59:24Z results-csv-label-f 2026-09-26T02:59:32Z progress-committed 2026-09-26T04:22:06Z 2026-09-26T04:26:43Z disk-full-incident- 2026-09-26T04:50:51Z rerun-launched-pid3 2026-09-26T05:23:51Z rerun-on-track-epoc 2026-09-26T06:19:21Z rerun-done-eval-run 2026-09-26T06:19:27Z eval started cami3_ 2026-09-26T06:41:54Z eval-checkm-v1-ppla 2026-09-26T07:10:51Z checkm2-retry-16t 2026-09-26T07:47:33Z zenodo-v3-published 2026-09-26T07:52:47Z docs-cami3-delivere 2026-09-26T07:56:10Z issue6-comment-cami 2026-09-26T07:56:26Z zenodo-v3-version-d 2026-09-26T07:56:48Z turn-activity docs+ 2026-09-26T07:58:24Z progress-finalized 2026-09-26T07:58:26Z zenodo-v3-version-d 2026-09-26T08:00:26Z zenodo-v3-version-d 2026-09-26T08:02:27Z zenodo-v3-version-d 2026-09-26T08:04:27Z zenodo-v3-version-d 2026-09-26T08:06:27Z zenodo-v3-version-d 2026-09-26T08:08:27Z zenodo-v3-version-d 2026-09-26T08:10:27Z zenodo-v3-version-d 2026-09-26T08:12:27Z zenodo-v3-version-d 2026-09-26T08:14:28Z doi-recheck-200 2026-09-26T08:29:56Z | committed script 2026-09-26T09:02:54Z | issue triage: rev 2026-09-26T09:20:00Z Agent restart resum 2026-09-26T10:03:14Z | issues triaged: # 2026-09-26T10:54:30Z | issues triaged: # 2026-09-26T11:43:03Z | resumed: verified 2026-09-26T14:20:00Z | issue comments po 2026-09-26T14:25:00Z | PROGRESS.md updat 2026-09-26T13:25:38Z | heartbeat touched 2026-09-26T14:02:55Z | agent active 2026-09-26T14:37:44Z | agent resumed aft 2026-09-26T14:39:42Z | restart-complete: 2026-09-26T15:06:38Z 2026-09-26T15:06:26Z agent-resume-starte 2026-09-26T15:13:07Z 2026-09-26T15:06:26Z agent-resume-second 2026-09-26T15:32:52Z | resume: agent res 2026-09-26 15:50:51 UTC - agent resume: 2026-09-26T16:42:06Z | agent resume: all
+14260c32 status: yes — small_v11_issue28_regression epoch 185/200 loss 2.4964568614959717 acc 47.213539123535156 model big-pickle — 2026-09-25T12:16:00Z | marine_v11_202609 2026-09-25T15:34:55Z | issues triaged: # 2026-09-25T20:49:23Z | issues triaged: # 2026-09-25T21:11:13Z | issues #12 and #8 2026-09-25T21:24:00Z | CAMI III prep scr 2026-09-25T21:54:00Z | agent: started CA 2026-09-26T00:49:54Z marine-eval-launche 2026-09-26T00:50:20Z marine-eval-launche 2026-09-26T00:50:42Z marine-eval-launche 2026-09-26T01:14:16Z marine-eval-retry-l 2026-09-26T01:41:50Z zenodo-v2-published 2026-09-26T01:46:27Z commit: pushed mari 2026-09-26T01:46:47Z delivery-comments-p 2026-09-26T01:47:11Z progress-committed 2026-09-26T01:49:18Z progress-synced 2026-09-26T02:02:36Z docs10-fix-committe 2026-09-26T02:41:03Z finish-prep-launche 2026-09-26T02:45:37Z cami3-run-launched 2026-09-26T02:45:58Z cami3-progress-comm 2026-09-26T02:54:43Z version-doi-verifie 2026-09-26T02:55:42Z doi-followup-commen 2026-09-26T02:56:38Z progress-committed 2026-09-26T02:57:25Z dryrun-tarball-dele 2026-09-26T02:59:24Z results-csv-label-f 2026-09-26T02:59:32Z progress-committed 2026-09-26T04:22:06Z 2026-09-26T04:26:43Z disk-full-incident- 2026-09-26T04:50:51Z rerun-launched-pid3 2026-09-26T05:23:51Z rerun-on-track-epoc 2026-09-26T06:19:21Z rerun-done-eval-run 2026-09-26T06:19:27Z eval started cami3_ 2026-09-26T06:41:54Z eval-checkm-v1-ppla 2026-09-26T07:10:51Z checkm2-retry-16t 2026-09-26T07:47:33Z zenodo-v3-published 2026-09-26T07:52:47Z docs-cami3-delivere 2026-09-26T07:56:10Z issue6-comment-cami 2026-09-26T07:56:26Z zenodo-v3-version-d 2026-09-26T07:56:48Z turn-activity docs+ 2026-09-26T07:58:24Z progress-finalized 2026-09-26T07:58:26Z zenodo-v3-version-d 2026-09-26T08:00:26Z zenodo-v3-version-d 2026-09-26T08:02:27Z zenodo-v3-version-d 2026-09-26T08:04:27Z zenodo-v3-version-d 2026-09-26T08:06:27Z zenodo-v3-version-d 2026-09-26T08:08:27Z zenodo-v3-version-d 2026-09-26T08:10:27Z zenodo-v3-version-d 2026-09-26T08:12:27Z zenodo-v3-version-d 2026-09-26T08:14:28Z doi-recheck-200 2026-09-26T08:29:56Z | committed script 2026-09-26T09:02:54Z | issue triage: rev 2026-09-26T09:20:00Z Agent restart resum 2026-09-26T10:03:14Z | issues triaged: # 2026-09-26T10:54:30Z | issues triaged: # 2026-09-26T11:43:03Z | resumed: verified 2026-09-26T14:20:00Z | issue comments po 2026-09-26T14:25:00Z | PROGRESS.md updat 2026-09-26T13:25:38Z | heartbeat touched 2026-09-26T14:02:55Z | agent active 2026-09-26T14:37:44Z | agent resumed aft 2026-09-26T14:39:42Z | restart-complete: 2026-09-26T15:06:38Z 2026-09-26T15:06:26Z agent-resume-starte 2026-09-26T15:13:07Z 2026-09-26T15:06:26Z agent-resume-second 2026-09-26T15:32:52Z | resume: agent res 2026-09-26 15:50:51 UTC - agent resume: 2026-09-26T16:42:06Z | agent resume: all
+0855151e status: yes — small_v11_issue28_regression epoch 67/200 loss 4.762070178985596 acc 7.8255205154418945 model big-pickle — 2026-09-25T12:16:00Z | marine_v11_202609 2026-09-25T15:34:55Z | issues triaged: # 2026-09-25T20:49:23Z | issues triaged: # 2026-09-25T21:11:13Z | issues #12 and #8 2026-09-25T21:24:00Z | CAMI III prep scr 2026-09-25T21:54:00Z | agent: started CA 2026-09-26T00:49:54Z marine-eval-launche 2026-09-26T00:50:20Z marine-eval-launche 2026-09-26T00:50:42Z marine-eval-launche 2026-09-26T01:14:16Z marine-eval-retry-l 2026-09-26T01:41:50Z zenodo-v2-published 2026-09-26T01:46:27Z commit: pushed mari 2026-09-26T01:46:47Z delivery-comments-p 2026-09-26T01:47:11Z progress-committed 2026-09-26T01:49:18Z progress-synced 2026-09-26T02:02:36Z docs10-fix-committe 2026-09-26T02:41:03Z finish-prep-launche 2026-09-26T02:45:37Z cami3-run-launched 2026-09-26T02:45:58Z cami3-progress-comm 2026-09-26T02:54:43Z version-doi-verifie 2026-09-26T02:55:42Z doi-followup-commen 2026-09-26T02:56:38Z progress-committed 2026-09-26T02:57:25Z dryrun-tarball-dele 2026-09-26T02:59:24Z results-csv-label-f 2026-09-26T02:59:32Z progress-committed 2026-09-26T04:22:06Z 2026-09-26T04:26:43Z disk-full-incident- 2026-09-26T04:50:51Z rerun-launched-pid3 2026-09-26T05:23:51Z rerun-on-track-epoc 2026-09-26T06:19:21Z rerun-done-eval-run 2026-09-26T06:19:27Z eval started cami3_ 2026-09-26T06:41:54Z eval-checkm-v1-ppla 2026-09-26T07:10:51Z checkm2-retry-16t 2026-09-26T07:47:33Z zenodo-v3-published 2026-09-26T07:52:47Z docs-cami3-delivere 2026-09-26T07:56:10Z issue6-comment-cami 2026-09-26T07:56:26Z zenodo-v3-version-d 2026-09-26T07:56:48Z turn-activity docs+ 2026-09-26T07:58:24Z progress-finalized 2026-09-26T07:58:26Z zenodo-v3-version-d 2026-09-26T08:00:26Z zenodo-v3-version-d 2026-09-26T08:02:27Z zenodo-v3-version-d 2026-09-26T08:04:27Z zenodo-v3-version-d 2026-09-26T08:06:27Z zenodo-v3-version-d 2026-09-26T08:08:27Z zenodo-v3-version-d 2026-09-26T08:10:27Z zenodo-v3-version-d 2026-09-26T08:12:27Z zenodo-v3-version-d 2026-09-26T08:14:28Z doi-recheck-200 2026-09-26T08:29:56Z | committed script 2026-09-26T09:02:54Z | issue triage: rev 2026-09-26T09:20:00Z Agent restart resum 2026-09-26T10:03:14Z | issues triaged: # 2026-09-26T10:54:30Z | issues triaged: # 2026-09-26T11:43:03Z | resumed: verified 2026-09-26T14:20:00Z | issue comments po 2026-09-26T14:25:00Z | PROGRESS.md updat 2026-09-26T13:25:38Z | heartbeat touched 2026-09-26T14:02:55Z | agent active 2026-09-26T14:37:44Z | agent resumed aft 2026-09-26T14:39:42Z | restart-complete: 2026-09-26T15:06:38Z 2026-09-26T15:06:26Z agent-resume-starte 2026-09-26T15:13:07Z 2026-09-26T15:06:26Z agent-resume-second 2026-09-26T15:32:52Z | resume: agent res 2026-09-26 15:50:51 UTC - agent resume: 2026-09-26T16:42:06Z | agent resume: all
+> build · big-pickle
+The `.active_run` entry still exists but the regression process is gone (finished ~12:55). The sibling owns that cleanup and #28. I'll proceed with my docs deliverables. Let me test the all-runs table generator I just wrote, and check git status.
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark
+echo "=== run make_all_runs_table.py ==="
+/vol/data/tools/bin/micromamba run -p /vol/data/envs/comebin python scripts/make_all_runs_table.py 2>&1 | tail -30
+echo "=== git status ==="
+git status --short | head -30
+touch /vol/data/benchmark/.heartbeat
+=== run make_all_runs_table.py ===
+wrote /vol/data/repos/metagenomic-binning-benchmark/results/all_runs_table.md
+| Run | Date | Duration | Dataset (public link) | Branch / commit | Size (contigs) | Bins | CheckM2 comp | CheckM2 cont | HQ / MQ | F1 | Comment |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| `small_v11_issue28_regression` | 2026-09-28 | - | contigs.fa  (300 contigs, 3.5M) · - | `comebin-optimizations-v11` @ `41606c8` | - | - | - | - | - / - | - | issue #28 graceful-zero-bins validation |
+| `cami3_v11_20260926` | 2026-09-26 | 1h51m | CAMI III toy human gut (5,000 contigs) · <https://cami-challenge.org/datasets/> (CAMI III toy download) | `comebin-optimizations-v11` @ `95f5ea8` | 1.1 GB contigs.fa / 15 GB dir | - | - | - | - / - | - | failed: FS full (ENOSPC) -> rerun |
+| `cami3_v11_20260926_rerun` | 2026-09-26 | 1h29m | CAMI III toy human gut (5,000 contigs) · <https://cami-challenge.org/datasets/> (CAMI III toy download) | `comebin-optimizations-v11` @ `95f5ea8` | 1.1 GB contigs.fa / 15 GB dir | 492 | 35.97 | 11.42 | 53 / 112 | 51.2 | 492 bins, most HQ/MQ of any run (CAMI III) |
+| `human_v11_20260925` | 2026-09-25 | 1h21m | CAMI II human (4,900 contigs) · <https://frl.publisso.de/data/frl:6425518/> (CAMI II Toy HMP) | `comebin-optimizations-v11` @ `95f5ea8` | 0.17 GB contigs.fa / 25 GB dir | 107 | 35.31 | 5.13 | 20 / 29 | 51.5 | first HQ-rich dataset (CAMI II human) |
+| `marine_v11_20260925` | 2026-09-25 | 8h43m | CAMI II marine (41,988 contigs) · <https://doi.org/10.5281/zenodo.5013479> (CAMI II asmbly record) | `comebin-optimizations-v11` @ `95f5ea8` | 0.32 GB contigs.fa / 5.9 GB dir | 152 | 50.60 | 4.10 | 35 / 60 | 66.2 | best-quality dataset so far (CAMI II marine) |
+| `tiny_test_n100` | 2026-09-25 | 1m25s | comebin_tiny (101 contigs) · derived - [docs/01-datasets.md](docs/01-datasets.md) | `comebin-small-fix` @ `c8f22e4` | 0.002 GB / 0.05 GB dir | - | - | - | - / - | - | floor test: HNSW k=max_edges+1>N->exit 1 (#18a) |
+| `tiny_test_n101` | 2026-09-25 | 1m25s | comebin_tiny (101 contigs) · derived - [docs/01-datasets.md](docs/01-datasets.md) | `comebin-small-fix` @ `c8f22e4` | 0.002 GB / 0.05 GB dir | 1 | 63.89 | 9.05 | 0 / 1 | 75.1 | smallest working dataset (101 contigs) |
+| `baseline_rerun_autorestart1` | 2026-09-24 | 6h45m | COMEBin demo (BATS, 29,434 contigs) · <https://drive.google.com/uc?id=1xWpN2z8JTaAzWW4TcOl0Lr4Y_x--Fs5s> (COMEBin README) | `-` @ `904f649` | 0.05 GB - 53 MB contigs.fa / 6.4 GB dir | 60 | 25.01 | 2.98 | 0 / 7 | 39.8 | final unmodified baseline on demo |
+| `fix_v11_20260924` | 2026-09-24 | 6h52m | COMEBin demo (BATS, 29,434 contigs) · <https://drive.google.com/uc?id=1xWpN2z8JTaAzWW4TcOl0Lr4Y_x--Fs5s> (COMEBin README) | `comebin-optimizations-v11` @ `95f5ea8` | 0.05 GB - 53 MB contigs.fa / 6.4 GB dir | 71 | 24.38 | 3.78 | 1 / 6 | 38.9 | fix batch 1 on demo, same params as baseline |
+| `medium_v11_20260924` | 2026-09-24 | 38m46s | COMEBin medium (3,000 contigs) · derived - [scripts/make_medium_dataset.sh](scripts/make_medium_dataset.sh) | `comebin-optimizations-v11` @ `95f5ea8` | 0.014 GB - 14 MB contigs.fa / 0.42 GB dir | 16 | 35.93 | 4.67 | 0 / 2 | 52.2 | fix batch 1 validation on medium gate |
+| `small_test_v3` | 2026-09-24 | 1m22s | comebin_small (300 contigs) · derived - Zenodo [10.5281/zenodo.22935025](https://doi.org/10.5281/zenodo.22935025) | `comebin-small-fix` @ `a0be243` | 0.003 GB - 3.5 MB contigs.fa / 0.1 GB dir | - | - | - | - / - | - | small gate after small-fix commits |
+| `small_test_v4` | 2026-09-24 | 2m02s | comebin_small (300 contigs) · derived - Zenodo [10.5281/zenodo.22935025](https://doi.org/10.5281/zenodo.22935025) | `comebin-small-fix` @ `c8f22e4` | 0.003 GB - 3.5 MB contigs.fa / 0.1 GB dir | 3 | 26.07 | 2.02 | 0 / 0 | 41.2 | small gate OK after rebuild |
+| `baseline_unmodified` | 2026-09-23 | - | COMEBin demo (BATS, 29,434 contigs) · <https://drive.google.com/uc?id=1xWpN2z8JTaAzWW4TcOl0Lr4Y_x--Fs5s> (COMEBin README) | `-` @ `987db95` | 0.05 GB - 53 MB contigs.fa / 6.4 GB dir | - | - | - | - / - | - | first baseline try (pre-dataset fixes); superseded |
+| `small_test` | 2026-09-23 | 41s | comebin_small (300 contigs) · derived - Zenodo [10.5281/zenodo.22935025](https://doi.org/10.5281/zenodo.22935025) | `master` @ `ee2e507` | 0.003 GB - 3.5 MB contigs.fa / 0.1 GB dir | - | - | - | - / - | - | early small run - failed pre-fix |
+| `small_test_v2` | 2026-09-23 | 43s | comebin_small (300 contigs) · derived - Zenodo [10.5281/zenodo.22935025](https://doi.org/10.5281/zenodo.22935025) | `master` @ `904f649` | 0.003 GB - 3.5 MB contigs.fa / 0.1 GB dir | - | - | - | - / - | - | early small run - failed pre-fix |
+| `baseline_rerun` | - | - | ? · - | `-` @ `-` | - | - | - | - | - / - | - | aborted/rerun; use baseline_rerun_autorestart1 |
+
+=== git status ===
+ M results/figures/combined_bar_plot.png
+ M results/figures/combined_bar_plot.svg
+ M results/main_runs_table.md
+ M scripts/make_combined_bar_plot.py
+ M scripts/meta-watchdog.sh
+?? results/all_runs_table.md
+?? scripts/make_all_runs_table.py
+?? scripts/supervise-alive.sh
+> build · big-pickle
+The all-runs table generated cleanly. Let me fix two cosmetic issues: branch label for master-commit runs, and a proper dataset label/comment for the sibling's regression run. Then I'll build the #26 major-steps log and restructure the README (#24).
+[0m✗ [0mEdit /vol/data/repos/metagenomic-binning-benchmark/scripts/make_all_runs_table.py failed
+[91m[1mError: [0mCould not find oldString in /vol/data/repos/metagenomic-binning-benchmark/scripts/make_all_runs_table.py. It must match exactly, including whitespace and indentation.
+> build · big-pickle
+Let me read the actual file to see what was written (escaping may differ).
+[0m→ [0mRead /vol/data/repos/metagenomic-binning-benchmark/scripts/make_all_runs_table.py 
+> build · big-pickle
+The generated table looks good. Let me make two refinements: label master-branch runs properly, and give the sibling's regression dataset a proper display name.
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/scripts/make_all_runs_table.py
+Index: /vol/data/repos/metagenomic-binning-benchmark/scripts/make_all_runs_table.py
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/scripts/make_all_runs_table.py
++++ /vol/data/repos/metagenomic-binning-benchmark/scripts/make_all_runs_table.py
+@@ -70,8 +70,12 @@
+                "0.32 GB contigs.fa / 5.9 GB dir"),
+     "cami3": ("CAMI III toy human gut (5,000 contigs)",
+               "<https://cami-challenge.org/datasets/> (CAMI III toy download)",
+               "1.1 GB contigs.fa / 15 GB dir"),
++    # Sibling-owned #28 regression dataset (local, not a public benchmark set).
++    "regression": ("COMEBin small-mirror (300 contigs)",
++                   "/tmp/opencode/realdata/ds (local, for issue #28)",
++                   "0.004 GB - 3.5 MB contigs.fa"),
+ }
+ 
+ 
+ def classify(contigs_path):
+
+> build · big-pickle
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/scripts/make_all_runs_table.py
+Index: /vol/data/repos/metagenomic-binning-benchmark/scripts/make_all_runs_table.py
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/scripts/make_all_runs_table.py
++++ /vol/data/repos/metagenomic-binning-benchmark/scripts/make_all_runs_table.py
+@@ -89,8 +89,9 @@
+             "medium": "comebin_medium",
+             "human": "cami_II_human",
+             "marine": "cami_II/marine",
+             "cami3": "cami_III",
++            "regression": "/tmp/opencode/realdata/ds",
+         }[key]
+         if needle in c:
+             return key
+     return None
+
+> build · big-pickle
+Now improve branch fallback for master runs:
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/scripts/make_all_runs_table.py
+Index: /vol/data/repos/metagenomic-binning-benchmark/scripts/make_all_runs_table.py
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/scripts/make_all_runs_table.py
++++ /vol/data/repos/metagenomic-binning-benchmark/scripts/make_all_runs_table.py
+@@ -170,9 +170,15 @@
+         branch = meta.get("branch")
+         if not branch:
+             src = meta.get("source", "")
+             m = re.search(r"\(branch (.*?)\)", src)
+-            branch = m.group(1) if m else "-"
++            if m:
++                branch = m.group(1)
++            elif src.rstrip("/").endswith("COMEBin") or src.rstrip("/").endswith("COMEBin-v11"):
++                # Plain source dir without a branch marker -> upstream/master.
++                branch = "master" if src.rstrip("/").endswith("COMEBin") else "comebin-optimizations-v11"
++            else:
++                branch = "-"
+         exit_code = meta.get("exit_code")
+         if exit_code is None and r["name"] in runs:
+             pass
+         if r["name"] == "small_v11_issue28_regression":
+
+> build · big-pickle
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark
+/vol/data/tools/bin/micromamba run -p /vol/data/envs/comebin python scripts/make_all_runs_table.py 2>&1 | head -6
+echo "=== spot check baseline + regression rows ==="
+/vol/data/tools/bin/micromamba run -p /vol/data/envs/comebin python scripts/make_all_runs_table.py 2>&1 | grep -E "baseline_rerun_autorestart1|small_v11_issue28" | head -3
+touch /vol/data/benchmark/.heartbeat
+wrote /vol/data/repos/metagenomic-binning-benchmark/results/all_runs_table.md
+| Run | Date | Duration | Dataset (public link) | Branch / commit | Size (contigs) | Bins | CheckM2 comp | CheckM2 cont | HQ / MQ | F1 | Comment |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| `small_v11_issue28_regression` | 2026-09-28 | - | COMEBin small-mirror (300 contigs) · /tmp/opencode/realdata/ds (local, for issue #28) | `comebin-optimizations-v11` @ `41606c8` | 0.004 GB - 3.5 MB contigs.fa | - | - | - | - / - | - | issue #28 graceful-zero-bins validation |
+| `cami3_v11_20260926` | 2026-09-26 | 1h51m | CAMI III toy human gut (5,000 contigs) · <https://cami-challenge.org/datasets/> (CAMI III toy download) | `comebin-optimizations-v11` @ `95f5ea8` | 1.1 GB contigs.fa / 15 GB dir | - | - | - | - / - | - | failed: FS full (ENOSPC) -> rerun |
+| `cami3_v11_20260926_rerun` | 2026-09-26 | 1h29m | CAMI III toy human gut (5,000 contigs) · <https://cami-challenge.org/datasets/> (CAMI III toy download) | `comebin-optimizations-v11` @ `95f5ea8` | 1.1 GB contigs.fa / 15 GB dir | 492 | 35.97 | 11.42 | 53 / 112 | 51.2 | 492 bins, most HQ/MQ of any run (CAMI III) |
+=== spot check baseline + regression rows ===
+| `small_v11_issue28_regression` | 2026-09-28 | - | COMEBin small-mirror (300 contigs) · /tmp/opencode/realdata/ds (local, for issue #28) | `comebin-optimizations-v11` @ `41606c8` | 0.004 GB - 3.5 MB contigs.fa | - | - | - | - / - | - | issue #28 graceful-zero-bins validation |
+| `baseline_rerun_autorestart1` | 2026-09-24 | 6h45m | COMEBin demo (BATS, 29,434 contigs) · <https://drive.google.com/uc?id=1xWpN2z8JTaAzWW4TcOl0Lr4Y_x--Fs5s> (COMEBin README) | `master` @ `904f649` | 0.05 GB - 53 MB contigs.fa / 6.4 GB dir | 60 | 25.01 | 2.98 | 0 / 7 | 39.8 | final unmodified baseline on demo |
+| `baseline_rerun` | - | - | ? · - | `-` @ `-` | - | - | - | - | - / - | - | aborted/rerun; use baseline_rerun_autorestart1 |
+> build · big-pickle
+The all-runs table is now correct. Next: the #26 major-steps log generator. Let me check what figure files exist (for README section d) and look at the current README structure once more.
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark
+echo "=== figures dir ==="
+ls -la results/figures/ 2>/dev/null | awk '{print $5, $9}'
+echo "=== README sections (headings) ==="
+grep -n "^#" README.md | head -30
+echo "=== is there an 11-col perf table or heartbeat markers in README? ==="
+grep -n "Benchmark runs\|performance\|AGENT-STATUS\|all_runs\|major-steps" README.md | head
+touch /vol/data/benchmark/.heartbeat
+=== figures dir ===
+ 
+4096 .
+4096 ..
+490018 combined_bar_plot.png
+146255 combined_bar_plot.svg
+144211 comp_vs_cont_all-runs.png
+232010 comp_vs_cont_by_dataset.png
+=== README sections (headings) ===
+5:# Metagenomic binning benchmark
+13:## Current / Next
+75:## Optimization workflow (issue #7)
+103:## Results
+127:### Main benchmark datasets (issue #12)
+152:## Documentation index
+=== is there an 11-col perf table or heartbeat markers in README? ===
+1:<!--AGENT-STATUS-->
+> build · big-pickle
+The README has no perf-table marker besides the AGENT-STATUS banner (heartbeat-managed lines 1–4), so a full restructure is safe as long as I keep the banner intact. Now let me build the #26 major-steps log generator.
+[0m← [0mWrite /vol/data/repos/metagenomic-binning-benchmark/scripts/make_major_steps_log.py
+Created file successfully: /vol/data/repos/metagenomic-binning-benchmark/scripts/make_major_steps_log.py
+> build · big-pickle
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark
+python3 scripts/make_major_steps_log.py
+echo "=== major-steps.log ==="
+cat status/major-steps.log
+echo "=== last10 ==="
+cat status/major-steps-last10.log
+touch /vol/data/benchmark/.heartbeat
+wrote /vol/data/repos/metagenomic-binning-benchmark/status/major-steps.log (28 steps)
+wrote /vol/data/repos/metagenomic-binning-benchmark/status/major-steps-last10.log
+=== major-steps.log ===
+# Major benchmark steps (human readable)
+
+# generated status/major-steps-last10.log   — the last 10 lines by make_major_steps_log.py
+
+- [2026-09-23] 2026-09-23 | run small_test: no results CSV yet, 0m41s, exit 1
+- [2026-09-23] 2026-09-23 | run small_test_v2: no results CSV yet, 0m43s, exit 1
+- [2026-09-23] Benchmark infra set up; baseline run launched (unmodified COMEBin)
+- [2026-09-24] 2026-09-24 | run baseline_rerun_autorestart1: 60 bins, CheckM2 25.01%/2.98% (HQ 0/MQ 7), 6h45m — exit 0
+- [2026-09-24] 2026-09-24 | run fix_v11_20260924: 71 bins, CheckM2 24.38%/3.78% (HQ 1/MQ 6), 6h52m — exit 0
+- [2026-09-24] 2026-09-24 | run medium_v11_20260924: 16 bins, CheckM2 35.93%/4.67% (HQ 0/MQ 2), 38m46s — exit 0
+- [2026-09-24] 2026-09-24 | run small_test_v3: no results CSV yet, 1m22s, exit 0
+- [2026-09-24] 2026-09-24 | run small_test_v4: 3 bins, CheckM2 26.07%/2.02% (HQ 0/MQ 0), 2m02s — exit 0
+- [2026-09-24] Baseline finished: 60 bins, CheckM2 25.01%/2.98% on COMEBin demo (6h45m)
+- [2026-09-24] Medium gate OK (medium_v11_20260924): 16 bins, CheckM2 35.93%/4.67%
+- [2026-09-24] Small gate OK (small_test_v4): 3 bins, CheckM2 26.07%/2.02%
+- [2026-09-25] 2026-09-25 | run human_v11_20260925: 107 bins, CheckM2 35.31%/5.13% (HQ 20/MQ 29), 1h21m — exit 0
+- [2026-09-25] 2026-09-25 | run marine_v11_20260925: 152 bins, CheckM2 50.60%/4.10% (HQ 35/MQ 60), 8h43m — exit 0
+- [2026-09-25] 2026-09-25 | run tiny_test_n100: no results CSV yet, 1m25s, exit 1
+- [2026-09-25] 2026-09-25 | run tiny_test_n101: 1 bins, CheckM2 63.89%/9.05% (HQ 0/MQ 1), 1m25s — exit 0
+- [2026-09-25] CAMI II human run (human_v11_20260925): 107 bins, 20 HQ / 29 MQ
+- [2026-09-25] CAMI II marine run (marine_v11_20260925): 152 bins, best CheckM2 so far
+- [2026-09-25] First fix-batch demo run (fix_v11_20260924): 71 bins vs 60 baseline
+- [2026-09-26] 2026-09-26 | run cami3_v11_20260926: no results CSV yet, 1h51m, exit 1
+- [2026-09-26] 2026-09-26 | run cami3_v11_20260926_rerun: 492 bins, CheckM2 35.97%/11.42% (HQ 53/MQ 112), 1h29m — exit 0
+- [2026-09-26] CAMI III toy human gut run (cami3_v11_20260926_rerun): 492 bins, 53 HQ
+- [2026-09-26] Issues #6 (optimization) answered, #8 and #12 closed
+- [2026-09-26] Zenodo releases published: v2 (22969763) and v3 (22973575, incl. CAMI III)
+- [2026-09-28] 2026-09-28 | run small_v11_issue28_regression: no results CSV yet, 4m34s, exit 1
+- [2026-09-28] 4-dataset benchmark plot regenerated incl. CAMI III (issue #19)
+- [2026-09-28] Full all-runs summary table generated (results/all_runs_table.md)
+- [2026-09-28] Issue #28 fix committed (41606c8): graceful 0 bins on no-marker edge
+- [2026-09-28] Issue #28 regression run launched (small_v11_issue28_regression)
+=== last10 ===
+# Last 10 major benchmark steps
+
+- [2026-09-26] 2026-09-26 | run cami3_v11_20260926: no results CSV yet, 1h51m, exit 1
+- [2026-09-26] 2026-09-26 | run cami3_v11_20260926_rerun: 492 bins, CheckM2 35.97%/11.42% (HQ 53/MQ 112), 1h29m — exit 0
+- [2026-09-26] CAMI III toy human gut run (cami3_v11_20260926_rerun): 492 bins, 53 HQ
+- [2026-09-26] Issues #6 (optimization) answered, #8 and #12 closed
+- [2026-09-26] Zenodo releases published: v2 (22969763) and v3 (22973575, incl. CAMI III)
+- [2026-09-28] 2026-09-28 | run small_v11_issue28_regression: no results CSV yet, 4m34s, exit 1
+- [2026-09-28] 4-dataset benchmark plot regenerated incl. CAMI III (issue #19)
+- [2026-09-28] Full all-runs summary table generated (results/all_runs_table.md)
+- [2026-09-28] Issue #28 fix committed (41606c8): graceful 0 bins on no-marker edge
+- [2026-09-28] Issue #28 regression run launched (small_v11_issue28_regression)
+> build · big-pickle
+The log works, but let me check the regression run's actual exit code (it shows "exit 1" which may be stale), and clean up an awkward header line in the script.
+[0m$ [0mcd /vol/data/benchmark
+echo "=== regression run_meta exit ==="
+grep -E "^exit_code|^wall_s|^date" runs/small_v11_issue28_regression/run_meta.txt 2>/dev/null
+echo "=== is process still alive? ==="
+ps -eo pid,args | grep -E "small_v11_issue28" | grep -v grep | head -3 || echo "not running"
+echo "=== .active_run still set? ==="
+cat .active_run
+ls runs/small_v11_issue28_regression/comebin_out/comebin_res/cluster_res/ 2>/dev/null | head
+touch .heartbeat
+=== regression run_meta exit ===
+date:       2026-09-28T12:50:30+00:00
+exit_code:  1
+wall_s:     274
+=== is process still alive? ===
+=== .active_run still set? ===
+2137087 2137084 /vol/data/benchmark/runs/small_v11_issue28_regression/comebin_run.log /vol/data/benchmark/runs/small_v11_issue28_regression 1790599830 small /vol/data/repos/COMEBin-v11
+Leiden_bandwidth_0.05_res_maxedges100respara_10_partgraph_ratio_100.labels.npy
+Leiden_bandwidth_0.05_res_maxedges100respara_10_partgraph_ratio_100.labels.npy5005_res.txt
+Leiden_bandwidth_0.05_res_maxedges100respara_10_partgraph_ratio_100.labels.npy5010_res.txt
+Leiden_bandwidth_0.05_res_maxedges100respara_10_partgraph_ratio_50.labels.npy
+Leiden_bandwidth_0.05_res_maxedges100respara_10_partgraph_ratio_80.labels.npy
+Leiden_bandwidth_0.05_res_maxedges100respara_110_partgraph_ratio_100.labels.npy
+Leiden_bandwidth_0.05_res_maxedges100respara_110_partgraph_ratio_50.labels.npy
+Leiden_bandwidth_0.05_res_maxedges100respara_110_partgraph_ratio_80.labels.npy
+Leiden_bandwidth_0.05_res_maxedges100respara_1_partgraph_ratio_100.labels.npy
+Leiden_bandwidth_0.05_res_maxedges100respara_1_partgraph_ratio_50.labels.npy

@@ -61008,3 +61008,627 @@ drwxrwxr-x  2 ubuntu ubuntu   4096 Sep 28 12:50 logs
 [2026-09-28 12:55:03] INFO: { Current stage: 0:00:00.214 || Total: 0:00:00.214 }
 2026-09-28 12:55:04,014 - Final result:	/vol/data/benchmark/runs/small_v11_issue28_regression/comebin_out/comebin_res/cluster_res/Leiden_bandwidth_0.05_res_maxedges100respara_10_partgraph_ratio_100.labels.npy
 2026-09-28 12:55:04,015 - Stream winning Leiden bins from /tmp/opencode/realdata/ds/contigs.fa.
+> build · big-pickle
+COMEBin actually **succeeded** (final Leiden result produced, "Stream winning Leiden bins", exit 0). The failure is the harness not finding bins. Let me check where bins landed.
+[0m$ [0mcd /vol/data/benchmark/runs/small_v11_issue28_regression/comebin_out && find . -maxdepth 4 -type d | sort | head -60
+.
+./comebin_res
+./comebin_res/cluster_res
+./comebin_res/cluster_res/unitem_profile
+./comebin_res/cluster_res/unitem_profile/binning_methods
+./comebin_res/cluster_res/weight_seed_kmeans_k_3_result_bins
+./comebin_res/comebin_res_bins
+./data_augmentation
+[0m$ [0mcd /vol/data/benchmark/runs/small_v11_issue28_regression/comebin_out && find . -name '*bins*' -maxdepth 5 | sort | head -40; echo "=== fasta in res ==="; find . -name '*.fa' -o -name '*.fasta' | head -20
+./comebin_res/cluster_res/weight_seed_kmeans_k_3_result_bins
+./comebin_res/comebin_res_bins
+=== fasta in res ===
+./comebin_res/cluster_res/weight_seed_kmeans_k_3_result_bins/0.fa
+./comebin_res/cluster_res/weight_seed_kmeans_k_3_result_bins/1.fa
+./comebin_res/cluster_res/weight_seed_kmeans_k_3_result_bins/2.fa
+> build · big-pickle
+`comebin_res_bins` exists but is empty, while `weight_seed_kmeans_k_3_result_bins` has 3 FASTA files. Let me inspect the "Stream winning Leiden bins" step.
+[0m$ [0mcd /vol/data/repos/COMEBin-v11 && grep -rn "Stream winning Leiden bins" --include=*.py --include=*.sh . | head
+./COMEBin/get_final_result.py:198:    logger.info('Stream winning Leiden bins from %s.', args.contig_file)
+[0m$ [0mls -la /vol/data/benchmark/runs/small_v11_issue28_regression/comebin_out/comebin_res/comebin_res_bins/; echo "=== leiden labels ==="; ls -la /vol/data/benchmark/runs/small_v11_issue28_regression/comebin_out/comebin_res/cluster_res/ | head -30
+total 8
+drwx------ 2 ubuntu ubuntu 4096 Sep 28 12:55 .
+drwxrwxr-x 4 ubuntu ubuntu 4096 Sep 28 12:55 ..
+=== leiden labels ===
+total 528
+drwxrwxr-x 4 ubuntu ubuntu 20480 Sep 28 12:55 .
+drwxrwxr-x 4 ubuntu ubuntu  4096 Sep 28 12:55 ..
+-rw-rw-r-- 1 ubuntu ubuntu  1328 Sep 28 12:54 Leiden_bandwidth_0.05_res_maxedges100respara_10_partgraph_ratio_100.labels.npy
+-rw-rw-r-- 1 ubuntu ubuntu     0 Sep 28 12:55 Leiden_bandwidth_0.05_res_maxedges100respara_10_partgraph_ratio_100.labels.npy5005_res.txt
+-rw-rw-r-- 1 ubuntu ubuntu     0 Sep 28 12:55 Leiden_bandwidth_0.05_res_maxedges100respara_10_partgraph_ratio_100.labels.npy5010_res.txt
+-rw-rw-r-- 1 ubuntu ubuntu  1328 Sep 28 12:54 Leiden_bandwidth_0.05_res_maxedges100respara_10_partgraph_ratio_50.labels.npy
+-rw-rw-r-- 1 ubuntu ubuntu  1328 Sep 28 12:54 Leiden_bandwidth_0.05_res_maxedges100respara_10_partgraph_ratio_80.labels.npy
+-rw-rw-r-- 1 ubuntu ubuntu  1328 Sep 28 12:54 Leiden_bandwidth_0.05_res_maxedges100respara_110_partgraph_ratio_100.labels.npy
+-rw-rw-r-- 1 ubuntu ubuntu  1328 Sep 28 12:54 Leiden_bandwidth_0.05_res_maxedges100respara_110_partgraph_ratio_50.labels.npy
+-rw-rw-r-- 1 ubuntu ubuntu  1328 Sep 28 12:54 Leiden_bandwidth_0.05_res_maxedges100respara_110_partgraph_ratio_80.labels.npy
+-rw-rw-r-- 1 ubuntu ubuntu  1328 Sep 28 12:54 Leiden_bandwidth_0.05_res_maxedges100respara_1_partgraph_ratio_100.labels.npy
+-rw-rw-r-- 1 ubuntu ubuntu  1328 Sep 28 12:54 Leiden_bandwidth_0.05_res_maxedges100respara_1_partgraph_ratio_50.labels.npy
+-rw-rw-r-- 1 ubuntu ubuntu  1328 Sep 28 12:54 Leiden_bandwidth_0.05_res_maxedges100respara_1_partgraph_ratio_80.labels.npy
+-rw-rw-r-- 1 ubuntu ubuntu  1328 Sep 28 12:54 Leiden_bandwidth_0.05_res_maxedges100respara_30_partgraph_ratio_100.labels.npy
+-rw-rw-r-- 1 ubuntu ubuntu  1328 Sep 28 12:54 Leiden_bandwidth_0.05_res_maxedges100respara_30_partgraph_ratio_50.labels.npy
+-rw-rw-r-- 1 ubuntu ubuntu  1328 Sep 28 12:54 Leiden_bandwidth_0.05_res_maxedges100respara_30_partgraph_ratio_80.labels.npy
+-rw-rw-r-- 1 ubuntu ubuntu  1328 Sep 28 12:54 Leiden_bandwidth_0.05_res_maxedges100respara_50_partgraph_ratio_100.labels.npy
+-rw-rw-r-- 1 ubuntu ubuntu  1328 Sep 28 12:54 Leiden_bandwidth_0.05_res_maxedges100respara_50_partgraph_ratio_50.labels.npy
+-rw-rw-r-- 1 ubuntu ubuntu  1328 Sep 28 12:54 Leiden_bandwidth_0.05_res_maxedges100respara_50_partgraph_ratio_80.labels.npy
+-rw-rw-r-- 1 ubuntu ubuntu  1328 Sep 28 12:54 Leiden_bandwidth_0.05_res_maxedges100respara_5_partgraph_ratio_100.labels.npy
+-rw-rw-r-- 1 ubuntu ubuntu  1328 Sep 28 12:54 Leiden_bandwidth_0.05_res_maxedges100respara_5_partgraph_ratio_50.labels.npy
+-rw-rw-r-- 1 ubuntu ubuntu  1328 Sep 28 12:54 Leiden_bandwidth_0.05_res_maxedges100respara_5_partgraph_ratio_80.labels.npy
+-rw-rw-r-- 1 ubuntu ubuntu  1328 Sep 28 12:54 Leiden_bandwidth_0.05_res_maxedges100respara_70_partgraph_ratio_100.labels.npy
+-rw-rw-r-- 1 ubuntu ubuntu  1328 Sep 28 12:54 Leiden_bandwidth_0.05_res_maxedges100respara_70_partgraph_ratio_50.labels.npy
+-rw-rw-r-- 1 ubuntu ubuntu  1328 Sep 28 12:54 Leiden_bandwidth_0.05_res_maxedges100respara_70_partgraph_ratio_80.labels.npy
+-rw-rw-r-- 1 ubuntu ubuntu  1328 Sep 28 12:54 Leiden_bandwidth_0.05_res_maxedges100respara_90_partgraph_ratio_100.labels.npy
+-rw-rw-r-- 1 ubuntu ubuntu  1328 Sep 28 12:54 Leiden_bandwidth_0.05_res_maxedges100respara_90_partgraph_ratio_50.labels.npy
+-rw-rw-r-- 1 ubuntu ubuntu  1328 Sep 28 12:54 Leiden_bandwidth_0.05_res_maxedges100respara_90_partgraph_ratio_80.labels.npy
+-rw-rw-r-- 1 ubuntu ubuntu  1328 Sep 28 12:54 Leiden_bandwidth_0.15_res_maxedges100respara_10_partgraph_ratio_100.labels.npy
+> build · big-pickle
+[0m→ [0mRead /vol/data/repos/COMEBin-v11/COMEBin/get_final_result.py [90m[offset=150, limit=90][0m
+> build · big-pickle
+[0m→ [0mRead /vol/data/repos/COMEBin-v11/COMEBin/get_final_result.py [90m[offset=240][0m
+> build · big-pickle
+[0m$ [0mcd /vol/data/repos/COMEBin-v11 && grep -rn "MINIMUM_FINAL_BIN_SIZE" --include=*.py . | head
+./COMEBin/get_final_result.py:17:MINIMUM_FINAL_BIN_SIZE = 200000
+./COMEBin/get_final_result.py:188:def retained_final_labels(labels, contig_lengths, minimum_size=MINIMUM_FINAL_BIN_SIZE):
+[0m$ [0m/vol/data/envs/comebin/bin/python - <<'EOF'
+import numpy as np
+p='/vol/data/benchmark/runs/small_v11_issue28_regression/comebin_out/comebin_res/cluster_res/Leiden_bandwidth_0.05_res_maxedges100respara_10_partgraph_ratio_100.labels.npy'
+a=np.load(p, allow_pickle=True)
+print('dtype',a.dtype,'shape',a.shape)
+u,c=np.unique(a,return_counts=True)
+for uu,cc in zip(u,c):
+    print(int(uu), cc)
+EOF
+dtype uint32 shape (300,)
+0 1
+1 8
+2 7
+3 6
+4 1
+5 4
+6 1
+7 3
+8 2
+9 1
+10 5
+11 1
+12 4
+13 2
+14 3
+15 3
+16 1
+17 3
+18 3
+19 2
+20 2
+21 3
+22 2
+23 3
+24 2
+25 2
+26 1
+27 2
+28 3
+29 1
+30 2
+31 2
+32 3
+33 2
+34 1
+35 2
+36 2
+37 2
+38 1
+39 2
+40 1
+41 2
+42 2
+43 2
+44 2
+45 2
+46 2
+47 1
+48 2
+49 1
+50 2
+51 2
+52 1
+53 2
+54 2
+55 1
+56 1
+57 2
+58 2
+59 1
+60 2
+61 1
+62 2
+63 2
+64 1
+65 1
+66 2
+67 1
+68 1
+69 1
+70 1
+71 1
+72 1
+73 1
+74 1
+75 1
+76 1
+77 1
+78 1
+79 1
+80 1
+81 1
+82 1
+83 1
+84 1
+85 1
+86 1
+87 1
+88 1
+89 1
+90 1
+91 1
+92 1
+93 1
+94 1
+95 1
+96 1
+97 1
+98 1
+99 1
+100 1
+101 1
+102 1
+103 1
+104 1
+105 1
+106 1
+107 1
+108 1
+109 1
+110 1
+111 1
+112 1
+113 1
+114 1
+115 1
+116 1
+117 1
+118 1
+119 1
+120 1
+121 1
+122 1
+123 1
+124 1
+125 1
+126 1
+127 1
+128 1
+129 1
+130 1
+131 1
+132 1
+133 1
+134 1
+135 1
+136 1
+137 1
+138 1
+139 1
+140 1
+141 1
+142 1
+143 1
+144 1
+145 1
+146 1
+147 1
+148 1
+149 1
+150 1
+151 1
+152 1
+153 1
+154 1
+155 1
+156 1
+157 1
+158 1
+159 1
+160 1
+161 1
+162 1
+163 1
+164 1
+165 1
+166 1
+167 1
+168 1
+169 1
+170 1
+171 1
+172 1
+173 1
+174 1
+175 1
+176 1
+177 1
+178 1
+179 1
+180 1
+181 1
+182 1
+183 1
+184 1
+185 1
+186 1
+187 1
+188 1
+189 1
+190 1
+191 1
+192 1
+193 1
+194 1
+195 1
+196 1
+197 1
+198 1
+199 1
+200 1
+201 1
+202 1
+203 1
+204 1
+205 1
+206 1
+207 1
+208 1
+209 1
+210 1
+211 1
+212 1
+213 1
+214 1
+215 1
+216 1
+217 1
+218 1
+219 1
+220 1
+221 1
+> build · big-pickle
+[0m$ [0mls -la /vol/data/benchmark/runs/ | head -30; echo "=== other run_metas bins ==="; for f in /vol/data/benchmark/runs/*/run_meta.txt; do echo "-- $f"; grep -E '^(contigs|epochs|bins|exit_code)' "$f" 2>/dev/null; done 2>/dev/null | head -80
+total 72
+drwxrwxr-x 18 ubuntu ubuntu 4096 Sep 28 12:50 .
+drwxrwxr-x 11 ubuntu ubuntu 4096 Sep 28 12:50 ..
+drwxrwxrwx  2 ubuntu ubuntu 4096 Sep 24 00:29 baseline_rerun
+drwxrwxr-x  5 ubuntu ubuntu 4096 Sep 24 08:38 baseline_rerun_autorestart1
+drwxrwxr-x  4 ubuntu ubuntu 4096 Sep 23 21:42 baseline_unmodified
+drwxrwxr-x  4 ubuntu ubuntu 4096 Sep 26 04:40 cami3_v11_20260926
+drwxrwxr-x  5 ubuntu ubuntu 4096 Sep 26 07:37 cami3_v11_20260926_rerun
+drwxrwxr-x  5 ubuntu ubuntu 4096 Sep 25 01:04 fix_v11_20260924
+drwxrwxr-x  5 ubuntu ubuntu 4096 Sep 25 03:39 human_v11_20260925
+drwxrwxr-x  5 ubuntu ubuntu 4096 Sep 26 00:50 marine_v11_20260925
+drwxrwxr-x  5 ubuntu ubuntu 4096 Sep 24 10:05 medium_v11_20260924
+drwxrwxr-x  4 ubuntu ubuntu 4096 Sep 23 23:13 small_test
+drwxrwxr-x  4 ubuntu ubuntu 4096 Sep 23 23:40 small_test_v2
+drwxrwxr-x  4 ubuntu ubuntu 4096 Sep 24 09:04 small_test_v3
+drwxrwxr-x  5 ubuntu ubuntu 4096 Sep 24 08:51 small_test_v4
+drwxrwxr-x  4 ubuntu ubuntu 4096 Sep 28 12:50 small_v11_issue28_regression
+drwxrwxr-x  4 ubuntu ubuntu 4096 Sep 25 01:45 tiny_test_n100
+drwxrwxr-x  5 ubuntu ubuntu 4096 Sep 25 01:48 tiny_test_n101
+=== other run_metas bins ===
+-- /vol/data/benchmark/runs/baseline_rerun_autorestart1/run_meta.txt
+contigs:    /vol/data/datasets/comebin_test_data/BATS_SAMN07137077_METAG.scaffolds.min500.fasta.f1k.fasta
+exit_code:  0
+-- /vol/data/benchmark/runs/baseline_unmodified/run_meta.txt
+contigs:    /vol/data/datasets/comebin_test_data/BATS_SAMN07137077_METAG.scaffolds.min500.fasta.f1k.fasta
+-- /vol/data/benchmark/runs/cami3_v11_20260926/run_meta.txt
+contigs:    /vol/data/datasets/cami_III/toy_human_input_2samples/contigs.fa
+exit_code:  1
+bins:       0  -> /vol/data/benchmark/runs/cami3_v11_20260926/comebin_out/comebin_res/comebin_res_bins (missing or empty)
+-- /vol/data/benchmark/runs/cami3_v11_20260926_rerun/run_meta.txt
+contigs:    /vol/data/datasets/cami_III/toy_human_input_2samples/contigs.fa
+exit_code:  0
+bins:       492  -> /vol/data/benchmark/runs/cami3_v11_20260926_rerun/comebin_out/comebin_res/comebin_res_bins
+-- /vol/data/benchmark/runs/fix_v11_20260924/run_meta.txt
+contigs:    /vol/data/datasets/comebin_test_data/BATS_SAMN07137077_METAG.scaffolds.min500.fasta.f1k.fasta
+exit_code:  0
+bins:       71  -> /vol/data/benchmark/runs/fix_v11_20260924/comebin_out/comebin_res/comebin_res_bins
+-- /vol/data/benchmark/runs/human_v11_20260925/run_meta.txt
+contigs:    /vol/data/datasets/cami_II_human/human_sample0_input/contigs.fa
+exit_code:  0
+bins:       107  -> /vol/data/benchmark/runs/human_v11_20260925/comebin_out/comebin_res/comebin_res_bins
+-- /vol/data/benchmark/runs/marine_v11_20260925/run_meta.txt
+contigs:    /vol/data/datasets/cami_II/marine_sample0_input/contigs.fa
+exit_code:  0
+bins:       152  -> /vol/data/benchmark/runs/marine_v11_20260925/comebin_out/comebin_res/comebin_res_bins
+-- /vol/data/benchmark/runs/medium_v11_20260924/run_meta.txt
+contigs:    /vol/data/datasets/comebin_medium/contigs.fa
+exit_code:  0
+bins:       16  -> /vol/data/benchmark/runs/medium_v11_20260924/comebin_out/comebin_res/comebin_res_bins
+-- /vol/data/benchmark/runs/small_test/run_meta.txt
+contigs:    /vol/data/datasets/comebin_small/contigs.fa  (300 contigs, 3.5M)
+exit_code:  1
+-- /vol/data/benchmark/runs/small_test_v2/run_meta.txt
+contigs:    /vol/data/datasets/comebin_small/contigs.fa  (300 contigs, 3.5M)
+exit_code:  1
+-- /vol/data/benchmark/runs/small_test_v3/run_meta.txt
+contigs:    /vol/data/datasets/comebin_small/contigs.fa  (300 contigs, 3.5M)
+epochs:     30 (passed as -E when the CLI supports it)
+exit_code:  0
+-- /vol/data/benchmark/runs/small_test_v4/run_meta.txt
+contigs:    /vol/data/datasets/comebin_small/contigs.fa  (300 contigs, 3.5M)
+epochs:     30 (passed as -E when the CLI supports it)
+exit_code:  0
+bins:       3  -> /vol/data/benchmark/runs/small_test_v4/comebin_out/comebin_res/comebin_res_bins
+-- /vol/data/benchmark/runs/small_v11_issue28_regression/run_meta.txt
+contigs:    /tmp/opencode/realdata/ds/contigs.fa  (300 contigs, 3.5M)
+epochs:     30 (passed as -E when the CLI supports it)
+exit_code:  1
+bins:       0  -> /vol/data/benchmark/runs/small_v11_issue28_regression/comebin_out/comebin_res/comebin_res_bins (missing or empty)
+-- /vol/data/benchmark/runs/tiny_test_n100/run_meta.txt
+contigs:    /vol/data/datasets/comebin_tiny/contigs.fa  (100 contigs, 1.8M)
+epochs:     30 (passed as -E when the CLI supports it)
+exit_code:  1
+bins:       0  -> /vol/data/benchmark/runs/tiny_test_n100/comebin_out/comebin_res/comebin_res_bins (missing or empty)
+-- /vol/data/benchmark/runs/tiny_test_n101/run_meta.txt
+contigs:    /vol/data/datasets/comebin_tiny_101/contigs.fa  (101 contigs, 1.8M)
+epochs:     30 (passed as -E when the CLI supports it)
+exit_code:  0
+bins:       1  -> /vol/data/benchmark/runs/tiny_test_n101/comebin_out/comebin_res/comebin_res_bins
+[0m$ [0m/vol/data/envs/comebin/bin/python - <<'EOF'
+import numpy as np
+p='/vol/data/benchmark/runs/small_v11_issue28_regression/comebin_out/comebin_res/cluster_res/Leiden_bandwidth_0.05_res_maxedges100respara_10_partgraph_ratio_100.labels.npy'
+a=np.load(p, allow_pickle=True)
+# contig order must match contigs.fa
+lengths={}
+name=None; n=0
+for line in open('/tmp/opencode/realdata/ds/contigs.fa'):
+    if line.startswith('>'):
+        name=line[1:].split()[0]; lengths[name]=0
+    else:
+        lengths[name]+=len(line.strip())
+ids=[l[1:].split()[0] for l in open('/tmp/opencode/realdata/ds/contigs.fa') if l.startswith('>')]
+print('n_contigs',len(ids),'n_labels',len(a),'total_bp',sum(lengths.values()))
+L=np.array([lengths[i] for i in ids])
+u,inv=np.unique(a,return_inverse=True)
+sz=np.zeros(len(u),dtype=np.int64); np.add.at(sz,inv,L)
+order=np.argsort(-sz)
+print('largest clusters bp:', [(int(u[i]),int(sz[i])) for i in order[:8]])
+print('n clusters >=200000bp:', int((sz>=200000).sum()))
+EOF
+n_contigs 300 n_labels 300 total_bp 3564903
+largest clusters bp: [(0, 124454), (1, 80336), (2, 74802), (3, 69923), (4, 64794), (5, 63205), (7, 51939), (8, 50656)]
+n clusters >=200000bp: 0
+> build · big-pickle
+Important: `small_test_v4` on the **same 300-contig/3.5M dataset** produced 3 bins. Let me compare directly.
+[0m$ [0mfor r in small_test_v4 small_test_v3 small_test_v2 small_test; do echo "===== $r"; cat /vol/data/benchmark/runs/$r/run_meta.txt 2>/dev/null; done
+===== small_test_v4
+run:        /vol/data/benchmark/runs/small_test_v4
+date:       2026-09-24T08:48:33+00:00
+source:     /vol/data/repos/COMEBin-small-fix
+branch:     comebin-small-fix
+commit:     c8f22e4935a66a0fd58b794489a9021671b15437
+contigs:    /vol/data/datasets/comebin_small/contigs.fa  (300 contigs, 3.5M)
+bamdir:     /vol/data/datasets/comebin_small/bamfiles
+threads:    8
+batch_size: 256
+emb_size:   512
+epochs:     30 (passed as -E when the CLI supports it)
+seed:       42
+host:       32 cores, 62G RAM
+cmd_wrapper: /vol/data/tools/bin/micromamba run -p /vol/data/envs/comebin bash run_comebin.sh -a /vol/data/datasets/comebin_small/contigs.fa -p /vol/data/datasets/comebin_small/bamfiles -o /vol/data/benchmark/runs/small_test_v4/comebin_out -n 6 -t 8 -b 256 -e 512 -c 512 -E 30 
+exit_code:  0
+wall_s:     122
+finished:   2026-09-24T08:50:35+00:00
+bins:       3  -> /vol/data/benchmark/runs/small_test_v4/comebin_out/comebin_res/comebin_res_bins
+cmd_checkm2: /vol/data/tools/bin/micromamba run -p /vol/data/envs/checkm2 checkm2 predict --threads 8 --database_path /vol/data/benchmark/checkm2db/CheckM2_database/uniref100.KO.1.dmnd --input /vol/data/benchmark/runs/small_test_v4/comebin_out/comebin_res/comebin_res_bins --output-directory /vol/data/benchmark/runs/small_test_v4/eval/checkm2 -x fasta
+cmd_checkm2: /vol/data/tools/bin/micromamba run -p /vol/data/envs/checkm2 checkm2 predict --threads 8 --database_path /vol/data/benchmark/checkm2db/CheckM2_database/uniref100.KO.1.dmnd --input /vol/data/benchmark/runs/small_test_v4/comebin_out/comebin_res/comebin_res_bins --output-directory /vol/data/benchmark/runs/small_test_v4/eval/checkm2 -x fa --force
+checkm2_rc: 0 checkm2_wall_s: 41
+cmd_checkm: /vol/data/tools/bin/micromamba run -p /vol/data/envs/checkm checkm lineage_wf -x fa -t 8 --tmpdir /vol/data/benchmark/runs/small_test_v4/eval/checkm/tmp /vol/data/benchmark/runs/small_test_v4/comebin_out/comebin_res/comebin_res_bins /vol/data/benchmark/runs/small_test_v4/eval/checkm/out
+checkm_rc: 0 checkm_wall_s: 2
+cmd_checkm2: /vol/data/tools/bin/micromamba run -p /vol/data/envs/checkm2 checkm2 predict --threads 8 --database_path /vol/data/benchmark/checkm2db/CheckM2_database/uniref100.KO.1.dmnd --input /vol/data/benchmark/runs/small_test_v4/comebin_out/comebin_res/comebin_res_bins --output-directory /vol/data/benchmark/runs/small_test_v4/eval/checkm2 -x fa --force
+checkm2_rc: 0 checkm2_wall_s: 42
+cmd_checkm: LD_LIBRARY_PATH=/vol/data/envs/checkm/lib:/vol/data/envs/comebin/lib /vol/data/tools/bin/micromamba run -p /vol/data/envs/comebin checkm lineage_wf -x fa -t 8 --tmpdir /vol/data/benchmark/runs/small_test_v4/eval/checkm/tmp /vol/data/benchmark/runs/small_test_v4/comebin_out/comebin_res/comebin_res_bins /vol/data/benchmark/runs/small_test_v4/eval/checkm/out
+checkm_rc: 0 checkm_wall_s: 139
+checkm2_bins: 3 checkm2_compl_mean: 26.07 checkm2_cont_mean: 2.02
+checkm_bins: 3 checkm_compl_mean: 29.08 checkm_cont_mean: 0.71
+===== small_test_v3
+run:        /vol/data/benchmark/runs/small_test_v3
+date:       2026-09-24T08:45:18+00:00
+source:     /vol/data/repos/COMEBin-small-fix
+branch:     comebin-small-fix
+commit:     a0be243187c674b4e62b980ef100f8f2e8b83f54
+contigs:    /vol/data/datasets/comebin_small/contigs.fa  (300 contigs, 3.5M)
+bamdir:     /vol/data/datasets/comebin_small/bamfiles
+threads:    8
+batch_size: 256
+emb_size:   512
+epochs:     30 (passed as -E when the CLI supports it)
+seed:       42
+host:       32 cores, 62G RAM
+cmd_wrapper: /vol/data/tools/bin/micromamba run -p /vol/data/envs/comebin bash run_comebin.sh -a /vol/data/datasets/comebin_small/contigs.fa -p /vol/data/datasets/comebin_small/bamfiles -o /vol/data/benchmark/runs/small_test_v3/comebin_out -n 6 -t 8 -b 256 -e 512 -c 512 -E 30 
+exit_code:  0
+wall_s:     82
+finished:   2026-09-24T08:46:40+00:00
+cmd_from_log: 2026-09-24 08:46:32,330 - exec cmd: hmmsearch --domtblout /vol/data/datasets/comebin_small/contigs.fa.bacar_marker.hmmout --cut_tc --cpu 8 /vol/data/repos/COMEBin-small-fix/COMEBin/../auxiliary/bacar_marker.hmm /vol/data/datasets/comebin_small/contigs.fa.frag.faa 1>/vol/data/datasets/comebin_small/contigs.fa.bacar_marker.hmmout.out 2>/vol/data/datasets/comebin_small/contigs.fa.bacar_marker.hmmout.err
+supervisor_postcheck: failed_zero_bins (wrapper exit_code=0; no non-empty bins)
+===== small_test_v2
+run:        /vol/data/benchmark/runs/small_test_v2
+date:       2026-09-23T23:37:13+00:00
+source:     /vol/data/repos/COMEBin
+branch:     master
+commit:     904f649ef5cbb4582a6f0e5ec8b0b1f45778d85b
+contigs:    /vol/data/datasets/comebin_small/contigs.fa  (300 contigs, 3.5M)
+bamdir:     /vol/data/datasets/comebin_small/bamfiles
+threads:    8
+batch_size: 256
+emb_size:   512
+seed:       unset
+host:       32 cores, 62G RAM
+cmd_wrapper: /vol/data/tools/bin/micromamba run -p /vol/data/envs/comebin bash run_comebin.sh -a /vol/data/datasets/comebin_small/contigs.fa -p /vol/data/datasets/comebin_small/bamfiles -o /vol/data/benchmark/runs/small_test_v2/comebin_out -n 6 -t 8 -b 256 -e 512 -c 512 
+exit_code:  1
+wall_s:     43
+finished:   2026-09-23T23:37:56+00:00
+watchdog_terminal: 2026-09-23T23:40:01+00:00 run_meta exit_code=1
+===== small_test
+run:        /vol/data/benchmark/runs/small_test
+date:       2026-09-23T23:09:40+00:00
+source:     /vol/data/repos/COMEBin
+branch:     master
+commit:     ee2e5079ae8fd04caa381486a4bba8c2d2a34a14
+contigs:    /vol/data/datasets/comebin_small/contigs.fa  (300 contigs, 3.5M)
+bamdir:     /vol/data/datasets/comebin_small/bamfiles
+threads:    8
+batch_size: 256
+emb_size:   512
+seed:       unset
+host:       32 cores, 62G RAM
+cmd_wrapper: /vol/data/tools/bin/micromamba run -p /vol/data/envs/comebin bash run_comebin.sh -a /vol/data/datasets/comebin_small/contigs.fa -p /vol/data/datasets/comebin_small/bamfiles -o /vol/data/benchmark/runs/small_test/comebin_out -n 6 -t 8 -b 256 -e 512 -c 512 
+exit_code:  1
+wall_s:     41
+finished:   2026-09-23T23:10:21+00:00
+watchdog_terminal: 2026-09-23T23:13:03+00:00 run_meta exit_code=1
+[0m$ [0mfor r in small_test_v4 small_test_v3; do echo "===== $r cluster_res"; ls /vol/data/benchmark/runs/$r/comebin_out/comebin_res/cluster_res/*.labels.npy 2>/dev/null | wc -l; /vol/data/envs/comebin/bin/python - "$r" <<'EOF'
+import numpy as np,sys,glob
+r=sys.argv[1]
+fs=sorted(glob.glob(f'/vol/data/benchmark/runs/{r}/comebin_out/comebin_res/cluster_res/*.labels.npy'))
+if fs:
+    a=np.load(fs[0],allow_pickle=True)
+    u,c=np.unique(a,return_counts=True)
+    print('file',fs[0].split('/')[-1])
+    print('n_clusters',len(u),'top sizes',sorted(c,reverse=True)[:6])
+print('res bins:',sorted(glob.glob(f'/vol/data/benchmark/runs/{r}/comebin_out/comebin_res/comebin_res_bins/*'))[:6])
+EOF
+done
+===== small_test_v4 cluster_res
+0
+res bins: ['/vol/data/benchmark/runs/small_test_v4/comebin_out/comebin_res/comebin_res_bins/0.fa', '/vol/data/benchmark/runs/small_test_v4/comebin_out/comebin_res/comebin_res_bins/68.fa', '/vol/data/benchmark/runs/small_test_v4/comebin_out/comebin_res/comebin_res_bins/92.fa']
+===== small_test_v3 cluster_res
+0
+res bins: []
+> build · big-pickle
+[0m$ [0mcmp /tmp/opencode/realdata/ds/contigs.fa.frag.faa /vol/data/datasets/comebin_small/contigs.fa.frag.faa && echo FAA_IDENTICAL || echo FAA_DIFFER; echo "--- hmmout ---"; cmp /tmp/opencode/realdata/ds/contigs.fa.bacar_marker.hmmout /vol/data/datasets/comebin_small/contigs.fa.bacar_marker.hmmout && echo HMMOUT_IDENTICAL || echo HMMOUT_DIFFER; echo "--- seed present in small? ---"; ls -la /vol/data/datasets/comebin_small/ | head -20
+FAA_IDENTICAL
+--- hmmout ---
+HMMOUT_IDENTICAL
+--- seed present in small? ---
+total 9380
+drwxrwxr-x  3 ubuntu ubuntu    4096 Sep 24 08:46 .
+drwxrwxr-x 10 ubuntu ubuntu    4096 Sep 25 21:54 ..
+drwxrwxr-x  2 ubuntu ubuntu    4096 Sep 24 01:05 bamfiles
+-rw-rw-r--  1 ubuntu ubuntu   10992 Sep 23 14:53 contig_names.txt
+-rw-------  1 ubuntu ubuntu   13234 Sep 24 01:01 contigs.bed
+-rw-rw-r--  1 ubuntu ubuntu 3651343 Sep 23 14:53 contigs.fa
+-rw-rw-r--  1 ubuntu ubuntu     107 Sep 24 08:46 contigs.fa.bacar_marker.2quarter_lencutoff_1001.seed
+-rw-rw-r--  1 ubuntu ubuntu   45317 Sep 24 08:46 contigs.fa.bacar_marker.hmmout
+-rw-rw-r--  1 ubuntu ubuntu       0 Sep 24 08:46 contigs.fa.bacar_marker.hmmout.err
+-rw-rw-r--  1 ubuntu ubuntu  404900 Sep 24 08:46 contigs.fa.bacar_marker.hmmout.out
+-rw-rw-r--  1 ubuntu ubuntu 1289865 Sep 23 22:07 contigs.fa.frag.faa
+-rw-rw-r--  1 ubuntu ubuntu 3489994 Sep 23 22:07 contigs.fa.frag.ffn
+-rw-rw-r--  1 ubuntu ubuntu  533375 Sep 23 22:07 contigs.fa.frag.gff
+-rw-rw-r--  1 ubuntu ubuntu  124407 Sep 23 22:07 contigs.fa.frag.out
+-rw-rw-r--  1 ubuntu ubuntu    1642 Sep 24 08:48 contigs.fa_lengths.txt
+[0m$ [0mls -la /tmp/opencode/realdata/ds/; echo "=== bamfiles ==="; ls -la /tmp/opencode/realdata/ds/bamfiles/; echo "=== canonical small bamfiles ==="; ls -la /vol/data/datasets/comebin_small/bamfiles/; echo "=== contigs identical? ==="; cmp /tmp/opencode/realdata/ds/contigs.fa /vol/data/datasets/comebin_small/contigs.fa && echo IDENTICAL || echo DIFFER
+total 4896
+drwxrwxr-x 3 ubuntu ubuntu    4096 Sep 28 12:54 .
+drwxrwxr-x 4 ubuntu ubuntu    4096 Sep 28 12:50 ..
+drwxrwxr-x 2 ubuntu ubuntu    4096 Sep 28 12:49 bamfiles
+-rw-rw-r-- 1 ubuntu ubuntu 3651343 Sep 28 12:49 contigs.fa
+-rw------- 1 ubuntu ubuntu     107 Sep 28 12:54 contigs.fa.bacar_marker.2quarter_lencutoff_1001.seed
+-rw-rw-r-- 1 ubuntu ubuntu       0 Sep 28 12:54 contigs.fa.bacar_marker.2quarter_lencutoff_1001.seed.err
+-rw-rw-r-- 1 ubuntu ubuntu       0 Sep 28 12:54 contigs.fa.bacar_marker.2quarter_lencutoff_1001.seed.out
+-rw-rw-r-- 1 ubuntu ubuntu      87 Sep 28 12:50 contigs.fa.bacar_marker.2quarter_lencutoff_200000.seed.err
+-rw-rw-r-- 1 ubuntu ubuntu       0 Sep 28 12:50 contigs.fa.bacar_marker.2quarter_lencutoff_200000.seed.out
+-rw-rw-r-- 1 ubuntu ubuntu   45317 Sep 28 12:49 contigs.fa.bacar_marker.hmmout
+-rw-rw-r-- 1 ubuntu ubuntu 1289865 Sep 28 12:49 contigs.fa.frag.faa
+=== bamfiles ===
+total 8
+drwxrwxr-x 2 ubuntu ubuntu 4096 Sep 28 12:49 .
+drwxrwxr-x 3 ubuntu ubuntu 4096 Sep 28 12:54 ..
+lrwxrwxrwx 1 ubuntu ubuntu   51 Sep 28 12:49 reads.bam -> /vol/data/datasets/comebin_small/bamfiles/reads.bam
+lrwxrwxrwx 1 ubuntu ubuntu   55 Sep 28 12:49 reads.bam.bai -> /vol/data/datasets/comebin_small/bamfiles/reads.bam.bai
+=== canonical small bamfiles ===
+total 92140
+drwxrwxr-x 2 ubuntu ubuntu     4096 Sep 24 01:05 .
+drwxrwxr-x 3 ubuntu ubuntu     4096 Sep 24 08:46 ..
+-rw-rw-r-- 1 ubuntu ubuntu        0 Sep 23 14:55 bedtools.err
+-rw-rw-r-- 1 ubuntu ubuntu 94078937 Sep 23 14:57 reads.bam
+-rw-rw-r-- 1 ubuntu ubuntu   259016 Sep 24 01:01 reads.bam.bai
+=== contigs identical? ===
+IDENTICAL
+> build · big-pickle
+Inputs are byte-identical to the known-good `comebin_small` dataset, and the seed file (107 B) matches the reference. The 0-bins is downstream of the marker stage, which my patch doesn't touch. Let me prove it with a pre-patch baseline.
+[0m$ [0mcd /vol/data/repos/COMEBin-v11 && git log --oneline -3 && git status --porcelain | head; echo "--- worktrees ---"; git worktree list
+41606c8 Report 0 bins instead of erroring when no marker seed set exists
+95f5ea8 batch1 (v1.1.0 base): sequential bin numbering, drop empty/missing bins
+1b476a4 Clarify PyTorch installation options
+--- worktrees ---
+/vol/data/repos/COMEBin            358ddd8 [master]
+/vol/data/repos/COMEBin-opt        03670d6 [comebin-optimizations]
+/vol/data/repos/COMEBin-small-fix  c8f22e4 [comebin-small-fix]
+/vol/data/repos/COMEBin-v11        41606c8 [comebin-optimizations-v11]
+[0m$ [0mls -d /tmp/opencode/comebin_* 2>/dev/null; echo "--- lock/active ---"; ls -la /tmp/benchmark-start.lock 2>/dev/null || echo "no start lock"; ls -la /vol/data/benchmark/meta/.active_run 2>/dev/null || echo "no .active_run"; echo "--- run_small_test location ---"; find /vol/data/repos/metagenomic-binning-benchmark /vol/data/benchmark/bin -name 'run_small_test.sh' 2>/dev/null
+--- lock/active ---
+-rw-rw-r-- 1 ubuntu ubuntu 0 Sep 28 12:50 /tmp/benchmark-start.lock
+no .active_run
+--- run_small_test location ---
+/vol/data/repos/metagenomic-binning-benchmark/scripts/run_small_test.sh
+/vol/data/benchmark/bin/run_small_test.sh
+/vol/data/benchmark/bin/.bak-20260928/run_small_test.sh
+> build · big-pickle
+[0m$ [0mcd /vol/data/repos/COMEBin-v11 && git worktree add /tmp/opencode/comebin_prepatch 95f5ea8 2>&1 | tail -5; echo "---"; cd /tmp/opencode/comebin_prepatch && git log --oneline -1 && git status --porcelain | head
+Preparing worktree (detached HEAD 95f5ea8)
+HEAD is now at 95f5ea8 batch1 (v1.1.0 base): sequential bin numbering, drop empty/missing bins
+---
+95f5ea8 batch1 (v1.1.0 base): sequential bin numbering, drop empty/missing bins
+> build · big-pickle
+[0m$ [0mset -e
+DS=/tmp/opencode/realdata_prepatch
+rm -rf "$DS"; mkdir -p "$DS/bamfiles"
+cp /vol/data/datasets/comebin_small/contigs.fa "$DS/contigs.fa"
+cp /vol/data/datasets/comebin_small/contigs.fa.frag.faa "$DS/contigs.fa.frag.faa"
+cp /vol/data/datasets/comebin_small/contigs.fa.bacar_marker.hmmout "$DS/contigs.fa.bacar_marker.hmmout"
+ln -s /vol/data/datasets/comebin_small/bamfiles/reads.bam "$DS/bamfiles/reads.bam"
+ln -s /vol/data/datasets/comebin_small/bamfiles/reads.bam.bai "$DS/bamfiles/reads.bam.bai"
+ls -la "$DS" "$DS/bamfiles"
+echo "no .seed file present:"; ls "$DS"/*.seed 2>/dev/null || echo "  confirmed: no cached seed"
+/tmp/opencode/realdata_prepatch:
+total 4888
+drwxrwxr-x  3 ubuntu ubuntu    4096 Sep 28 12:57 .
+drwxrwxr-x 12 ubuntu ubuntu    4096 Sep 28 12:57 ..
+drwxrwxr-x  2 ubuntu ubuntu    4096 Sep 28 12:57 bamfiles
+-rw-rw-r--  1 ubuntu ubuntu 3651343 Sep 28 12:57 contigs.fa
+-rw-rw-r--  1 ubuntu ubuntu   45317 Sep 28 12:57 contigs.fa.bacar_marker.hmmout
+-rw-rw-r--  1 ubuntu ubuntu 1289865 Sep 28 12:57 contigs.fa.frag.faa
+
+/tmp/opencode/realdata_prepatch/bamfiles:
+total 8
+drwxrwxr-x 2 ubuntu ubuntu 4096 Sep 28 12:57 .
+drwxrwxr-x 3 ubuntu ubuntu 4096 Sep 28 12:57 ..
+lrwxrwxrwx 1 ubuntu ubuntu   51 Sep 28 12:57 reads.bam -> /vol/data/datasets/comebin_small/bamfiles/reads.bam
+lrwxrwxrwx 1 ubuntu ubuntu   55 Sep 28 12:57 reads.bam.bai -> /vol/data/datasets/comebin_small/bamfiles/reads.bam.bai
+no .seed file present:
+  confirmed: no cached seed
+> build · big-pickle
+Now the pre-patch baseline run:
+[0m$ [0mcd /tmp/opencode && nohup env SRC_COMEBIN=/tmp/opencode/comebin_prepatch DATA=/tmp/opencode/realdata_prepatch SEED=42 EPOCHS=30 BATCH_SIZE=256 EMB_SIZE=512 bash /vol/data/benchmark/bin/run_small_test.sh small_v11_prepatch_baseline > /tmp/opencode/prepatch_baseline.log 2>&1 &
+echo "started pid $!"
+started pid 2158359
+> build · big-pickle
+[0m$ [0msleep 45; tail -20 /tmp/opencode/prepatch_baseline.log; echo "=== progress markers ==="; grep -nE "Marker tools|Published|seed|Leiden|error|Error|ERROR|Traceback" /tmp/opencode/prepatch_baseline.log | tail -20
+ERROR: stale failed active run is registered: pid=2137087 dir=/vol/data/benchmark/runs/small_v11_issue28_regression
+Run /vol/data/benchmark/bin/benchmark-watchdog.sh to triage/restart it; not starting a second run.
+=== progress markers ===
+1:ERROR: stale failed active run is registered: pid=2137087 dir=/vol/data/benchmark/runs/small_v11_issue28_regression
+> build · big-pickle

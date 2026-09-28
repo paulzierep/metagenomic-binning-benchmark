@@ -3,10 +3,10 @@
 | | |
 |---|---|
 | Status | 🟢 `running` |
-| ⏱ Updated (Europe/Berlin) | `2026-09-28T14:56 CEST` |
-| 🏃 Live benchmark | `small_v11_issue28_regression` — **epoch 199/200** · loss `2.6121292114257812` · top1 acc `44.85676956176758` (log 106s fresh) |
+| ⏱ Updated (Europe/Berlin) | `2026-09-28T14:58 CEST` |
+| 🏃 Live benchmark | `small_v11_issue28_regression` — **epoch 199/200** · loss `2.6121292114257812` · top1 acc `44.85676956176758` (log 226s fresh) |
 | 🧠 Model (last turn) | `big-pickle` (watchdog rotates to free models on quota) |
-| 📌 Agent note · **2653 min old** | 2026-09-25T12:16:00Z | marine_v11_20260925 active: epoch 147/200, COMEBin-v11@95f5ea8, cami2 mode; heartbeat touched; PROGRESS synced
+| 📌 Agent note · **2655 min old** | 2026-09-25T12:16:00Z | marine_v11_20260925 active: epoch 147/200, COMEBin-v11@95f5ea8, cami2 mode; heartbeat touched; PROGRESS synced
 2026-09-25T15:34:55Z | issues triaged: #12 reporting auto-plots confirmed complete; #8 Zenodo record active with continuous-update workflow; marine run completed; no active run
 2026-09-25T20:49:23Z | issues triaged: #12 auto-plots complete; #8 zenodo record published with continuous-update workflow; marine run completed; no active run; agent resumed for CAMI III prep
 2026-09-25T21:11:13Z | issues #12 and #8 triaged: reporting auto-plots confirmed complete and Zenodo continuous-update workflow verified; no active runs; preparing for CAMI III dataset prep
@@ -73,9 +73,9 @@
 2026-09-26T15:32:52Z | resume: agent restart; verified all runs complete (cami3_rerun 492 bins, fix_v11 71, marine 152, human 107, medium 16), no active .active_run, all open issues #26-#1 triaged without duplication; heartbeat touched
 2026-09-26 15:50:51 UTC - agent resume: all runs complete, issues triaged, heartbeat touched, PROGRESS.md updated
 2026-09-26T16:42:06Z | agent resume: all runs complete, no unfinished steps; issues triaged; heartbeat touched; PROGRESS.md synced |
-| ⚙️ Load · uptime | `2.12 3.52 1.81` · 4 days, 23 hours, 20 minutes — 32 cores, 62 GiB, no GPU |
-| 💾 RAM used/total | `2551/64295 MB` |
+| ⚙️ Load · uptime | `0.40 2.44 1.62` · 4 days, 23 hours, 22 minutes — 32 cores, 62 GiB, no GPU |
+| 💾 RAM used/total | `2570/64295 MB` |
 | 🔗 Session | `ses_f31799c77ffeTq9gcYgqc4hBhg` |
-| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `14260c32 status: yes — small_v11_issue28_regression epoch 185/200 loss 2.49645` |
-| 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `9326707 B` — every run, command & tool result |
+| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `c4f1f2ed status: yes — small_v11_issue28_regression epoch 199/200 loss 2.61212` |
+| 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `9362211 B` — every run, command & tool result |
 | 📈 Timeline | [status/status.log](status/status.log) |
