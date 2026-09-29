@@ -103221,3 +103221,999 @@ S0C164214	Otu71	161895	2253
 extract
 gastrooral_sample_0.tar.gz
 human_sample0_input
+> build · big-pickle
+The marine gold-standard `binning_gs_subset.tsv` exists (41,988 lines — matches marine contigs). Let me check the human sample's gold standard and get AMBER tooling ready (both non-overlapping with the running sweep):
+[0m$ [0mcd /vol/data/datasets/cami_II_human
+echo "=== human_sample0_input ==="
+ls human_sample0_input/ | head
+echo "=== binning_gs in human input? ==="
+find . -maxdepth 3 -name "*binning_gs*" 2>/dev/null | head
+echo "=== setup.tar.gz? ==="
+find . -maxdepth 2 -name "setup.tar.gz" 2>/dev/null | head
+ls extract/ 2>/dev/null | head
+echo "=== git fetch AMBER reachability ==="
+timeout 15 git ls-remote https://github.com/CAMI-challenge/AMBER HEAD 2>&1 | head -2
+=== human_sample0_input ===
+bamfiles
+contigs.bed
+contigs.fa
+contigs.fa.amb
+contigs.fa.ann
+contigs.fa.bacar_marker.2quarter_lencutoff_1001.seed
+contigs.fa.bacar_marker.2quarter_lencutoff_1001.seed.err
+contigs.fa.bacar_marker.2quarter_lencutoff_1001.seed.out
+contigs.fa.bacar_marker.hmmout
+contigs.fa.bacar_marker.hmmout.err
+=== binning_gs in human input? ===
+=== setup.tar.gz? ===
+2017.12.04_18.45.54_sample_0
+=== git fetch AMBER reachability ===
+f8b3a601043d13fc4227d5691c13561eb4490e50	HEAD
+> build · big-pickle
+[0m$ [0mcd /vol/data/datasets/cami_II_human
+echo "=== extract layout ==="
+find extract -maxdepth 3 | head -25
+echo "=== grep binning_gs anywhere in human ==="
+find . -iname "*binning*" 2>/dev/null | head
+echo "=== marine_sample0 provenance? 41988 lines == marine contigs ==="
+grep -l "SAMPLE" /vol/data/repos/metagenomic-binning-benchmark/runs/marine_v11_20260925/run_meta.txt 2>/dev/null; grep -E "dataset|contigs" /vol/data/repos/metagenomic-binning-benchmark/runs/marine_v11_20260925/run_meta.txt | head -3
+=== extract layout ===
+extract
+extract/2017.12.04_18.45.54_sample_0
+extract/2017.12.04_18.45.54_sample_0/contigs
+extract/2017.12.04_18.45.54_sample_0/contigs/gsa_mapping.tsv.gz
+extract/2017.12.04_18.45.54_sample_0/contigs/anonymous_gsa.fasta.gz
+extract/2017.12.04_18.45.54_sample_0/contigs/gsa_mapping_new.tsv.gz
+extract/2017.12.04_18.45.54_sample_0/reads
+extract/2017.12.04_18.45.54_sample_0/reads/subsample_0.sam
+extract/2017.12.04_18.45.54_sample_0/reads/subsample_0.bam
+extract/2017.12.04_18.45.54_sample_0/reads/reads_mapping.tsv.gz
+extract/2017.12.04_18.45.54_sample_0/reads/anonymous_reads.fq
+extract/2017.12.04_18.45.54_sample_0/reads/subsample_0.fq
+=== grep binning_gs anywhere in human ===
+=== marine_sample0 provenance? 41988 lines == marine contigs ===
+contigs:    /vol/data/datasets/cami_II/marine_sample0_input/contigs.fa
+bamdir:     /vol/data/datasets/cami_II/marine_sample0_input/bamfiles
+cmd_wrapper: /vol/data/tools/bin/micromamba run -p /vol/data/envs/comebin bash run_comebin.sh -a /vol/data/datasets/cami_II/marine_sample0_input/contigs.fa -p /vol/data/datasets/cami_II/marine_sample0_input/bamfiles -o /vol/data/benchmark/runs/marine_v11_20260925/comebin_out -n 6 -t 32 -d cpu -s 42
+> build · big-pickle
+The marine gold standard is on disk; the human one still needs pulling (docs/13 documents AMBER as a #25 follow-on). Let me clone and inspect AMBER so I can evaluate the marine run (which uses a real gold standard) as a concrete non-overlapping deliverable:
+[0m$ [0mcd /vol/data/repos
+git clone --depth 1 https://github.com/CAMI-challenge/AMBER.git CAMI-AMBER 2>&1 | tail -2
+echo "=== AMBER layout ==="
+ls CAMI-AMBER | head
+echo "=== requires / setup ==="
+sed -n '1,40p' CAMI-AMBER/setup.py 2>/dev/null
+ls CAMI-AMBER/amber 2>/dev/null || find CAMI-AMBER -maxdepth 2 -name "*.py" | head
+echo "=== predict/gold TSV specs ==="
+sed -n '1,30p' CAMI-AMBER/README.md 2>/dev/null | head -30
+Cloning into 'CAMI-AMBER'...
+=== AMBER layout ===
+Dockerfile
+LICENSE
+MANIFEST.in
+README.md
+amber.py
+cami_amber
+cami_i_hc
+cami_ii_mouse_gut
+cami_ii_mouse_gut_filter1
+features
+=== requires / setup ===
+from setuptools import setup, find_packages
+from cami_amber.version import __version__
+import glob
+
+
+def dependencies():
+    with open('requirements.txt', 'r') as f:
+        return f.read().splitlines()
+
+
+setup(
+    name             = 'cami_amber',
+    version          = __version__,
+    description      = 'AMBER: Assessment of Metagenome BinnERs',
+    long_description = open('README.md').read(),
+    long_description_content_type="text/markdown",
+    author           = 'CAMI',
+    author_email     = 'support@cami-challenge.org',
+    url              = 'http://cami-challenge.org',
+    license          = 'GNU General Public License v3 or later (GPLv3+)',
+    scripts          = glob.glob('*.py'),
+    install_requires = dependencies(),
+    packages         = find_packages(),
+    classifiers = [
+        'Natural Language :: English',
+        'License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)',
+        'Programming Language :: Python',
+        'Programming Language :: Python :: 3.11',
+        'Topic :: Scientific/Engineering :: Bio-Informatics',
+        'Intended Audience :: Science/Research',
+        'Operating System :: POSIX'
+    ]
+)
+CAMI-AMBER/amber.py
+CAMI-AMBER/cami_amber/version.py
+CAMI-AMBER/cami_amber/plots.py
+CAMI-AMBER/cami_amber/unifrac_distance.py
+CAMI-AMBER/cami_amber/binning_classes.py
+CAMI-AMBER/cami_amber/amber_html.py
+CAMI-AMBER/cami_amber/evaluate.py
+CAMI-AMBER/cami_amber/plot_by_genome.py
+CAMI-AMBER/cami_amber/precision_recall_per_bin.py
+CAMI-AMBER/cami_amber/__init__.py
+=== predict/gold TSV specs ===
+[![CircleCI](https://circleci.com/gh/CAMI-challenge/AMBER/tree/master.svg?style=svg)](https://circleci.com/gh/CAMI-challenge/AMBER/tree/master)
+
+# AMBER: Assessment of Metagenome BinnERs
+AMBER is an evaluation package for the comparative assessment of genome reconstructions and taxonomic assignments from metagenome benchmark datasets. It provides performance metrics, results rankings, and comparative visualizations for assessing multiple programs or parameter effects. The provided metrics were used in the first community benchmarking challenge of the initiative for the [Critical Assessment of Metagenomic Interpretation](http://www.cami-challenge.org/).
+
+**Metrics computed per bin**
+
+* Predicted bin size in bps and sequences
+* True positives
+* (Average) Purity
+* (Average) Completeness
+
+**Metrics computed per sample**
+
+* Accuracy
+* Misclassification rate (contamination)
+* Purity
+* Completeness
+* (Adjusted) Rand index
+* Percentage of binned base pairs and sequences
+* Number of genomes recovered within levels of completeness and contamination
+* UniFrac (for taxonomic binning)
+
+
+**Example pages produced by AMBER**
+
+* [CAMI I high complexity challenge dataset](https://cami-challenge.github.io/AMBER/cami_i_hc/)
+* [CAMI II mouse gut toy dataset](https://cami-challenge.github.io/AMBER/cami_ii_mouse_gut/)
+* [CAMI II mouse gut toy dataset (using option --filter 1)](https://cami-challenge.github.io/AMBER/cami_ii_mouse_gut_filter1/)
+> build · big-pickle
+AMBER is cloned. Let me check its expected input format and whether I can run it against the marine run (whose gold standard is on disk — direct #25 follow-on, doesn't touch the run slot):
+[0m$ [0mcd /vol/data/repos/CAMI-AMBER
+echo "=== amber.py help ==="
+python3 amber.py --help 2>&1 | head -30
+echo "=== requirements ==="
+cat requirements.txt
+echo "=== binning_classes.py: parse format ==="
+grep -nE "def read|\.split|columns|sample" cami_amber/binning_classes.py | head -20
+=== amber.py help ===
+Traceback (most recent call last):
+  File "/vol/data/repos/CAMI-AMBER/amber.py", line 18, in <module>
+    from cami_amber import amber_html
+  File "/vol/data/repos/CAMI-AMBER/cami_amber/amber_html.py", line 20, in <module>
+    import numpy as np
+ModuleNotFoundError: No module named 'numpy'
+=== requirements ===
+numpy==2.0.1
+biopython==1.87.0
+matplotlib==3.10.8
+bokeh==3.8.2
+pandas==2.2.2
+seaborn==0.13.2
+jinja2==3.1.6
+pyarrow==23.0.1
+=== binning_classes.py: parse format ===
+333:        metrics_dict = {metric.split("__")[1]: value for metric, value in self.__dict__.items()}
+351:    def __init__(self, label, sample_id, options, metadata, is_gs=False):
+353:        self.__sample_id = sample_id
+371:    def sample_id(self):
+372:        return self.__sample_id
+423:    @sample_id.setter
+424:    def sample_id(self, sample_id):
+425:        self.__sample_id = sample_id
+480:    def __init__(self, label, sample_id, options, metadata, is_gs=False):
+481:        super().__init__(label, sample_id, options, metadata, is_gs)
+489:        query_df = load_data.load_sample(self.metadata).drop_duplicates(['SEQUENCEID', 'BINID'])
+511:        metrics_dict[utils_labels.SAMPLE] = self.sample_id
+517:        logging.getLogger('amber').info('Evaluating {}, sample {}, genome binning'.format(self.label, self.sample_id))
+519:        gs_df = self.gold_standard.df.rename(columns={'LENGTH': 'seq_length', 'BINID': 'genome_id'})
+539:            confusion_df = query_w_length_mult_seqs.groupby(['BINID', 'genome_id'], sort=False).agg({'seq_length': 'sum', 'SEQUENCEID': 'count'}).rename(columns={'seq_length': 'genome_length', 'SEQUENCEID': 'genome_seq_counts'})
+560:            # query_w_length = query_w_length.groupby(['index'], sort=False).first().drop(columns='genome_id_y').rename(columns={'genome_id_x': 'genome_id'})
+564:        confusion_df = query_w_length.groupby(['BINID', 'genome_id'], sort=False).agg({'seq_length': 'sum', 'SEQUENCEID': 'count'}).rename(columns={'seq_length': 'genome_length', 'SEQUENCEID': 'genome_seq_counts'})
+573:        precision_df = query_w_length.groupby('BINID', sort=False).agg({'seq_length': 'sum', 'seq_length_mean': 'mean', 'SEQUENCEID': 'count'}).rename(columns={'seq_length': 'total_length', 'SEQUENCEID': 'total_seq_counts'})
+575:        precision_df.rename(columns={'genome_length': 'tp_length', 'genome_seq_counts': 'tp_seq_counts'}, inplace=True)
+585:            precision_df.drop(columns=['cumsum_length_pct', 'total_length_pct'], inplace=True)
+> build · big-pickle
+AMBER needs its deps. Let me check the expected input formats (predictions + gold standard) so I can produce a valid evaluation, then set up a small dedicated venv:
+[0m$ [0mcd /vol/data/repos/CAMI-AMBER
+echo "=== load_data.py ==="
+sed -n '1,120p' cami_amber/load_data.py 2>/dev/null || ls cami_amber/
+echo "=== determine gold standard file format expectations ==="
+grep -rn "BINID\|SEQUENCEID\|read_binning" cami_amber/io/*.py cami_amber/load_data*.py cami_amber/*.py 2>/dev/null | head -20
+=== load_data.py ===
+__init__.py
+__pycache__
+amber_html.py
+binning_classes.py
+evaluate.py
+plot_by_genome.py
+plots.py
+precision_recall_per_bin.py
+unifrac_distance.py
+utils
+version.py
+=== determine gold standard file format expectations ===
+cami_amber/binning_classes.py:489:        query_df = load_data.load_sample(self.metadata).drop_duplicates(['SEQUENCEID', 'BINID'])
+cami_amber/binning_classes.py:494:            return query_df[['SEQUENCEID', 'BINID', 'LENGTH']]
+cami_amber/binning_classes.py:496:            return query_df[['SEQUENCEID', 'BINID']]
+cami_amber/binning_classes.py:519:        gs_df = self.gold_standard.df.rename(columns={'LENGTH': 'seq_length', 'BINID': 'genome_id'})
+cami_amber/binning_classes.py:521:        condition = query_df['SEQUENCEID'].isin(gs_df['SEQUENCEID'])
+cami_amber/binning_classes.py:523:            logging.getLogger('amber').warning("{} sequences in {} not found in the gold standard.".format(query_df[~condition]['SEQUENCEID'].nunique(), self.label))
+cami_amber/binning_classes.py:526:        query_w_length = pd.merge(query_df, gs_df.drop_duplicates('SEQUENCEID'), on='SEQUENCEID', sort=False)
+cami_amber/binning_classes.py:528:        query_w_length_no_dups = query_w_length.drop_duplicates('SEQUENCEID')
+cami_amber/binning_classes.py:529:        gs_df_no_dups = gs_df.drop_duplicates('SEQUENCEID')
+cami_amber/binning_classes.py:531:        self.metrics.percentage_of_assigned_seqs = query_w_length_no_dups.shape[0] / gs_df_no_dups['SEQUENCEID'].shape[0]
+cami_amber/binning_classes.py:535:        query_w_length_mult_seqs = query_df.reset_index().merge(gs_df, on='SEQUENCEID', sort=False)
+cami_amber/binning_classes.py:539:            confusion_df = query_w_length_mult_seqs.groupby(['BINID', 'genome_id'], sort=False).agg({'seq_length': 'sum', 'SEQUENCEID': 'count'}).rename(columns={'seq_length': 'genome_length', 'SEQUENCEID': 'genome_seq_counts'})
+cami_amber/binning_classes.py:541:            most_abundant_genome_df = confusion_df.loc[confusion_df.groupby('BINID', sort=False)['genome_length'].idxmax()]
+cami_amber/binning_classes.py:542:            most_abundant_genome_df = most_abundant_genome_df.reset_index()[['BINID', 'genome_id']]
+cami_amber/binning_classes.py:544:            matching_genomes_df = pd.merge(query_w_length_mult_seqs, most_abundant_genome_df, on=['BINID', 'genome_id']).set_index('index')
+cami_amber/binning_classes.py:550:            matching_genomes_df = pd.merge(gs_df, query_w_length[['SEQUENCEID', 'genome_id']], on=['SEQUENCEID', 'genome_id'])
+cami_amber/binning_classes.py:551:            matching_genomes_df = matching_genomes_df[['SEQUENCEID', 'genome_id', 'seq_length']].drop_duplicates(['SEQUENCEID', 'genome_id'])
+cami_amber/binning_classes.py:552:            condition = gs_df_no_dups['SEQUENCEID'].isin(matching_genomes_df['SEQUENCEID'])
+cami_amber/binning_classes.py:557:            # query_w_length_mult_seqs = pd.merge(query_w_length_mult_seqs, most_abundant_genome_df, on=['BINID'])
+cami_amber/binning_classes.py:564:        confusion_df = query_w_length.groupby(['BINID', 'genome_id'], sort=False).agg({'seq_length': 'sum', 'SEQUENCEID': 'count'}).rename(columns={'seq_length': 'genome_length', 'SEQUENCEID': 'genome_seq_counts'})
+> build · big-pickle
+[0m$ [0mcd /vol/data/repos/CAMI-AMBER
+echo "=== utils dir ==="
+ls cami_amber/utils/
+echo "=== load_data in utils ==="
+sed -n '1,90p' cami_amber/utils/load_data.py 2>/dev/null
+echo "=== how metadata/sample_data defined (amber.py) ==="
+sed -n '1,120p' amber.py
+=== utils dir ===
+EMDUnifrac.py
+ProfilingTools.py
+__init__.py
+add_length_column.py
+argparse_parents.py
+convert_fasta_bins_to_biobox_format.py
+labels.py
+load_data.py
+load_ncbi_taxinfo.py
+=== load_data in utils ===
+# Copyright 2026 Department of Computational Biology for Infection Research - Helmholtz Centre for Infection Research
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+import pandas as pd
+import sys
+import logging
+import os
+import mimetypes
+import gzip
+import io
+import tarfile
+import zipfile
+import itertools
+from multiprocessing.pool import ThreadPool
+from collections import defaultdict
+from collections import OrderedDict
+from cami_amber import binning_classes
+from cami_amber.utils import labels as utils_labels
+
+try:
+    import load_ncbi_taxinfo
+except ImportError:
+    sys.path.append(os.path.dirname(__file__))
+    try:
+        import load_ncbi_taxinfo
+    finally:
+        sys.path.remove(os.path.dirname(__file__))
+
+
+def open_generic(file):
+    file_type, file_encoding = mimetypes.guess_type(file)
+
+    try:
+        if file_encoding == 'gzip':
+            if file_type == 'application/x-tar':  # .tar.gz
+                tar = tarfile.open(file, 'r:gz')
+                f = tar.extractfile(tar.getmembers()[0])
+                return io.TextIOWrapper(f)
+            else:  # .gz
+                return gzip.open(file, 'rt')
+        if file_type == 'application/zip':  # .zip
+            f = zipfile.ZipFile(file, 'r')
+            f = f.open(f.namelist()[0])
+            return io.TextIOWrapper(f)
+        else:
+            return open(file, 'rt')
+    except FileNotFoundError as e:
+        logging.getLogger('amber').error('File not found: %s' % file)
+        raise e
+
+
+def open_coverages(file_path):
+    if not file_path:
+        return pd.DataFrame()
+    logging.getLogger('amber').info('Loading coverage file')
+    coverages_pd = pd.DataFrame()
+    try:
+        samples_metadata = read_metadata((file_path, 'coverage file'))
+        for metadata in samples_metadata:
+            nrows = metadata[1] - metadata[0] + 1
+            df = pd.read_csv(file_path, names=metadata[3], sep='\t', comment='#', skiprows=metadata[0], nrows=nrows, header=None)
+            df = df[['GENOMEID', 'COVERAGE']]
+            df['SAMPLEID'] = metadata[2]['SAMPLEID']
+            coverages_pd = pd.concat([coverages_pd, df], ignore_index=True)
+    except BaseException as e:
+        logging.getLogger('amber').critical("File {} not found or malformed. {}".format(file_path, e))
+        exit(1)
+    return coverages_pd
+
+
+def load_unique_common(unique_common_file_path, args_keyword):
+    if not unique_common_file_path:
+        return None
+    logging.getLogger('amber').info('Loading list of genomes to be removed')
+    with open(unique_common_file_path) as f:
+        line = f.readline()
+        line_split = line.split('\t')
+        f.seek(0)
+=== how metadata/sample_data defined (amber.py) ===
+#!/usr/bin/env python3
+
+# Copyright 2026 Department of Computational Biology for Infection Research - Helmholtz Centre for Infection Research
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+from cami_amber import amber_html
+from cami_amber import evaluate
+from cami_amber import plots
+from cami_amber import binning_classes
+from cami_amber.utils import load_data
+from cami_amber.utils import argparse_parents
+from cami_amber.utils import labels as utils_labels
+from cami_amber.version import __version__
+import argparse
+import errno
+import logging
+import os
+import sys
+import pandas as pd
+
+
+def get_logger(output_dir, silent):
+    make_sure_path_exists(output_dir)
+    logger = logging.getLogger('amber')
+    logger.setLevel(logging.INFO)
+    formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
+    logging_fh = logging.FileHandler(os.path.join(output_dir, 'log.txt'))
+    logging_fh.setFormatter(formatter)
+    logger.addHandler(logging_fh)
+
+    if not silent:
+        logging_stdout = logging.StreamHandler(sys.stdout)
+        logging_stdout.setFormatter(formatter)
+        logger.addHandler(logging_stdout)
+    return logger
+
+
+def make_sure_path_exists(path):
+    try:
+        os.makedirs(path)
+    except OSError as exception:
+        if exception.errno != errno.EEXIST:
+            raise
+
+
+def create_output_directories(output_dir, sample_id_to_g_queries_list, sample_id_to_t_queries_list):
+    logging.getLogger('amber').info('Creating output directories')
+    for sample_id in sample_id_to_g_queries_list:
+        for query in sample_id_to_g_queries_list[sample_id]:
+            make_sure_path_exists(os.path.join(output_dir, query.binning_type, query.label))
+    for sample_id in sample_id_to_t_queries_list:
+        for query in sample_id_to_t_queries_list[sample_id]:
+            make_sure_path_exists(os.path.join(output_dir, query.binning_type, query.label))
+
+
+def get_labels(labels, bin_files):
+    if labels:
+        labels_list = [x.strip() for x in labels.split(',')]
+        if len(set(labels_list)) != len(bin_files):
+            logging.getLogger('amber').critical(
+                'Number of different labels does not match the number of binning files. Please check parameter -l, --labels.')
+            exit(1)
+        return labels_list
+    tool_id = []
+    for bin_file in bin_files:
+        tool_id.append(bin_file.split('/')[-1].split('.binning')[0])
+    return tool_id
+
+
+def save_metrics(sample_id_to_g_queries_list, df_summary, pd_bins, output_dir, stdout):
+    logging.getLogger('amber').info('Saving computed metrics')
+    df_summary.to_csv(os.path.join(output_dir, 'results.tsv'), sep='\t', index=False)
+    pd_bins.to_csv(os.path.join(output_dir, 'bin_metrics.tsv'), index=False, sep='\t')
+    if stdout:
+        print(df_summary[[label for label in utils_labels.LABELS1 if label in df_summary.columns]].rename(columns=utils_labels.LABELS).to_string(index=False))
+    for tool, pd_group in pd_bins[pd_bins['rank'] == 'NA'].groupby(utils_labels.TOOL):
+        bins_columns = utils_labels.get_genome_bins_columns()
+        table = pd_group[['sample_id'] + list(bins_columns.keys())].rename(columns=dict(bins_columns))
+        table.to_csv(os.path.join(output_dir, 'genome', tool, 'metrics_per_bin.tsv'), sep='\t', index=False)
+    for tool, pd_group in pd_bins[pd_bins['rank'] != 'NA'].groupby(utils_labels.TOOL):
+        bins_columns = utils_labels.get_tax_bins_columns()
+        if 'name' not in pd_bins.columns or pd_group['name'].isnull().any():
+            del bins_columns['name']
+        table = pd_group[['sample_id'] + list(bins_columns.keys())].rename(columns=dict(bins_columns))
+        table.to_csv(os.path.join(output_dir, 'taxonomic', tool, 'metrics_per_bin.tsv'), sep='\t', index=False)
+
+    pd_genomes_all = pd.DataFrame()
+    for sample_id in sample_id_to_g_queries_list:
+        pd_genomes_sample = pd.DataFrame()
+        for query in sample_id_to_g_queries_list[sample_id]:
+            query.recall_df_cami1[utils_labels.TOOL] = query.label
+            pd_genomes_sample = pd.concat([pd_genomes_sample, query.recall_df_cami1], ignore_index=True, sort=False)
+        pd_genomes_sample['sample_id'] = sample_id
+        pd_genomes_all = pd.concat([pd_genomes_all, pd_genomes_sample], ignore_index=True, sort=False)
+    if not pd_genomes_all.empty:
+        pd_genomes_all.to_csv(os.path.join(output_dir, 'genome_metrics_cami1.tsv'), index=False, sep='\t')
+
+
+def main(args=None):
+    parser = argparse.ArgumentParser(description="AMBER: Assessment of Metagenome BinnERs",
+                                     parents=[argparse_parents.PARSER_MULTI2], prog='AMBER')
+    parser.add_argument('-p', '--filter', help=argparse_parents.HELP_FILTER)
+    parser.add_argument('-n', '--min_length', help="Minimum length of sequences", type=int, required=False)
+    parser.add_argument('-o', '--output_dir', help="Directory to write the results to", required=True)
+    parser.add_argument('--stdout', help="Print summary to stdout", action='store_true')
+    parser.add_argument('-d', '--desc', help="Description for HTML page", required=False)
+    parser.add_argument('--colors', help="Color indices", required=False)
+    parser.add_argument('--silent', help='Silent mode', action='store_true')
+> build · big-pickle
+AMBER is cloned. Before setting up its (heavy) dependency stack, let me verify the gold-standard file format and what the marine run produced (bin→contig mapping) so the evaluation is actually runnable:
+[0m$ [0mcd /vol/data
+echo "=== marine GS file: all 4 cols per row + contig naming ==="
+awk -F'\t' 'NR<=3{print "cols:",NF,"| c1:"$1" c2:"$2" c3:"$3" c4:"$4}' /vol/data/datasets/cami_II/marine_sample0_input/binning_gs_subset.tsv
+echo "=== marine contig header ==="
+grep -m3 ">" /vol/data/datasets/cami_II/marine_sample0_input/contigs.fa | cut -c1-80
+echo "=== marine run: bins produced ==="
+ls /vol/data/repos/metagenomic-binning-benchmark/runs/marine_v11_20260925/comebin_res_bins/ 2>/dev/null | head -5
+ls /vol/data/repos/metagenomic-binning-benchmark/runs/marine_v11_20260925/comebin_res_bins/ 2>/dev/null | wc -l
+echo "=== one bin fasta header ==="
+B=$(ls /vol/data/repos/metagenomic-binning-benchmark/runs/marine_v11_20260925/comebin_res_bins/*.fa 2>/dev/null | head -1)
+echo "$B"
+grep -m2 ">" "$B" | cut -c1-80
+echo "=== per_bin_results.csv first lines ==="
+head -3 /vol/data/repos/metagenomic-binning-benchmark/runs/marine_v11_20260925/per_bin_results.csv | cut -c1-140
+=== marine GS file: all 4 cols per row + contig naming ===
+cols: 4 | c1:S0C1468008 c2:Otu523 c3:39960 c4:2056
+cols: 4 | c1:S0C437807 c2:Otu833 c3:1229909 c4:4838
+cols: 4 | c1:S0C273664 c2:Otu235.0 c3:2742 c4:3829
+=== marine contig header ===
+>S0C21
+>S0C46
+>S0C128
+=== marine run: bins produced ===
+0
+=== one bin fasta header ===
+
+grep: : No such file or directory
+=== per_bin_results.csv first lines ===
+bin,checkm2_completeness,checkm2_contamination,checkm2_genome_size,checkm2_contigs,checkm2_n50,checkm1_completeness,checkm1_contamination
+0,83.46,0.03,6795663,725,13166,77.58620689655173,0.0
+1,73.71,2.03,5186683,1175,4894,79.00375939849624,1.5789473684210527
+> build · big-pickle
+No `comebin_res_bins/` in the repo mirror — the bin FASTA live in the benchmark run dir. Let me locate them and inspect the gold-standard columns vs AMBER's requirements:
+[0m$ [0mcd /vol/data/benchmark
+echo "=== find marine bin fastas ==="
+find runs/marine_v11_20260925 -name "*.fa" -path "*bin*" 2>/dev/null | head -5
+find runs/marine_v11_20260925 -maxdepth 3 -type d 2>/dev/null | head -20
+echo "=== any cluster_res ==="
+find runs/marine_v11_20260925 -maxdepth 2 -name "cluster_res" -o -maxdepth 2 -name "comebin_res" 2>/dev/null
+echo "=== biobox output? (export_biobox) ==="
+find runs/marine_v11_20260925 -name "binning.tar.gz" -o -name "*binning_summary*" 2>/dev/null | head
+=== find marine bin fastas ===
+runs/marine_v11_20260925/comebin_out/comebin_res/cluster_res/weight_seed_kmeans_k_79_result_bins/38.fa
+runs/marine_v11_20260925/comebin_out/comebin_res/cluster_res/weight_seed_kmeans_k_79_result_bins/43.fa
+runs/marine_v11_20260925/comebin_out/comebin_res/cluster_res/weight_seed_kmeans_k_79_result_bins/62.fa
+runs/marine_v11_20260925/comebin_out/comebin_res/cluster_res/weight_seed_kmeans_k_79_result_bins/48.fa
+runs/marine_v11_20260925/comebin_out/comebin_res/cluster_res/weight_seed_kmeans_k_79_result_bins/13.fa
+runs/marine_v11_20260925
+runs/marine_v11_20260925/comebin_out
+runs/marine_v11_20260925/comebin_out/comebin_res
+runs/marine_v11_20260925/comebin_out/comebin_res/cluster_res
+runs/marine_v11_20260925/comebin_out/comebin_res/comebin_res_bins
+runs/marine_v11_20260925/comebin_out/data_augmentation
+runs/marine_v11_20260925/eval
+runs/marine_v11_20260925/eval/checkm2
+runs/marine_v11_20260925/eval/checkm2/protein_files
+runs/marine_v11_20260925/eval/checkm2/diamond_output
+runs/marine_v11_20260925/eval/checkm
+runs/marine_v11_20260925/eval/checkm/tmp
+runs/marine_v11_20260925/eval/checkm/out
+runs/marine_v11_20260925/logs
+=== any cluster_res ===
+runs/marine_v11_20260925/comebin_out/comebin_res
+=== biobox output? (export_biobox) ===
+> build · big-pickle
+`comebin_res_bins/` holds the final bins. Before investing in the AMBER dependency stack, let me confirm the gold-standard format AMBER expects vs what's on disk, and check the biobox export script (since AMBER consumes CAMI-style biobox binning):
+[0m$ [0mcd /vol/data/repos/CAMI-AMBER
+echo "=== AMBER gold standard format (read of binning_gs) ==="
+grep -n "genome\|GS\|gold\|SEQUENCEID\|LENGTH" cami_amber/utils/load_data.py | head -30
+echo "=== add_length_column ==="
+sed -n '1,50p' cami_amber/utils/add_length_column.py
+=== AMBER gold standard format (read of binning_gs) ===
+86:    logging.getLogger('amber').info('Loading list of genomes to be removed')
+94:            genome_to_unique_common = {}
+97:                genome_to_unique_common[line_split[0]] = line_split[1].strip('\n')
+99:                return [genome_id for genome_id, keyword in genome_to_unique_common.items() if keyword == args_keyword]
+101:                return list(genome_to_unique_common.keys())
+170:    columns = ['SEQUENCEID', 'BINID', 'TAXID', 'LENGTH', '_LENGTH']
+179:                         dtype={'SEQUENCEID': pd.StringDtype(), 'BINID': pd.StringDtype(), 'TAXID': pd.UInt32Dtype(),
+180:                                'LENGTH': pd.UInt32Dtype(), '_LENGTH': pd.UInt32Dtype()})
+191:                         dtype={'SEQUENCEID': pd.StringDtype(), 'BINID': pd.StringDtype(), 'TAXID': pd.UInt32Dtype(),
+192:                                'LENGTH': pd.UInt32Dtype(), '_LENGTH': pd.UInt32Dtype()})
+193:    df.rename(columns={'_LENGTH': 'LENGTH'}, inplace=True)
+198:    columns = ['SEQUENCEID', 'BINID', 'TAXID', 'LENGTH', '_LENGTH']
+206:        df.rename(columns={'_LENGTH': 'LENGTH'}, inplace=True)
+211:def get_sample_id_to_num_genomes(sample_id_to_queries_list):
+212:    sample_id_to_num_genomes = {}
+216:            sample_id_to_num_genomes[sample_id] = gs_df['BINID'].nunique()
+218:            sample_id_to_num_genomes[sample_id] = 0
+219:    return sample_id_to_num_genomes
+224:        if 'LENGTH' not in query_df.columns:
+225:            logging.getLogger('amber').critical("Sequences length could not be determined. Please add column LENGTH to gold standard.")
+227:        cols = ['TAXID', 'LENGTH']
+233:    query_df = query_df.join(taxonomy_df, on="TAXID").set_index('SEQUENCEID')
+250:def load_queries(gold_standard_file, bin_files, labels, options=None, options_gs=None):
+255:        metadata_all = pool.map(read_metadata, zip([gold_standard_file] + bin_files, [utils_labels.GS] + labels))
+278:            g_query_gs = binning_classes.GenomeQuery(utils_labels.GS, sample_id, options_gs, metadata, True)
+279:            g_query_gs.gold_standard = g_query_gs
+284:            t_query_gs = binning_classes.TaxonomicQuery(utils_labels.GS, sample_id, options_gs, metadata, taxonomy_df, True)
+285:            t_query_gs.gold_standard = t_query_gs
+296:                    logging.getLogger('amber').critical("Sample ID {} in {} not found in the genome binning gold standard.".format(sample_id, label))
+299:                g_query.gold_standard = sample_id_to_g_gs[sample_id]
+=== add_length_column ===
+#!/usr/bin/env python
+
+# Copyright 2020 Department of Computational Biology for Infection Research - Helmholtz Centre for Infection Research
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+import argparse
+import os
+import gzip
+import mimetypes
+import sys
+from Bio import SeqIO
+
+try:
+    import argparse_parents
+except ImportError:
+    sys.path.append(os.path.dirname(__file__))
+    try:
+        import argparse_parents
+    finally:
+        sys.path.remove(os.path.dirname(__file__))
+
+
+def read_lengths_from_fastx_file(fastx_file):
+    """
+
+    @param fastx_file: file path
+    @type fastx_file: str
+    @rtype: dict[str, int]
+    """
+    file_type = mimetypes.guess_type(fastx_file)[1]
+    if file_type == 'gzip':
+        f = gzip.open(fastx_file, "rt")
+    elif not file_type:
+        f = open(fastx_file, "rt")
+    else:
+        raise RuntimeError("Unknown type of file: '{}".format(fastx_file))
+
+    length = {}
+> build · big-pickle
+The sweep is running cell 3 (of 24, sibling-resumed) — I must not touch the run slot or the `comebin` env it uses. Non-overlapping #25 follow-ons are AMBER/CAMI-gold-standard and the docs. First, let me check the marine GS column semantics and the CAMI II human gold-standard availability, since AMBER needs an exact-matching SEQUENCEID↔BINID gold standard:
+[0m$ [0mcd /vol/data
+echo "=== marine GS: unique col1/c4 counts + col4 range ==="
+awk -F'\t' '{c1[$1]++} END{print "unique genome ids:", length(c1)}' /vol/data/datasets/cami_II/marine_sample0_input/binning_gs_subset.tsv
+awk -F'\t' 'NR<=5{print $1" | "$2" | "$3" | "$4}' /vol/data/datasets/cami_II/marine_sample0_input/binning_gs_subset.tsv
+echo "=== does col4 look like sequence ids in the assembled contigs? sample contig names ==="
+grep -m8 ">" /vol/data/datasets/cami_II/marine_sample0_input/contigs.fa
+echo "=== AMBER read_metadata: does it need header? ==="
+grep -n "def read_metadata" -A 30 /vol/data/repos/CAMI-AMBER/cami_amber/utils/load_data.py | head -45
+=== marine GS: unique col1/c4 counts + col4 range ===
+unique genome ids: 41988
+S0C1468008 | Otu523 | 39960 | 2056
+S0C437807 | Otu833 | 1229909 | 4838
+S0C273664 | Otu235.0 | 2742 | 3829
+S0C895222 | Otu283.0 | 873 | 2693
+S0C299424 | Otu301 | 404011 | 2008
+=== does col4 look like sequence ids in the assembled contigs? sample contig names ===
+>S0C21
+>S0C46
+>S0C128
+>S0C163
+>S0C209
+>S0C216
+>S0C221
+>S0C307
+=== AMBER read_metadata: does it need header? ===
+121:def read_metadata(path_label_tuple):
+122-    file_path_query, label = path_label_tuple
+123-    header = {}
+124-    columns_list = []
+125-    got_column_indices = False
+126-
+127-    samples_metadata = []
+128-
+129-    with open_generic(file_path_query) as f:
+130-        for i, line in enumerate(f):
+131-            line = line.strip()
+132-
+133-            if len(line) == 0 or line.startswith("#"):
+134-                if got_column_indices and not reading_data:
+135-                    data_start = i + 1
+136-                continue
+137-
+138-            # parse header with column indices
+139-            if line.startswith('@@'):
+140-                for index, column_name in enumerate(line[2:].split('\t')):
+141-                    columns_list.append(column_name)
+142-                got_column_indices = True
+143-                reading_data = False
+144-                data_start = i + 1
+145-
+146-            elif line.startswith('@'):
+147-                logging.getLogger('amber').info('Found {} in {}'.format(line, label))
+148-                # parse header with metadata
+149-                if got_column_indices:
+150-                    samples_metadata.append((data_start, data_end, header, columns_list, file_path_query, label))
+151-                    header = {}
+> build · big-pickle
+The marine GS col1 (S0C1468008…) doesn't match assembly contig names (S0C21…) — I need to understand its provenance before building AMBER on it. Let me check how it was created and examine the human dataset's gold-standard mapping:
+[0m$ [0mcd /vol/data
+echo "=== how was binning_gs_subset.tsv created? search runs/repo ==="
+grep -rn "binning_gs" /vol/data/repos/metagenomic-binning-benchmark/runs/marine_v11_20260925/run_meta.txt 2>/dev/null
+grep -rln "binning_gs_subset" /vol/data/repos/metagenomic-binning-benchmark --include="*.py" --include="*.sh" --include="*.md" 2>/dev/null | head
+echo "=== gsa_mapping (human gold-standard) head ==="
+zcat /vol/data/datasets/cami_II_human/extract/2017.12.04_18.45.54_sample_0/contigs/gsa_mapping.tsv.gz 2>/dev/null | head -5
+echo "=== take2: maybe binning_gs_subset is contig->genome with col1=contig? compare with marine run contigs.csv ==="
+head -3 /vol/data/benchmark/runs/marine_v11_20260925/comebin_out/comebin_res/cluster_res/weight_seed_kmeans_k_79_result_bins/38.fa | cut -c1-60
+=== how was binning_gs_subset.tsv created? search runs/repo ===
+/vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md
+/vol/data/repos/metagenomic-binning-benchmark/scripts/prep_cami2_marine.sh
+=== gsa_mapping (human gold-standard) head ===
+#anonymous_contig_id	genome_id	tax_id	contig_id	number_reads	start_position	end_position
+S0C19973	OTU_97.4902.1	506	CP007494.1	2	662847	663117
+S0C17530	OTU_97.10984.0	506	CP010256.1	24	4088203	4089005
+S0C33861	OTU_97.4094.1	1485	HG530135.1	47	2569453	2571420
+S0C53975	OTU_97.1070.0	194924	CP003221.1	94	3409328	3413150
+=== take2: maybe binning_gs_subset is contig->genome with col1=contig? compare with marine run contigs.csv ===
+>S0C46
+CGGTCGAATGTACTACAAGAGTCGGCTTCCCGCACTGACCCGATCAGATCGCCCAGAGCG
+>S0C453
+> build · big-pickle
+Let me read the marine prep script to understand the GS format provenance, then check how AMBER expects genome binning GS:
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark
+sed -n '1,120p' scripts/prep_cami2_marine.sh
+#!/usr/bin/env bash
+# prep_cami2_marine.sh — build the COMEBin input for the CAMI II marine
+# benchmark, sample 0 (short-read, anonymous). Strategy (documented in
+# docs/01-datasets.md + docs/06-benchmark-commands.md):
+#   - contigs: anonymous_gsa.fasta.gz subset to contigs >= $MINLEN bp
+#     (41,988 contigs at 2,000 bp → COMEBin-feasible; real CAMI data)
+#   - reads:   anonymous_reads.fq.gz (sample-0 pooled reads, interleaved PE)
+#   - coverage BAM: bwa mem -p (interleaved) → samtools sort+index
+#     Reads of unkept contigs simply produce no alignment; filenames stay S0C*.
+# Ground truth for later eval: binning_gs.tsv (S0C* -> Otu genome).
+# Usage: bash scripts/prep_cami2_marine.sh [minlen=2000]
+set -euo pipefail
+
+MM=/vol/data/tools/bin/micromamba
+ENV=/vol/data/envs/comebin
+SRC=/vol/data/datasets/cami_II/marine_reads
+SAMPLE="simulation_short_read/2018.08.15_09.49.32_sample_0"
+GSA="$SRC/contigs_0/$SAMPLE/contigs/anonymous_gsa.fasta.gz"
+GT="$SRC/contigs_0/$SAMPLE/contigs/binning_gs.tsv"
+CONT="$SRC/reads_0/$SAMPLE/reads"
+READS="$CONT/anonymous_reads.fq.gz"
+MAPPING="$CONT/reads_mapping.tsv.gz"
+OUT=${OUT:-/vol/data/datasets/cami_II/marine_sample0_input}
+MINLEN=${1:-2000}
+
+mkdir -p "$OUT/bamfiles" "$OUT/logs"
+echo "== marine sample-0 input: contigs >= ${MINLEN} bp =="
+
+# ---- 1. subset contigs by length (streamed) -------------------------------- #
+zcat "$GSA" | awk -v L="$MINLEN" '
+  /^>/ { if (name != "" && len >= L) print ">" name "\n" seq;
+         name = substr($0, 2); seq = ""; len = 0; next }
+  { seq = seq $0; len += length($0) }
+  END { if (name != "" && len >= L) print ">" name "\n" seq }' \
+  > "$OUT/contigs.fa"
+N=$(grep -c '^>' "$OUT/contigs.fa")
+echo "contigs kept: $N"
+[ "$N" -gt 0 ] || { echo "ERROR: empty contig subset"; exit 1; }
+
+# ---- 2. bwa index + map all reads (interleaved) + sort --------------------- #
+export MAMBA_ROOT_PREFIX=/vol/data/envs/.mamba
+"$MM" run -p "$ENV" bwa index "$OUT/contigs.fa" 2>&1 | tail -2
+"$MM" run -p "$ENV" bash -c "bwa mem -p -t 32 '$OUT/contigs.fa' '$READS' 2>'$OUT/logs/bwa.log' | samtools sort -@ 32 -o '$OUT/bamfiles/marine.bam' -"
+"$MM" run -p "$ENV" samtools index "$OUT/bamfiles/marine.bam"
+"$MM" run -p "$ENV" samtools quickcheck "$OUT/bamfiles/marine.bam" && echo "bam OK"
+
+# ---- 3. ground-truth subset + input metadata ------------------------------- #
+grep -v '^@' "$GT" | awk -v K="$OUT/contigs.fa" '
+  BEGIN{ while ((getline line < K) > 0) { n=substr(line,2); keep[n]=1 } }
+  ($1 in keep)' > "$OUT/binning_gs_subset.tsv" || true
+{
+  echo "cami2_marine_sample0_input:"
+  echo "  contigs:        $OUT/contigs.fa ($N contigs, >=${MINLEN} bp)"
+  echo "  reads:          $READS ($(du -h "$READS" | cut -f1) gz, interleaved PE)"
+  echo "  bam:            $OUT/bamfiles/marine.bam"
+  echo "  ground truth:   $OUT/binning_gs_subset.tsv ($(wc -l < "$OUT/binning_gs_subset.tsv" 2>/dev/null) S0C* lines)"
+  echo "  md5s:"
+  md5sum "$OUT/contigs.fa" "$OUT/bamfiles/marine.bam" "$OUT/binning_gs_subset.tsv" \
+    | sed 's/^/    /'
+} | tee "$OUT/logs/input_meta.txt"
+echo "DONE -> $OUT"
+> build · big-pickle
+[0m$ [0mcd /vol/data
+GT=/vol/data/datasets/cami_II/marine_reads/contigs_0/simulation_short_read/2018.08.15_09.49.32_sample_0/contigs/binning_gs.tsv
+echo "=== original binning_gs.tsv header + rows ==="
+zcat "$GT" 2>/dev/null | head -6 || head -6 "$GT"
+echo "line count:"; zcat "$GT" 2>/dev/null | wc -l || wc -l "$GT"
+echo "=== AMBER cami_ii example gold standard format ==="
+find /vol/data/repos/CAMI-AMBER/cami_ii_mouse_gut -name "*.tsv" | head -3
+f=$(find /vol/data/repos/CAMI-AMBER/cami_ii_mouse_gut -name "*gs*" | head -1); echo "$f"; head -5 "$f" 2>/dev/null | cut -c1-120
+=== original binning_gs.tsv header + rows ===
+line count:
+0
+=== AMBER cami_ii example gold standard format ===
+> build · big-pickle
+[0m$ [0mcd /vol/data/datasets/cami_II
+echo "=== find binning_gs anywhere in cami_II ==="
+find . -name "binning_gs*" 2>/dev/null | head
+echo "=== marine_reads top-level ==="
+find marine_reads -maxdepth 4 -type d | head -20
+echo "=== what is in the AMBER example dirs ==="
+ls /vol/data/repos/CAMI-AMBER/cami_ii_mouse_gut/ 2>/dev/null | head
+find /vol/data/repos/CAMI-AMBER -maxdepth 2 -name "*.tsv" -o -maxdepth 2 -name "*.txt" 2>/dev/null | head
+=== find binning_gs anywhere in cami_II ===
+./marine_reads/contigs_0/simulation_short_read/2018.08.15_09.49.32_sample_0/contigs/binning_gs.tsv
+./marine_sample0_input/binning_gs_subset.tsv
+=== marine_reads top-level ===
+marine_reads
+marine_reads/reads_0
+marine_reads/reads_0/simulation_short_read
+marine_reads/reads_0/simulation_short_read/2018.08.15_09.49.32_sample_0
+marine_reads/reads_0/simulation_short_read/2018.08.15_09.49.32_sample_0/reads
+marine_reads/contigs_0
+marine_reads/contigs_0/simulation_short_read
+marine_reads/contigs_0/simulation_short_read/2018.08.15_09.49.32_sample_0
+marine_reads/contigs_0/simulation_short_read/2018.08.15_09.49.32_sample_0/contigs
+marine_reads/bams_0
+marine_reads/bams_0/simulation_short_read
+marine_reads/bams_0/simulation_short_read/2018.08.15_09.49.32_sample_0
+marine_reads/bams_0/simulation_short_read/2018.08.15_09.49.32_sample_0/bam
+=== what is in the AMBER example dirs ===
+heatmap_bar.png
+index.html
+/vol/data/repos/CAMI-AMBER/cami_i_hc/results.tsv
+/vol/data/repos/CAMI-AMBER/requirements.txt
+/vol/data/repos/CAMI-AMBER/test/precision_recall.tsv
+/vol/data/repos/CAMI-AMBER/test/unique_common.tsv
+/vol/data/repos/CAMI-AMBER/test/summary.tsv
+/vol/data/repos/CAMI-AMBER/tutorial.txt
+> build · big-pickle
+[0m$ [0mcd /vol/data/datasets/cami_II
+GT=marine_reads/contigs_0/simulation_short_read/2018.08.15_09.49.32_sample_0/contigs/binning_gs.tsv
+echo "=== file type/size ==="
+ls -la "$GT"
+file "$GT"
+echo "=== first lines (try both gz and plain) ==="
+zcat "$GT" 2>/dev/null | head -8 || head -8 "$GT"
+echo "=== lines ==="
+zcat "$GT" 2>/dev/null | wc -l || wc -l < "$GT"
+=== file type/size ===
+-rw-r--r-- 1 ubuntu ubuntu 42343104 Oct 15  2018 marine_reads/contigs_0/simulation_short_read/2018.08.15_09.49.32_sample_0/contigs/binning_gs.tsv
+marine_reads/contigs_0/simulation_short_read/2018.08.15_09.49.32_sample_0/contigs/binning_gs.tsv: ASCII text
+=== first lines (try both gz and plain) ===
+=== lines ===
+0
+> build · big-pickle
+[0m$ [0mcd /vol/data/datasets/cami_II
+GT=marine_reads/contigs_0/simulation_short_read/2018.08.15_09.49.32_sample_0/contigs/binning_gs.tsv
+echo "=== sed first 6 lines (cut) ==="
+sed -n '1,6p' "$GT" | cut -c1-100
+echo "=== does it have CR? od first bytes ==="
+head -c 200 "$GT" | od -c | head -5
+echo "=== wc -l ==="
+wc -l "$GT"
+=== sed first 6 lines (cut) ===
+@Version:0.9.1
+
+@SampleID:marine
+
+@@SEQUENCEID	BINID	TAXID	_LENGTH
+S0C878739	Otu255	62322	653
+=== does it have CR? od first bytes ===
+0000000   @   V   e   r   s   i   o   n   :   0   .   9   .   1  \n  \n
+0000020   @   S   a   m   p   l   e   I   D   :   m   a   r   i   n   e
+0000040  \n  \n   @   @   S   E   Q   U   E   N   C   E   I   D  \t   B
+0000060   I   N   I   D  \t   T   A   X   I   D  \t   _   L   E   N   G
+0000100   T   H  \n   S   0   C   8   7   8   7   3   9  \t   O   t   u
+=== wc -l ===
+1475977 marine_reads/contigs_0/simulation_short_read/2018.08.15_09.49.32_sample_0/contigs/binning_gs.tsv
+> build · big-pickle
+The marine gold standard is in exact AMBER format (`@@SEQUENCEID BINID TAXID _LENGTH`) covering all 41,988 marine contigs. A full AMBER evaluation of the existing marine run (a documented #25 follow-on) is runnable right now without touching the sweep. Let me check the biobox export format and set up the AMBER env in parallel:
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark
+echo "=== export_biobox.sh usage + output ==="
+sed -n '1,40p' scripts/export_biobox.sh | grep -vE "^\s*#" | head -25
+echo "=== biobox validator available? ==="
+which bioboxes 2>/dev/null; ls /vol/data/tools/bioboxes* 2>/dev/null; docker info >/dev/null 2>&1 && echo "docker ok" || echo "no docker"
+echo "=== AMBER needs pyarrow 23 etc — check env python ==="
+/vol/data/tools/bin/micromamba env list 2>/dev/null | grep -E "comebin|base"
+ls /vol/data/envs/ 2>/dev/null
+=== export_biobox.sh usage + output ===
+set -euo pipefail
+
+RUN_DIR=${1:?usage: export_biobox.sh <run_dir>}
+[ -d "$RUN_DIR" ] || { echo "ERROR: not a dir: $RUN_DIR"; exit 1; }
+BINS_DIR="$RUN_DIR/comebin_out/comebin_res/comebin_res_bins"
+[ -d "$BINS_DIR" ] || { echo "ERROR: no comebin_res_bins in $RUN_DIR"; exit 1; }
+
+ENGINE=${ENGINE:-comebin}
+VERSION=${VERSION:-v11}
+SAMPLE=${SAMPLE:-unknown_sample}
+OUT="$RUN_DIR/biobox"
+TREE="$OUT/tree/$ENGINE/$VERSION/binning/$SAMPLE"
+mkdir -p "$TREE"
+
+bin_count=0
+=== biobox validator available? ===
+docker ok
+=== AMBER needs pyarrow 23 etc — check env python ===
+  base  *       /home/ubuntu/.local/share/mamba
+                /vol/data/envs/comebin         
+checkm
+checkm2
+comebin
+> build · big-pickle
+The marine GS subset is AMBER-compatible (the full file even has the exact `@@SEQUENCEID BINID TAXID _LENGTH` header AMBER's parser wants). The #25 docs list **AMBER against the CAMI II gold standard** as a follow-on — this is runnable now on the finished marine run without touching the sweep. Let me check AMBER's binning-file reader, then set up a dedicated env (not the in-use `comebin` env):
+[0m$ [0mcd /vol/data/repos/CAMI-AMBER
+echo "=== read_binning / load_sample branches ==="
+grep -n "def load_sample\|def read_binning\|def load_binning\|BINID" cami_amber/utils/load_data.py | head
+sed -n '160,210p' cami_amber/utils/load_data.py
+echo "=== convert_fasta_bins_to_biobox_format.py usage ==="
+sed -n '1,25p' cami_amber/utils/convert_fasta_bins_to_biobox_format.py | grep -vE "Copyright|MERCHANTABILITY|GNU|should have|along with|Foundation|WITHOUT" | head -20
+=== read_binning / load_sample branches ===
+169:def load_sample(metadata):
+170:    columns = ['SEQUENCEID', 'BINID', 'TAXID', 'LENGTH', '_LENGTH']
+179:                         dtype={'SEQUENCEID': pd.StringDtype(), 'BINID': pd.StringDtype(), 'TAXID': pd.UInt32Dtype(),
+191:                         dtype={'SEQUENCEID': pd.StringDtype(), 'BINID': pd.StringDtype(), 'TAXID': pd.UInt32Dtype(),
+197:def load_binnings(samples_metadata, file_path_query):
+198:    columns = ['SEQUENCEID', 'BINID', 'TAXID', 'LENGTH', '_LENGTH']
+216:            sample_id_to_num_genomes[sample_id] = gs_df['BINID'].nunique()
+277:        if 'BINID' in columns:
+294:            if 'BINID' in columns:
+                data_end = i
+    try:
+        samples_metadata.append((data_start, data_end, header, columns_list, file_path_query, label))
+    except UnboundLocalError as e:
+        logging.getLogger('amber').critical("File {} is malformed.".format(file_path_query))
+        raise e
+    return samples_metadata
+
+
+def load_sample(metadata):
+    columns = ['SEQUENCEID', 'BINID', 'TAXID', 'LENGTH', '_LENGTH']
+    logging.getLogger('amber').info('Loading %s of %s' % (metadata[2]['SAMPLEID'], metadata[5]))
+    usecols = [v for v in metadata[3] if v in columns]
+
+    if metadata[0] < 1000:
+        nrows = metadata[1] - metadata[0] + 1
+        df = pd.read_csv(metadata[4], sep='\t', comment='#', skiprows=metadata[0], nrows=nrows, header=None,
+                         names=metadata[3],
+                         usecols=usecols,
+                         dtype={'SEQUENCEID': pd.StringDtype(), 'BINID': pd.StringDtype(), 'TAXID': pd.UInt32Dtype(),
+                                'LENGTH': pd.UInt32Dtype(), '_LENGTH': pd.UInt32Dtype()})
+    else:
+        # Avoid high memory peak by using StringIO due to possible pandas bug
+        text = io.StringIO()
+        with open_generic(metadata[4]) as f:
+            for line in itertools.islice(f, metadata[0], metadata[1] + 1):
+                text.write(line)
+        text.seek(0)
+        df = pd.read_csv(text, sep='\t', comment='#', header=None,
+                         names=metadata[3],
+                         usecols=usecols,
+                         dtype={'SEQUENCEID': pd.StringDtype(), 'BINID': pd.StringDtype(), 'TAXID': pd.UInt32Dtype(),
+                                'LENGTH': pd.UInt32Dtype(), '_LENGTH': pd.UInt32Dtype()})
+    df.rename(columns={'_LENGTH': 'LENGTH'}, inplace=True)
+    return df
+
+
+def load_binnings(samples_metadata, file_path_query):
+    columns = ['SEQUENCEID', 'BINID', 'TAXID', 'LENGTH', '_LENGTH']
+    sample_id_to_query_df = OrderedDict()
+    for metadata in samples_metadata:
+        logging.getLogger('amber').info('Loading ' + metadata[2]['SAMPLEID'])
+        nrows = metadata[1] - metadata[0] + 1
+        col_indices = [k for k, v in metadata[3].items() if v in columns]
+        df = pd.read_csv(file_path_query, sep='\t', comment='#', skiprows=metadata[0], nrows=nrows, header=None, usecols=col_indices)
+        df.rename(columns=metadata[3], inplace=True)
+        df.rename(columns={'_LENGTH': 'LENGTH'}, inplace=True)
+        sample_id_to_query_df[metadata[2]['SAMPLEID']] = df
+    return sample_id_to_query_df
+
+
+=== convert_fasta_bins_to_biobox_format.py usage ===
+#!/usr/bin/env python
+
+#
+# This program is free software: you can redistribute it and/or modify
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+#
+
+import argparse
+from cami_amber.utils.load_data import open_generic
+
+
+def read_fasta_file(fasta_file):
+    with open_generic(fasta_file, 'r') as read_handler:
+        sequence_id = ""
+        for line in read_handler:
+> build · big-pickle
+AMBER input format is clear: gold standard + prediction in `@@SEQUENCEID BINID TAXID _LENGTH` TSV. The marine run (complete, GS on disk) is the ideal first AMBER evaluation — a documented #25 follow-on that doesn't touch the sweep. Let me start the AMBER env install in the background and inspect the bin output:
+[0m$ [0mcd /vol/data/benchmark
+echo "=== comebin_res_bins count + first bin head ==="
+ls runs/marine_v11_20260925/comebin_out/comebin_res/comebin_res_bins/ | head -3
+ls runs/marine_v11_20260925/comebin_out/comebin_res/comebin_res_bins/ | wc -l
+F=$(ls runs/marine_v11_20260925/comebin_out/comebin_res/comebin_res_bins/*.fa | head -1)
+echo "$F"; grep -c ">" "$F"; grep -m3 ">" "$F" | cut -c1-60
+=== comebin_res_bins count + first bin head ===
+0.fa
+1.fa
+10.fa
+152
+runs/marine_v11_20260925/comebin_out/comebin_res/comebin_res_bins/0.fa
+725
+>S0C612
+>S0C1538
+>S0C3070
+> build · big-pickle
