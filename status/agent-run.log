@@ -113974,3 +113974,55 @@ Index: /vol/data/benchmark/.activity
 +2026-09-29T03:25:12Z Sweep cells 4-24 running on COMEBin-v11-sweep@95f5ea8; cell 4 sweep_004_temp005 active with COMEBIN_TEMPERATURE=0.05 fix | ETA ~2026-09-30 evening UTC | cells 5-24 queued
 
 > build · nemotron-3.5-lightning-free
+Now touch `.heartbeat` and append to `agent-activity.log`:
+[0m$ [0mtouch /vol/data/benchmark/.heartbeat
+{"exit":0,"truncated":false,"output":"","status":"completed"}
+[0m$ [0mecho "2026-09-29T03:26:00Z Sweep progress update: cells 4-24 active; cell 4 sweep_004_temp005 running with COMEBIN_TEMPERATURE=0.05 fix; ETA ~2026-09-30 evening UTC" >> /vol/data/repos/metagenomic-binning-benchmark/status/agent-activity.log
+{"exit":0,"truncated":false,"output":"","status":"completed"}
+> build · nemotron-3.5-lightning-free
+Now let me verify all the changes are in place:
+[0m$ [0mcat /vol/data/benchmark/.heartbeat
+{"exit":0,"truncated":false,"output":"","status":"completed"}
+[0m$ [0mtail -3 /vol/data/benchmark/.activity
+2026-09-29T02:48:40Z Sweep restart: cells 4-24 of 24-cell medium grid on COMEBin-v11-sweep@95f5ea8; cell 4 retry after sweep_004_temp005 failure (libmamba filesystem error - fixed by using COMEBIN_TEMPERATURE instead of TEMP), cells 5-24 to follow. Cell 4 (sweep_004_temp005) training started at 02:53, temperature 0.05, ~55 min expected.
+2026-09-29T02:53:42Z Sweep relaunched: cell 4 (sweep_004_temp005) restarted with COMEBIN_TEMPERATURE=0.05 fix; THREADS=8 seed=42 on medium dataset; training in progress.
+2026-09-29T03:25:12Z Sweep cells 4-24 running on COMEBin-v11-sweep@95f5ea8; cell 4 sweep_004_temp005 active with COMEBIN_TEMPERATURE=0.05 fix | ETA ~2026-09-30 evening UTC | cells 5-24 queued
+[0m$ [0mtail -3 /vol/data/repos/metagenomic-binning-benchmark/status/agent-activity.log
+2026-09-29T02:53:42Z Sweep relaunched: cell 4 (sweep_004_temp005) restarted with COMEBIN_TEMPERATURE=0.05 fix; THREADS=8 seed=42 on medium dataset; ETA ~55 min per remaining cell
+2026-09-29T03:21:57Z | Sweep resumed: cells 4-24 running on COMEBin-v11-sweep@95f5ea8; cell 4 sweep_004_temp005 active with COMEBIN_TEMPERATURE=0.05 fix | ETA ~2026-09-30 evening UTC
+2026-09-29T03:26:00Z Sweep progress update: cells 4-24 active; cell 4 sweep_004_temp005 running with COMEBIN_TEMPERATURE=0.05 fix; ETA ~2026-09-30 evening UTC
+[0m$ [0mgrep "Cell 4 running\|Sweep progress\|ETA" /vol/data/benchmark/PROGRESS.md | tail -5
+`KeyError: 'BATS_SAMN07137077_METAG-scaffold_22978'`. Measured on its own
+  `runs/sweep_004…24` dirs exist → none will be wrongly skipped. ETA
+- **Cell 4 running** — `sweep_004_temp005` started 02:53 with COMEBIN_TEMPERATURE=0.05 fix; THREADS=8 seed=42 on medium dataset; ~55 min expected per remaining cell
+- Sweep cells 5-24 remaining; approximately 20 cells left; ETA ~2026-09-30 evening UTC
+- **Sweep progress update**: cell 4 (sweep_004_temp005) active with COMEBIN_TEMPERATURE=0.05 fix; cells 5-24 queued; ~20 cells × ~55 min each ≈ 17 h total ETA; driver polling wait-active_clear with bounded flock waits
+> build · nemotron-3.5-lightning-free
+All updates are complete. Here's a summary of what was done:
+
+### Updates Made
+
+1. **`/vol/data/benchmark/PROGRESS.md`** — Added "Sweep progress update" entry to the "Current state" section, documenting that cell 4 (sweep_004_temp005) is active with `COMEBIN_TEMPERATURE=0.05` fix, cells 5-24 queued, ETA ~2026-09-30 evening UTC (~17h remaining across ~20 cells).
+
+2. **`/vol/data/benchmark/.activity`** — Added new log entry:
+   ```
+   2026-09-29T03:25:12Z Sweep cells 4-24 running on COMEBin-v11-sweep@95f5ea8; cell 4 sweep_004_temp005 active with COMEBIN_TEMPERATURE=0.05 fix | ETA ~2026-09-30 evening UTC | cells 5-24 queued
+   ```
+
+3. **`/vol/data/benchmark/.heartbeat`** — Touched (touched to refresh the liveness sentinel).
+
+4. **`/vol/data/repos/metagenomic-binning-benchmark/status/agent-activity.log`** — Appended:
+   ```
+   2026-09-29T03:26:00Z Sweep progress update: cells 4-24 active; cell 4 sweep_004_temp005 running with COMEBIN_TEMPERATURE=0.05 fix; ETA ~2026-09-30 evening UTC
+   ```
+
+### State Verification
+
+- **No new GitHub issues** need commenting — all open issues (#26–#1) were already triaged in the previous session, and the COMEBin repo issues are disabled.
+- **No `.active_run` conflict** — the previous `.active_run` was from the sibling session's `#28` regression run, which was deregistered. The current sweep driver is running detached via `run_sweep_medium.sh`.
+- **No `TASK_COMPLETE` file exists** — work continues.
+- **Git operations not needed** at this point — no commits/pushes are pending.
+
+The sweep is ongoing with cell 4 actively running and 20 cells remaining. The watchdog owns the handoff, and the agent will continue monitoring via heartbeat.
+[91m[1mError: [0mError from provider (Console): Rate limit exceeded. Please try again later.
+[91m[1mError: [0mError from provider (Console): Rate limit exceeded. Please try again later.
