@@ -110234,3 +110234,97 @@ the 'paulzierep/COMEBin' repository has disabled issues
 [2026-09-29T01:28:30Z] START sweep_004_temp005 src=COMEBin-v11-sweep @ 95f5ea8 threads=8 seed=42 temp=0.05 emb=ref emb_cov=ref batch=ref max_edges=ref lw=ref heval=ref n_views=6
 > build · big-pickle
 Cell-3 eval is still in pplacer; no new owner comments (#27 already answered, COMEBin issues disabled). Let me wait for the eval to finish and confirm cells proceed:
+[0m$ [0mcd /vol/data/benchmark
+CSV=/vol/data/repos/metagenomic-binning-benchmark/results/sweep_003_issue28fix.csv
+for i in $(seq 1 40); do
+  if [ -f "$CSV" ]; then echo "CSV_PRESENT after $((i*15))s"; break; fi
+  if ! pgrep -f "bin/run_eval.sh /vol/data/benchmark/runs/sweep_003" >/dev/null 2>&1; then echo "EVAL_EXITED after $((i*15))s"; break; fi
+  sleep 15
+done
+echo "=== csv ==="
+ls -la "$CSV" 2>/dev/null || echo "(no csv)"
+echo "=== eval proc ==="
+pgrep -af "run_eval.sh" | grep -v pgrep | cut -c1-60 || echo "(eval done)"
+echo "=== log tail ==="
+grep -E "RUN_DONE|EVAL_FAIL|DONE sweep_003|START sweep_004|FAIL sweep_004" status/sweep_medium.log | tail -4
+echo "=== active_run / train ==="
+cat .active_run 2>/dev/null || echo "(none)"
+pgrep -af "COMEBin/main.py train" | grep -v pgrep | cut -c1-70 || echo "(no train)"
+CSV_PRESENT after 210s
+=== csv ===
+-rw-rw-r-- 1 ubuntu ubuntu 335 Sep 29 01:40 /vol/data/repos/metagenomic-binning-benchmark/results/sweep_003_issue28fix.csv
+=== eval proc ===
+2637414 bash /vol/data/benchmark/bin/run_eval.sh /vol/data/b
+=== log tail ===
+[2026-09-29T01:28:25Z] RUN_DONE sweep_003_issue28fix exit=0
+[2026-09-29T01:28:30Z] EVAL_FAIL sweep_003_issue28fix (rc=0) — results CSV may be missing; will re-eval later
+[2026-09-29T01:28:30Z] START sweep_004_temp005 src=COMEBin-v11-sweep @ 95f5ea8 threads=8 seed=42 temp=0.05 emb=ref emb_cov=ref batch=ref max_edges=ref lw=ref heval=ref n_views=6
+[2026-09-29T01:28:30Z] FAIL sweep_004_temp005: run_comebin_fix.sh rc=0
+=== active_run / train ===
+(none)
+> build · big-pickle
+Cell-3 CSV produced (fix works). Let me confirm the driver advances to cell 4:
+[0m$ [0mcd /vol/data/benchmark
+sleep 45
+echo "=== cell3 csv ==="
+cat /vol/data/repos/metagenomic-binning-benchmark/results/sweep_003_issue28fix.csv
+echo "=== log (recent, dedup) ==="
+grep -E "DONE sweep_003|START sweep_004|FAIL sweep_004|EVAL_FAIL" status/sweep_medium.log | tail -4
+echo "=== eval proc ==="
+pgrep -af "run_eval.sh" | grep -v pgrep | cut -c1-55 || echo "(eval done)"
+echo "=== active_run ==="
+cat .active_run 2>/dev/null || echo "(none)"
+echo "=== sweep_004 dir ==="
+ls -d runs/sweep_004_temp005 2>/dev/null && ls runs/sweep_004_temp005/ 2>/dev/null | tr '\n' ' '; echo
+echo "=== train ==="
+pgrep -af "COMEBin/main.py train" | grep -v pgrep | cut -c1-70 || echo "(no train)"
+touch .heartbeat
+=== cell3 csv ===
+run,source_commit,dataset,threads,total_time_s,n_bins,checkm2_mean_completeness,checkm2_mean_contamination,checkm2_HQ,checkm2_MQ,checkm_mean_completeness,checkm_mean_contamination,checkm_HQ,checkm_MQ
+sweep_003_issue28fix,41606c8e154aa62c01d361361d04b74f18f225ab,"comebin_medium (3,000 contigs)",8,2833,17,34.22,4.11,0,2,32.00,5.31,0,3
+=== log (recent, dedup) ===
+[2026-09-29T01:28:25Z] RUN_DONE sweep_003_issue28fix exit=0
+[2026-09-29T01:28:30Z] EVAL_FAIL sweep_003_issue28fix (rc=0) — results CSV may be missing; will re-eval later
+[2026-09-29T01:28:30Z] START sweep_004_temp005 src=COMEBin-v11-sweep @ 95f5ea8 threads=8 seed=42 temp=0.05 emb=ref emb_cov=ref batch=ref max_edges=ref lw=ref heval=ref n_views=6
+[2026-09-29T01:28:30Z] FAIL sweep_004_temp005: run_comebin_fix.sh rc=0
+=== eval proc ===
+2637414 bash /vol/data/benchmark/bin/run_eval.sh /vol/d
+=== active_run ===
+(none)
+=== sweep_004 dir ===
+
+=== train ===
+> build · big-pickle
+Cell-3 CSV is correct, but `run_eval.sh` (pid 2637414) is still alive after writing the CSV — cell 4 won't start until it exits. Let me see what it's doing:
+[0m$ [0mcd /vol/data/benchmark
+echo "=== run_eval process tree ==="
+ps -o pid,ppid,etimes,pcpu,rss,stat,args -p 2637414 2>/dev/null
+echo "--- children ---"
+pgrep -P 2637414 | while read p; do ps -o pid,etimes,pcpu,stat,args -p "$p" | tail -1 | cut -c1-110; done
+echo "=== eval.out tail (char) ==="
+tail -c 1500 status/sweep_003_issue28fix.eval.out
+echo ""
+echo "=== eval.out mtime ==="
+stat -c '%y' status/sweep_003_issue28fix.eval.out
+=== run_eval process tree ===
+    PID    PPID ELAPSED %CPU   RSS STAT COMMAND
+2637414 2637346     396  0.0  3580 S    bash /vol/data/benchmark/bin/run_eval.sh /vol/data/benchmark/runs/sweep_003_issue28fix
+--- children ---
+2669647      55  0.6 S    bash /vol/data/benchmark/bin/zenodo_update.sh
+=== eval.out tail (char) ===
+s | CheckM2 comp / cont | CheckM2 HQ / MQ | CheckM v1 comp / cont | CheckM v1 HQ / MQ |
+|---|---|---|---|---|---|---|---|---|---|
+| `baseline_rerun_autorestart1` | COMEBin demo (29,434 contigs) | `904f649` (master) | - | 6h45m | 60 | 25.01 / 2.98 | 0 / 7 | 21.23 / 3.40 | 0 / 9 |
+| `fix_v11_20260924` | COMEBin demo (29,434 contigs) | `95f5ea8` (comebin-optimizations-v11) | 42 | 6h52m | 71 | 24.38 / 3.78 | 1 / 6 | 21.62 / 5.18 | 0 / 8 |
+| `human_v11_20260925` | CAMI II human (4,900 contigs) | `95f5ea8` (comebin-optimizations-v11) | 42 | 1h21m | 107 | 35.31 / 5.13 | 20 / 29 | 32.64 / 4.65 | 21 / 29 |
+| `marine_v11_20260925` | CAMI II marine (41,988 contigs) | `95f5ea8` (comebin-optimizations-v11) | 42 | 8h43m | 152 | 50.60 / 4.10 | 35 / 60 | 46.36 / 5.09 | 37 / 60 |
+| `cami3_v11_20260926_rerun` | CAMI III toy human gut (5,000 contigs) | `95f5ea8` (comebin-optimizations-v11) | 42 | 1h29m | 492 | 35.97 / 11.42 | 53 / 112 | 32.46 / 13.38 | 54 / 100 |
+
+[zenodo_update] staging benchmark data -> /vol/data/benchmark/releases/stage.Z1THJM
+[zenodo_update] runs in package: baseline_rerun_autorestart1 (60 bins) cami3_v11_20260926_rerun (492 bins) fix_v11_20260924 (71 bins) human_v11_20260925 (107 bins) marine_v11_20260925 (152 bins) medium_v11_20260924 (16 bins) small_test_v4 (3 bins) sweep_001_ref (17 bins) sweep_003_issue28fix (17 bins) tiny_test_n101 (1 bins)
+[zenodo_update] manifest: 1103 files, 1754355496 bytes
+[zenodo_update] created new version draft 23027854 (from record 23017738)
+
+=== eval.out mtime ===
+2026-09-29 01:41:03.111000000 +0000
+> build · big-pickle

@@ -66729,3 +66729,48 @@ biobox files: 12  bytes: 149282854
 cami3 biobox entries: NONE (correct: export still in flight)
 > build · big-pickle
 Let me validate the actual dry-run package end-to-end (what would really be published):
+[0m$ [0mcd /vol/data/benchmark/releases && p=comebin_benchmark_release_dryrun_20260929.tar.gz; echo "=== biobox members inside the real package ==="; tar tzf "$p" 2>/dev/null | grep '/biobox/' | sort; echo; echo "=== each shipped binning.tar.gz opens and has bins? ==="; for r in medium_v11_20260924 human_v11_20260925 marine_v11_20260925; do n=$(tar xzf "$p" -O "runs/$r/biobox/binning.tar.gz" 2>/dev/null | tar tzf - 2>/dev/null | grep -c '\.fna$'); echo "  $r: $n bin .fna entries in nested biobox tarball"; done
+=== biobox members inside the real package ===
+./runs/human_v11_20260925/biobox/
+./runs/human_v11_20260925/biobox/README.txt
+./runs/human_v11_20260925/biobox/binning.tar.gz
+./runs/human_v11_20260925/biobox/binning_summary.tsv
+./runs/human_v11_20260925/biobox/human.binning
+./runs/marine_v11_20260925/biobox/
+./runs/marine_v11_20260925/biobox/README.txt
+./runs/marine_v11_20260925/biobox/binning.tar.gz
+./runs/marine_v11_20260925/biobox/binning_summary.tsv
+./runs/marine_v11_20260925/biobox/marine.binning
+./runs/medium_v11_20260924/biobox/
+./runs/medium_v11_20260924/biobox/README.txt
+./runs/medium_v11_20260924/biobox/binning.tar.gz
+./runs/medium_v11_20260924/biobox/binning_summary.tsv
+./runs/medium_v11_20260924/biobox/medium.binning
+
+=== each shipped binning.tar.gz opens and has bins? ===
+  medium_v11_20260924: 0 bin .fna entries in nested biobox tarball
+  human_v11_20260925: 0 bin .fna entries in nested biobox tarball
+  marine_v11_20260925: 0 bin .fna entries in nested biobox tarball
+> build · big-pickle
+Zero entries is suspicious — let me verify properly with real extraction rather than a pipe (nested gzip streaming is unreliable).
+[0m$ [0mcd /tmp/opencode && rm -rf pkgv && mkdir pkgv && cd pkgv && p=/vol/data/benchmark/releases/comebin_benchmark_release_dryrun_20260929.tar.gz
+for r in medium_v11_20260924 human_v11_20260925 marine_v11_20260925; do
+  tar xzf "$p" "./runs/$r/biobox/binning.tar.gz" 2>/dev/null
+  f="./runs/$r/biobox/binning.tar.gz"
+  printf "  %-24s size=%-10s gzip_t=%-4s fna_entries=%s\n" "$r" "$(stat -c%s $f)" "$(gzip -t $f 2>/dev/null && echo ok || echo BAD)" "$(tar tzf $f 2>/dev/null | grep -c '\.fna$')"
+done
+echo "=== cross-check: bin count vs README claim ==="
+for r in medium_v11_20260924 human_v11_20260925 marine_v11_20260925; do
+  claimed=$(grep -oP 'bins:\s+\K[0-9]+' "./runs/$r/biobox/README.txt" 2>/dev/null || tar xzf "$p" -O "./runs/$r/biobox/README.txt" 2>/dev/null | grep -oP 'bins:\s+\K[0-9]+')
+  actual=$(tar tzf "./runs/$r/biobox/binning.tar.gz" 2>/dev/null | grep -c '\.fna$')
+  echo "  $r: README=$claimed actual=$actual $([ "$claimed" = "$actual" ] && echo MATCH || echo MISMATCH)"
+done
+medium_v11_20260924      size=8238004    gzip_t=ok   fna_entries=32
+  human_v11_20260925       size=49809086   gzip_t=ok   fna_entries=107
+  marine_v11_20260925      size=89512331   gzip_t=ok   fna_entries=152
+=== cross-check: bin count vs README claim ===
+  medium_v11_20260924: README=16 actual=32 MISMATCH
+  human_v11_20260925: README=107 actual=107 MATCH
+  marine_v11_20260925: README=152 actual=152 MATCH
+> build · big-pickle
+Real bug found: medium ships 32 bins but the run has 16. Let me diagnose.
