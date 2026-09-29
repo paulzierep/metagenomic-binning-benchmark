@@ -1,6 +1,6 @@
 <!--AGENT-STATUS-->
 
-> 🔴 **Agent status:** `stopped (watchdog will restart)` · ⏱ `2026-09-29T08:48 CEST` · 🏃 train sweep_008_emb4096: epoch 0/200 · loss 7.920509338378906 · top1 0.380859375 · 🧠 `big-pickle` · [status.log](status/status.log)
+> 🟢 **Agent status:** `running` · ⏱ `2026-09-29T08:50 CEST` · 🏃 train sweep_008_emb4096: epoch 6/200 · loss 6.924729347229004 · top1 1.1783853769302368 · 🧠 `big-pickle` · [status.log](status/status.log)
 
 # Metagenomic binning benchmark
 
