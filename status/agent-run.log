@@ -107756,3 +107756,85 @@ Using default tag: latest
 Error response from daemon: pull access denied for bioboxes/validator, repository does not exist or may require 'docker login'
 > build · big-pickle
 Two issues: script lacks +x, and `bioboxes/validator` isn't on Docker Hub. Let me fix permissions and find the right validator image path:
+[0m$ [0mcd /vol/data/benchmark
+chmod +x /vol/data/repos/metagenomic-binning-benchmark/scripts/export_biobox.sh /vol/data/repos/metagenomic-binning-benchmark/scripts/run_sweep_medium.sh /vol/data/repos/metagenomic-binning-benchmark/scripts/run_comebin_fix.sh /vol/data/repos/metagenomic-binning-benchmark/scripts/make_amber_prediction.py /vol/data/repos/metagenomic-binning-benchmark/scripts/rank_sweep_medium.py 2>/dev/null
+echo "=== export biobox for marine/human/cami3 ==="
+for r in marine_v11_20260925 human_v11_20260925 cami3_v11_20260926_rerun; do
+  S=${r%%_v11*}; [ "$r" = "cami3_v11_20260926_rerun" ] && S=cami3
+  ENGINE=comebin VERSION=v11 SAMPLE=$S /vol/data/repos/metagenomic-binning-benchmark/scripts/export_biobox.sh /vol/data/benchmark/runs/$r 2>&1 | tail -1
+done
+echo "=== marine biobox tree ==="
+find /vol/data/benchmark/runs/marine_v11_20260925/biobox -maxdepth 5 -type d 2>/dev/null | head -6
+ls /vol/data/benchmark/runs/marine_v11_20260925/biobox/tree/comebin/v11/binning/marine/ 2>/dev/null | wc -l
+echo "=== validator image search ==="
+docker search biobox validator 2>/dev/null | head -3
+grep -rn "bioboxes/validator\|validator" /vol/data/repos/metagenomic-binning-benchmark/docs/*.md 2>/dev/null | head -5
+=== export biobox for marine/human/cami3 ===
+4096 tree
+4096 tree
+
+
+Command exceeded timeout of 300000 ms. Retry with a larger timeout if the command is expected to take longer.
+> build · big-pickle
+Setup.tar.gz downloaded (contains abundance files). Let me inspect its contents for the gold-standard binning, and check the biobox exports' state:
+[0m$ [0mcd /vol/data/datasets/cami_II_human
+echo "=== setup.tar.gz structure ==="
+tar -tzf setup.tar.gz | head -40
+echo "..."
+tar -tzf setup.tar.gz | grep -iE "binning|gs_|gsa|gold" | head -10
+echo "=== biobox export state ==="
+for r in marine_v11_20260925 human_v11_20260925 cami3_v11_20260926_rerun; do
+  b=/vol/data/benchmark/runs/$r/biobox
+  if [ -d "$b" ]; then
+    n=$(ls $b/tree/comebin/v11/binning/*/ 2>/dev/null | wc -l)
+    echo "$r: biobox present, $n bins"
+  else echo "$r: no biobox"; fi
+done
+=== setup.tar.gz structure ===
+abundance0.tsv
+abundance10.tsv
+abundance11.tsv
+abundance12.tsv
+abundance13.tsv
+abundance14.tsv
+abundance15.tsv
+abundance16.tsv
+abundance17.tsv
+abundance18.tsv
+abundance19.tsv
+abundance1.tsv
+abundance2.tsv
+abundance3.tsv
+abundance4.tsv
+abundance5.tsv
+abundance6.tsv
+abundance7.tsv
+abundance8.tsv
+abundance9.tsv
+genome_to_id.tsv
+metadata.tsv
+taxonomic_profile_0.txt
+taxonomic_profile_10.txt
+taxonomic_profile_11.txt
+taxonomic_profile_12.txt
+taxonomic_profile_13.txt
+taxonomic_profile_14.txt
+taxonomic_profile_15.txt
+taxonomic_profile_16.txt
+taxonomic_profile_17.txt
+taxonomic_profile_18.txt
+taxonomic_profile_19.txt
+taxonomic_profile_1.txt
+taxonomic_profile_2.txt
+taxonomic_profile_3.txt
+taxonomic_profile_4.txt
+taxonomic_profile_5.txt
+taxonomic_profile_6.txt
+taxonomic_profile_7.txt
+...
+gsa_pooled_mapping.tsv.gz
+anonymous_gsa_pooled.fasta.gz
+=== biobox export state ===
+marine_v11_20260925: biobox present, 152 bins
+human_v11_20260925: biobox present, 107 bins
+cami3_v11_20260926_rerun: biobox present, 492 bins
