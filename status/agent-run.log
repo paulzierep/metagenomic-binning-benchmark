@@ -110593,3 +110593,109 @@ TRAIN_STARTED after 20s
 [2026-09-29T01:28:30Z] FAIL sweep_004_temp005: run_comebin_fix.sh rc=0
 > build · big-pickle
 The "TRAIN_STARTED" was a false positive (my own shell argv matched `pgrep -f`). The Zenodo upload is still running. Let me wait correctly (checking `.active_run` + bracket-guarded pgrep):
+[0m$ [0mcd /vol/data/benchmark
+start=$(date +%s)
+for i in $(seq 1 45); do
+  if [ -f .active_run ] && pgrep -f "[m]ain.py train" >/dev/null 2>&1; then
+    echo "TRAIN_UP after $(( $(date +%s) - start ))s"; break
+  fi
+  if ! pgrep -f "bin/zenodo_update.sh" >/dev/null 2>&1 && ! pgrep -f "bin/run_eval.sh" >/dev/null 2>&1; then
+    echo "EVAL+ZENODO done after $(( $(date +%s) - start ))s"; break
+  fi
+  sleep 20
+done
+echo "=== state ==="
+echo -n "active_run: "; cat .active_run 2>/dev/null || echo "(none)"
+echo -n "train: "; pgrep -af "[m]ain.py train" | cut -c1-70 || echo "(no train)"
+echo -n "eval: "; pgrep -af "bin/[r]un_eval.sh" | cut -c1-50 || echo "(done)"
+echo -n "zenodo: "; pgrep -af "bin/[z]enodo_update.sh" | cut -c1-50 || echo "(done)"
+echo "=== log ==="
+grep -E "DONE sweep_003|START sweep_004|FAIL sweep_004|RUN_DONE sweep_004" status/sweep_medium.log | tail -3
+ls -d runs/sweep_004_temp005 2>/dev/null && echo "cell4 dir exists" || echo "no cell4 dir"
+touch .heartbeat
+=== state ===
+active_run: (none)
+train: eval: 2671921 /bin/bash -c cd /vol/data/benchmark start=
+zenodo: 2671921 /bin/bash -c cd /vol/data/benchmark start=
+2687028 /bin/bash -c cd /vol/data/benchmark && noh
+2687030 bash bin/zenodo_update.sh --dry-run
+=== log ===
+[2026-09-29T01:47:19Z] START sweep_004_temp005 src=COMEBin-v11-sweep @ 95f5ea8 threads=8 seed=42 temp=0.05 emb=ref emb_cov=ref batch=ref max_edges=ref lw=ref heval=ref n_views=6
+[2026-09-29T01:47:19Z] FAIL sweep_004_temp005: run_comebin_fix.sh rc=0
+[2026-09-29T01:47:19Z] FAIL sweep_004_temp005: run_comebin_fix.sh rc=0
+runs/sweep_004_temp005
+cell4 dir exists
+> build · big-pickle
+Cell 4 started at 01:47:19 but FAILED again (dir created). Must investigate why:
+[0m$ [0mcd /vol/data/benchmark
+echo "=== cell4 harness out ==="
+tail -30 status/sweep_004_temp005.comebin.out 2>/dev/null
+echo "=== cell4 dir ==="
+ls -la runs/sweep_004_temp005/ 2>/dev/null
+echo "=== cell4 run_meta ==="
+cat runs/sweep_004_temp005/run_meta.txt 2>/dev/null | head -20
+echo "=== logs ==="
+ls runs/sweep_004_temp005/logs/ 2>/dev/null
+echo "=== lock holder now ==="
+flock -n /tmp/benchmark-start.lock -c 'echo FREE' 2>&1 || echo "HELD"
+=== cell4 harness out ===
+preflight_free_gb: run_fs=314 tmp_fs=13 floor=2
+source: /vol/data/benchmark/../repos/COMEBin-v11-sweep (branch ) commit: 95f5ea820f9a4e76f5c2911c0b5ed507ab67b015 (dirty files: 0)
+/vol/data/benchmark/bin/run_comebin_fix.sh: line 79: EMB: unbound variable
+ERROR: another benchmark launch holds /tmp/benchmark-start.lock
+ERROR: another benchmark launch holds /tmp/benchmark-start.lock
+preflight_free_gb: run_fs=305 tmp_fs=12 floor=2
+source: /vol/data/benchmark/../repos/COMEBin-v11-sweep (branch ) commit: 95f5ea820f9a4e76f5c2911c0b5ed507ab67b015 (dirty files: 0)
+run:        /vol/data/benchmark/runs/sweep_004_temp005
+source:     /vol/data/benchmark/../repos/COMEBin-v11-sweep (branch )
+date:       2026-09-29T01:47:19+00:00
+commit:     95f5ea820f9a4e76f5c2911c0b5ed507ab67b015
+contigs:    /vol/data/datasets/comebin_medium/contigs.fa
+bamdir:     /vol/data/datasets/comebin_medium/bamfiles
+threads:    8
+n_views:    6
+seed:       42
+allow_zero_bins: 0
+sweep:      temp=0.05 emb=ref emb_cov=ref batch=ref max_edges=ref leiden_workers=ref hmm_evalue=ref n_views=6
+host:       32 cores, 62G RAM, gpu=none
+cmd_wrapper: /vol/data/tools/bin/micromamba run -p /vol/data/envs/comebin bash run_comebin.sh -a /vol/data/datasets/comebin_medium/contigs.fa -p /vol/data/datasets/comebin_medium/bamfiles -o /vol/data/benchmark/runs/sweep_004_temp005/comebin_out -n 6 -t 8 -d cpu -s 42 -l 0.05 
+critical libmamba filesystem error: temp_directory_path: No such file or directory [0.05]
+exit_code:  1
+wall_s:     0
+finished:   2026-09-29T01:47:19+00:00
+bins:       0  -> /vol/data/benchmark/runs/sweep_004_temp005/comebin_out/comebin_res/comebin_res_bins (missing or empty)
+=== cell4 dir ===
+total 24
+drwxrwxr-x  3 ubuntu ubuntu 4096 Sep 29 01:50 .
+drwxrwxr-x 22 ubuntu ubuntu 4096 Sep 29 01:47 ..
+-rw-rw-r--  1 ubuntu ubuntu   47 Sep 29 01:50 .watchdog_terminal
+-rw-rw-r--  1 ubuntu ubuntu   90 Sep 29 01:47 comebin_run.log
+drwxrwxr-x  2 ubuntu ubuntu 4096 Sep 29 01:47 logs
+-rw-rw-r--  1 ubuntu ubuntu 1070 Sep 29 01:50 run_meta.txt
+=== cell4 run_meta ===
+run:        /vol/data/benchmark/runs/sweep_004_temp005
+source:     /vol/data/benchmark/../repos/COMEBin-v11-sweep (branch )
+date:       2026-09-29T01:47:19+00:00
+commit:     95f5ea820f9a4e76f5c2911c0b5ed507ab67b015
+contigs:    /vol/data/datasets/comebin_medium/contigs.fa
+bamdir:     /vol/data/datasets/comebin_medium/bamfiles
+threads:    8
+n_views:    6
+seed:       42
+allow_zero_bins: 0
+sweep:      temp=0.05 emb=ref emb_cov=ref batch=ref max_edges=ref leiden_workers=ref hmm_evalue=ref n_views=6
+host:       32 cores, 62G RAM, gpu=none
+cmd_wrapper: /vol/data/tools/bin/micromamba run -p /vol/data/envs/comebin bash run_comebin.sh -a /vol/data/datasets/comebin_medium/contigs.fa -p /vol/data/datasets/comebin_medium/bamfiles -o /vol/data/benchmark/runs/sweep_004_temp005/comebin_out -n 6 -t 8 -d cpu -s 42 -l 0.05 
+exit_code:  1
+wall_s:     0
+finished:   2026-09-29T01:47:19+00:00
+bins:       0  -> /vol/data/benchmark/runs/sweep_004_temp005/comebin_out/comebin_res/comebin_res_bins (missing or empty)
+watchdog_terminal: 2026-09-29T01:50:01+00:00 run_meta exit_code=1
+=== logs ===
+resources.tsv
+sampler.out
+=== lock holder now ===
+FREE
+[91m[1mError: [0mError from provider (Console): Rate limit exceeded. Please try again later.
+[91m[1mError: [0mError from provider (Console): Rate limit exceeded. Please try again later.
+[91m[1mError: [0mError from provider (Console): Rate limit exceeded. Please try again later.
