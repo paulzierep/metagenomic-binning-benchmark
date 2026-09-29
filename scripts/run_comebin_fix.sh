@@ -76,8 +76,9 @@ fi
 # Map env vars -> run_comebin.sh flags ONLY if the invoked copy supports them
 # (avoids "illegal option" on older/mismatched sources). Defaults = upstream
 # reference values (current medium_v11_20260924 run). `${X:-}` guards set -u.
-if [ -n "${TEMP:-}" ]; then
-  grep -q -- '-l FLOAT' "$SRC/COMEBin/run_comebin.sh" && COMEBIN_ARGS+=(-l "$TEMP")
+if [ -n "${COMEBIN_TEMPERATURE:-${TEMP:-}}" ]; then
+  grep -q -- '-l FLOAT' "$SRC/COMEBin/run_comebin.sh" && \
+    COMEBIN_ARGS+=(-l "${COMEBIN_TEMPERATURE:-${TEMP:-}}")
 fi
 if [ -n "${EMB:-}" ]; then
   grep -q -- '-e INT' "$SRC/COMEBin/run_comebin.sh" && COMEBIN_ARGS+=(-e "$EMB")
@@ -115,6 +116,18 @@ CMD_TEXT=$(printf '%q ' "$MM" run -p "$ENV" bash run_comebin.sh "${COMEBIN_ARGS[
 } | tee "$RUNDIR/run_meta.txt"
 
 export MAMBA_ROOT_PREFIX=/vol/data/envs/.mamba
+# libmamba resolves its scratch directory from TMPDIR, TMP, TEMP and TEMPDIR.
+# TEMP is a long-standing POSIX name for "temporary directory", so exporting
+# TEMP=<float> (the COMEBin loss temperature) makes micromamba abort before
+# COMEBin starts with
+#   critical libmamba filesystem error: temp_directory_path: No such file or
+#   directory [0.05]
+# which cost an entire 24-cell sweep on 2026-09-29: the temperature cells died
+# in <1 s and were indistinguishable from real failures. The parameter now
+# travels as COMEBIN_TEMPERATURE, and any inherited TEMP is cleared so no
+# caller can reintroduce the collision.
+unset TEMP TEMPDIR
+export TMPDIR="${TMPDIR:-/tmp}"
 cd "$SRC/COMEBin"   # upstream resolves ../auxiliary relative to CWD
 
 # Fields: pid pgid logfile rundir start_epoch mode source_repo contigs bamdir.

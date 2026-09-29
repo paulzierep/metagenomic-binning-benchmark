@@ -11,6 +11,9 @@
 #   - runs/<r>/comebin_res/comebin_res_bins/   bin FASTAs produced by COMEBin
 #   - runs/<r>/eval/...   CheckM2 quality_report.tsv + CheckM v1
 #                         bin_stats_ext.tsv/checkm.log (key eval reports)
+#   - runs/<r>/biobox/... CAMI-standard binning output from export_biobox.sh
+#                         (binning.tar.gz, <sample>.binning, binning_summary.tsv;
+#                         bins.fasta.gz only with INCLUDE_BINS_FASTA=1)
 #   - docs/ README.md PROGRESS.md status/agent-activity.log
 # into a deterministic release tarball with a SHA-256 manifest, then publishes
 # it as a NEW VERSION of the existing record (concept DOI
@@ -26,7 +29,8 @@
 #   --dry-run: package + manifest + change detection, no network calls
 #
 # Env: ZENODO_TOKEN_FILE (default: ~/.zenodo_token), ZENODO_RECORD (default
-# 22935025), ZENODO_UPDATE=0 disables the script entirely.
+# 22935025), ZENODO_UPDATE=0 disables the script entirely,
+# INCLUDE_BINS_FASTA=1 also ships the concatenated biobox bins.fasta.gz.
 set -euo pipefail
 
 REPO=${BENCH_REPO:-}
@@ -98,6 +102,38 @@ for rd in "$RUNS_ROOT"/*/; do
       cp -a "$rd$rel" "$STAGE/runs/$name/$rel"
     fi
   done
+  # Issue #25 (owner): "export each binning result, bins in fasta, biobox
+  # output, stats as csv to zenodo". The CAMI-standard biobox output produced
+  # by scripts/export_biobox.sh used to be dropped on the floor here: nothing
+  # in the release path read runs/<r>/biobox/, so the export existed only in
+  # the local run dir and could never reach the record.
+  #
+  # A biobox export is only shipped once it is verifiably complete. Size
+  # checks are not enough on their own: export_biobox.sh truncates
+  # binning.tar.gz in place while it writes it, so an export running in
+  # parallel leaves a non-empty but half-written tarball behind. `gzip -t`
+  # reads the stream to its end and checks the CRC, so it rejects a truncated
+  # archive while accepting a finished one.
+  if [ -s "$rd/biobox/binning.tar.gz" ] && [ -s "$rd/biobox/README.txt" ] && \
+     gzip -t "$rd/biobox/binning.tar.gz" 2>/dev/null; then
+    mkdir -p "$STAGE/runs/$name/biobox"
+    cp -L "$rd/biobox/binning.tar.gz" "$rd/biobox/README.txt" \
+         "$STAGE/runs/$name/biobox/"
+    for bf in "$rd"/biobox/*.binning; do
+      [ -s "$bf" ] && cp -L "$bf" "$STAGE/runs/$name/biobox/$(basename "$bf")"
+    done
+    # binning_summary.tsv lives under the versioned tree inside the run dir.
+    for sf in "$rd"/biobox/tree/*/*/binning_summary.tsv; do
+      [ -s "$sf" ] && cp -L "$sf" "$STAGE/runs/$name/biobox/binning_summary.tsv"
+    done
+    # The bin FASTAs already ship uncompressed under
+    # comebin_res/comebin_res_bins/, so bins.fasta.gz is a byte-level duplicate
+    # of sequences that are in the archive twice. Opt in with
+    # INCLUDE_BINS_FASTA=1 to carry the concatenated FASTA as well.
+    if [ "${INCLUDE_BINS_FASTA:-0}" = "1" ] && [ -s "$rd/biobox/bins.fasta.gz" ]; then
+      cp -L "$rd/biobox/bins.fasta.gz" "$STAGE/runs/$name/biobox/bins.fasta.gz"
+    fi
+  fi
   # Only evaluated/completed runs with real content belong in the release.
   if [ -f "$STAGE/runs/$name/run_meta.txt" ] && \
      { [ "$n_bins" -gt 0 ] || [ -f "$STAGE/runs/$name/per_bin_results.csv" ]; }; then
@@ -245,7 +281,9 @@ md["description"] = (
     "(runs/<run>/comebin_res/comebin_res_bins/), per-bin and aggregate CheckM2 + "
     "CheckM v1 metrics (results/<run>.csv, runs/<run>/per_bin_results.csv), the "
     "evaluation reports (runs/<run>/eval/), run parameters and logs "
-    "(run_meta.txt, comebin_run.log), all comparison figures "
+    "(run_meta.txt, comebin_run.log), the CAMI-standard binning export "
+    "(runs/<run>/biobox/: binning.tar.gz, <sample>.binning in CAMI binning "
+    "format v0.9.1, binning_summary.tsv), all comparison figures "
     "(results/figures/, incl. the combined completeness bar plot), plus dataset, "
     "environment, fix, evaluation and preservation documentation (docs/). "
     "manifest.json inside the archive lists every file with size and SHA-256.\n\n"

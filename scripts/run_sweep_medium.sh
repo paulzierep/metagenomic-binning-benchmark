@@ -196,6 +196,10 @@ eval_done_run() {
 }
 
 idx=0
+ok=0
+failed=0
+skipped=0
+declare -a FAILED_CELLS=()
 for spec in "${CELL_SPECS[@]}"; do
   idx=$((idx + 1))
   [ "$idx" -ge "$from" ] || continue
@@ -207,6 +211,7 @@ for spec in "${CELL_SPECS[@]}"; do
     rc=$(grep -m1 '^exit_code:' "$RUN/run_meta.txt" | awk '{print $2}' || true)
     if [ "${rc:-}" = "0" ]; then
       if [ -f "$RESULTS/$name.csv" ]; then
+        ok=$((ok + 1))
         log "SKIP $name (already done rc=0 + results csv)"
       else
         log "RESUME $name (rc=0 but no results csv — evaling orphaned run)"
@@ -215,16 +220,22 @@ for spec in "${CELL_SPECS[@]}"; do
       continue
     fi
     if [ -n "$rc" ] && [ "$rc" != "0" ]; then
+      failed=$((failed + 1)); FAILED_CELLS+=("$name")
       log "SKIP $name (previous exit $rc — needs manual triage, not auto-retried)"
       continue
     fi
+    failed=$((failed + 1)); FAILED_CELLS+=("$name")
     log "SKIP $name (run dir exists without terminal exit — not overwriting)"
     continue
   fi
 
   # Build env overrides, dropping "ref".
+  # COMEBIN_TEMPERATURE, not TEMP: libmamba reads TEMP as a temp-directory path
+  # and aborts micromamba with "temp_directory_path: No such file or directory
+  # [0.05]" if it is not a directory. TEMP=<float> killed every temperature cell
+  # of the 2026-09-29 sweep instantly; run_comebin_fix.sh also clears TEMP.
   declare -a SWEEP_ENV=()
-  [ "$temp"     != "ref" ] && SWEEP_ENV+=(TEMP="$temp")
+  [ "$temp"     != "ref" ] && SWEEP_ENV+=(COMEBIN_TEMPERATURE="$temp")
   [ "$emb"      != "ref" ] && SWEEP_ENV+=(EMB="$emb")
   [ "$emb_cov"  != "ref" ] && SWEEP_ENV+=(EMB_COV="$emb_cov")
   [ "$batch"    != "ref" ] && SWEEP_ENV+=(BATCH="$batch")
@@ -241,7 +252,8 @@ for spec in "${CELL_SPECS[@]}"; do
       MODE=medium THREADS="$THREADS" SEED="$SEED_FOR_RUN" \
       "${SWEEP_ENV[@]}" \
       "$BIN/run_comebin_fix.sh" "$RUN" >> "$BENCH/status/$name.comebin.out" 2>&1; then
-    log "FAIL $name: run_comebin_fix.sh rc=$?"
+    failed=$((failed + 1)); FAILED_CELLS+=("$name")
+    log "FAIL $name: run_comebin_fix.sh (launch failed — see status/$name.comebin.out)"
     continue
   fi
 
@@ -256,9 +268,11 @@ for spec in "${CELL_SPECS[@]}"; do
   # brief grace for run_comebin_fix.sh cleanup of .active_run
   sleep 5
   if ! "$BIN/run_eval.sh" "$RUN" > "$BENCH/status/$name.eval.out" 2>&1; then
-    log "EVAL_FAIL $name (rc=$?) — results CSV may be missing; will re-eval later"
+    failed=$((failed + 1)); FAILED_CELLS+=("$name")
+    log "EVAL_FAIL $name — results CSV may be missing; will re-eval later"
     continue
   fi
+  ok=$((ok + 1))
   log "DONE $name (eval OK, results CSV + per-bin plots generated)"
 
   # sync per-bin artifacts back into the repo run dir
@@ -272,4 +286,13 @@ for spec in "${CELL_SPECS[@]}"; do
   fi
 done
 
-log "SWEEP COMPLETE ($idx cells processed)"
+if [ "$failed" -gt 0 ]; then
+  log "SWEEP INCOMPLETE: $failed of $idx cells did NOT produce a usable result."
+  log "  failed: ${FAILED_CELLS[*]}"
+  log "  The grid is resumable: re-run this script (same --from) after triaging; cells that already"
+  log "  produced rc=0 + a results CSV are skipped, cells that never ran are retried."
+  log "  A 'COMPLETE' line above does NOT mean every cell ran — read SWEEP TALLY."
+  exit 1
+fi
+log "SWEEP COMPLETE ($idx cells processed) — all cells ok"
+log "SWEEP TALLY: ok=$ok failed=$failed skipped=$skipped"

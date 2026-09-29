@@ -39,6 +39,16 @@ VERSION=${VERSION:-v11}
 SAMPLE=${SAMPLE:-unknown_sample}
 OUT="$RUN_DIR/biobox"
 TREE="$OUT/tree/$ENGINE/$VERSION/binning/$SAMPLE"
+# The tree is derived output: it is rebuilt in full from $BINS_DIR below, so
+# wipe it first to keep a re-export idempotent. Without this, re-running with a
+# different SAMPLE (or after the run produced a different bin id set) leaves the
+# previous export's binning/<sample>/ directory in place, and because
+# `tar ... $ENGINE` archives the whole engine subtree, the shipped biobox
+# tarball then carries bins for two samples at once — e.g. medium_v11_20260924
+# shipped 32 bin FASTAs for a 16-bin run (binning/unknown_sample/ left over from
+# an export that predates SAMPLE being passed). A CAMI biobox archive must hold
+# exactly one binning directory for the sample it declares.
+rm -rf "$OUT/tree"
 mkdir -p "$TREE"
 
 bin_count=0
