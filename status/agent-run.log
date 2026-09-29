@@ -100087,3 +100087,57 @@ NONE
 [2026-09-28T14:15:53Z] SWEEP COMPLETE (24 cells processed)
 [2026-09-29T00:26:50Z] ABORT: sweep driver pid=2559226 already running; singleton guard, not starting a second
 > build · mimo-v2.6-flash-free
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/scripts/run_sweep_medium.sh
+Index: /vol/data/repos/metagenomic-binning-benchmark/scripts/run_sweep_medium.sh
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/scripts/run_sweep_medium.sh
++++ /vol/data/repos/metagenomic-binning-benchmark/scripts/run_sweep_medium.sh
+@@ -93,14 +93,33 @@
+ if ! flock -n 9; then
+   echo "another sweep driver holds $SWEEP_LOCK" >&2
+   exit 0
+ fi
+-for other in $(pgrep -f 'run_sweep_medium\.sh' 2>/dev/null || true); do
+-  [ "$other" = "$$" ] && continue
+-  [ "$other" = "$PPID" ] && continue
+-  log "ABORT: sweep driver pid=$other already running; singleton guard, not starting a second"
+-  exit 0
++# Process scan for an instance started BEFORE this guard existed. It is
++# advisory and confirmed twice, 2 s apart: the launch chain (nohup/setsid
++# wrappers, tool shell) briefly shares our argv, and a single-shot scan once
++# aborted a perfectly good launch on such a transient. Any pid in our own
++# ancestor chain is ignored; a match that survives the second probe is real.
++ANCESTORS=" $$ $PPID"
++_probe=$PPID
++while [ "${_probe:-0}" -gt 1 ] 2>/dev/null; do
++  _probe=$(ps -o ppid= -p "$_probe" 2>/dev/null | tr -d ' ')
++  [ -n "${_probe:-}" ] || break
++  ANCESTORS="$ANCESTORS $_probe"
+ done
++for _attempt in 1 2; do
++  _found=""
++  for other in $(pgrep -f 'run_sweep_medium\.sh' 2>/dev/null || true); do
++    case " $ANCESTORS " in *" $other "*) continue ;; esac
++    _found="$other"
++  done
++  [ -z "$_found" ] && break
++  if [ "$_attempt" = 2 ]; then
++    log "ABORT: sweep driver pid=$_found already running; singleton guard, not starting a second ($(ps -o args= -p "$_found" 2>/dev/null | cut -c1-160))"
++    exit 0
++  fi
++  sleep 2
++done
+ 
+ 
+ only=""; from=0
+ while [ $# -gt 0 ]; do
+
+> build · mimo-v2.6-flash-free
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && bash -n scripts/run_sweep_medium.sh && echo SYNTAX_OK && ( flock -w 300 200 && git add scripts/run_sweep_medium.sh && git commit -q -m "sweep #25: make the singleton process scan ancestor-aware and confirm-once
+
+The 00:26Z relaunch aborted on a transient launcher pid that briefly shared
+the driver argv. The scan now ignores the whole ancestor chain and requires a
+match to survive a second probe 2 s later; flock stays the hard mutex." && git push -q origin main && git log --oneline -1 ) 200>/tmp/bench-repo.lock
+SYNTAX_OK
+55ad99dd sweep #25: make the singleton process scan ancestor-aware and confirm-once
+> build · mimo-v2.6-flash-free
