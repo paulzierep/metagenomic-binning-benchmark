@@ -107993,3 +107993,215 @@ S0C65655	OTU_97.10592.0	1485	6524
 64
 > build · big-pickle
 Human gold standard built (4,900 contigs → 64 genomes). Now running AMBER on the existing human run (`human_v11_20260925`, 107 bins) — same non-overlapping #25 follow-on:
+[0m$ [0mcd /vol/data/benchmark/amber
+export MAMBA_ROOT_PREFIX=/vol/data/envs/.mamba
+python3 /vol/data/repos/metagenomic-binning-benchmark/scripts/make_amber_prediction.py /vol/data/benchmark/runs/human_v11_20260925 human > human_comebin.binning 2>human.err
+cat human.err
+head -4 human_comebin.binning
+GS=/vol/data/datasets/cami_II_human/gold_standard/human_binning_gs.tsv
+rm -rf output_human
+/vol/data/tools/bin/micromamba run -p /vol/data/envs/amber python3 /vol/data/repos/CAMI-AMBER/amber.py human_comebin.binning -g "$GS" -o output_human -l comebin_v11 2>&1 | tail -6
+echo "rc=$?"
+ls output_human/ 2>/dev/null
+# 107 bins, 4861 contigs mapped
+@Version:0.9.1
+@SampleID:human
+@@SEQUENCEID	BINID
+S0C31388	bin_0
+2026-09-29 01:22:00,553 INFO Evaluating comebin_v11, sample human, genome binning
+2026-09-29 01:22:00,554 INFO Loading human of comebin_v11
+2026-09-29 01:22:00,656 INFO Saving computed metrics
+2026-09-29 01:22:00,669 INFO Creating genome binning plots
+2026-09-29 01:22:03,901 INFO Creating HTML page
+2026-09-29 01:22:04,676 INFO AMBER finished successfully. All results have been saved to /vol/data/benchmark/amber/output_human
+rc=0
+bin_metrics.tsv
+genome
+genome_metrics_cami1.tsv
+heatmap_bar.png
+index.html
+log.txt
+results.tsv
+> build · big-pickle
+Human AMBER eval succeeded. Let me extract metrics and compare with marine:
+[0m$ [0mcd /vol/data/benchmark/amber
+python3 - <<'EOF'
+import csv
+for name, path in [("marine","output_marine/results.tsv"), ("human","output_human/results.tsv")]:
+    with open(path) as f:
+        rows = [r for r in csv.DictReader(f, delimiter="\t") if r["Tool"] != "Gold standard"]
+    r = rows[0]
+    sel = ["accuracy_bp","f1_score_bp","f1_score_seq","precision_avg_bp","precision_weighted_bp",
+           "recall_avg_bp","recall_weighted_bp","adjusted_rand_index_bp","misclassification_bp",
+           "percentage_of_assigned_bps","percentage_of_assigned_seqs"]
+    print(f"--- {name} (comebin_v11) ---")
+    for k in sel:
+        v = float(r[k])
+        print(f"  {k:28s} {v:.4f}")
+EOF
+--- marine (comebin_v11) ---
+  accuracy_bp                  0.2937
+  f1_score_bp                  0.3303
+  f1_score_seq                 0.2673
+  precision_avg_bp             0.7349
+  precision_weighted_bp        0.8616
+  recall_avg_bp                0.2130
+  recall_weighted_bp           0.2961
+  adjusted_rand_index_bp       0.8435
+  misclassification_bp         0.1384
+  percentage_of_assigned_bps   0.3409
+  percentage_of_assigned_seqs  0.0272
+--- human (comebin_v11) ---
+  accuracy_bp                  0.8139
+  f1_score_bp                  0.6812
+  f1_score_seq                 0.6373
+  precision_avg_bp             0.6261
+  precision_weighted_bp        0.8194
+  recall_avg_bp                0.7469
+  recall_weighted_bp           0.7215
+  adjusted_rand_index_bp       0.7688
+  misclassification_bp         0.1806
+  percentage_of_assigned_bps   0.9933
+  percentage_of_assigned_seqs  0.9920
+> build · big-pickle
+Human run scores **F1_bp 0.681** (vs marine 0.330). Let me archive the human artifacts + write the doc, then commit both AMBER evals:
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark
+mkdir -p results/amber/human
+cp /vol/data/benchmark/amber/output_human/results.tsv results/amber/human/amber_results.tsv
+cp /vol/data/benchmark/amber/output_human/bin_metrics.tsv results/amber/human/
+cp /vol/data/benchmark/amber/output_human/heatmap_bar.png results/amber/human/
+cp /vol/data/benchmark/amber/output_human/index.html results/amber/human/amber_report.html
+cp /vol/data/benchmark/amber/human_comebin.binning results/amber/human/comebin_v11_human.binning
+ls -la results/amber/human/
+echo "=== git status ==="
+git status --porcelain | head -20
+total 2344
+drwxrwxr-x 2 ubuntu ubuntu    4096 Sep 29 01:22 .
+drwxrwxr-x 4 ubuntu ubuntu    4096 Sep 29 01:22 ..
+-rw-rw-r-- 1 ubuntu ubuntu 2277076 Sep 29 01:22 amber_report.html
+-rw-rw-r-- 1 ubuntu ubuntu    1577 Sep 29 01:22 amber_results.tsv
+-rw-rw-r-- 1 ubuntu ubuntu   23212 Sep 29 01:22 bin_metrics.tsv
+-rw-rw-r-- 1 ubuntu ubuntu   80436 Sep 29 01:22 comebin_v11_human.binning
+-rw-rw-r-- 1 ubuntu ubuntu     353 Sep 29 01:22 heatmap_bar.png
+=== git status ===
+ M scripts/export_biobox.sh
+ M scripts/make_amber_prediction.py
+ M scripts/rank_sweep_medium.py
+?? results/amber/human/
+?? results/sweep_rankings.md
+> build · big-pickle
+Let me revert the incidental mode-only changes (keep the sibling's script modes as-is) and write the human AMBER doc:
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark
+git checkout -- scripts/export_biobox.sh scripts/make_amber_prediction.py scripts/rank_sweep_medium.py
+git status --porcelain
+?? results/amber/human/
+?? results/sweep_rankings.md
+> build · big-pickle
+[0m← [0mWrite /vol/data/repos/metagenomic-binning-benchmark/docs/15-amber-cami2-human.md
+Created file successfully: /vol/data/repos/metagenomic-binning-benchmark/docs/15-amber-cami2-human.md
+> build · big-pickle
+Now updating docs/01 (human ground-truth TODO) and docs/13 (AMBER follow-on) to reflect the imported gold standard:
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/docs/01-datasets.md
+Index: /vol/data/repos/metagenomic-binning-benchmark/docs/01-datasets.md
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/docs/01-datasets.md
++++ /vol/data/repos/metagenomic-binning-benchmark/docs/01-datasets.md
+@@ -162,9 +162,9 @@
+ | Members | `2017.12.04_18.45.54_sample_0/{bam,contigs,reads}` — `bam/` = **139 per-OTU BAMs** (same "per-genome BAMs do not merge" problem as marine), `contigs/` = `anonymous_gsa.fasta.gz` (**68,417 contigs**) + `gsa_mapping.tsv.gz` + `gsa_mapping_new.tsv.gz`, `reads/` = `anonymous_reads.fq` (**10.6 GB, uncompressed**, interleaved PE `@S0R0/1`+`@S0R0/2`) + `reads_mapping.tsv.gz` (293 MB, read → **genome**) + `subsample_0.{sam,bam,fq}` |
+ | Extracted (contigs + reads only, `bam/` skipped) | `/vol/data/datasets/cami_II_human/extract/2017.12.04_18.45.54_sample_0/` |
+ | Input decision (issue #18: "1/6 the size of the big one") | 29,434 demo contigs / 6 ≈ 4,900 → **top 4,900 GSA contigs by length** (166.0 Mbp; the 4,900th is 4,733 bp; ≥5,000 bp would give 4,462) + **all** reads mapped `bwa mem -p -t 32` → `human_sample0_input/{contigs.fa,bamfiles/human.bam}` |
+ | Prep script | [`scripts/prep_cami2_human.sh`](../scripts/prep_cami2_human.sh) (refuses to overwrite an existing build; writes `logs/input_meta.txt` with md5s) |
+-| Ground truth | ⚠️ `binning_gs.tsv` is **not** inside `sample_0.tar.gz` (only the gsa name maps) → bin quality is scored with CheckM2 + CheckM v1 like every other run; the gold-standard binning lives in `setup.tar.gz` (1.8 GB) / the CAMI goldstandard bundle → **TODO** if a recall/ARI evaluation is wanted |
++| Ground truth | ✅ **imported 2026-09-29**: `setup.tar.gz` (1,906,532,721 B) pulled from <https://frl.publisso.de/data/frl:6425518/gastrooral/setup.tar.gz>; the correct per-sample mapping is `extract/…/contigs/gsa_mapping.tsv.gz` (`S0C*`→`OTU`), filtered to our 4,900 contigs → `gold_standard/human_binning_gs.tsv` (4,900/4,900 mapped, 64 genomes, AMBER format). AMBER eval in [`docs/15-amber-cami2-human.md`](15-amber-cami2-human.md) (F1_bp 0.681). Note the pooled `gsa_pooled_mapping.tsv.gz` uses `PC*` ids from a *different* (pooled) assembly and is not used. |
+ | Expected wall time | ≈ 1/6 of the 6.9 h demo run → **≈ 1 h** for 200 epochs (verified by the run once launched) |
+ 
+ ## 3. CAMI III challenge data (planned)
+ 
+
+> build · big-pickle
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/docs/01-datasets.md
+Index: /vol/data/repos/metagenomic-binning-benchmark/docs/01-datasets.md
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/docs/01-datasets.md
++++ /vol/data/repos/metagenomic-binning-benchmark/docs/01-datasets.md
+@@ -162,9 +162,9 @@
+ | Members | `2017.12.04_18.45.54_sample_0/{bam,contigs,reads}` — `bam/` = **139 per-OTU BAMs** (same "per-genome BAMs do not merge" problem as marine), `contigs/` = `anonymous_gsa.fasta.gz` (**68,417 contigs**) + `gsa_mapping.tsv.gz` + `gsa_mapping_new.tsv.gz`, `reads/` = `anonymous_reads.fq` (**10.6 GB, uncompressed**, interleaved PE `@S0R0/1`+`@S0R0/2`) + `reads_mapping.tsv.gz` (293 MB, read → **genome**) + `subsample_0.{sam,bam,fq}` |
+ | Extracted (contigs + reads only, `bam/` skipped) | `/vol/data/datasets/cami_II_human/extract/2017.12.04_18.45.54_sample_0/` |
+ | Input decision (issue #18: "1/6 the size of the big one") | 29,434 demo contigs / 6 ≈ 4,900 → **top 4,900 GSA contigs by length** (166.0 Mbp; the 4,900th is 4,733 bp; ≥5,000 bp would give 4,462) + **all** reads mapped `bwa mem -p -t 32` → `human_sample0_input/{contigs.fa,bamfiles/human.bam}` |
+ | Prep script | [`scripts/prep_cami2_human.sh`](../scripts/prep_cami2_human.sh) (refuses to overwrite an existing build; writes `logs/input_meta.txt` with md5s) |
+-| Ground truth | ✅ **imported 2026-09-29**: `setup.tar.gz` (1,906,532,721 B) pulled from <https://frl.publisso.de/data/frl:6425518/gastrooral/setup.tar.gz>; the correct per-sample mapping is `extract/…/contigs/gsa_mapping.tsv.gz` (`S0C*`→`OTU`), filtered to our 4,900 contigs → `gold_standard/human_binning_gs.tsv` (4,900/4,900 mapped, 64 genomes, AMBER format). AMBER eval in [`docs/15-amber-cami2-human.md`](15-amber-cami2-human.md) (F1_bp 0.681). Note the pooled `gsa_pooled_mapping.tsv.gz` uses `PC*` ids from a *different* (pooled) assembly and is not used. |
++| Ground truth | ✅ **imported 2026-09-29**: `setup.tar.gz` (1,906,532,721 B) pulled from <https://frl.publisso.de/data/frl:6425518/gastrooral/setup.tar.gz>; the correct per-sample mapping is `extract/…/contigs/gsa_mapping.tsv.gz` (`S0C*`→`OTU`), filtered to our 4,900 contigs → `gold_standard/human_binning_gs.tsv` (4,900/4,900 mapped, 64 genomes, AMBER format). AMBER eval in [`docs/15-amber-cami2-human.md`](15-amber-cami2-human.md) (F1_bp 0.681). Note the pooled `gsa_pooled_mapping.tsv.gz` uses `PC…` ids from a *different* (pooled) assembly and is not used. |
+ | Expected wall time | ≈ 1/6 of the 6.9 h demo run → **≈ 1 h** for 200 epochs (verified by the run once launched) |
+ 
+ ## 3. CAMI III challenge data (planned)
+ 
+
+> build · big-pickle
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/docs/13-optimization-sweep-medium.md
+Index: /vol/data/repos/metagenomic-binning-benchmark/docs/13-optimization-sweep-medium.md
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/docs/13-optimization-sweep-medium.md
++++ /vol/data/repos/metagenomic-binning-benchmark/docs/13-optimization-sweep-medium.md
+@@ -105,11 +105,14 @@
+ - **Restrict large data to human**: CAMI II human (4,900 contigs) and CAMI III
+   toy human (5,000) only; **archive** demo / marine / medium / small / tiny in
+   Zenodo (already v2/v3 for main runs) and delete local copies to free disk.
+ - **AMBER**: use [AMBER](https://github.com/CAMI-challenge/AMBER) against the
+-  CAMI II gold standard (`binning_gs.tsv`) for official precision/recall/F1 on
+-  the human set once imported (docs/01: gold-standard binning lives in
+-  `setup.tar.gz` — not yet pulled in).
++  CAMI II gold standard (`binning_gs.tsv`) for official precision/recall/F1.
++  ✅ **done**: [docs/14](14-amber-cami2-marine.md) marine (F1_bp 0.330) and
++  [docs/15](15-amber-cami2-human.md) human (F1_bp 0.681). The human gold
++  standard was imported 2026-09-29 (`setup.tar.gz` → `gsa_mapping.tsv.gz`
++  filtered to the 4,900-contig subset, 64 genomes) and the winner run can be
++  scored with one command via `scripts/make_amber_prediction.py`.
+ - **No trimming**: use the full assembly/contigs when present (CAMI II/III
+   publish full assemblies); only the demo/medium/small/tiny derivations were
+   length-filtered for COMEBin feasibility.
+ - **Biobox export (CAMI standard)**:
+
+> build · big-pickle
+Now updating PROGRESS.md and logs:
+[0m← [0mEdit /vol/data/benchmark/PROGRESS.md
+Index: /vol/data/benchmark/PROGRESS.md
+===================================================================
+--- /vol/data/benchmark/PROGRESS.md
++++ /vol/data/benchmark/PROGRESS.md
+@@ -750,8 +750,19 @@
+   assigned. Full write-up `docs/14-amber-cami2-marine.md`; artifacts in
+   `results/amber/marine/` (amber_results.tsv, bin_metrics.tsv,
+   amber_report.html, heatmap_bar.png). Human + CAMI III AMBER evals can now be
+   one-liners after the sweep winner is chosen.
++- **AMBER human evaluation delivered (01:22Z)**: imported the CAMI II human
++  gold standard (`setup.tar.gz` 1.9 GB → `gsa_mapping.tsv.gz` filtered to the
++  4,900-contig subset, 4,900/4,900 mapped to 64 genomes, AMBER format at
++  `/vol/data/datasets/cami_II_human/gold_standard/human_binning_gs.tsv`), scored
++  `human_v11_20260925` (107 bins): **F1_bp 0.681**, precision_avg 0.626
++  (weighted 0.819), recall_avg 0.747 (weighted 0.722), ARI 0.769, 99.3 % of bp
++  assigned. Docs/15 + `results/amber/human/`; docs/01 + docs/13 TODO cleared.
++  Side-by-side: marine F1 0.330 (34 % bp assigned) vs human F1 0.681 (99 %).
++- **Biobox exports generated** for `marine_v11_20260925` (152), 
++  `human_v11_20260925` (107) and `cami3_v11_20260926_rerun` (492) via
++  `scripts/export_biobox.sh` → `runs/<run>/biobox/{tree/comebin/v11/binning/<sample>, binning.tar.gz, binning_summary.tsv}`.
+ 
+ ## Watchdog / restart
+ 
+ `scripts/agent-watchdog.sh` (installed at `/vol/data/benchmark/bin/`, cron `*/5 * * * *`):
+
+> build · big-pickle
+[0m$ [0mcd /vol/data/benchmark
+cp PROGRESS.md /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md
+diff -q PROGRESS.md /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md && echo "PROGRESS in sync"
+echo "[$(date -u +%FT%TZ)] #25 AMBER human: imported CAMI II human gold standard (setup.tar.gz -> gsa_mapping filtered to 4900-contig subset, 64 genomes); human_v11_20260925 (107 bins) F1_bp 0.681 (marine 0.330); docs/15 + results/amber/human; docs/01+docs/13 TODO cleared; biobox exports generated for marine/human/cami3" >> /vol/data/repos/metagenomic-binning-benchmark/status/agent-activity.log
+echo "[$(date -u +%FT%TZ)] AMBER human eval done (F1 0.681 bp, 99.3% assigned); human GS imported; biobox exports marine/human/cami3" >> .activity
+tail -1 /vol/data/repos/metagenomic-binning-benchmark/status/agent-activity.log
+touch .heartbeat
+echo "=== render check docs/13 + docs/01 ==="
+grep -n "AMBER" /vol/data/repos/metagenomic-binning-benchmark/docs/13-optimization-sweep-medium.md | head -3
+grep -n "imported 2026-09-29" /vol/data/repos/metagenomic-binning-benchmark/docs/01-datasets.md | head -2
+PROGRESS in sync
+[2026-09-29T01:23:01Z] #25 AMBER human: imported CAMI II human gold standard (setup.tar.gz -> gsa_mapping filtered to 4900-contig subset, 64 genomes); human_v11_20260925 (107 bins) F1_bp 0.681 (marine 0.330); docs/15 + results/amber/human; docs/01+docs/13 TODO cleared; biobox exports generated for marine/human/cami3
+=== render check docs/13 + docs/01 ===
+108:- **AMBER**: use [AMBER](https://github.com/CAMI-challenge/AMBER) against the
+166:| Ground truth | ✅ **imported 2026-09-29**: `setup.tar.gz` (1,906,532,721 B) pulled from <https://frl.publisso.de/data/frl:6425518/gastrooral/setup.tar.gz>; the correct per-sample mapping is `extract/…/contigs/gsa_mapping.tsv.gz` (`S0C*`→`OTU`), filtered to our 4,900 contigs → `gold_standard/human_binning_gs.tsv` (4,900/4,900 mapped, 64 genomes, AMBER format). AMBER eval in [`docs/15-amber-cami2-human.md`](15-amber-cami2-human.md) (F1_bp 0.681). Note the pooled `gsa_pooled_mapping.tsv.gz` uses `PC…` ids from a *different* (pooled) assembly and is not used. |
