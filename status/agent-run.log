@@ -100479,3 +100479,122 @@ RC=1
 === guard.log:
 NOLOG
 > build · mimo-v2.6-flash-free
+Found it: `set -o pipefail` + a `ps` on an already-dead transient pid made the guard's assignment itself fail under `set -e`, killing the driver silently. Making every probe failure-tolerant:
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && grep -n 'ps -o' scripts/run_sweep_medium.sh
+108:  _probe=$(ps -o ppid= -p "$_probe" 2>/dev/null | tr -d ' ')
+117:    p=$(ps -o ppid= -p "$p" 2>/dev/null | tr -d ' ')
+130:    _age=$(ps -o etimes= -p "$other" 2>/dev/null | tr -d ' ')
+136:    log "ABORT: sweep driver pid=$_found already running; singleton guard, not starting a second ($(ps -o args= -p "$_found" 2>/dev/null | cut -c1-160))"
+> build · mimo-v2.6-flash-free
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/scripts/run_sweep_medium.sh
+Index: /vol/data/repos/metagenomic-binning-benchmark/scripts/run_sweep_medium.sh
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/scripts/run_sweep_medium.sh
++++ /vol/data/repos/metagenomic-binning-benchmark/scripts/run_sweep_medium.sh
+@@ -104,9 +104,12 @@
+ # guarded driver.
+ ANCESTORS=" $$ $PPID"
+ _probe=$PPID
+ while [ "${_probe:-0}" -gt 1 ] 2>/dev/null; do
+-  _probe=$(ps -o ppid= -p "$_probe" 2>/dev/null | tr -d ' ')
++  # `|| true` is not optional here: pipefail + a pid that just exited would
++  # otherwise make this assignment return 1 and set -e would kill the driver
++  # silently (that is what the 00:36Z silent rc=1 was).
++  _probe=$(ps -o ppid= -p "$_probe" 2>/dev/null | tr -d ' ' || true)
+   [ -n "${_probe:-}" ] || break
+   ANCESTORS="$ANCESTORS $_probe"
+ done
+ related_to_us() {
+
+> build · mimo-v2.6-flash-free
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/scripts/run_sweep_medium.sh
+Index: /vol/data/repos/metagenomic-binning-benchmark/scripts/run_sweep_medium.sh
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/scripts/run_sweep_medium.sh
++++ /vol/data/repos/metagenomic-binning-benchmark/scripts/run_sweep_medium.sh
+@@ -116,9 +116,9 @@
+   local p=$1 hops=0
+   while [ "${p:-0}" -gt 1 ] && [ "$hops" -lt 64 ]; do
+     [ "$p" = "$$" ] && return 0
+     case " $ANCESTORS " in *" $p "*) return 0 ;; esac
+-    p=$(ps -o ppid= -p "$p" 2>/dev/null | tr -d ' ')
++    p=$(ps -o ppid= -p "$p" 2>/dev/null | tr -d ' ' || true)
+     [ -n "${p:-}" ] || return 1
+     hops=$((hops + 1))
+   done
+   return 1
+
+> build · mimo-v2.6-flash-free
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/scripts/run_sweep_medium.sh
+Index: /vol/data/repos/metagenomic-binning-benchmark/scripts/run_sweep_medium.sh
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/scripts/run_sweep_medium.sh
++++ /vol/data/repos/metagenomic-binning-benchmark/scripts/run_sweep_medium.sh
+@@ -129,9 +129,9 @@
+     related_to_us "$other" && continue
+     # Transients die within milliseconds of the scan (the launch chain, our own
+     # pgrep subshell, another agent's poll); a real foreign driver has been up
+     # for seconds. Require >=5 s of age before treating a match as foreign.
+-    _age=$(ps -o etimes= -p "$other" 2>/dev/null | tr -d ' ')
++    _age=$(ps -o etimes= -p "$other" 2>/dev/null | tr -d ' ' || true)
+     [ -n "${_age:-}" ] && [ "$_age" -ge 5 ] 2>/dev/null || continue
+     _found="$other"
+   done
+   [ -z "$_found" ] && break
+
+> build · mimo-v2.6-flash-free
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/scripts/run_sweep_medium.sh
+Index: /vol/data/repos/metagenomic-binning-benchmark/scripts/run_sweep_medium.sh
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/scripts/run_sweep_medium.sh
++++ /vol/data/repos/metagenomic-binning-benchmark/scripts/run_sweep_medium.sh
+@@ -135,9 +135,9 @@
+     _found="$other"
+   done
+   [ -z "$_found" ] && break
+   if [ "$_attempt" = 2 ]; then
+-    log "ABORT: sweep driver pid=$_found already running; singleton guard, not starting a second ($(ps -o args= -p "$_found" 2>/dev/null | cut -c1-160))"
++    log "ABORT: sweep driver pid=$_found already running; singleton guard, not starting a second ($(ps -o args= -p "$_found" 2>/dev/null | cut -c1-160 || true))"
+     exit 0
+   fi
+   sleep 2
+ done
+
+> build · mimo-v2.6-flash-free
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && bash -n scripts/run_sweep_medium.sh && echo SYNTAX_OK; sed 's|^LOG="$BENCH/status/sweep_medium.log"$|LOG=/tmp/opencode/guard.log|' scripts/run_sweep_medium.sh > /tmp/opencode/run_sweep_medium.sh; rm -f /tmp/opencode/guard.log; timeout 60 bash /tmp/opencode/run_sweep_medium.sh --only __none__ > /tmp/opencode/trace.out 2>&1; echo "RC=$?"; echo "=== trace:"; cat /tmp/opencode/trace.out; echo "=== guard.log:"; cat /tmp/opencode/guard.log 2>/dev/null || echo NOLOG
+SYNTAX_OK
+RC=0
+=== trace:
+[2026-09-29T00:40:59Z] SWEEP COMPLETE (24 cells processed)
+=== guard.log:
+[2026-09-29T00:40:59Z] SWEEP COMPLETE (24 cells processed)
+> build · mimo-v2.6-flash-free
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && ( flock -w 300 200 && git add scripts/run_sweep_medium.sh && git commit -q -m "sweep #25: guard probes must survive pipefail + set -e
+
+\$(ps -o … -p <dead pid> | tr -d ' ') returns 1 under pipefail, so the age
+probe assignment itself aborted the driver with a silent rc=1 (the 00:36Z
+launch). Every ps-based probe is now || true, and a match must be >=5 s old
+to count as a foreign driver. Verified end-to-end: a --only __none__ run
+walks the guard and all 24 cells with rc=0." && git push -q origin main && git log --oneline -1 ) 200>/tmp/bench-repo.lock; nohup bash /tmp/opencode/launch_sweep2.sh >/dev/null 2>&1 & sleep 30; echo "=== driver:"; pgrep -af 'run_sweep_medium\.sh' | cut -c1-90; echo "=== log tail:"; tail -4 /vol/data/benchmark/status/sweep_medium.log; echo "=== active:"; cat /vol/data/benchmark/.active_run 2>/dev/null || echo NONE; echo "=== out:"; tail -4 /vol/data/benchmark/status/sweep_003_issue28fix.comebin.out
+20ca7e39 sweep #25: guard probes must survive pipefail + set -e
+=== driver:
+2566271 /bin/bash -c cd /vol/data/repos/metagenomic-binning-benchmark && ( flock -w 300 20
+2566340 bash /vol/data/repos/metagenomic-binning-benchmark/scripts/run_sweep_medium.sh --f
+=== log tail:
+[2026-09-29T00:26:50Z] ABORT: sweep driver pid=2559226 already running; singleton guard, not starting a second
+[2026-09-29T00:29:55Z] ABORT: sweep driver pid=2560340 already running; singleton guard, not starting a second ()
+[2026-09-29T00:31:57Z] ABORT: sweep driver pid=2561301 already running; singleton guard, not starting a second ()
+[2026-09-29T00:41:12Z] START sweep_003_issue28fix src=COMEBin-v11 @ 41606c8 threads=8 seed=42 temp=ref emb=ref emb_cov=ref batch=ref max_edges=ref lw=ref heval=ref n_views=6
+=== active:
+2566376 2566340 /vol/data/benchmark/runs/sweep_003_issue28fix/comebin_run.log /vol/data/benchmark/runs/sweep_003_issue28fix 1790642472 medium /vol/data/benchmark/../repos/COMEBin-v11 /vol/data/datasets/comebin_medium/contigs.fa /vol/data/datasets/comebin_medium/bamfiles
+=== out:
+2026-09-29 00:41:16,195 - Generate augmentation view 5/5 with seed 47.
+2026-09-29 00:41:19,713 - Generated binary augmentation features: assembly_contigs=3000, assembly_n50=4551, retained_contigs=3000, views=6, kmer_features=136.
+2026-09-29 00:41:19,720 - Coverage requested 8 workers but only 1 BAM files exist; using 1 workers.
+2026-09-29 00:41:19,720 - Coverage inputs: contigs=3000, views=6, BAMs=1, workers=1.
+> build · mimo-v2.6-flash-free
+Sweep is live (cell 3 running, `.active_run` registered). Logging state, then triaging the new issues:
+[0m$ [0mTS=$(date -u +%Y-%m-%dT%H:%M:%SZ); touch /vol/data/benchmark/.heartbeat; printf '%s | #25 sweep RESUMED detached: driver pid 2566340 (scripts/run_sweep_medium.sh --from 3), cell sweep_003_issue28fix registered in .active_run pid 2566376; cells 1 (done+eval) and 2 (exit 1, KeyError, documented) skipped; 22 cells x ~55 min ahead; benchmark-watchdog owns handoff; commits fa69730a/55ad99dd/57b9cb5d/20ca7e39 pushed\n' "$TS" | tee -a /vol/data/benchmark/.activity >> /vol/data/repos/metagenomic-binning-benchmark/status/agent-activity.log; date -u; ls -la /vol/data/benchmark/.heartbeat; cat /vol/data/benchmark/.active_run
+Tue Sep 29 00:42:01 UTC 2026
+-rw-rw-r-- 1 ubuntu ubuntu 0 Sep 29 00:42 /vol/data/benchmark/.heartbeat
+2566376 2566340 /vol/data/benchmark/runs/sweep_003_issue28fix/comebin_run.log /vol/data/benchmark/runs/sweep_003_issue28fix 1790642472 medium /vol/data/benchmark/../repos/COMEBin-v11 /vol/data/datasets/comebin_medium/contigs.fa /vol/data/datasets/comebin_medium/bamfiles
