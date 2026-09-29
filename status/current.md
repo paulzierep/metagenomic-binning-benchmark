@@ -3,10 +3,10 @@
 | | |
 |---|---|
 | Status | 🟢 `running` |
-| ⏱ Updated (Europe/Berlin) | `2026-09-29T02:42 CEST` |
-| 🏃 Benchmark | no active run |
+| ⏱ Updated (Europe/Berlin) | `2026-09-29T02:44 CEST` |
+| 🏃 Live benchmark | `sweep_003_issue28fix` — **epoch 6/200** · loss `6.792544841766357` · top1 acc `1.240234375` (log 5s fresh) |
 | 🧠 Model (last turn) | `mimo-v2.6-flash-free` (watchdog rotates to free models on quota) |
-| 📌 Agent note · **0 min old** | 2026-09-25T12:16:00Z | marine_v11_20260925 active: epoch 147/200, COMEBin-v11@95f5ea8, cami2 mode; heartbeat touched; PROGRESS synced
+| 📌 Agent note · **2 min old** | 2026-09-25T12:16:00Z | marine_v11_20260925 active: epoch 147/200, COMEBin-v11@95f5ea8, cami2 mode; heartbeat touched; PROGRESS synced
 2026-09-25T15:34:55Z | issues triaged: #12 reporting auto-plots confirmed complete; #8 Zenodo record active with continuous-update workflow; marine run completed; no active run
 2026-09-25T20:49:23Z | issues triaged: #12 auto-plots complete; #8 zenodo record published with continuous-update workflow; marine run completed; no active run; agent resumed for CAMI III prep
 2026-09-25T21:11:13Z | issues #12 and #8 triaged: reporting auto-plots confirmed complete and Zenodo continuous-update workflow verified; no active runs; preparing for CAMI III dataset prep
@@ -83,9 +83,9 @@ delayed closeout: PROGRESS synced after 2nd edit; delivery comments #19/#22/#24/
 [2026-09-28T13:15:35Z] #24+#19 delivered (aa1bd565); sweep cell1 still training; driver waiting
 2026-09-29T00:24:15Z | resume-after-restart: read PROGRESS.md, no TASK_COMPLETE, no .active_run; found #25 sweep stalled (cell1 done+eval, cell2 KeyError exit1, cells3-24 never launched: stale unguarded harness in pass1 + concurrent-driver lock errors); heartbeat touched; triaging
 2026-09-29T00:42:01Z | #25 sweep RESUMED detached: driver pid 2566340 (scripts/run_sweep_medium.sh --from 3), cell sweep_003_issue28fix registered in .active_run pid 2566376; cells 1 (done+eval) and 2 (exit 1, KeyError, documented) skipped; 22 cells x ~55 min ahead; benchmark-watchdog owns handoff; commits fa69730a/55ad99dd/57b9cb5d/20ca7e39 pushed |
-| ⚙️ Load · uptime | `0.76 0.25 0.14` · 5 days, 11 hours, 6 minutes — 32 cores, 62 GiB, no GPU |
-| 💾 RAM used/total | `2633/64295 MB` |
+| ⚙️ Load · uptime | `5.81 2.35 0.93` · 5 days, 11 hours, 8 minutes — 32 cores, 62 GiB, no GPU |
+| 💾 RAM used/total | `5752/64295 MB` |
 | 🔗 Session | `ses_f31799c77ffeTq9gcYgqc4hBhg` |
-| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `20ca7e39 sweep #25: guard probes must survive pipefail + set -e` |
-| 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `9811736 B` — every run, command & tool result |
+| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `af78d70c meta: supervise tick 2026-09-29T00:43:01Z — 0 fix(es)` |
+| 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `9827238 B` — every run, command & tool result |
 | 📈 Timeline | [status/status.log](status/status.log) |

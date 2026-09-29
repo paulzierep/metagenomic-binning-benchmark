@@ -100598,3 +100598,254 @@ Sweep is live (cell 3 running, `.active_run` registered). Logging state, then tr
 Tue Sep 29 00:42:01 UTC 2026
 -rw-rw-r-- 1 ubuntu ubuntu 0 Sep 29 00:42 /vol/data/benchmark/.heartbeat
 2566376 2566340 /vol/data/benchmark/runs/sweep_003_issue28fix/comebin_run.log /vol/data/benchmark/runs/sweep_003_issue28fix 1790642472 medium /vol/data/benchmark/../repos/COMEBin-v11 /vol/data/datasets/comebin_medium/contigs.fa /vol/data/datasets/comebin_medium/bamfiles
+[0m% [0mWebFetch https://github.com/galaxyproject/tools-iuc/tree/main/tools/comebin/test-data 
+> build · mimo-v2.6-flash-free
+[0m$ [0muptime; echo "=== sweep cell3 progress:"; tail -c 600 /vol/data/benchmark/runs/sweep_003_issue28fix/comebin_run.log 2>/dev/null | tr '\r' '\n' | tail -5; echo "=== load-sensitive check:"; ps -o pid,pcpu,rss,args -p 2566376 2>/dev/null | cut -c1-140
+00:42:27 up 5 days, 11:07,  1 user,  load average: 1.66, 0.49, 0.22
+=== sweep cell3 progress:
+2026-09-29 00:42:22,853 - NN training: enter combined-model loop and request the first DataLoader batch.
+
+  0%|          | 0/2 [00:00<?, ?it/s]2026-09-29 00:42:23,024 - NN training: first combined-model batch received; view_shapes=[(1024, 138), (1024, 138), (1024, 138), (1024, 138), (1024, 138), (1024, 138)].
+2026-09-29 00:42:23,031 - NN training: first combined-model batch moved to cpu; shape=(6144, 138).
+2026-09-29 00:42:25,813 - NN training: first combined-model forward pass finished; loss=8.530816078186035.
+=== load-sensitive check:
+    PID %CPU   RSS COMMAND
+2566376  0.0  3608 bash /vol/data/benchmark/bin/run_comebin_fix.sh /vol/data/benchmark/runs/sweep_003_issue28fix
+[0m$ [0mcd /tmp/opencode && for f in input_single.fasta input_single.bam; do echo "== $f"; curl -sIL "https://raw.githubusercontent.com/galaxyproject/tools-iuc/main/tools/comebin/test-data/$f" | grep -iE '^(HTTP|content-length|content-type|etag|last-modified)' | tail -6; done; echo "== tool xml:"; curl -sI "https://raw.githubusercontent.com/galaxyproject/tools-iuc/main/tools/comebin/comebin.xml" | grep -iE '^(HTTP|content-length)'
+== input_single.fasta
+HTTP/2 200 
+content-type: text/plain; charset=utf-8
+etag: "1f55dae47f31110a015e0921ad90caad5d1d1ebfed1a56b9d5d7b2600a8dec8d"
+content-length: 813640
+== input_single.bam
+HTTP/2 200 
+content-type: application/octet-stream
+etag: "60ce046f60f0e1753076bb85eb6a9fe7cb3c428cc4e45c255beb7581e24af7e9"
+content-length: 200915
+== tool xml:
+HTTP/2 200 
+content-length: 4157
+> build · mimo-v2.6-flash-free
+[0m$ [0mcd /tmp/opencode/galaxy_comebin_test 2>/dev/null || exit 1; export PATH=/vol/data/envs/comebin/bin:$PATH; echo "=== samtools quickcheck:"; samtools quickcheck -v input_single.bam && echo QUICKCHECK_OK; echo "=== header:"; samtools view -H input_single.bam | head -5; echo "SQ count:"; samtools view -H input_single.bam | grep -c '^@SQ'; echo "=== flagstat:"; samtools flagstat input_single.bam; echo "=== idxstats (needs index?):"; samtools idxstats input_single.bam 2>&1 | head -3
+=== samtools quickcheck:
+input_single.bam could not be opened for reading.
+input_single.bam
+=== header:
+[E::hts_open_format] Failed to open file "input_single.bam" : No such file or directory
+samtools view: failed to open "input_single.bam" for reading: No such file or directory
+SQ count:
+[E::hts_open_format] Failed to open file "input_single.bam" : No such file or directory
+samtools view: failed to open "input_single.bam" for reading: No such file or directory
+0
+=== flagstat:
+[E::hts_open_format] Failed to open file "input_single.bam" : No such file or directory
+samtools flagstat: Cannot open input file "input_single.bam": No such file or directory
+=== idxstats (needs index?):
+[E::hts_open_format] Failed to open file "input_single.bam" : No such file or directory
+samtools idxstats: failed to open "input_single.bam": No such file or directory
+[0m$ [0mcd /tmp/opencode && mkdir -p galaxy_comebin_test && cd galaxy_comebin_test && curl -sSLo input_single.fasta https://raw.githubusercontent.com/galaxyproject/tools-iuc/main/tools/comebin/test-data/input_single.fasta && curl -sSLo input_single.bam https://raw.githubusercontent.com/galaxyproject/tools-iuc/main/tools/comebin/test-data/input_single.bam && ls -la && echo "=== fasta stats:" && grep -c '^>' input_single.fasta && awk '/^>/{if(l)print l; l=0; next}{l+=length($0)}END{print l}' input_single.fasta | sort -n | awk '{a[NR]=$1; s+=$1}END{print "n="NR, "min="a[1], "median="a[int(NR/2)], "max="a[NR], "total="s; for(i=1;i<=NR;i++) if(a[i]>=1000) ge1000++; print ">=1000bp:", ge1000+0, ">=500bp:", 0}' && echo "=== fasta headers (first 3):" && grep '^>' input_single.fasta | head -3
+total 1004
+drwxrwxr-x  2 ubuntu ubuntu   4096 Sep 29 00:42 .
+drwxrwxr-x 12 ubuntu ubuntu   4096 Sep 29 00:42 ..
+-rw-rw-r--  1 ubuntu ubuntu 200915 Sep 29 00:42 input_single.bam
+-rw-rw-r--  1 ubuntu ubuntu 813640 Sep 29 00:42 input_single.fasta
+=== fasta stats:
+40
+n=40 min=20000 median=20000 max=20000 total=800000
+>=1000bp: 40 >=500bp: 0
+=== fasta headers (first 3):
+>g1k_0
+>g1k_1
+>g1k_2
+> build · mimo-v2.6-flash-free
+[0m$ [0mcd /tmp/opencode/galaxy_comebin_test && export PATH=/vol/data/envs/comebin/bin:$PATH; echo "=== quickcheck:"; samtools quickcheck -v input_single.bam && echo QUICKCHECK_OK; echo "=== header head:"; samtools view -H input_single.bam | head -4; echo "SQ count: $(samtools view -H input_single.bam | grep -c '^@SQ')"; echo "=== flagstat:"; samtools flagstat input_single.bam; echo "=== sort order check:"; samtools view -H input_single.bam | grep -m1 '^@HD'; echo "=== index present?"; ls input_single.bam.bai 2>/dev/null || echo NO_BAI; echo "=== first alignments:"; samtools view input_single.bam | head -2 | cut -c1-160; echo "=== fasta/bam name match:"; samtools view -H input_single.bam | grep '^@SQ' | head -3; samtools view input_single.bam | cut -f3 | sort -u | head -5; echo "distinct refs in alignments: $(samtools view input_single.bam | cut -f3 | sort -u | wc -l)"
+=== quickcheck:
+QUICKCHECK_OK
+=== header head:
+@HD	VN:1.0	SO:coordinate
+@SQ	SN:g1k_0	LN:20000
+@SQ	SN:g1k_1	LN:20000
+@SQ	SN:g1k_2	LN:20000
+SQ count: 40
+=== flagstat:
+2000 + 0 in total (QC-passed reads + QC-failed reads)
+2000 + 0 primary
+0 + 0 secondary
+0 + 0 supplementary
+0 + 0 duplicates
+0 + 0 primary duplicates
+94 + 0 mapped (4.70% : N/A)
+94 + 0 primary mapped (4.70% : N/A)
+2000 + 0 paired in sequencing
+1000 + 0 read1
+1000 + 0 read2
+94 + 0 properly paired (4.70% : N/A)
+94 + 0 with itself and mate mapped
+0 + 0 singletons (0.00% : N/A)
+0 + 0 with mate mapped to a different chr
+0 + 0 with mate mapped to a different chr (mapQ>=5)
+=== sort order check:
+@HD	VN:1.0	SO:coordinate
+=== index present?
+NO_BAI
+=== first alignments:
+genome1__SEQ9	163	g1k_0	13978	1	150M	=	14036	208	ATAAAGAAATCACGTATGTTATAGCCTAATATTCCAACCAAAATAGCTGAAACTACTATCGCTACAAAAATGGCAAAAACTGTCGATAAGAATTTTTTAGTGATTGTTTTT
+genome1__SEQ9	83	g1k_0	14036	1	150M	=	13978	-208	TCGCTACAAAAATGGCAAAAACTGTCGATAAGAATTTTTTAGTGATTGTTTTTCGCTCTTGACCTTTAAGAAAGCTATCGTAACTTAAAAGAGTTTTAAATTTCAACATAC
+=== fasta/bam name match:
+@SQ	SN:g1k_0	LN:20000
+@SQ	SN:g1k_1	LN:20000
+@SQ	SN:g1k_2	LN:20000
+*
+g1k_0
+g1k_1
+g1k_3
+g1k_4
+distinct refs in alignments: 29
+[0m$ [0mcurl -sS https://raw.githubusercontent.com/galaxyproject/tools-iuc/main/tools/comebin/comebin.xml
+<tool id="comebin" name="COMEBin" version="@TOOL_VERSION@+galaxy@VERSION_SUFFIX@" profile="@PROFILE@">
+    <description>Binning of metagenomic contigs using COntrastive Multi-viEw representation learning</description>
+    <macros>
+        <import>macros.xml</import>
+    </macros>
+    <expand macro="requirements"/>
+    <command detect_errors="exit_code">
+        <![CDATA[
+            
+            #import re
+            
+            mkdir 'outputs' 'bam_files' &&
+
+            #set $safename_fasta = re.sub('[^\w\-_\.]', '_', $assembly_file.element_identifier)
+            cp '$assembly_file' '${safename_fasta}.fasta' &&
+
+            #for $file in $bam_files:
+                #set $safename = re.sub('[^\w\-_\.]', '_', $file.element_identifier)
+                ln -s '$file' './bam_files/${safename}.bam' &&
+            #end for 
+            
+            run_comebin.sh
+            -a '${safename_fasta}.fasta'
+            -o 'outputs'
+            -p 'bam_files'
+            -t "\${GALAXY_SLOTS:-12}"
+            -l ${loss}
+            -n ${learning}
+            -e ${emb_comebin}
+            -c ${emb_cov}
+            -b ${batch}
+            -m ${max_edges}
+            -d 'cpu'
+        ]]>
+    </command> 
+    <inputs>
+        <param name="assembly_file" type="data" format="fasta" label="Metagenomic assembly file"/>
+        <param name="bam_files" type="data" format="bam" multiple="true" label="Input bam file(s)"/>
+        <param name="learning" type="integer" value="6" label="Views for contrastive multiple-view learning"/>
+        <param name="loss" type="float" value="0.15" label="Temperature in loss function" help="0.07 is recommended for assemblies with an N50 > 10000"/>
+        <param name="emb_comebin" type="integer" value="2048" label="Embedding size for COMEBin network"/>
+        <param name="emb_cov" type="integer" value="2048" label="Embedding size for coverage network"/>
+        <param name="batch" type="integer" value="1024" label="Batch size"/>
+        <param name="max_edges" type="integer" value="100" min="1" label="HNSW neighbours retained per contig" help="Must be smaller than the number of contigs in the assembly, otherwise the clustering step fails. Lower this value for small assemblies."/>
+    </inputs>
+    <outputs>
+        <collection name="bins" type="list" format="fasta" label="${tool.name}: BINS">
+            <discover_datasets pattern="__name__" directory="outputs/comebin_res/comebin_res_bins/"/>
+        </collection>
+    </outputs>
+    <tests>
+        <test expect_num_outputs="1">
+            <param name="assembly_file" ftype="fasta" value="input_single.fasta"/>
+            <param name="bam_files" ftype="bam" value="input_single.bam"/>
+            <param name="learning" value="6"/>
+            <param name="loss" value="0.15"/>
+            <param name="emb_comebin" value="2048"/>
+            <param name="emb_cov" value="2048"/>
+            <param name="batch" value="1024"/>
+            <param name="max_edges" value="20"/>
+        </test>
+    </tests>
+    <help>
+        <![CDATA[
+
+            **IMPORTANT**
+
+            It might happen that this tool will throw out an error. If this error happen: ValueError: max() arg is an empty sequence
+            then try to run this tool with different values it might fix this. When this error happen: UnboundLocalError: local variable 'logits' referenced before assignment
+            then the imputed data might not be enough such that this tool will function correctly.
+            If the clustering step reports: ValueError: max_edges must be between 1 and the retained contig count minus one
+            then lower the "HNSW neighbours retained per contig" value below the number of contigs in your assembly.
+
+            Also the run-time of this tool will be high since it is machining learning tool for binning!
+
+            **Input**
+
+            - The assembly file in fasta format
+            - The corresponded bam file(s) to the assembly file
+
+            **Output**
+
+            As output from the tool is a collection of bins created with machining learning
+
+            
+        ]]>
+    </help>
+    <expand macro="citations"/>
+</tool>
+> build · mimo-v2.6-flash-free
+[0m$ [0mecho "=== contig_len default + drop_last in master904:"; grep -rn 'contig_len' /vol/data/repos/COMEBin-master904/COMEBin/main.py | head; grep -rn 'drop_last' /vol/data/repos/COMEBin-master904/COMEBin/*.py | head; echo "=== batch_size handling:"; grep -rn 'batch_size' /vol/data/repos/COMEBin-master904/COMEBin/main.py /vol/data/repos/COMEBin-master904/COMEBin/train_CLmodel.py 2>/dev/null | head -20; echo "=== issue #28 fix branch (41606c8) same checks:"; grep -rn 'drop_last' /vol/data/repos/COMEBin-v11/COMEBin/*.py | head
+=== contig_len default + drop_last in master904:
+117:    CLtraining_subparsers.add_argument('--contig_len', default = 1000, type=int, metavar='N',
+180:    NoContrast_subparsers.add_argument('--contig_len', default = 1001, type=int, metavar='N',
+198:    generate_aug_data_subparsers.add_argument('--contig_len', default = 1000, type=int, metavar='N',
+224:    clustering_subparsers.add_argument('--contig_len', default = 1001, type=int, metavar='N',
+242:    get_result_subparsers.add_argument('--contig_len', default = 1001, type=int, metavar='N',
+297:        _ = gen_seed(logger, args.contig_file, num_threads, args.contig_len, marker_name="bacar_marker", quarter="2quarter")
+363:        seed_num = gen_seed(logger, args.contig_file, num_threads, args.contig_len, marker_name="bacar_marker", quarter="2quarter")
+/vol/data/repos/COMEBin-master904/COMEBin/train_CLmodel.py:60:        num_workers=args.workers, pin_memory=True, drop_last=True)
+=== batch_size handling:
+/vol/data/repos/COMEBin-master904/COMEBin/main.py:54:    CLtraining_subparsers.add_argument('-b', '--batch_size', default=1024, type=int,
+/vol/data/repos/COMEBin-master904/COMEBin/train_CLmodel.py:59:        train_dataset, batch_size=args.batch_size, shuffle=True,
+=== issue #28 fix branch (41606c8) same checks:
+/vol/data/repos/COMEBin-v11/COMEBin/simclr.py:237:                    f"drop_last={train_loader.drop_last}.")
+/vol/data/repos/COMEBin-v11/COMEBin/train_CLmodel.py:169:        logger.warning("DataLoader drop_last=True will discard %d of %d trainable contigs in each epoch because "
+/vol/data/repos/COMEBin-v11/COMEBin/train_CLmodel.py:177:    logger.info("Build DataLoader: all_contigs=%d, trainable_contigs=%d, batch_size=%d, workers=%d, drop_last=True.",
+/vol/data/repos/COMEBin-v11/COMEBin/train_CLmodel.py:181:        num_workers=DATALOADER_WORKERS, pin_memory=args.device.type == 'cuda', drop_last=True,
+[0m$ [0mecho "=== master904 run_comebin.sh (batch/contig handling):"; grep -n -i 'batch\|contig_len\|wc -l\|grep -c' /vol/data/repos/COMEBin-master904/COMEBin/run_comebin.sh | head -30; echo; echo "=== v11-sweep run_comebin.sh:"; grep -n -i 'batch\|contig_len\|wc -l\|grep -c' /vol/data/repos/COMEBin-v11-sweep/COMEBin/run_comebin.sh | head -30; echo; echo "=== galaxy macros.xml:"; curl -sS https://raw.githubusercontent.com/galaxyproject/tools-iuc/main/tools/comebin/macros.xml | head -40
+=== master904 run_comebin.sh (batch/contig handling):
+24:	echo "  -b INT          batch size for training process (default=1024)"
+37:batch_size=1024
+57:  b) batch_size=${OPTARG}
+73:sequence_count=$(grep -c "^>" "${contig_file}")
+76:if (( sequence_count < ${batch_size} )); then
+77:    batch_size=${sequence_count}
+80:echo "Batch size: ${batch_size}"
+116:    count=$(find "$folder" -maxdepth 1 -type f -name "*$keyword*" | wc -l)
+144:    count=$(find "$folder" -maxdepth 1 -type f -name "*$keyword*" | wc -l)
+150:        --batch_size ${batch_size} --emb_szs ${emb_szs} --n_views ${n_views} \
+161:    --batch_size ${batch_size} --emb_szs ${emb_szs} --n_views ${n_views} \
+
+=== v11-sweep run_comebin.sh:
+31:	echo "  -b INT          batch size for training process (default=1024)"
+56:batch_size=1024
+97:  b) batch_size=${OPTARG}
+159:      -s "${folder}/contig_lengths.npy" && -s "${folder}/augmentation_intervals.npy" &&
+195:    --batch_size "${batch_size}" --emb_szs "${emb_szs}" --n_views "${n_views}" \
+
+=== galaxy macros.xml:
+<macros>
+    <xml name="requirements">
+        <requirements>
+            <requirement type="package" version="@TOOL_VERSION@">comebin</requirement>
+            <requirement type="package" version="9.5">coreutils</requirement>
+        </requirements>
+    </xml>
+    <token name="@TOOL_VERSION@">1.1.0</token>
+    <token name="@VERSION_SUFFIX@">0</token>
+    <token name="@PROFILE@">25.0</token>
+    <xml name="citations">
+        <citations>
+            <citation type="doi">10.1038/s41467-023-44290-z</citation>
+        </citations>
+    </xml>
+</macros>
+> build · mimo-v2.6-flash-free
