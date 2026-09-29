@@ -107838,3 +107838,158 @@ anonymous_gsa_pooled.fasta.gz
 marine_v11_20260925: biobox present, 152 bins
 human_v11_20260925: biobox present, 107 bins
 cami3_v11_20260926_rerun: biobox present, 492 bins
+> build · big-pickle
+All three biobox exports succeeded (152/107/492 bins). The setup.tar.gz contains `gsa_pooled_mapping.tsv.gz` — the human gold-standard mapping. Let me inspect it and check the biobox artifacts:
+[0m$ [0mcd /vol/data/datasets/cami_II_human
+echo "=== gsa_pooled_mapping head ==="
+zcat gsa_pooled_mapping.tsv.gz 2>/dev/null | head -5 || tar -xzf setup.tar.gz gsa_pooled_mapping.tsv.gz -O 2>/dev/null | head -5
+echo "=== lines ==="
+tar -xzf setup.tar.gz gsa_pooled_mapping.tsv.gz -O 2>/dev/null | wc -l
+echo "=== genome_to_id ==="
+tar -xzf setup.tar.gz genome_to_id.tsv -O 2>/dev/null | head -5
+echo "=== does human_sample0_input contigs match pooled mapping IDs? ==="
+grep -c ">" /vol/data/datasets/cami_II_human/human_sample0_input/contigs.fa
+head -3 /vol/data/datasets/cami_II_human/human_sample0_input/contigs.fa
+echo "=== mapping sample of IDs in the 4900-set ==="
+zcat /vol/data/datasets/cami_II_human/gsa_pooled_mapping.tsv.gz 2>/dev/null | grep -m5 "S0C" 
+echo "=== biobox artifacts for marine ==="
+ls -la /vol/data/benchmark/runs/marine_v11_20260925/biobox/tree/comebin/v11/binning/ 2>/dev/null
+find /vol/data/benchmark/runs/marine_v11_20260925/biobox -name "*.tar.gz" -o -name "*summary*" 2>/dev/null | head
+=== gsa_pooled_mapping head ===
+=== lines ===
+131186
+=== genome_to_id ===
+OTU_97.45322.0	/net/sgi/metagenomics/data/24112017_gastrooral/genomes/GCA_001021955.1_ASM102195v1.fa
+OTU_97.8273.1	/net/sgi/metagenomics/data/24112017_gastrooral/genomes/GCA_000583795.1_ASM58379v1.fa
+OTU_97.21937.0	/net/sgi/metagenomics/data/24112017_gastrooral/genomes/GCA_000152245.2_ASM15224v2.fa
+OTU_97.22835.0	/net/sgi/metagenomics/data/24112017_gastrooral/genomes/GCA_000521695.1_ASM52169v1.fa
+OTU_97.26911.0	/net/sgi/metagenomics/data/24112017_gastrooral/genomes/GCA_000756145.1_ASM75614v1.fa
+=== does human_sample0_input contigs match pooled mapping IDs? ===
+4900
+>S0C31388
+ATGAAAGAATTCTGGCAGACCTGCGTCAGTCGTCTAGAGCAGGAACTCCCCCCCCAACAG
+ATCAGCGCCTGGATACGGCCGCTGGTGCCGCTTGCGTACGACGAGACGCAGGCCGTGTTA
+=== mapping sample of IDs in the 4900-set ===
+=== biobox artifacts for marine ===
+total 12
+drwxrwxr-x 3 ubuntu ubuntu 4096 Sep 29 01:14 .
+drwxrwxr-x 3 ubuntu ubuntu 4096 Sep 29 01:14 ..
+drwxrwxr-x 2 ubuntu ubuntu 4096 Sep 29 01:14 marine
+/vol/data/benchmark/runs/marine_v11_20260925/biobox/binning.tar.gz
+/vol/data/benchmark/runs/marine_v11_20260925/biobox/tree/comebin/v11/binning_summary.tsv
+> build · big-pickle
+The gold standard files are still inside the tarball. Let me extract them and inspect:
+[0m$ [0mcd /vol/data/datasets/cami_II_human
+mkdir -p gold_standard
+tar -xzf setup.tar.gz -C gold_standard gsa_pooled_mapping.tsv.gz genome_to_id.tsv metadata.tsv 2>&1 | tail -1 || tar -xzf setup.tar.gz -C gold_standard
+ls -la gold_standard/
+echo "=== pooled mapping format ==="
+zcat gold_standard/gsa_pooled_mapping.tsv.gz | head -6
+echo "=== lines ==="
+zcat gold_standard/gsa_pooled_mapping.tsv.gz | wc -l
+echo "=== header? ==="
+zcat gold_standard/gsa_pooled_mapping.tsv.gz | sed -n '1p' | cut -c1-120
+total 32044
+drwxrwxr-x 2 ubuntu ubuntu     4096 Sep 29 01:20 .
+drwxrwxr-x 5 ubuntu ubuntu     4096 Sep 29 01:20 ..
+-rw-r--r-- 1 ubuntu ubuntu   105503 Dec  4  2017 genome_to_id.tsv
+-rw-r--r-- 1 ubuntu ubuntu 32653882 Dec  9  2017 gsa_pooled_mapping.tsv.gz
+-rw-r--r-- 1 ubuntu ubuntu    39093 Feb  5  2018 metadata.tsv
+=== pooled mapping format ===
+#anonymous_contig_id	genome_id	tax_id	contig_id	number_reads	start_position	end_position
+PC596175	OTU_97.6712.0	1301	CP003295.1	2	1527970	1528235
+PC1363634	OTU_97.35162.0	482	CP016661.1	14	924132	924742
+PC230598	OTU_97.360.0	475	CP011378.1	4	2237375	2237753
+PC1459329	OTU_97.13948.0	506	CP009751.1	11	1038299	1039154
+PC1026647	OTU_97.10795.1	49546	CP013690.1	6	1225206	1225675
+=== lines ===
+1470409
+=== header? ===
+#anonymous_contig_id	genome_id	tax_id	contig_id	number_reads	start_position	end_position
+> build · big-pickle
+The human input uses `S0C*` IDs; the pooled mapping is `PC*` (different assembly). The right gold standard is `extract/.../contigs/gsa_mapping.tsv.gz` (S0C→genome). Let me verify its fit to our 4,900-contig subset:
+[0m$ [0mcd /vol/data/datasets/cami_II_human
+GSM=extract/2017.12.04_18.45.54_sample_0/contigs/gsa_mapping.tsv.gz
+echo "=== gsa_mapping format ==="
+zcat $GSM | head -4
+echo "=== lines + unique contigs ==="
+zcat $GSM | tail -n +2 | wc -l
+zcat $GSM | tail -n +2 | cut -f1 | sort -u | wc -l
+echo "=== overlap with our 4900 contigs ==="
+grep '^>' human_sample0_input/contigs.fa | sed 's/>//' | sort -u > /tmp/opencode/human4900.ids
+zcat $GSM | tail -n +2 | cut -f1 | sort -u > /tmp/opencode/human_gs.ids
+echo "in our subset: $(wc -l < /tmp/opencode/human4900.ids), in GS: $(wc -l < /tmp/opencode/human_gs.ids)"
+echo "intersection: $(comm -12 /tmp/opencode/human4900.ids /tmp/opencode/human_gs.ids | wc -l)"
+echo "missing from GS: $(comm -23 /tmp/opencode/human4900.ids /tmp/opencode/human_gs.ids | wc -l)"
+echo "=== gsa_mapping_new format? ==="
+zcat extract/2017.12.04_18.45.54_sample_0/contigs/gsa_mapping_new.tsv.gz | head -3
+=== gsa_mapping format ===
+#anonymous_contig_id	genome_id	tax_id	contig_id	number_reads	start_position	end_position
+S0C19973	OTU_97.4902.1	506	CP007494.1	2	662847	663117
+S0C17530	OTU_97.10984.0	506	CP010256.1	24	4088203	4089005
+S0C33861	OTU_97.4094.1	1485	HG530135.1	47	2569453	2571420
+=== lines + unique contigs ===
+68417
+68417
+=== overlap with our 4900 contigs ===
+in our subset: 4900, in GS: 68417
+intersection: 4900
+missing from GS: 0
+=== gsa_mapping_new format? ===
+#anonymous_contig_id    genome_id       tax_id  contig_id       number_reads    start_position  end_position
+S0C19973	OTU_97.4902.1	1247649	CP007494.1	2	662847	663117
+S0C17530	OTU_97.10984.0	520	CP010256.1	24	4088203	4089005
+> build · big-pickle
+All 4,900 human contigs map to genomes in `gsa_mapping.tsv.gz`. Let me build the AMBER-format human gold standard:
+[0m$ [0mcd /vol/data/datasets/cami_II_human
+python3 - <<'EOF'
+import gzip
+
+# contig lengths from the subset fasta
+lens = {}
+name = None
+with open("human_sample0_input/contigs.fa") as f:
+    for line in f:
+        if line.startswith(">"):
+            name = line[1:].split()[0]
+            lens[name] = 0
+        else:
+            lens[name] += len(line.strip())
+
+# gold standard rows for our subset
+gs = {}
+with gzip.open("extract/2017.12.04_18.45.54_sample_0/contigs/gsa_mapping.tsv.gz", "rt") as f:
+    next(f)
+    for line in f:
+        cid, genome, taxid, *_ = line.rstrip("\n").split("\t")
+        if cid in lens:
+            gs[cid] = (genome, taxid)
+
+missing = set(lens) - set(gs)
+print(f"contigs={len(lens)} mapped={len(gs)} missing={len(missing)}")
+out = "gold_standard/human_binning_gs.tsv"
+with open(out, "w") as f:
+    f.write("@Version:0.9.1\n@SampleID:human\n")
+    f.write("@@SEQUENCEID\tBINID\tTAXID\t_LENGTH\n")
+    for cid, (genome, taxid) in gs.items():
+        f.write(f"{cid}\t{genome}\t{taxid}\t{lens[cid]}\n")
+print("wrote", out)
+EOF
+echo "=== verify ==="
+head -5 gold_standard/human_binning_gs.tsv
+wc -l gold_standard/human_binning_gs.tsv
+echo "=== unique genomes ==="
+tail -n +4 gold_standard/human_binning_gs.tsv | cut -f2 | sort -u | wc -l
+contigs=4900 mapped=4900 missing=0
+wrote gold_standard/human_binning_gs.tsv
+=== verify ===
+@Version:0.9.1
+@SampleID:human
+@@SEQUENCEID	BINID	TAXID	_LENGTH
+S0C3363	OTU_97.326.1	1485	5437
+S0C65655	OTU_97.10592.0	1485	6524
+4903 gold_standard/human_binning_gs.tsv
+=== unique genomes ===
+64
+> build · big-pickle
+Human gold standard built (4,900 contigs → 64 genomes). Now running AMBER on the existing human run (`human_v11_20260925`, 107 bins) — same non-overlapping #25 follow-on:
