@@ -132,6 +132,12 @@ for _attempt in 1 2; do
     # process that merely quotes this script's name in a long command line
     # (e.g. the supervisor agent's prompt embedding the diagnostics). Require
     # that the match is actually EXECUTING this script: argv[1] basename == ours.
+    # `-r` before the read: the 2>/dev/null only covers `tr`, but it is the
+    # SHELL that fails the `<` open, and that error bypasses the redirect and
+    # lands in the log as `line 135: /proc/<pid>/cmdline: No such file or
+    # directory`. A pid that vanished mid-scan is not a foreign driver anyway,
+    # so skipping it is both the quiet and the correct behaviour.
+    [ -r "/proc/$other/cmdline" ] || continue
     _argv1=$(tr '\0' '\n' < "/proc/$other/cmdline" 2>/dev/null | sed -n '2p' || true)
     [ "$(basename "${_argv1:-}")" = "$_SELF_BASENAME" ] || continue
     # Transients die within milliseconds of the scan (the launch chain, our own

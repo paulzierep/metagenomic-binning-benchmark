@@ -321,7 +321,7 @@ if [ -f "$BENCH/.active_run" ]; then
   b_cmd=""
   if [ -n "$b_stat" ] && kill -0 "${bid:-0}" 2>/dev/null && [[ "$b_stat" != Z* ]]; then
     b_alive=1
-    b_cmd=$(tr '\0' ' ' < "/proc/${bid:-0}/cmdline" 2>/dev/null || true)
+    b_cmd=$([ -r "/proc/${bid:-0}/cmdline" ] && tr '\0' ' ' < "/proc/${bid:-0}/cmdline" 2>/dev/null || true)
   fi
   b_age=999999; [ -n "${blog:-}" ] && [ -f "$blog" ] && b_age=$((now - $(stat -c %Y "$blog")))
   runner_ok=0
@@ -357,7 +357,7 @@ if [ -f "$BENCH/.active_run" ]; then
       [ -f "$BENCH/.active_run" ] && read -r new_bid _ _ _ new_bdir _ < "$BENCH/.active_run" || true
       new_b_stat=$(ps -o stat= -p "${new_bid:-0}" 2>/dev/null | tr -d ' ' || true)
       if [ -n "$new_bid" ] && [ "$new_bid" != "${bid:-0}" ] && [ -n "$new_b_stat" ] && kill -0 "$new_bid" 2>/dev/null && [[ "$new_b_stat" != Z* ]]; then
-        new_b_cmd=$(tr '\0' ' ' < "/proc/$new_bid/cmdline" 2>/dev/null || true)
+        new_b_cmd=$([ -r "/proc/$new_bid/cmdline" ] && tr '\0' ' ' < "/proc/$new_bid/cmdline" 2>/dev/null || true)
       fi
       new_runner_ok=0
       registered_benchmark_command "$new_b_cmd" "${new_bdir:-}" && new_runner_ok=1
@@ -379,7 +379,7 @@ if [ -f "$BENCH/.active_run" ]; then
     [ -f "$BENCH/.active_run" ] && read -r new_bid _ _ _ new_bdir _ < "$BENCH/.active_run" || true
     new_b_stat=$(ps -o stat= -p "${new_bid:-0}" 2>/dev/null | tr -d ' ' || true)
     if [ -n "$new_bid" ] && [ "$new_bid" != "${bid:-0}" ] && [ -n "$new_b_stat" ] && kill -0 "$new_bid" 2>/dev/null && [[ "$new_b_stat" != Z* ]]; then
-      new_b_cmd=$(tr '\0' ' ' < "/proc/$new_bid/cmdline" 2>/dev/null || true)
+      new_b_cmd=$([ -r "/proc/$new_bid/cmdline" ] && tr '\0' ' ' < "/proc/$new_bid/cmdline" 2>/dev/null || true)
     fi
     new_runner_ok=0
     registered_benchmark_command "$new_b_cmd" "${new_bdir:-}" && new_runner_ok=1

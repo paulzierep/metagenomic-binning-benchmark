@@ -172,7 +172,12 @@ alive=0
 orphaned=0
 pid_stat=$(ps -o stat= -p "$pid" 2>/dev/null | tr -d ' ' || true)
 if [ -n "$pid_stat" ] && kill -0 "$pid" 2>/dev/null && [[ "$pid_stat" != Z* ]]; then
-    pid_cmd=$(tr '\0' ' ' < "/proc/$pid/cmdline" 2>/dev/null || true)
+    # `-r` first: a shell that fails a `<` open reports to ITS OWN stderr, which
+    # the 2>/dev/null on `tr` does not cover, so a pid that exits between the
+    # kill -0 above and this read would write a misleading
+    # "No such file or directory" line into the watchdog log. A vanished pid has
+    # an empty cmd, which the caller already treats as "not our runner".
+    pid_cmd=$([ -r "/proc/$pid/cmdline" ] && tr '\0' ' ' < "/proc/$pid/cmdline" 2>/dev/null || true)
     if registered_runner_command "$pid_cmd"; then
       alive=1
     else
@@ -185,7 +190,7 @@ elif group_pids=$(pgrep -g "$pgid" 2>/dev/null) && [ -n "$group_pids" ]; then
     # creating a duplicate or killing an unrelated process group.
     group_safe=1
     for child_pid in $group_pids; do
-      child_cmd=$(tr '\0' ' ' < "/proc/$child_pid/cmdline" 2>/dev/null || true)
+      child_cmd=$([ -r "/proc/$child_pid/cmdline" ] && tr '\0' ' ' < "/proc/$child_pid/cmdline" 2>/dev/null || true)
       case "$child_cmd" in
         *"$rundir"*|*run_comebin_baseline.sh*|*run_comebin_fix.sh*|*run_small_test.sh*|*micromamba*) ;;
         *) group_safe=0; break ;;
