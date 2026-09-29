@@ -95,10 +95,13 @@ if ! flock -n 9; then
   exit 0
 fi
 # Process scan for an instance started BEFORE this guard existed. It is
-# advisory and confirmed twice, 2 s apart: the launch chain (nohup/setsid
-# wrappers, tool shell) briefly shares our argv, and a single-shot scan once
-# aborted a perfectly good launch on such a transient. Any pid in our own
-# ancestor chain is ignored; a match that survives the second probe is real.
+# advisory and confirmed twice, 2 s apart. Critical detail: `$(pgrep …)` forks
+# a subshell that INHERITS OUR OWN ARGV, so a naive scan matches the driver's
+# own command substitution and aborts every launch (that is exactly what the
+# 00:26Z and 00:29Z aborts were). Skip anything related to us — ancestors,
+# self, and children — and only abort on a genuinely foreign driver. The
+# flock above stays the hard mutex: even a missed scan cannot start a second
+# guarded driver.
 ANCESTORS=" $$ $PPID"
 _probe=$PPID
 while [ "${_probe:-0}" -gt 1 ] 2>/dev/null; do
@@ -106,10 +109,21 @@ while [ "${_probe:-0}" -gt 1 ] 2>/dev/null; do
   [ -n "${_probe:-}" ] || break
   ANCESTORS="$ANCESTORS $_probe"
 done
+related_to_us() {
+  local p=$1 hops=0
+  while [ "${p:-0}" -gt 1 ] && [ "$hops" -lt 64 ]; do
+    [ "$p" = "$$" ] && return 0
+    case " $ANCESTORS " in *" $p "*) return 0 ;; esac
+    p=$(ps -o ppid= -p "$p" 2>/dev/null | tr -d ' ')
+    [ -n "${p:-}" ] || return 1
+    hops=$((hops + 1))
+  done
+  return 1
+}
 for _attempt in 1 2; do
   _found=""
   for other in $(pgrep -f 'run_sweep_medium\.sh' 2>/dev/null || true); do
-    case " $ANCESTORS " in *" $other "*) continue ;; esac
+    related_to_us "$other" && continue
     _found="$other"
   done
   [ -z "$_found" ] && break
