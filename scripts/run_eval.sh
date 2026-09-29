@@ -17,7 +17,10 @@ export MAMBA_ROOT_PREFIX=/vol/data/envs/.mamba
 RUN=${1:?usage: run_eval.sh <rundir> [threads]}
 THREADS=${2:-32}
 exec 9>/tmp/benchmark-start.lock
-flock -n 9 || { echo "ERROR: another benchmark launch/evaluation holds /tmp/benchmark-start.lock"; exit 1; }
+# Bounded wait: the run that just finished can still hold this lock through a
+# lingering child for a few seconds; failing immediately made the sweep's eval
+# step lose its results CSV.  Wait for it instead.
+flock -w 600 9 || { echo "ERROR: another benchmark launch/evaluation holds /tmp/benchmark-start.lock (waited 600s)"; exit 1; }
 if [ -f /vol/data/benchmark/.active_run ]; then
   read -r active_pid _ < /vol/data/benchmark/.active_run || true
   active_state=$(ps -o stat= -p "${active_pid:-0}" 2>/dev/null | tr -d ' ' || true)

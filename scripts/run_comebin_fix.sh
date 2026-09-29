@@ -21,7 +21,10 @@ ACTIVE=/vol/data/benchmark/.active_run
 [ -f "$SRC/COMEBin/run_comebin.sh" ] || { echo "ERROR: invalid SRC_COMEBIN repo root: $SRC"; exit 1; }
 
 exec 9>"$START_LOCK"
-flock -n 9 || { echo "ERROR: another benchmark launch holds $START_LOCK"; exit 1; }
+# Bounded wait: a just-finished run can leave fd 9 briefly open in a lingering
+# child, which made the sweep's next cell fail instantly ("another benchmark
+# launch holds ...").  Wait for it to clear instead of racing it.
+flock -w 300 9 || { echo "ERROR: another benchmark launch holds $START_LOCK (waited 300s)"; exit 1; }
 if [ -f "$ACTIVE" ] && [ "${BENCHMARK_WATCHDOG_REPLACE:-0}" != "1" ]; then
   read -r active_pid active_pgid active_log active_dir active_start active_mode active_src < "$ACTIVE" || true
   active_state=$(ps -o stat= -p "${active_pid:-0}" 2>/dev/null | tr -d ' ' || true)
@@ -151,17 +154,17 @@ sample_resources() {
     sleep 30 & wait $!
   done
 }
-sample_resources > "$RUNDIR/logs/resources.tsv" 2> "$RUNDIR/logs/sampler.out" &
+sample_resources > "$RUNDIR/logs/resources.tsv" 2> "$RUNDIR/logs/sampler.out" 9>&- &
 SAMPLER_PID=$!
 
 # capture the real main.py train command once training starts (non-blocking)
 ( sleep 12; MCMD=$(pgrep -af 'main.py train' 2>/dev/null | head -1 | cut -d' ' -f2-); \
-  [ -n "$MCMD" ] && echo "cmd_train_py: $MCMD" >> "$RUNDIR/run_meta.txt" ) &
+  [ -n "$MCMD" ] && echo "cmd_train_py: $MCMD" >> "$RUNDIR/run_meta.txt" ) 9>&- &
 
 START=$(date +%s)
 set +e
 CUDA_VISIBLE_DEVICES= "$MM" run -p "$ENV" bash run_comebin.sh \
-  "${COMEBIN_ARGS[@]}" 2>&1 | tee "$RUNDIR/comebin_run.log"
+  "${COMEBIN_ARGS[@]}" 9>&- 2>&1 | tee "$RUNDIR/comebin_run.log" 9>&-
 RC=${PIPESTATUS[0]}
 set -e
 END=$(date +%s)

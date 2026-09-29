@@ -771,6 +771,37 @@ included; fixes land on branch `comebin-optimizations` in this repo.
   `bioboxes/validator` is assembler-only and not public). All four validated OK.
   `runs/*/biobox/` is `.gitignore`d (binaries → Zenodo, not git).
 
+### 2026-09-29 #25 sweep repaired + relaunched (01:28–01:37Z)
+- **Bug found on resume**: the sweep driver had exited at 01:28:31Z after
+  walking cells 3–24. Cell 3's *run* finished fine (`RUN_DONE ... exit=0`,
+  17 bins) but every following step failed instantly. Root cause =
+  `/tmp/benchmark-start.lock` contention: cell 3's harness (`exec 9>"$START_LOCK"`)
+  leaked fd 9 to the COMEBin pipeline's descendants, so the lock was still held
+  ~5 s after the harness exited. The in-line `run_eval.sh` (same lock,
+  `flock -n`) failed → cell 3 lost its results CSV; cells 4–24 then each failed
+  `run_comebin_fix.sh` in <1 s ("another benchmark launch holds ..."), so the
+  driver logged `FAIL ... rc=0` (the `!` inverts `$?`) and printed
+  `SWEEP COMPLETE (24 cells processed)` with only cells 1 and 3 actually run.
+  (The `EMB: unbound variable` line in cell 4's `.comebin.out` is a **stale
+  13:07 pre-fix artifact** appended to the same file; the current harness guards
+  every sweep var with `${X:-}`.)
+- **Fix**: harness now closes fd 9 for its children (`sample_resources ... 9>&-`,
+  the `cmd_train_py` subshell `9>&-`, and the COMEBin pipeline
+  `... 9>&- 2>&1 | tee ... 9>&-`) so the start-lock cannot outlive the run;
+  harness + `run_eval.sh` use **bounded blocking** waits (`flock -w 300` /
+  `flock -w 600`) instead of `flock -n`, turning a transient holder into a few
+  seconds' wait rather than a hard failure. Deployed to `bin/`.
+- **Singleton-guard fix**: the driver's foreign-process scan used
+  `pgrep -f run_sweep_medium.sh`, which started matching the **supervisor
+  agent's** `opencode` argv (its prompt embeds the diagnostics) → every relaunch
+  aborted at 01:33Z. A match now only counts if it is actually executing this
+  script (`argv[1]` basename == ours; `_SELF_BASENAME` added).
+- **Relaunched 01:35:15Z**: `run_sweep_medium.sh --from 3` (driver pid 2637346)
+  → re-evals cell 3 (`sweep_003_issue28fix`, CheckM2/CheckM →
+  `results/sweep_003_issue28fix.csv`), then runs cells 4–24 fresh. No
+  `runs/sweep_004…24` dirs exist → none will be wrongly skipped. ETA
+  ~2026-09-30 evening UTC.
+
 ## Watchdog / restart
 
 `scripts/agent-watchdog.sh` (installed at `/vol/data/benchmark/bin/`, cron `*/5 * * * *`):

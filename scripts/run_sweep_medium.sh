@@ -103,6 +103,7 @@ fi
 # flock above stays the hard mutex: even a missed scan cannot start a second
 # guarded driver.
 ANCESTORS=" $$ $PPID"
+_SELF_BASENAME=$(basename "$0" 2>/dev/null || echo run_sweep_medium.sh)
 _probe=$PPID
 while [ "${_probe:-0}" -gt 1 ] 2>/dev/null; do
   # `|| true` is not optional here: pipefail + a pid that just exited would
@@ -127,6 +128,12 @@ for _attempt in 1 2; do
   _found=""
   for other in $(pgrep -f 'run_sweep_medium\.sh' 2>/dev/null || true); do
     related_to_us "$other" && continue
+    # `pgrep -f` is a substring match over the WHOLE argv, so it also matches a
+    # process that merely quotes this script's name in a long command line
+    # (e.g. the supervisor agent's prompt embedding the diagnostics). Require
+    # that the match is actually EXECUTING this script: argv[1] basename == ours.
+    _argv1=$(tr '\0' '\n' < "/proc/$other/cmdline" 2>/dev/null | sed -n '2p' || true)
+    [ "$(basename "${_argv1:-}")" = "$_SELF_BASENAME" ] || continue
     # Transients die within milliseconds of the scan (the launch chain, our own
     # pgrep subshell, another agent's poll); a real foreign driver has been up
     # for seconds. Require >=5 s of age before treating a match as foreign.
