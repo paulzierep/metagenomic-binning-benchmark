@@ -110328,3 +110328,268 @@ s | CheckM2 comp / cont | CheckM2 HQ / MQ | CheckM v1 comp / cont | CheckM v1 HQ
 === eval.out mtime ===
 2026-09-29 01:41:03.111000000 +0000
 > build · big-pickle
+`run_eval.sh` spawned `zenodo_update.sh` (which created a new Zenodo draft `23027854` from v4 `23017738` and is staging 1.75 GB). Let me check whether that's a built-in post-eval hook:
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark
+echo "=== zenodo refs in run_eval.sh ==="
+grep -n "zenodo_update\|zenodo" scripts/run_eval.sh || echo "(none)"
+echo "=== zenodo refs in run_sweep_medium.sh ==="
+grep -n "zenodo" scripts/run_sweep_medium.sh || echo "(none)"
+echo "=== zenodo refs in run_comebin_fix.sh ==="
+grep -n "zenodo" scripts/run_comebin_fix.sh || echo "(none)"
+echo "=== tail of run_eval.sh ==="
+tail -25 scripts/run_eval.sh
+echo "=== who modified zenodo_update.sh (git) ==="
+git log --oneline -3 -- scripts/zenodo_update.sh
+=== zenodo refs in run_eval.sh ===
+163:  bash "$(dirname "$0")/zenodo_update.sh" 9>&- \
+164:    || echo "WARNING: zenodo_update.sh failed (rc=$?)" >&2
+=== zenodo refs in run_sweep_medium.sh ===
+(none)
+=== zenodo refs in run_comebin_fix.sh ===
+(none)
+=== tail of run_eval.sh ===
+python3 "$(dirname "$0")/parse_eval.py" "$RUN" 9>&-
+if [ "$rc2" -eq 0 ] && [ "$rc1" -eq 0 ]; then
+  # Automatic reporting (issues #12/#15): aggregate CSV + per-bin CSV + plots,
+  # regenerated after every successfully evaluated run. Best-effort: a report
+  # failure must not turn a successful evaluation into a failed one.
+  echo "=== auto-reporting: results/<run>.csv, runs/<run>/per_bin_results.csv, per_bins.png ==="
+  python3 "$(dirname "$0")/make_results_csv.py" "$RUN" 9>&- \
+    || echo "WARNING: make_results_csv.py failed (rc=$?)" >&2
+  python3 "$(dirname "$0")/make_per_bin_csv.py" "$RUN" 9>&- \
+    || echo "WARNING: make_per_bin_csv.py failed (rc=$?)" >&2
+  "$MM" run -p "$CHECKM_ENV" python3 "$(dirname "$0")/make_per_bin_plots.py" --all "$RUN" 9>&- \
+    || echo "WARNING: make_per_bin_plots.py failed (rc=$?)" >&2
+  # Issue #12: combined bar plot for the three main datasets + its stats table
+  # (README embeds both; regenerated after every successful eval).
+  "$MM" run -p "$CHECKM_ENV" python3 "$(dirname "$0")/make_combined_bar_plot.py" 9>&- \
+    || echo "WARNING: make_combined_bar_plot.py failed (rc=$?)" >&2
+  # Issue #8: continuously store the newly generated benchmark data as a new
+  # version of the same Zenodo record (no-op when content is unchanged).
+  bash "$(dirname "$0")/zenodo_update.sh" 9>&- \
+    || echo "WARNING: zenodo_update.sh failed (rc=$?)" >&2
+fi
+echo "done (checkm2 rc=$rc2, checkm rc=$rc1)"
+if [ "$rc2" -ne 0 ] || [ "$rc1" -ne 0 ]; then
+  exit 1
+fi
+=== who modified zenodo_update.sh (git) ===
+a057f021 docs: CAMI III run results (rerun 492 bins, CheckM2 35.97/11.42, CheckM 32.46/13.38) + Zenodo v3 + zenodo_update files-shape fix
+34ea5329 Fix reporting/Zenodo auto-update pipeline that was never actually deployed
+3328a96d Marine eval complete (CheckM2 50.60/4.10, CheckM v1 46.36/5.09) + #12 combined bar plot/stats table in README + #8 Zenodo v2.0 continuous update
+> build · big-pickle
+`run_eval.sh` has a built-in issue-#8 hook that runs `zenodo_update.sh` after every eval (best-effort). Let me see if it finished and whether cell 4 has started:
+[0m$ [0mcd /vol/data/benchmark
+echo "=== zenodo_update running? ==="
+pgrep -af "zenodo_update.sh" | grep -v pgrep | cut -c1-70 || echo "(done)"
+echo "=== run_eval still alive? ==="
+pgrep -af "run_eval.sh" | grep -v pgrep | cut -c1-55 || echo "(eval done)"
+echo "=== eval.out tail ==="
+tail -c 800 status/sweep_003_issue28fix.eval.out
+echo ""
+echo "=== log ==="
+grep -E "DONE sweep_003|START sweep_004" status/sweep_medium.log | tail -2
+echo "=== cell4 ==="
+cat .active_run 2>/dev/null || echo "(no active_run)"
+pgrep -af "COMEBin/main.py train" | grep -v pgrep | cut -c1-70 || echo "(no train)"
+touch .heartbeat
+=== zenodo_update running? ===
+2669647 bash /vol/data/benchmark/bin/zenodo_update.sh
+=== run_eval still alive? ===
+2637414 bash /vol/data/benchmark/bin/run_eval.sh /vol/d
+=== eval.out tail ===
+1) | 42 | 8h43m | 152 | 50.60 / 4.10 | 35 / 60 | 46.36 / 5.09 | 37 / 60 |
+| `cami3_v11_20260926_rerun` | CAMI III toy human gut (5,000 contigs) | `95f5ea8` (comebin-optimizations-v11) | 42 | 1h29m | 492 | 35.97 / 11.42 | 53 / 112 | 32.46 / 13.38 | 54 / 100 |
+
+[zenodo_update] staging benchmark data -> /vol/data/benchmark/releases/stage.Z1THJM
+[zenodo_update] runs in package: baseline_rerun_autorestart1 (60 bins) cami3_v11_20260926_rerun (492 bins) fix_v11_20260924 (71 bins) human_v11_20260925 (107 bins) marine_v11_20260925 (152 bins) medium_v11_20260924 (16 bins) small_test_v4 (3 bins) sweep_001_ref (17 bins) sweep_003_issue28fix (17 bins) tiny_test_n101 (1 bins)
+[zenodo_update] manifest: 1103 files, 1754355496 bytes
+[zenodo_update] created new version draft 23027854 (from record 23017738)
+
+=== log ===
+[2026-09-29T01:28:25Z] RUN_DONE sweep_003_issue28fix exit=0
+[2026-09-29T01:28:30Z] START sweep_004_temp005 src=COMEBin-v11-sweep @ 95f5ea8 threads=8 seed=42 temp=0.05 emb=ref emb_cov=ref batch=ref max_edges=ref lw=ref heval=ref n_views=6
+=== cell4 ===
+(no active_run)
+> build · big-pickle
+`zenodo_update.sh` is uploading 1.75 GB and blocking each cell's eval. Let me understand the sibling's modified version and measure impact:
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark
+echo "=== sibling's uncommitted zenodo_update.sh diff ==="
+git diff scripts/zenodo_update.sh | head -80
+echo "=== zenodo_update.sh key logic ==="
+grep -n "publish\|draft\|new_version\|files\|upload\|no-op\|skip\|SWEEP\|sweep" scripts/zenodo_update.sh | head -40
+=== sibling's uncommitted zenodo_update.sh diff ===
+diff --git a/scripts/zenodo_update.sh b/scripts/zenodo_update.sh
+index c7760ea5..6713d2d8 100644
+--- a/scripts/zenodo_update.sh
++++ b/scripts/zenodo_update.sh
+@@ -11,6 +11,9 @@
+ #   - runs/<r>/comebin_res/comebin_res_bins/   bin FASTAs produced by COMEBin
+ #   - runs/<r>/eval/...   CheckM2 quality_report.tsv + CheckM v1
+ #                         bin_stats_ext.tsv/checkm.log (key eval reports)
++#   - runs/<r>/biobox/... CAMI-standard binning output from export_biobox.sh
++#                         (binning.tar.gz, <sample>.binning, binning_summary.tsv;
++#                         bins.fasta.gz only with INCLUDE_BINS_FASTA=1)
+ #   - docs/ README.md PROGRESS.md status/agent-activity.log
+ # into a deterministic release tarball with a SHA-256 manifest, then publishes
+ # it as a NEW VERSION of the existing record (concept DOI
+@@ -26,7 +29,8 @@
+ #   --dry-run: package + manifest + change detection, no network calls
+ #
+ # Env: ZENODO_TOKEN_FILE (default: ~/.zenodo_token), ZENODO_RECORD (default
+-# 22935025), ZENODO_UPDATE=0 disables the script entirely.
++# 22935025), ZENODO_UPDATE=0 disables the script entirely,
++# INCLUDE_BINS_FASTA=1 also ships the concatenated biobox bins.fasta.gz.
+ set -euo pipefail
+ 
+ REPO=${BENCH_REPO:-}
+@@ -98,6 +102,38 @@ for rd in "$RUNS_ROOT"/*/; do
+       cp -a "$rd$rel" "$STAGE/runs/$name/$rel"
+     fi
+   done
++  # Issue #25 (owner): "export each binning result, bins in fasta, biobox
++  # output, stats as csv to zenodo". The CAMI-standard biobox output produced
++  # by scripts/export_biobox.sh used to be dropped on the floor here: nothing
++  # in the release path read runs/<r>/biobox/, so the export existed only in
++  # the local run dir and could never reach the record.
++  #
++  # A biobox export is only shipped once it is verifiably complete. Size
++  # checks are not enough on their own: export_biobox.sh truncates
++  # binning.tar.gz in place while it writes it, so an export running in
++  # parallel leaves a non-empty but half-written tarball behind. `gzip -t`
++  # reads the stream to its end and checks the CRC, so it rejects a truncated
++  # archive while accepting a finished one.
++  if [ -s "$rd/biobox/binning.tar.gz" ] && [ -s "$rd/biobox/README.txt" ] && \
++     gzip -t "$rd/biobox/binning.tar.gz" 2>/dev/null; then
++    mkdir -p "$STAGE/runs/$name/biobox"
++    cp -L "$rd/biobox/binning.tar.gz" "$rd/biobox/README.txt" \
++         "$STAGE/runs/$name/biobox/"
++    for bf in "$rd"/biobox/*.binning; do
++      [ -s "$bf" ] && cp -L "$bf" "$STAGE/runs/$name/biobox/$(basename "$bf")"
++    done
++    # binning_summary.tsv lives under the versioned tree inside the run dir.
++    for sf in "$rd"/biobox/tree/*/*/binning_summary.tsv; do
++      [ -s "$sf" ] && cp -L "$sf" "$STAGE/runs/$name/biobox/binning_summary.tsv"
++    done
++    # The bin FASTAs already ship uncompressed under
++    # comebin_res/comebin_res_bins/, so bins.fasta.gz is a byte-level duplicate
++    # of sequences that are in the archive twice. Opt in with
++    # INCLUDE_BINS_FASTA=1 to carry the concatenated FASTA as well.
++    if [ "${INCLUDE_BINS_FASTA:-0}" = "1" ] && [ -s "$rd/biobox/bins.fasta.gz" ]; then
++      cp -L "$rd/biobox/bins.fasta.gz" "$STAGE/runs/$name/biobox/bins.fasta.gz"
++    fi
++  fi
+   # Only evaluated/completed runs with real content belong in the release.
+   if [ -f "$STAGE/runs/$name/run_meta.txt" ] && \
+      { [ "$n_bins" -gt 0 ] || [ -f "$STAGE/runs/$name/per_bin_results.csv" ]; }; then
+@@ -245,7 +281,9 @@ md["description"] = (
+     "(runs/<run>/comebin_res/comebin_res_bins/), per-bin and aggregate CheckM2 + "
+     "CheckM v1 metrics (results/<run>.csv, runs/<run>/per_bin_results.csv), the "
+     "evaluation reports (runs/<run>/eval/), run parameters and logs "
+-    "(run_meta.txt, comebin_run.log), all comparison figures "
++    "(run_meta.txt, comebin_run.log), the CAMI-standard binning export "
++    "(runs/<run>/biobox/: binning.tar.gz, <sample>.binning in CAMI binning "
++    "format v0.9.1, binning_summary.tsv), all comparison figures "
+     "(results/figures/, incl. the combined completeness bar plot), plus dataset, "
+     "environment, fix, evaluation and preservation documentation (docs/). "
+     "manifest.json inside the archive lists every file with size and SHA-256.\n\n"
+=== zenodo_update.sh key logic ===
+18:# into a deterministic release tarball with a SHA-256 manifest, then publishes
+25:#   - skips silently (exit 0) when content is unchanged since the last upload
+26:#   - skips silently (exit 0) when no token file is present, so it is safe
+57:skip() { log "skip: $*"; exit 0; }
+60:[ "${ZENODO_UPDATE:-1}" = "0" ] && skip "ZENODO_UPDATE=0"
+61:command -v curl >/dev/null || skip "curl not available"
+63:  [ -r "$TOKEN_FILE" ] || skip "no token file at $TOKEN_FILE"
+159:log "manifest: $(python3 -c "import json,sys;d=json.load(open('$MANIFEST'));print(len(d['files']),'files,',sum(f['bytes'] for f in d['files']),'bytes')")"
+166:for f in m["files"]:
+177:  skip "content unchanged since last upload (sha256 $CONTENT_SHA)"
+194:# --- Zenodo: reuse an open draft or start a new version -----------------------
+223:  log "created new version draft $DRAFT_ID (from record $LATEST_ID)"
+225:  log "reusing open draft $DRAFT_ID"
+229:# Version number = published versions + 1 (v1 exists -> this upload is v2).
+243:log "uploading as Zenodo version $VERSION"
+247:[ "$CODE" = "200" ] || die "reading draft failed (HTTP $CODE)"
+254:[ "$CODE" = "201" ] || die "file upload failed (HTTP $CODE): $(head -c 300 "$WORK/resp.json")"
+256:[ "$UP_MD5" = "$OUT_MD5" ] || die "uploaded md5 $UP_MD5 != local $OUT_MD5"
+257:log "uploaded $FNAME (md5 verified $OUT_MD5)"
+262:[ "$CODE" = "200" ] || die "reading draft metadata failed (HTTP $CODE)"
+265:draft, out, version, runs = json.load(open(sys.argv[1])), sys.argv[2], sys.argv[3], sys.argv[4]
+266:md = draft.get("metadata", {})
+278:    "10.5281/zenodo.22935024 (each new evaluated run publishes a new version).\n\n"
+306:# Zenodo's publish action may answer 202 (Accepted) and finish asynchronously;
+308:req POST "https://zenodo.org/api/deposit/depositions/$DRAFT_ID/actions/publish"
+311:  *) die "publish failed (HTTP $CODE): $(head -c 400 "$WORK/resp.json")" ;;
+318:  [ "$CODE" = "200" ] || die "polling draft state failed (HTTP $CODE)"
+324:log "published record $NEW_ID (doi $NEW_DOI)"
+328:[ "$CODE" = "200" ] || die "post-publish record lookup failed (HTTP $CODE)"
+332:# Zenodo returns "files" either as {"entries": {...}} (API 2.x), a bare dict, or
+334:raw = rec.get("files", {})
+336:    files = raw.get("entries", {}) or raw
+338:    files = {f.get("key") or f.get("filename"): f for f in raw}
+339:entry = files.get(fname)
+341:    sys.exit(f"uploaded file {fname} missing from published record")
+344:    sys.exit(f"published md5 {est} != local {md5}")
+346:    sys.exit("published size mismatch")
+347:print(f"verified published file {fname}: {size} bytes md5 {md5}")
+365:d["published_at_utc"] = datetime.datetime.now(datetime.timezone.utc).isoformat()
+367:d["state"] = "published_verified"
+> build · big-pickle
+The sibling's `zenodo_update.sh` adds biobox inclusion (issue #25) and publishes a new version per evaluated run. Let me verify deployment and monitor:
+[0m$ [0mcd /vol/data/benchmark
+echo "=== bin vs scripts zenodo_update ==="
+diff bin/zenodo_update.sh /vol/data/repos/metagenomic-binning-benchmark/scripts/zenodo_update.sh >/dev/null 2>&1 && echo "bin==scripts" || echo "DIFFER (bin stale)"
+echo "=== zenodo_update progress ==="
+pgrep -af "zenodo_update.sh" | grep -v pgrep | cut -c1-60 || echo "(done)"
+ls -la releases/ 2>/dev/null | tail -5
+echo "=== releases disk ==="
+du -sh releases/ 2>/dev/null
+echo "=== log ==="
+grep -E "DONE sweep_003|START sweep_004|FAIL sweep_004" status/sweep_medium.log | tail -3
+echo "=== active/train ==="
+pgrep -af "COMEBin/main.py train" | grep -v pgrep | cut -c1-60 || echo "(no train)"
+=== bin vs scripts zenodo_update ===
+DIFFER (bin stale)
+=== zenodo_update progress ===
+2669647 bash /vol/data/benchmark/bin/zenodo_update.sh
+-rw-rw-r--  1 ubuntu ubuntu    209716 Sep 28 14:02 manifest.20260928T140247Z.json
+-rw-rw-r--  1 ubuntu ubuntu    213770 Sep 29 01:27 manifest.20260929T012704Z.json
+-rw-rw-r--  1 ubuntu ubuntu    218766 Sep 29 01:33 manifest.20260929T013339Z.json
+-rw-rw-r--  1 ubuntu ubuntu    217681 Sep 29 01:41 manifest.20260929T014055Z.json
+drwx------  6 ubuntu ubuntu      4096 Sep 29 01:41 stage.Z1THJM
+=== releases disk ===
+3.8G	releases/
+=== log ===
+[2026-09-29T01:28:25Z] RUN_DONE sweep_003_issue28fix exit=0
+[2026-09-29T01:28:30Z] START sweep_004_temp005 src=COMEBin-v11-sweep @ 95f5ea8 threads=8 seed=42 temp=0.05 emb=ref emb_cov=ref batch=ref max_edges=ref lw=ref heval=ref n_views=6
+[2026-09-29T01:28:30Z] FAIL sweep_004_temp005: run_comebin_fix.sh rc=0
+=== active/train ===
+> build · big-pickle
+`bin/zenodo_update.sh` is stale (sibling's biobox support not yet deployed). The upload is in progress. Let me wait for it to clear so cell 4 starts:
+[0m$ [0mcd /vol/data/benchmark
+for i in $(seq 1 50); do
+  if ! pgrep -f "bin/zenodo_update.sh" >/dev/null 2>&1; then echo "ZENODO_DONE after $((i*20))s"; break; fi
+  if pgrep -f "COMEBin/main.py train" >/dev/null 2>&1; then echo "TRAIN_STARTED after $((i*20))s"; break; fi
+  sleep 20
+done
+echo "=== state ==="
+pgrep -af "zenodo_update.sh|run_eval.sh" | grep -v pgrep | cut -c1-60 || echo "(zenodo+eval done)"
+echo "=== active/train ==="
+cat .active_run 2>/dev/null || echo "(no active_run)"
+pgrep -af "COMEBin/main.py train" | grep -v pgrep | cut -c1-70 || echo "(no train)"
+echo "=== log ==="
+grep -E "DONE sweep_003|START sweep_004|FAIL sweep_004" status/sweep_medium.log | tail -3
+ls -d runs/sweep_004_temp005 2>/dev/null && echo "cell4 dir exists"
+touch .heartbeat
+TRAIN_STARTED after 20s
+=== state ===
+2637414 bash /vol/data/benchmark/bin/run_eval.sh /vol/data/b
+2669647 bash /vol/data/benchmark/bin/zenodo_update.sh
+=== active/train ===
+(no active_run)
+=== log ===
+[2026-09-29T01:28:25Z] RUN_DONE sweep_003_issue28fix exit=0
+[2026-09-29T01:28:30Z] START sweep_004_temp005 src=COMEBin-v11-sweep @ 95f5ea8 threads=8 seed=42 temp=0.05 emb=ref emb_cov=ref batch=ref max_edges=ref lw=ref heval=ref n_views=6
+[2026-09-29T01:28:30Z] FAIL sweep_004_temp005: run_comebin_fix.sh rc=0
+> build · big-pickle
+The "TRAIN_STARTED" was a false positive (my own shell argv matched `pgrep -f`). The Zenodo upload is still running. Let me wait correctly (checking `.active_run` + bracket-guarded pgrep):

@@ -66774,3 +66774,142 @@ medium_v11_20260924      size=8238004    gzip_t=ok   fna_entries=32
   marine_v11_20260925: README=152 actual=152 MATCH
 > build · big-pickle
 Real bug found: medium ships 32 bins but the run has 16. Let me diagnose.
+[0m$ [0mcd /tmp/opencode/pkgv && echo "=== medium biobox tar listing ==="; tar tzf ./runs/medium_v11_20260924/biobox/binning.tar.gz 2>/dev/null; echo; echo "=== summary rows (bin_id col) ==="; tar xzf /vol/data/benchmark/releases/comebin_benchmark_release_dryrun_20260929.tar.gz -O ./runs/medium_v11_20260924/biobox/binning_summary.tsv 2>/dev/null | awk -F'\t' 'NR>1{print $1}' | sort -u | tr '\n' ' '; echo; echo "=== actual bins on disk for medium run ==="; ls /vol/data/benchmark/runs/medium_v11_20260924/comebin_out/comebin_res/comebin_res_bins/ | tr '\n' ' '
+=== medium biobox tar listing ===
+comebin/
+comebin/v11/
+comebin/v11/binning_summary.tsv
+comebin/v11/binning/
+comebin/v11/binning/unknown_sample/
+comebin/v11/binning/unknown_sample/9.fna
+comebin/v11/binning/unknown_sample/10.fna
+comebin/v11/binning/unknown_sample/0.fna
+comebin/v11/binning/unknown_sample/137.fna
+comebin/v11/binning/unknown_sample/1262.fna
+comebin/v11/binning/unknown_sample/7.fna
+comebin/v11/binning/unknown_sample/16.fna
+comebin/v11/binning/unknown_sample/1.fna
+comebin/v11/binning/unknown_sample/4.fna
+comebin/v11/binning/unknown_sample/6.fna
+comebin/v11/binning/unknown_sample/3.fna
+comebin/v11/binning/unknown_sample/8.fna
+comebin/v11/binning/unknown_sample/5.fna
+comebin/v11/binning/unknown_sample/61.fna
+comebin/v11/binning/unknown_sample/2.fna
+comebin/v11/binning/unknown_sample/11.fna
+comebin/v11/binning/medium/
+comebin/v11/binning/medium/9.fna
+comebin/v11/binning/medium/10.fna
+comebin/v11/binning/medium/0.fna
+comebin/v11/binning/medium/137.fna
+comebin/v11/binning/medium/1262.fna
+comebin/v11/binning/medium/7.fna
+comebin/v11/binning/medium/16.fna
+comebin/v11/binning/medium/1.fna
+comebin/v11/binning/medium/4.fna
+comebin/v11/binning/medium/6.fna
+comebin/v11/binning/medium/3.fna
+comebin/v11/binning/medium/8.fna
+comebin/v11/binning/medium/5.fna
+comebin/v11/binning/medium/61.fna
+comebin/v11/binning/medium/2.fna
+comebin/v11/binning/medium/11.fna
+
+=== summary rows (bin_id col) ===
+0 1 10 11 1262 137 16 2 3 4 5 6 61 7 8 9 
+=== actual bins on disk for medium run ===
+0.fa 1.fa 10.fa 11.fa 1262.fa 137.fa 16.fa 2.fa 3.fa 4.fa 5.fa 6.fa 61.fa 7.fa 8.fa 9.fa
+> build · big-pickle
+Root cause found: `export_biobox.sh` never clears its output tree, so re-exporting with a different `SAMPLE` leaves stale `binning/unknown_sample/` bins inside the shipped tarball. Let me check the driver's export finished before editing (bash reads scripts incrementally).
+[0m$ [0mpgrep -af "export_biobox.sh" | grep -v opencode | head -3; echo "---"; tail -3 /tmp/opencode/cami3_biobox2.log 2>/dev/null; echo "--- cami3 biobox dir ---"; ls /vol/data/benchmark/runs/cami3_v11_20260926_rerun/biobox/ 2>&1
+---
+351504274 bins.fasta.gz
+269200 cami3.binning
+4096 tree
+--- cami3 biobox dir ---
+README.txt
+binning.tar.gz
+bins.fasta.gz
+cami3.binning
+tree
+> build · big-pickle
+The driver's export has finished — safe to edit now. Let me fix the idempotency defect.
+[0m→ [0mRead /vol/data/repos/metagenomic-binning-benchmark/scripts/export_biobox.sh [90m[limit=14, offset=38][0m
+> build · big-pickle
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/scripts/export_biobox.sh
+Index: /vol/data/repos/metagenomic-binning-benchmark/scripts/export_biobox.sh
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/scripts/export_biobox.sh
++++ /vol/data/repos/metagenomic-binning-benchmark/scripts/export_biobox.sh
+@@ -38,8 +38,18 @@
+ VERSION=${VERSION:-v11}
+ SAMPLE=${SAMPLE:-unknown_sample}
+ OUT="$RUN_DIR/biobox"
+ TREE="$OUT/tree/$ENGINE/$VERSION/binning/$SAMPLE"
++# The tree is derived output: it is rebuilt in full from $BINS_DIR below, so
++# wipe it first to keep a re-export idempotent. Without this, re-running with a
++# different SAMPLE (or after the run produced a different bin id set) leaves the
++# previous export's binning/<sample>/ directory in place, and because
++# `tar ... $ENGINE` archives the whole engine subtree, the shipped biobox
++# tarball then carries bins for two samples at once — e.g. medium_v11_20260924
++# shipped 32 bin FASTAs for a 16-bin run (binning/unknown_sample/ left over from
++# an export that predates SAMPLE being passed). A CAMI biobox archive must hold
++# exactly one binning directory for the sample it declares.
++rm -rf "$OUT/tree"
+ mkdir -p "$TREE"
+ 
+ bin_count=0
+ for f in "$BINS_DIR"/*.fa; do
+
+> build · big-pickle
+Now let me verify the fix by re-exporting medium (the run that exhibited the bug):
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && bash -n scripts/export_biobox.sh && echo "SYNTAX OK"; echo "=== before: stale dirs present? ==="; ls /vol/data/benchmark/runs/medium_v11_20260924/biobox/tree/comebin/v11/binning/; echo "=== re-export medium (SAMPLE=medium) ==="; ENGINE=comebin VERSION=v11 SAMPLE=medium timeout 300 bash scripts/export_biobox.sh /vol/data/benchmark/runs/medium_v11_20260924 2>&1 | tail -4
+SYNTAX OK
+=== before: stale dirs present? ===
+medium
+unknown_sample
+=== re-export medium (SAMPLE=medium) ===
+4128980 binning.tar.gz
+4105985 bins.fasta.gz
+112018 medium.binning
+4096 tree
+> build · big-pickle
+[0m$ [0md=/vol/data/benchmark/runs/medium_v11_20260924/biobox; echo "=== sample dirs in tree now ==="; ls $d/tree/comebin/v11/binning/; echo "=== tar contents ==="; tar tzf $d/binning.tar.gz | sed 's#^#  #'; echo "=== bin count vs run ==="; echo "  fna in tar : $(tar tzf $d/binning.tar.gz | grep -c '\.fna$')"; echo "  bins on disk: $(ls /vol/data/benchmark/runs/medium_v11_20260924/comebin_out/comebin_res/comebin_res_bins/*.fa | wc -l)"; echo "  README claim: $(grep -oP 'bins:\s+\K[0-9]+' $d/README.txt)"; echo "  unique ids in binning_summary: $(awk -F'\t' 'NR>1{print $1}' $d/tree/comebin/v11/binning_summary.tsv | sort -u | wc -l)"
+=== sample dirs in tree now ===
+medium
+=== tar contents ===
+  comebin/
+  comebin/v11/
+  comebin/v11/binning_summary.tsv
+  comebin/v11/binning/
+  comebin/v11/binning/medium/
+  comebin/v11/binning/medium/9.fna
+  comebin/v11/binning/medium/10.fna
+  comebin/v11/binning/medium/0.fna
+  comebin/v11/binning/medium/137.fna
+  comebin/v11/binning/medium/1262.fna
+  comebin/v11/binning/medium/7.fna
+  comebin/v11/binning/medium/16.fna
+  comebin/v11/binning/medium/1.fna
+  comebin/v11/binning/medium/4.fna
+  comebin/v11/binning/medium/6.fna
+  comebin/v11/binning/medium/3.fna
+  comebin/v11/binning/medium/8.fna
+  comebin/v11/binning/medium/5.fna
+  comebin/v11/binning/medium/61.fna
+  comebin/v11/binning/medium/2.fna
+  comebin/v11/binning/medium/11.fna
+=== bin count vs run ===
+  fna in tar : 16
+  bins on disk: 16
+  README claim: 16
+  unique ids in binning_summary: 16
+> build · big-pickle
+Let me check all four runs for the same stale-tree defect:
+[0m$ [0mfor r in medium_v11_20260924 human_v11_20260925 marine_v11_20260925 cami3_v11_20260926_rerun; do d=/vol/data/benchmark/runs/$r/biobox; s=$(ls $d/tree/comebin/v11/binning/ 2>/dev/null | tr '\n' ' '); n=$(ls /vol/data/benchmark/runs/$r/comebin_out/comebin_res/comebin_res_bins/*.fa 2>/dev/null | wc -l); t=$(tar tzf $d/binning.tar.gz 2>/dev/null | grep -c '\.fna$'); printf "%-28s samples=[%s] bins_on_disk=%-4s fna_in_tar=%-4s %s\n" "$r" "$s" "$n" "$t" "$( [ "$n" = "$t" ] && echo OK || echo MISMATCH)"; done
+medium_v11_20260924          samples=[medium ] bins_on_disk=16   fna_in_tar=16   OK
+human_v11_20260925           samples=[human ] bins_on_disk=107  fna_in_tar=107  OK
+marine_v11_20260925          samples=[marine ] bins_on_disk=152  fna_in_tar=152  OK
+cami3_v11_20260926_rerun     samples=[cami3 ] bins_on_disk=492  fna_in_tar=492  OK
+> build · big-pickle
+All four consistent now. Final packaging verification:
