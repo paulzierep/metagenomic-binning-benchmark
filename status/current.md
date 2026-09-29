@@ -3,13 +3,15 @@
 | | |
 |---|---|
 | Status | 🟢 `running` |
-| ⏱ Updated (Europe/Berlin) | `2026-09-29T15:54 CEST` |
-| 🏃 Live benchmark | `sweep_014_edges150` — **epoch 66/200** · loss `5.076468467712402` · top1 acc `25.341796875` (log 12s fresh) |
+| ⏱ Updated (Europe/Berlin) | `2026-09-29T15:56 CEST` |
+| 🏃 Live benchmark | `sweep_014_edges150` — **epoch 76/200** · loss `4.925764560699463` · top1 acc `31.07096290588379` (log 5s fresh) |
 | 🧠 Model (last turn) | `nemotron-3.5-lightning-free` (watchdog rotates to free models on quota) |
-| 📌 Agent note · **26 min old** | agent driver alive; transcript fresh (151s) while heartbeat is stale (1610s) |
-| ⚙️ Load · uptime | `7.25 7.27 6.04` · 6 days, 18 minutes — 32 cores, 62 GiB, no GPU |
-| 💾 RAM used/total | `4114/64295 MB` |
+| 📌 Agent note · **28 min old** | 2026-09-29T11:45Z sweep: sweep_012_batch2048 completed (exit 0, 8 threads, seed 42, batch=2048, medium dataset). Cells 1-12 of 24 complete; cells 13-24 pending. Sweep driver relaunched from cell 13 (edges80) at 2026-09-29 UTC. ETA ~2026-10-02 UTC.
+2026-09-29T13:06:31Z sweep: sweep_013_edges80 active (8 threads, seed 42, temp=ref, emb=ref, emb_cov=ref, max_edges=80, medium dataset); cell 13 of 24 running, cells 1-12 complete, cells 14-24 pending. ETA ~2026-10-02 UTC. .heartbeat touched; PROGRESS.md updated.
+2026-09-29T13:15:33Z sweep: sweep_013_edges80 still running cell 13/24 (epoch 171/200, temp=ref, max_edges=80); cells 14-24 pending; ETA ~2026-10-02 UTC per heartbeat; .heartbeat current.2026-09-29T13:26:36Z sweep: sweep_013_edges80 cell 13/24 running (epoch 171/200, temp=ref, max_edges=80, medium dataset); cells 14-24 pending; ETA ~2026-10-02 UTC; .heartbeat current; PROGRESS.md updated |
+| ⚙️ Load · uptime | `7.40 7.41 6.25` · 6 days, 20 minutes — 32 cores, 62 GiB, no GPU |
+| 💾 RAM used/total | `5916/64295 MB` |
 | 🔗 Session | `ses_f31799c77ffeTq9gcYgqc4hBhg` |
-| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `2e7a6eaa meta: supervise tick 2026-09-29T13:53:01Z — 0 fix(es)` |
-| 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `13649371 B` — every run, command & tool result |
+| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `34bae709 status: yes — sweep_014_edges150 epoch 66/200 loss 5.076468467712402 ` |
+| 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `13650336 B` — every run, command & tool result |
 | 📈 Timeline | [status/status.log](status/status.log) |
