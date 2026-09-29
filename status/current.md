@@ -2,14 +2,14 @@
 
 | | |
 |---|---|
-| Status | 🟢 `running` |
-| ⏱ Updated (Europe/Berlin) | `2026-09-29T23:10 CEST` |
-| 🏃 Live benchmark | `sweep_021_comboA` — **epoch 171/200** · loss `5.247701644897461` · top1 acc `58.53515625` (log 6s fresh) |
+| Status | 🔴 `stopped (watchdog will restart)` |
+| ⏱ Updated (Europe/Berlin) | `2026-09-29T23:12 CEST` |
+| 🏃 Live benchmark | `sweep_021_comboA` — **epoch 185/200** · loss `5.2421345710754395` · top1 acc `57.760414123535156` (log 5s fresh) |
 | 🧠 Model (last turn) | `nemotron-3.5-lightning-free` (watchdog rotates to free models on quota) |
-| 📌 Agent note · **431 min old** | agent driver alive; transcript fresh (177s) while heartbeat is stale (26058s) |
-| ⚙️ Load · uptime | `8.03 8.08 7.40` · 6 days, 7 hours, 34 minutes — 32 cores, 62 GiB, no GPU |
-| 💾 RAM used/total | `4275/64295 MB` |
+| 📌 Agent note · **433 min old** | heartbeat stale 26178s — agent dead/idle, watchdog should restart within ~5 min |
+| ⚙️ Load · uptime | `8.32 8.27 7.57` · 6 days, 7 hours, 36 minutes — 32 cores, 62 GiB, no GPU |
+| 💾 RAM used/total | `4308/64295 MB` |
 | 🔗 Session | `ses_f31799c77ffeTq9gcYgqc4hBhg` |
-| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `c4427f16 status: no — sweep_021_comboA epoch 157/200 loss 5.27172327041626 acc` |
-| 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `13684971 B` — every run, command & tool result |
+| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `9c8f31c1 status: yes — sweep_021_comboA epoch 171/200 loss 5.247701644897461 a` |
+| 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `13685166 B` — every run, command & tool result |
 | 📈 Timeline | [status/status.log](status/status.log) |
