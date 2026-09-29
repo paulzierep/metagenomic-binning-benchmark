@@ -3,10 +3,10 @@
 | | |
 |---|---|
 | Status | 🟢 `running` |
-| ⏱ Updated (Europe/Berlin) | `2026-09-29T06:20 CEST` |
-| 🏃 Live benchmark | `sweep_005_temp030` — **epoch 113/200** · loss `6.266148567199707` · top1 acc `23.323566436767578` (log 2s fresh) |
+| ⏱ Updated (Europe/Berlin) | `2026-09-29T06:22 CEST` |
+| 🏃 Live benchmark | `sweep_005_temp030` — **epoch 122/200** · loss `6.246097087860107` · top1 acc `24.8828125` (log 8s fresh) |
 | 🧠 Model (last turn) | `nemotron-3.5-lightning-free` (watchdog rotates to free models on quota) |
-| 📌 Agent note · **2 min old** | 2026-09-29T01:02:00Z rank-script-fix + galaxy-fixture-runner committed
+| 📌 Agent note · **4 min old** | 2026-09-29T01:02:00Z rank-script-fix + galaxy-fixture-runner committed
 [2026-09-29T01:08:17Z] #25 AMBER: inputs staged (marine pred + GS), env installing
 [2026-09-29T01:12:11Z] AMBER marine eval done (F1 0.330 bp); docs/14 + scripts/make_amber_prediction.py; sweep_003 running
 [2026-09-29T01:23:01Z] AMBER human eval done (F1 0.681 bp, 99.3% assigned); human GS imported; biobox exports marine/human/cami3
@@ -18,9 +18,9 @@
 2026-09-29T02:53:42Z Sweep relaunched: cell 4 (sweep_004_temp005) restarted with COMEBIN_TEMPERATURE=0.05 fix; THREADS=8 seed=42 on medium dataset; training in progress.
 2026-09-29T03:25:12Z Sweep cells 4-24 running on COMEBin-v11-sweep@95f5ea8; cell 4 sweep_004_temp005 active with COMEBIN_TEMPERATURE=0.05 fix | ETA ~2026-09-30 evening UTC | cells 5-24 queued
 [2026-09-29T04:17:34Z] Sweep update: sweep_004_temp005 completed (temp=0.05, exit 0); sweep_005_temp030 running (temp=0.30, seed 42, 8 threads, medium); cells 6-24 pending; ETA ~2026-09-30 UTC |
-| ⚙️ Load · uptime | `7.59 7.59 7.01` · 5 days, 14 hours, 44 minutes — 32 cores, 62 GiB, no GPU |
-| 💾 RAM used/total | `5879/64295 MB` |
+| ⚙️ Load · uptime | `7.95 7.73 7.14` · 5 days, 14 hours, 46 minutes — 32 cores, 62 GiB, no GPU |
+| 💾 RAM used/total | `6604/64295 MB` |
 | 🔗 Session | `ses_f31799c77ffeTq9gcYgqc4hBhg` |
-| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `7b59b6f9 status: yes — sweep_005_temp030 epoch 104/200 loss 6.294866561889648 ` |
-| 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `11087009 B` — every run, command & tool result |
+| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `9c8a0e1b status: yes — sweep_005_temp030 epoch 113/200 loss 6.266148567199707 ` |
+| 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `11139763 B` — every run, command & tool result |
 | 📈 Timeline | [status/status.log](status/status.log) |
