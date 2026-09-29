@@ -101554,3 +101554,312 @@ COMEBin/train_CLmodel.py:42:    contig_file = args.data + '/aug0/sequences_aug0.
 === namelist source ===
 25:COMEBin/get_augfeature.py-155-    dataset, namelist = get_kmer_coverage(data_path, n_views, kmer_model_path, device, nokmer, cov_meannormalize, cov_minmaxnormalize, cov_standardization,addvars,vars_sqrt,kmer_l2_normalize,kmerMetric_notl2normalize)
 26:COMEBin/get_augfeature.py-156-    return dataset, namelist
+> build · mimo-v2.6-flash-free
+[0m$ [0mcd /vol/data/repos/COMEBin-master904; grep -n "fasta\|faidx\|pysam\|samtools\|contig_list\|read_fasta\|references" COMEBin/data_aug/gen_cov.py | head -30; echo "=== namelist in get_augfeature ==="; grep -n "namelist" COMEBin/get_augfeature.py | head -20
+250:        aug_seq_info_out_file = outdir + '/sequences_aug' + str(i + 1) + '.fasta' + '.aug_seq_info.tsv'
+=== namelist in get_augfeature ===
+29:    namelist = pd.read_csv(data_path + 'aug0_datacoverage_mean.tsv', sep='\t', usecols=range(1)).values[:, 0]
+31:    mapObj = dict(zip(namelist, range(len(namelist))))
+39:        shuffled_namelist = pd.read_csv(cov_file, sep='\t', usecols=range(1)).values[:, 0]
+42:        for contigIdx in range(len(shuffled_namelist)):
+43:            if shuffled_namelist[contigIdx].split('_aug')[0] in mapObj:
+44:                covIdxArr[mapObj[shuffled_namelist[contigIdx].split('_aug')[0]]] = contigIdx
+51:            shuffled_namelist = pd.read_csv(com_file, sep=',', usecols=range(1)).values[:, 0]
+54:            for contigIdx in range(len(shuffled_namelist)):
+55:                if shuffled_namelist[contigIdx].split('_aug')[0] in mapObj:
+56:                    covIdxArr[mapObj[shuffled_namelist[contigIdx].split('_aug')[0]]] = contigIdx
+64:            shuffled_namelist = pd.read_csv(vars_file, sep='\t', usecols=range(1)).values[:, 0]
+67:            for contigIdx in range(len(shuffled_namelist)):
+68:                if shuffled_namelist[contigIdx].split('_aug')[0] in mapObj:
+69:                    covIdxArr[mapObj[shuffled_namelist[contigIdx].split('_aug')[0]]] = contigIdx
+128:    return list(torch.split(torch.from_numpy(X_ts).float(), len(namelist))), namelist
+155:    dataset, namelist = get_kmer_coverage(data_path, n_views, kmer_model_path, device, nokmer, cov_meannormalize, cov_minmaxnormalize, cov_standardization,addvars,vars_sqrt,kmer_l2_normalize,kmerMetric_notl2normalize)
+156:    return dataset, namelist
+> build · mimo-v2.6-flash-free
+[0m$ [0mR=/vol/data/benchmark/runs/sweep_002_master; ls $R/comebin_out 2>/dev/null | head; f=$(find $R -name 'aug0_datacoverage_mean.tsv' 2>/dev/null | head -1); echo "cov file: $f"; if [ -n "$f" ]; then wc -l "$f"; grep -c "scaffold_22978" "$f"; head -2 "$f"; fi; echo "=== sequences_aug0 ==="; s=$(find $R -name 'sequences_aug0.fasta' | head -1); echo "$s"; [ -n "$s" ] && grep -c '^>' "$s" && grep -c "scaffold_22978" "$s"
+comebin_res
+data_augmentation
+cov file: /vol/data/benchmark/runs/sweep_002_master/comebin_out/data_augmentation/aug0_datacoverage_mean.tsv
+29435 /vol/data/benchmark/runs/sweep_002_master/comebin_out/data_augmentation/aug0_datacoverage_mean.tsv
+1
+	/vol/data/benchmark/runs/sweep_002_master/comebin_out/data_augmentation/depth/reads.bam_0_depth.txt_cov
+BATS_SAMN07137077_METAG-scaffold_1644	22.826458456099
+=== sequences_aug0 ===
+/vol/data/benchmark/runs/sweep_002_master/comebin_out/data_augmentation/aug0/sequences_aug0.fasta
+3000
+0
+> build · mimo-v2.6-flash-free
+[0m$ [0mcd /vol/data/repos/COMEBin-v11; grep -n "namelist" COMEBin/get_augfeature.py | head; echo "=== v11 gen_cov depth enumeration ==="; grep -n "samtools\|depth\|contig\|fasta\|SeqIO" COMEBin/data_aug/gen_cov.py | head -30; echo "=== v11 train_CLmodel length lookup ==="; sed -n 38,50p COMEBin/train_CLmodel.py
+=== v11 gen_cov depth enumeration ===
+17:    contig_names: tuple
+18:    contig_index: dict
+19:    contig_lengths: np.ndarray
+27:def _build_coverage_context(out_path, n_views, contig_len):
+29:    if np.any(bundle.contig_lengths <= contig_len):
+31:            f'At least one retained contig is not longer than {contig_len}.')
+32:    contig_index = {
+33:        name: index for index, name in enumerate(bundle.contig_ids)
+36:        bundle.contig_ids, contig_index, bundle.contig_lengths,
+51:def _parse_bedgraph_line(contig_name, line):
+53:    if len(fields) != 4 or fields[0] != contig_name:
+55:            f'Malformed bedGraph row for {contig_name}: {line.rstrip()}')
+57:        depth_start = int(fields[1])
+58:        depth_end = int(fields[2])
+59:        depth = float(fields[3])
+62:            f'Malformed bedGraph values for {contig_name}: {line.rstrip()}') from error
+63:    if (depth_start < 0 or depth_end <= depth_start or
+64:            not np.isfinite(depth) or depth < 0):
+66:            f'Invalid bedGraph interval for {contig_name}: {line.rstrip()}')
+67:    return depth_start, depth_end, depth
+70:def _summarize_contig(contig_name, lines, starts, ends):
+75:    contig_length = int(ends[0])
+78:        depth_start, depth_end, depth = _parse_bedgraph_line(contig_name, line)
+79:        if depth_start != previous_end or depth_end > contig_length:
+81:                f'Non-contiguous bedGraph coverage for {contig_name}: '
+83:        previous_end = depth_end
+86:                0, min(depth_end, int(ends[view])) -
+87:                max(depth_start, int(starts[view])))
+89:                counts[view], means[view], m2[view], depth, overlap)
+91:    if previous_end != contig_length:
+=== v11 train_CLmodel length lookup ===
+        raise RuntimeError(
+            f"CUDA discovery failed for requested device {requested!r}: {error}; "
+            f"{cuda_environment}.") from error
+    if not cuda_available:
+        raise RuntimeError(
+            "CUDA training was requested, but CUDA is unavailable; "
+            f"{cuda_environment}, visible_devices={visible_devices}.")
+
+    requested_device = torch.device(requested)
+    try:
+        device_index = torch.cuda.current_device() if requested_device.index is None else requested_device.index
+    except Exception as error:
+        raise RuntimeError(
+> build · mimo-v2.6-flash-free
+[0m$ [0mcd /vol/data/repos/COMEBin-v11; grep -n "def _load\|contig_ids =\|faidx\|SeqIO\|references\|intersect\|missing\|not in " COMEBin/data_aug/gen_cov.py | head -30; echo "=== callers of bundle ==="; grep -rn "contig_bundle\|_load_contig" COMEBin/*.py COMEBin/data_aug/*.py | head -20
+154:    mean_path.unlink(missing_ok=True)
+155:    var_path.unlink(missing_ok=True)
+194:            missing = np.flatnonzero(~seen)
+195:            examples = [context.contig_names[index] for index in missing[:5]]
+197:                f'BAM coverage is missing {len(missing)} retained contigs for '
+248:    coverage_manifest.unlink(missing_ok=True)
+293:        mean_path.unlink(missing_ok=True)
+294:        var_path.unlink(missing_ok=True)
+=== callers of bundle ===
+> build · mimo-v2.6-flash-free
+[0m$ [0mcd /vol/data/repos/COMEBin-v11; sed -n 160,215p COMEBin/data_aug/gen_cov.py; echo "=== where retained contigs come from ==="; grep -rn "retained\|contig_ids\b" COMEBin/data_aug/gen_cov.py | head -20
+var_path, mode='w+', dtype='<f8', shape=shape)
+    mean_array.flush()
+    var_array.flush()
+    del mean_array
+    del var_array
+    return mean_path, var_path
+
+
+def _process_bam(job):
+    bam_path, sample_index, mean_path, var_path = job
+    context = _COVERAGE_CONTEXT
+    if context is None:
+        raise RuntimeError('Coverage worker context was not initialized.')
+    expected_shape = (
+        sample_index + 1, len(context.starts[0]), len(context.contig_names))
+    mean_array = np.load(mean_path, mmap_mode='r+', allow_pickle=False)
+    var_array = np.load(var_path, mmap_mode='r+', allow_pickle=False)
+    if (mean_array.dtype != np.dtype('<f8') or
+            var_array.dtype != np.dtype('<f8') or
+            mean_array.shape != var_array.shape or
+            len(mean_array.shape) != 3 or
+            mean_array.shape[0] < expected_shape[0] or
+            mean_array.shape[1:] != expected_shape[1:]):
+        raise ValueError(
+            f'Invalid temporary coverage targets: mean_shape={mean_array.shape}, '
+            f'var_shape={var_array.shape}, sample_index={sample_index}.')
+
+    seen = np.zeros(len(context.contig_names), dtype=bool)
+    try:
+        sample_mean = mean_array[sample_index]
+        sample_var = var_array[sample_index]
+        _stream_bam_coverage(
+            bam_path, context, sample_mean, sample_var, seen)
+        if not np.all(seen):
+            missing = np.flatnonzero(~seen)
+            examples = [context.contig_names[index] for index in missing[:5]]
+            raise ValueError(
+                f'BAM coverage is missing {len(missing)} retained contigs for '
+                f'{bam_path}; examples={examples}.')
+        if (not np.isfinite(sample_mean).all() or
+                np.any(sample_mean < 0)):
+            raise ValueError(f'Coverage mean contains invalid values for {bam_path}.')
+        if (not np.isfinite(sample_var).all() or
+                np.any(sample_var < 0)):
+            raise ValueError(
+                f'Coverage variance contains invalid values for {bam_path}.')
+        mean_array.flush()
+        var_array.flush()
+    finally:
+        del mean_array
+        del var_array
+    return sample_index
+
+
+def _publish_coverage_manifest(out_path, n_contigs, n_views, n_samples):
+    shape = [n_samples, n_views, n_contigs]
+=== where retained contigs come from ===
+31:            f'At least one retained contig is not longer than {contig_len}.')
+33:        name: index for index, name in enumerate(bundle.contig_ids)
+36:        bundle.contig_ids, contig_index, bundle.contig_lengths,
+129:                            f'BAM coverage contains repeated groups for retained '
+197:                f'BAM coverage is missing {len(missing)} retained contigs for '
+> build · mimo-v2.6-flash-free
+[0m← [0mEdit /tmp/opencode/comment_28.md
+Index: /tmp/opencode/comment_28.md
+===================================================================
+--- /tmp/opencode/comment_28.md
++++ /tmp/opencode/comment_28.md
+@@ -14,17 +14,23 @@
+ ETA for the whole grid: ~55 min/cell × 22 cells ≈ **20 h**, i.e. roughly 2026-09-30 evening UTC. Ranking (`scripts/rank_sweep_medium.py`: bin stats first — CheckM2 comp/cont, HQ/MQ, F1 — runtime as tiebreak) runs the moment the grid closes.
+ 
+ **The `41606c8` medium confirmation is cell 3, so your fix's medium run is the very next result to land**, not something at the end of the queue.
+ 
+-### Why cell 2 (stock master) failed — root cause, pinned
++### Why cell 2 (stock master) failed — root cause, pinned to the line
+ 
+-`KeyError: 'BATS_SAMN07137077_METAG-scaffold_22978'` at final selection. Not a flake:
++`train_CLmodel.py:46 → length_weight.append(lengths[seq_id]) → KeyError: 'BATS_SAMN07137077_METAG-scaffold_22978'`. Not a flake — it is a contig-set mismatch, measured on the failed run's own artifacts:
+ 
+-- the **medium BAM header carries all 29,434 refs** of the original demo assembly, while **our assembly is the top-3,000 subset** — `scaffold_22978` is absent from `contigs.fa` (confirmed by grep) and present in the BAM header;
+-- upstream master builds its contig index from the BAM header → index/assembly mismatch → the KeyError.
++| artifact | contents |
++|---|---|
++| `data_augmentation/aug0_datacoverage_mean.tsv` (= the `namelist`) | **29,435 lines = header + 29,434 contigs** — the full demo `@SQ` list, incl. `scaffold_22978` |
++| `data_augmentation/aug0/sequences_aug0.fasta` (= `lengths`) | **3,000** contigs — our assembly; `scaffold_22978` absent |
+ 
+-That is exactly the issue-#2 producer/consumer mismatch, and it only bites the *unmodified* stock checkout; the v11 branch doesn't trip it. Cell 2 is therefore a **documented stock-master failure with evidence on disk** (`runs/sweep_002_master/`), not a data point to be re-run. If you'd rather have a clean master number, the fix is on the data side: emit a BAM whose `@SQ` list matches the assembly — say the word and I'll prep that variant as a separate dataset.
++Upstream derives the coverage rows from the **BAM** (`reads.bam_0_depth.txt` → all 29,434 refs of the original demo assembly) but the lengths from the **assembly fasta** (top-3,000 subset). `for seq_id in namelist: lengths[seq_id]` then dies on the first BAM-only name. That is exactly the issue-#2 producer/consumer mismatch, on the medium fixture we built.
+ 
++**v11 is structurally immune**: `COMEBin/data_aug/gen_cov.py` allocates the coverage arrays over the *retained assembly* contigs (`context.contig_names`) and streams the BAM into them — extra `@SQ` refs are simply ignored, and it raises only if BAM coverage is *missing* an assembly contig (`BAM coverage is missing N retained contigs`). Cell 1 (same dataset, v11 `95f5ea8`) finished cleanly, which is the empirical confirmation.
++
++Cell 2 is therefore a **documented stock-master failure with evidence on disk** (`runs/sweep_002_master/`), not a data point to be re-run. If you want a clean master number anyway, the fix is on the data side: emit a BAM whose `@SQ` list matches the assembly — say the word and I'll prep that as a separate dataset.
++
+ ### Two harness bugs found and fixed while the sweep was stalled
+ 
+ 1. **Launch-pass failures (13:07Z)**: `/vol/data/benchmark/bin/run_comebin_fix.sh` still had the unguarded `if [ -n "$TEMP" ]` (line 76) → `set -u` abort before any cell started. Fixed with `${TEMP:-}`-style guards and `-l/-e/-b` forwarding, verified by a truncated-copy test.
+ 2. **Singleton-guard false aborts**: `$(pgrep …)` forks a subshell that inherits the driver argv (self-match), and under `pipefail` + `set -e` a `ps` on a dead transient pid made an assignment return 1 and **killed the driver silently** after one cell. Fixed by an ancestor/child relatedness walk + ≥5 s process age + double probe + `|| true` on every `ps`-based probe. **`flock` remains the hard mutex** — the guards are only a fast path.
+
+> build · mimo-v2.6-flash-free
+[0m$ [0mcd /tmp/opencode && gh issue comment 29 -R paulzierep/metagenomic-binning-benchmark -F comment_29.md && gh issue comment 28 -R paulzierep/metagenomic-binning-benchmark -F comment_28.md
+https://github.com/paulzierep/metagenomic-binning-benchmark/issues/29#issuecomment-5881561084
+https://github.com/paulzierep/metagenomic-binning-benchmark/issues/28#issuecomment-5881561298
+> build · mimo-v2.6-flash-free
+[0m$ [0mset -e; TS=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+touch /vol/data/benchmark/.heartbeat
+echo "$TS #29 fixture analysis posted (Galaxy IUC 40x20kb fixture, CI green on 1.1.0, MINIMUM_FINAL_BIN_SIZE caveat) + #28 sweep-status/root-cause reply posted; fixture copied to /vol/data/datasets/galaxy_comebin_fixture/" >> /vol/data/repos/metagenomic-binning-benchmark/status/agent-activity.log
+echo "$TS issue-triage: comments posted on #28 and #29" > /vol/data/benchmark/.activity
+tail -3 /vol/data/repos/metagenomic-binning-benchmark/status/agent-activity.log; echo "---"; cat /vol/data/benchmark/.activity; echo "--- sweep ---"; tail -2 /vol/data/benchmark/status/sweep_medium.log; grep -o "epoch=[0-9]*/200" /vol/data/benchmark/runs/sweep_003_issue28fix/comebin_run.log | tail -1
+2026-09-29T00:24:15Z | resume-after-restart: read PROGRESS.md, no TASK_COMPLETE, no .active_run; found #25 sweep stalled (cell1 done+eval, cell2 KeyError exit1, cells3-24 never launched: stale unguarded harness in pass1 + concurrent-driver lock errors); heartbeat touched; triaging
+2026-09-29T00:42:01Z | #25 sweep RESUMED detached: driver pid 2566340 (scripts/run_sweep_medium.sh --from 3), cell sweep_003_issue28fix registered in .active_run pid 2566376; cells 1 (done+eval) and 2 (exit 1, KeyError, documented) skipped; 22 cells x ~55 min ahead; benchmark-watchdog owns handoff; commits fa69730a/55ad99dd/57b9cb5d/20ca7e39 pushed
+2026-09-29T00:55:31Z #29 fixture analysis posted (Galaxy IUC 40x20kb fixture, CI green on 1.1.0, MINIMUM_FINAL_BIN_SIZE caveat) + #28 sweep-status/root-cause reply posted; fixture copied to /vol/data/datasets/galaxy_comebin_fixture/
+---
+2026-09-29T00:55:31Z issue-triage: comments posted on #28 and #29
+--- sweep ---
+[2026-09-29T00:31:57Z] ABORT: sweep driver pid=2561301 already running; singleton guard, not starting a second ()
+[2026-09-29T00:41:12Z] START sweep_003_issue28fix src=COMEBin-v11 @ 41606c8 threads=8 seed=42 temp=ref emb=ref emb_cov=ref batch=ref max_edges=ref lw=ref heval=ref n_views=6
+epoch=58/200
+> build · mimo-v2.6-flash-free
+[0m$ [0mL=/vol/data/repos/metagenomic-binning-benchmark/status/agent-activity.log; python3 - "$L" <<'PY'
+import sys,io
+p=sys.argv[1]
+lines=open(p,encoding='utf-8').read().splitlines()
+last=lines[-1]
+if '|' not in last[:30]:
+    ts,rest=last.split(' ',1)
+    lines[-1]=f"{ts} | {rest}"
+    open(p,'w',encoding='utf-8').write("\n".join(lines)+"\n")
+    print("normalised:", lines[-1][:120])
+else:
+    print("already ok")
+PY
+tail -1 $L
+normalised: 2026-09-29T00:55:31Z | #29 fixture analysis posted (Galaxy IUC 40x20kb fixture, CI green on 1.1.0, MINIMUM_FINAL_BIN_SIZ
+2026-09-29T00:55:31Z | #29 fixture analysis posted (Galaxy IUC 40x20kb fixture, CI green on 1.1.0, MINIMUM_FINAL_BIN_SIZE caveat) + #28 sweep-status/root-cause reply posted; fixture copied to /vol/data/datasets/galaxy_comebin_fixture/
+> build · mimo-v2.6-flash-free
+[0m$ [0mR=/vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md; wc -l $R; grep -n "^## " $R | tail -12; echo "=== last 60 lines ==="; tail -60 $R; echo "=== md5s ==="; md5sum $R /vol/data/benchmark/PROGRESS.md
+701 /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md
+32:## Standing authorizations (user-confirmed 2026-09-23 — do NOT re-ask)
+49:## Run logging — where everything is (per run: `runs/<run>/`)
+78:## Run logging — how to read phases
+83:## Resource policy (user: max resources for the benchmark, keep some for the agent, don't break anything)
+95:## Issues workflow (user-facing)
+106:## Decisions (confirmed by user)
+117:## Directory layout (authoritative)
+134:## Environment facts
+146:## COMEBin demo dataset
+155:## Known COMEBin bugs / perf issues (candidates for fix batches)
+192:## Current state
+679:## Watchdog / restart
+=== last 60 lines ===
+  `grep -q` support checks so older sources run unchanged. Re-synced to repo.
+- `scripts/run_sweep_medium.sh` (NEW): 24-cell medium grid driver, detached +
+  resumable. Per-cell seed column (cell 24 = seed 7; rest 42), wait-active_clear
+  gate (never overlaps a registered run, polls up to WAIT_MAX_S=4 h), RESUME
+  branch evals orphaned rc=0 runs with no results CSV, SKIPs non-zero-exit runs
+  for manual triage, never overwrites existing run dirs, evals each cell via
+  `run_eval.sh` (CheckM2 + CheckM + results CSV + per-bin plots), syncs per-bin
+  artifacts into the repo run dir. docs/13 cell 23 replaced `sweep_023_noearly`
+  (early-stop is hardcoded, not a CLI flag) with `sweep_023_embcov512_batch512`.
+- **Launch state:** cell 1 `sweep_001_ref` (v11-sweep@95f5ea8, seed 42, 8
+  threads, 3000 contigs) RUNNING since 13:09Z — `.active_run` pid 2185694,
+  `main.py train ... --device cpu --num_threads 8 --seed 42` verified. Driver
+  relaunched at 13:11Z is polling wait-active_clear; when cell 1 exits it
+  EVALs the orphaned run then proceeds cells 2–24 serially. Sweep log =
+  `/vol/data/benchmark/status/sweep_medium.log`. Test artifact `runs/fix_v11`
+  (created by an `env -i` harness smoke test) was removed — not a real run
+  (`fix_v11_20260924` untouched).
+
+### 2026-09-28 Owner feedback round (13:07–13:12Z): #24 + #19 actioned
+
+- **#24**: owner "cool, remove the a,b,c keep the heading though" → removed the
+  `a.`–`f.` letter prefixes from the six README section headings, kept the
+  heading text (`## Agent tag`, `## What this project is`, `## Progress`,
+  `## Benchmark plots`, `## All runs`, `## Important links`). No scripts
+  reference the lettered headings or their anchors; heartbeat commit `e5e77831`
+  carried the README change. Delivery comment posted.
+- **#19**: owner "make the plot a bit nicer and readable, the text on the y
+  axis is too long" → `make_combined_bar_plot.py` now builds compact two-line
+  y ticks via `short_label()` (alias table for the old verbose names, strips
+  `_v11` + `_YYYYMMDD` suffixes; commit short-hash on line 2 instead of the
+  `name · commit · branch` triple), widens the figure (7.4×ncol) and reserves a
+  computed left margin (longest label → `left_margin`, capped 0.30) so labels
+  are never clipped. Regenerated PNG + SVG + `results/main_runs_table.md`;
+  bin copy synced so the next eval auto-regeneration uses it. Delivery comment
+  posted.
+
+## Watchdog / restart
+
+`scripts/agent-watchdog.sh` (installed at `/vol/data/benchmark/bin/`, cron `*/5 * * * *`):
+stale heartbeat (>15 min) → `opencode run` continues session
+`ses_f31799c77ffeTq9gcYgqc4hBhg`; if that failed → fresh session with resume prompt.
+Both prompts first check GitHub issues for user instructions. On quota/token/context
+errors it forces `--model` rotation through the free model list; a successful run
+clears the flag (back to default). Rate limit 6 restarts / 6 h; stops when
+`TASK_COMPLETE` exists. **Agent: touch `/vol/data/benchmark/.heartbeat` regularly.**
+
+### 2026-09-26 Agent Resume
+
+- Verified all benchmark runs complete: cami3_rerun (492 bins), fix_v11 (71 bins), marine (152 bins), human (107 bins), medium (16 bins)
+- No active `.active_run`; no `TASK_COMPLETE` file
+- All open issues #26-#1 triaged without duplication (last comment 2026-09-26T14:25:00Z)
+- Issues #26 (logging), #25 (optimization), #6 (optimization), #1 (inbox) all previously addressed
+- `.heartbeat` touched routinely; status infrastructure intact
+
+### 2026-09-26 Agent Resume (second)
+
+- Verified all runs complete (cami3_rerun 492 bins, fix_v11 71, marine 152, human 107, medium 16), no active .active_run
+- All open issues #26-#1 triaged without duplication; PROGRESS.md and .activity synced
+- .heartbeat touched; agent-activity.log updated
+- Resuming from agent restart with no unfinished benchmark steps=== md5s ===
+58a1c5c0d0fa045e91ef07d6d38ea05d  /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md
+58a1c5c0d0fa045e91ef07d6d38ea05d  /vol/data/benchmark/PROGRESS.md
+> build · mimo-v2.6-flash-free
+[0m→ [0mRead /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md [90m[offset=192, limit=70][0m
+> build · mimo-v2.6-flash-free
