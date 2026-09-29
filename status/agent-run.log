@@ -107060,3 +107060,401 @@ Committed `e42e1d72`. Now push under the lock:
 e42e1d72 issue #25: AMBER marine evaluation vs official CAMI II gold standard + sweep docs
 To https://github.com/paulzierep/metagenomic-binning-benchmark
    43b04aa9..e42e1d72  main -> main
+> build · big-pickle
+Pushed. Now posting the AMBER deliverable on #25 (my owned issue, last comment was my launch-status at 13:11Z):
+[0m$ [0mcd /vol/data/benchmark
+echo "=== #25 body (owner requirements) ==="
+gh issue view 25 -R paulzierep/metagenomic-binning-benchmark --json body --jq '.body' 2>/dev/null | head -25
+echo "=== my last comment on #25 ==="
+gh issue view 25 -R paulzierep/metagenomic-binning-benchmark --json comments --jq '.comments[-1] | .createdAt + ": " + (.body[0:150])' 2>/dev/null
+=== #25 body (owner requirements) ===
+Run at least 20 runs with different params or commits on the medium dataset and take the best based on bin stats and if similar based on runtime before running on larger data. Only take cami ii and iii human for the larger data from now on - archive the other benchmark data in zenodo and remove to get disc space, make use of the cami infrastructure, use amber for performace of cami II, use the gold standart if available, do not trim the data if full assembly is there, learn to export binning results as biobox format - cami standard, also export each binning result, bins in fasta, biobox output, stats as csv to zenodo
+=== my last comment on #25 ===
+2026-09-28T13:11:51Z: **Sweep is live** (2026-09-28 13:12 UTC) — the 24-cell medium grid is running.
+
+- Driver: [`scripts/run_sweep_medium.sh`](https://github.com/paulziere
+> build · big-pickle
+Owner requirement confirms AMBER is in-scope for #25. Posting a concise progress comment:
+[0m$ [0mcd /vol/data/benchmark
+gh issue comment 25 -R paulzierep/metagenomic-binning-benchmark --body "$(cat <<'EOF'
+**AMBER deliverable — CAMI II marine scored against the official gold standard** (2026-09-29).
+
+As your owner note says *"use amber for performance of cami II, use the gold standard if available"* — done for the existing marine full run, and the tooling is now a one-liner for the human/CAMI III runs after the sweep.
+
+- **Scored**: `marine_v11_20260925` (152 final bins, COMEBin v11 `95f5ea8`).
+- **Gold standard**: official CAMI II marine `binning_gs.tsv` (v0.9.1, 1,475,976 rows, `S0C*`→`Otu*`) shipped with the dataset.
+- **Tool**: [CAMI-challenge/AMBER](https://github.com/CAMI-challenge/AMBER) in a dedicated env (`/vol/data/envs/amber`, py3.11).
+
+bp-weighted results:
+
+| metric | value |
+|---|---|
+| F1 score | **0.330** |
+| precision_avg / weighted | 0.735 / 0.862 |
+| recall_avg / weighted | 0.213 / 0.296 |
+| adjusted Rand index | 0.844 |
+| accuracy_bp | 0.294 |
+| misclassification_bp | 0.138 |
+| fraction of bp assigned | 34.1 % |
+
+Caveat worth knowing: COMEBin keeps the large contigs, so only **2.7 % of sequences** (34 % of bp) are binned at sequence level — that's what the `accuracy_seq 0.019` number reflects. The bp-weighted column is the meaningful one.
+
+Artifacts now in the repo:
+- `docs/14-amber-cami2-marine.md` — full write-up (what/why/command/provenance).
+- `results/amber/marine/` — `amber_results.tsv`, `bin_metrics.tsv`, `amber_report.html` (full interactive report), `heatmap_bar.png`, and the regenerable prediction `comebin_v11_marine.binning`.
+- `scripts/make_amber_prediction.py` — builds the AMBER `@@SEQUENCEID BINID` prediction from any COMEBin run dir, so human/CAMI III evaluations are one command each once the sweep winner is picked.
+
+Sweep status: `sweep_003_issue28fix` (your fix `41606c8`) is training (epoch ~120/200); cells 4–24 then run serially — grid + ranking rules unchanged (docs/13).
+EOF
+)" 2>&1 | tail -2
+echo "posted"
+https://github.com/paulzierep/metagenomic-binning-benchmark/issues/25#issuecomment-5881728669
+posted
+> build · big-pickle
+Posting done. Per owner #25 ("archive the other benchmark data in zenodo and remove to get disc space"), let me scope what's already archived vs what remains, without touching anything the sweep uses:
+[0m$ [0mcd /vol/data/benchmark
+echo "=== zenodo script + versioned files ==="
+sed -n '1,45p' /vol/data/repos/metagenomic-binning-benchmark/scripts/zenodo_update.sh | grep -vE "^\s*#" | head -40
+echo "=== what zenodo versions exist (docs) ==="
+grep -rn "10.5281/zenodo" /vol/data/repos/metagenomic-binning-benchmark/README.md /vol/data/repos/metagenomic-binning-benchmark/docs/*.md 2>/dev/null | head -20
+=== zenodo script + versioned files ===
+set -euo pipefail
+
+REPO=${BENCH_REPO:-}
+if [ -z "$REPO" ] || [ ! -f "$REPO/README.md" ]; then
+  _here=$(cd "$(dirname "$0")" && pwd)
+  for _cand in "$_here/.." /vol/data/repos/metagenomic-binning-benchmark; do
+    if [ -f "$_cand/README.md" ] && [ -d "$_cand/results" ]; then REPO=$(cd "$_cand" && pwd); break; fi
+  done
+fi
+[ -n "$REPO" ] || die "cannot locate repository root (set BENCH_REPO)"
+RUNS_ROOT=${RUNS_ROOT:-/vol/data/benchmark/runs}
+RELEASES=${RELEASES:-/vol/data/benchmark/releases}
+=== what zenodo versions exist (docs) ===
+/vol/data/repos/metagenomic-binning-benchmark/README.md:37:  ([concept DOI](https://doi.org/10.5281/zenodo.22935024) · [version DOI](https://doi.org/10.5281/zenodo.22973575)).
+/vol/data/repos/metagenomic-binning-benchmark/README.md:72:| `marine_v11_20260925` | 2026-09-25 | 8h43m | CAMI II marine (41,988 contigs) · <https://doi.org/10.5281/zenodo.5013479> (CAMI II asmbly record) | `comebin-optimizations-v11` @ `95f5ea8` | 0.32 GB contigs.fa / 5.9 GB dir | 152 | 50.60 | 4.10 | 35 / 60 | 66.2 | best-quality dataset so far (CAMI II marine) |
+/vol/data/repos/metagenomic-binning-benchmark/README.md:78:| `small_test_v3` | 2026-09-24 | 1m22s | comebin_small (300 contigs) · derived - Zenodo [10.5281/zenodo.22935025](https://doi.org/10.5281/zenodo.22935025) | `comebin-small-fix` @ `a0be243` | 0.003 GB - 3.5 MB contigs.fa / 0.1 GB dir | - | - | - | - / - | - | small gate after small-fix commits |
+/vol/data/repos/metagenomic-binning-benchmark/README.md:79:| `small_test_v4` | 2026-09-24 | 2m02s | comebin_small (300 contigs) · derived - Zenodo [10.5281/zenodo.22935025](https://doi.org/10.5281/zenodo.22935025) | `comebin-small-fix` @ `c8f22e4` | 0.003 GB - 3.5 MB contigs.fa / 0.1 GB dir | 3 | 26.07 | 2.02 | 0 / 0 | 41.2 | small gate OK after rebuild |
+/vol/data/repos/metagenomic-binning-benchmark/README.md:81:| `small_test` | 2026-09-23 | 41s | comebin_small (300 contigs) · derived - Zenodo [10.5281/zenodo.22935025](https://doi.org/10.5281/zenodo.22935025) | `master` @ `ee2e507` | 0.003 GB - 3.5 MB contigs.fa / 0.1 GB dir | - | - | - | - / - | - | early small run - failed pre-fix |
+/vol/data/repos/metagenomic-binning-benchmark/README.md:82:| `small_test_v2` | 2026-09-23 | 43s | comebin_small (300 contigs) · derived - Zenodo [10.5281/zenodo.22935025](https://doi.org/10.5281/zenodo.22935025) | `master` @ `904f649` | 0.003 GB - 3.5 MB contigs.fa / 0.1 GB dir | - | - | - | - / - | - | early small run - failed pre-fix |
+/vol/data/repos/metagenomic-binning-benchmark/README.md:92:- **Zenodo archive:** [concept DOI 10.5281/zenodo.22935024](https://doi.org/10.5281/zenodo.22935024)
+/vol/data/repos/metagenomic-binning-benchmark/README.md:93:  · [version 3 DOI 10.5281/zenodo.22973575](https://doi.org/10.5281/zenodo.22973575)
+/vol/data/repos/metagenomic-binning-benchmark/README.md:94:  · small dataset [10.5281/zenodo.22935025](https://doi.org/10.5281/zenodo.22935025)
+/vol/data/repos/metagenomic-binning-benchmark/docs/01-datasets.md:46:The owner-approved small release is published as **[10.5281/zenodo.22935025](https://doi.org/10.5281/zenodo.22935025)**
+/vol/data/repos/metagenomic-binning-benchmark/docs/01-datasets.md:106:| Assemblies record | https://doi.org/10.5281/zenodo.5013479 |
+/vol/data/repos/metagenomic-binning-benchmark/docs/10-data-preservation.md:119:   10.5281/zenodo.22935024: reuse an open draft or `POST .../actions/newversion`,
+/vol/data/repos/metagenomic-binning-benchmark/docs/10-data-preservation.md:123:   the per-version DOI of v1 (10.5281/zenodo.22935025) stays valid.
+/vol/data/repos/metagenomic-binning-benchmark/docs/10-data-preservation.md:140:- **Production Zenodo record:** [10.5281/zenodo.22935025](https://doi.org/10.5281/zenodo.22935025),
+/vol/data/repos/metagenomic-binning-benchmark/docs/10-data-preservation.md:164:  [10.5281/zenodo.22969763](https://doi.org/10.5281/zenodo.22969763), same
+/vol/data/repos/metagenomic-binning-benchmark/docs/10-data-preservation.md:165:  concept 10.5281/zenodo.22935024 — the first automatic update from
+/vol/data/repos/metagenomic-binning-benchmark/docs/11-run-results.md:63:The verified small release is published as **[10.5281/zenodo.22935025](https://doi.org/10.5281/zenodo.22935025)** (version 1, **MIT** since 2026-09-24). It contains the 95,216,539-byte release archive (SHA-256 `0c698d208639f4fadd4ac4477a67074320c975528b23dd61743c83ad1658b6d2`) and the 3,650-byte public manifest (SHA-256 `84131ae359d07a78db7ae7ca2005758f4f0ec9df67a33ec62f8af50ac1702f1b`). The archive was extracted and all 18 manifest entries were checked; the public record was independently verified through an unauthenticated Zenodo API request (HTTP 200), and the DOI resolves HTTP 200. The release checklist, provenance requirements, and future-version workflow are in `docs/10-data-preservation.md`. The watchdogs do not upload data automatically; the token is kept only in the mode-0600 local secret file. On 2026-09-24 the record metadata was **edited in place to the MIT license with an expanded description** (what the benchmark is used for, how to run, project links) — no new version was created; the record stays at 1.0.
+> build · big-pickle
+Zenodo v2/v3 already hold marine+cami3 bins. Per owner #25, "archive the other benchmark data ... and remove to get disc space" is still open. Before touching anything, let me check the sibling's recent activity and what's already released, to avoid stepping on their work:
+[0m$ [0mcd /vol/data/benchmark
+echo "=== recent agent-activity.log (last 12) ==="
+tail -12 /vol/data/repos/metagenomic-binning-benchmark/status/agent-activity.log
+echo "=== releases dir ==="
+ls -la releases/ 2>/dev/null | head -15
+ls releases/marine* releases/cami3* releases/medium* 2>/dev/null | head -10
+echo "=== heap disk: datasets sizes ==="
+du -sh /vol/data/datasets/* 2>/dev/null | sort -rh | head -10
+echo "=== tmp pack for release? ==="
+ls /vol/data/benchmark/*.tar* /vol/data/benchmark/*.zip 2>/dev/null | head
+=== recent agent-activity.log (last 12) ===
+[2026-09-28T13:03:24Z] note: .active_run holds sibling small_v11_prepatch_baseline (no process/dir) — sibling-owned; sweep remains plan-only
+[2026-09-28T13:11:23Z] #25: sweep launched — driver scripts/run_sweep_medium.sh (24-cell medium grid, THREADS=8, seed42/cell24=seed7, pins v11-sweep@95f5ea8 / master@904f649 / v11@41606c8); cell1 sweep_001_ref running (exit 0 RC hook verified; .active_run pid 2185694); driver in wait-active_clear poll loop
+[2026-09-28T13:11:55Z] #25: posted launch-status comment 5870551517; committed+pushed 2dc7a43d (sweep driver + harness N_VIEWS/set-u fix + docs13 cell23); cell1 training epoch~5/200 top1 0.9863
+[2026-09-28T13:15:02Z] #24 owner: removed a./b./c. letter prefixes from README headings (kept headings) — heartbeat e5e77831 committed them; #19 owner: y-axis too long → short_label() two-line ticks (run + commit), left margin, wider fig; plot+SVG regenerated, bin copy synced
+[2026-09-28T13:15:35Z] pushed aa1bd565 (#19 plot + PROGRESS + activity); delivery comments #24=5870610259 #19=5870610799; README headings confirmed in remote tree
+2026-09-29T00:24:15Z | resume-after-restart: read PROGRESS.md, no TASK_COMPLETE, no .active_run; found #25 sweep stalled (cell1 done+eval, cell2 KeyError exit1, cells3-24 never launched: stale unguarded harness in pass1 + concurrent-driver lock errors); heartbeat touched; triaging
+2026-09-29T00:42:01Z | #25 sweep RESUMED detached: driver pid 2566340 (scripts/run_sweep_medium.sh --from 3), cell sweep_003_issue28fix registered in .active_run pid 2566376; cells 1 (done+eval) and 2 (exit 1, KeyError, documented) skipped; 22 cells x ~55 min ahead; benchmark-watchdog owns handoff; commits fa69730a/55ad99dd/57b9cb5d/20ca7e39 pushed
+2026-09-29T00:55:31Z | #29 fixture analysis posted (Galaxy IUC 40x20kb fixture, CI green on 1.1.0, MINIMUM_FINAL_BIN_SIZE caveat) + #28 sweep-status/root-cause reply posted; fixture copied to /vol/data/datasets/galaxy_comebin_fixture/
+2026-09-29T01:02:00Z | rank script bug fixed (stray syntax error would have broken the post-sweep ranking) + scripts/run_galaxy_fixture_test.sh added for the issue #29 end-to-end run; both pushed
+2026-09-29T01:02:43Z | PROGRESS.md updated (rank-script fix + fixture runner) and synced to /vol/data/benchmark
+[2026-09-29T01:08:17Z] #25 AMBER follow-on: marine run in AMBER-ready format — prediction built (@@SEQUENCEID BINID, 152 bins, 40210 contigs) from comebin_res_bins; GS found in exact AMBER format (full binning_gs.tsv, 1.48M rows); amber env installing
+[2026-09-29T01:12:11Z] #25 AMBER follow-on: marine run scored vs official CAMI II gold standard — F1_bp 0.330, prec_avg 0.735, recall_avg 0.213, ARI 0.844, assigned 34.1% bp; env /vol/data/envs/amber; docs/14 + results/amber/marine + scripts/make_amber_prediction.py; PROGRESS synced
+=== releases dir ===
+total 1185256
+drwxrwxr-x  3 ubuntu ubuntu      4096 Sep 28 14:14 .
+drwxrwxr-x 13 ubuntu ubuntu      4096 Sep 29 01:08 ..
+-rw-rw-r--  1 ubuntu ubuntu 168110629 Sep 26 01:38 comebin_benchmark_release_v2_20260926.tar.gz
+-rw-rw-r--  1 ubuntu ubuntu 520343638 Sep 26 07:43 comebin_benchmark_release_v3_20260926.tar.gz
+-rw-rw-r--  1 ubuntu ubuntu 524489950 Sep 28 14:08 comebin_benchmark_release_v4_20260928.tar.gz
+drwxrwxr-x  4 ubuntu ubuntu      4096 Sep 24 09:27 comebin_small_20260924
+-rw-rw-r--  1 ubuntu ubuntu    100579 Sep 26 01:11 manifest.20260926T011057Z.json
+-rw-rw-r--  1 ubuntu ubuntu    101492 Sep 26 01:36 manifest.20260926T013645Z.json
+-rw-rw-r--  1 ubuntu ubuntu    101492 Sep 26 02:11 manifest.20260926T021113Z.json
+-rw-rw-r--  1 ubuntu ubuntu    203694 Sep 26 07:38 manifest.20260926T073806Z.json
+-rw-rw-r--  1 ubuntu ubuntu    209716 Sep 28 14:02 manifest.20260928T140247Z.json
+=== heap disk: datasets sizes ===
+64G	/vol/data/datasets/cami_II
+25G	/vol/data/datasets/cami_II_human
+16G	/vol/data/datasets/cami_III
+6.4G	/vol/data/datasets/comebin_test_data
+5.2G	/vol/data/datasets/comebin_test_data.zip
+424M	/vol/data/datasets/comebin_medium
+100M	/vol/data/datasets/comebin_small
+47M	/vol/data/datasets/comebin_tiny_101
+45M	/vol/data/datasets/comebin_tiny
+1004K	/vol/data/datasets/galaxy_comebin_fixture
+=== tmp pack for release? ===
+/vol/data/benchmark/checkm_data_2015_01_16.tar.gz
+> build · big-pickle
+Release v4 (524 MB, built 14:08 Sep 28) exists — likely pending Zenodo upload. Let me check its contents and what docs say about archive status:
+[0m$ [0mcd /vol/data/benchmark
+echo "=== v4 contents (top-level + manifest run keys) ==="
+tar -tzf releases/comebin_benchmark_release_v4_20260928.tar.gz 2>/dev/null | head -20
+echo "--- count ---"
+tar -tzf releases/comebin_benchmark_release_v4_20260928.tar.gz 2>/dev/null | wc -l
+echo "=== manifest v4 ==="
+python3 - <<'EOF'
+import json
+m = json.load(open("releases/manifest.20260928T140247Z.json"))
+print("runs:", {k: (v.get("n_files"), v.get("size_bytes")) for k, v in m.get("runs", {}).items()})
+print("datasets:", list(m.get("datasets", {}).keys()))
+print("total files:", m.get("total_files"), "size:", m.get("total_bytes"))
+EOF
+echo "=== docs/10: which version was uploaded ==="
+grep -n "v3\|v2\|uploaded\|published\|22973575\|22969763" /vol/data/repos/metagenomic-binning-benchmark/docs/10-data-preservation.md | head -20
+=== v4 contents (top-level + manifest run keys) ===
+./
+./PROGRESS.md
+./README.md
+./docs/
+./docs/00-setup.md
+./docs/01-datasets.md
+./docs/02-comebin-baseline.md
+./docs/03-fixes.md
+./docs/04-evaluation.md
+./docs/05-agent-restart.md
+./docs/06-benchmark-commands.md
+./docs/07-fix-batches.md
+./docs/08-dataset-space-plan.md
+./docs/09-optimization-strategy.md
+./docs/10-data-preservation.md
+./docs/11-run-results.md
+./docs/12-comebin-master-divergence.md
+./docs/13-optimization-sweep-medium.md
+./manifest.json
+./results/
+--- count ---
+1147
+=== manifest v4 ===
+runs: {}
+datasets: []
+total files: None size: 1734154101
+=== docs/10: which version was uploaded ===
+26:for a release. CheckM databases and environment trees are not uploaded as part
+85:uploaded filenames, and final checksums in:
+124:5. **Verify + record**: published file size and MD5 must match the local
+144:  edited in place and re-published **without creating a new version** (still
+147:  description live) and both uploaded file sizes and MD5 checksums match the
+163:- **Version 2.0 published 2026-09-26** (record
+164:  [10.5281/zenodo.22969763](https://doi.org/10.5281/zenodo.22969763), same
+166:  `run_eval.sh`): `comebin_benchmark_release_v2_20260926.tar.gz`
+172:  concept DOI already resolves to v2. Receipt:
+173:  `/vol/data/benchmark/meta/zenodo_benchmark_release_v2.json`.
+> build · big-pickle
+v4's manifest shows empty runs/datasets (docs-only?) — let me look closer at what v4 actually contains vs v2/v3, and whether a v4 upload happened:
+[0m$ [0mcd /vol/data/benchmark
+echo "=== v3 vs v4 run/data manifest keys ==="
+for m in releases/manifest.20260926T073806Z.json releases/manifest.20260928T140247Z.json; do
+  echo "--- $m ---"
+  python3 -c "
+import json
+m = json.load(open('$m'))
+print('runs:', list(m.get('runs', {}).keys())[:12])
+print('runs count:', len(m.get('runs', {})))
+print('datasets:', list(m.get('datasets', {}).keys()))
+print('top keys:', list(m.keys()))
+"
+done
+echo "=== v4 tar: results/ + runs/ dirs? ==="
+tar -tzf releases/comebin_benchmark_release_v4_20260928.tar.gz 2>/dev/null | grep -E "^\./(runs|results|status)/" | head -12
+echo "--- results count in v4 ---"
+tar -tzf releases/comebin_benchmark_release_v4_20260928.tar.gz 2>/dev/null | grep -cE "^\./results/"
+echo "=== zenodo receipts? ==="
+ls -la /vol/data/benchmark/meta/zenodo* 2>/dev/null
+echo "=== does v4 differ from v3? sizes ==="
+ls -la releases/*.tar.gz
+=== v3 vs v4 run/data manifest keys ===
+--- releases/manifest.20260926T073806Z.json ---
+runs: []
+runs count: 0
+datasets: []
+top keys: ['dataset_name', 'file_count', 'files', 'generated_at_utc', 'metadata', 'schema_version', 'total_bytes']
+--- releases/manifest.20260928T140247Z.json ---
+runs: []
+runs count: 0
+datasets: []
+top keys: ['dataset_name', 'file_count', 'files', 'generated_at_utc', 'metadata', 'schema_version', 'total_bytes']
+=== v4 tar: results/ + runs/ dirs? ===
+./results/
+./results/README.md
+./results/all_runs_table.md
+./results/baseline_rerun_autorestart1.csv
+./results/cami3_v11_20260926_rerun.csv
+./results/figures/
+./results/figures/combined_bar_plot.png
+./results/figures/combined_bar_plot.svg
+./results/figures/comp_vs_cont_all-runs.png
+./results/figures/comp_vs_cont_by_dataset.png
+./results/fix_v11_20260924.csv
+./results/human_v11_20260925.csv
+--- results count in v4 ---
+18
+=== zenodo receipts? ===
+-rw-rw-r-- 1 ubuntu ubuntu 1613 Sep 26 02:54 /vol/data/benchmark/meta/zenodo_benchmark_release_v2.json
+-rw-rw-r-- 1 ubuntu ubuntu 1990 Sep 26 08:14 /vol/data/benchmark/meta/zenodo_benchmark_release_v3.json
+-rw-rw-r-- 1 ubuntu ubuntu  822 Sep 28 14:14 /vol/data/benchmark/meta/zenodo_benchmark_release_v4.json
+-rw-r--r-- 1 ubuntu ubuntu 2040 Sep 24 11:04 /vol/data/benchmark/meta/zenodo_comebin_small.json
+-rw-rw-r-- 1 ubuntu ubuntu   65 Sep 28 14:14 /vol/data/benchmark/meta/zenodo_last_content.sha256
+=== does v4 differ from v3? sizes ===
+-rw-rw-r-- 1 ubuntu ubuntu 168110629 Sep 26 01:38 releases/comebin_benchmark_release_v2_20260926.tar.gz
+-rw-rw-r-- 1 ubuntu ubuntu 520343638 Sep 26 07:43 releases/comebin_benchmark_release_v3_20260926.tar.gz
+-rw-rw-r-- 1 ubuntu ubuntu 524489950 Sep 28 14:08 releases/comebin_benchmark_release_v4_20260928.tar.gz
+> build · big-pickle
+v4 has a receipt from 14:14 Sep 28. Let me check whether v4 was already uploaded:
+[0m$ [0mcd /vol/data/benchmark
+echo "=== v4 receipt ==="
+cat meta/zenodo_benchmark_release_v4.json
+echo "=== v3 receipt for comparison ==="
+cat meta/zenodo_benchmark_release_v3.json
+=== v4 receipt ===
+{
+  "bytes": "524489950",
+  "concept_doi": "10.5281/zenodo.22935024",
+  "content_sha256": "90e37f380066496d2fa130ffb9df6d5d06e59d3a6107640dc29c73f857b005ca",
+  "doi": "10.5281/zenodo.23017738",
+  "doi_resolver_http": "404",
+  "filename": "comebin_benchmark_release_v4_20260928.tar.gz",
+  "md5": "1e314e2b13b41a4970ada84d730d0bc5",
+  "published_at_utc": "2026-09-28T14:14:04.526845+00:00",
+  "receipt_path": "/vol/data/benchmark/meta/zenodo_benchmark_release_v4.json",
+  "record_id": "23017738",
+  "runs": "baseline_rerun_autorestart1 (60 bins),cami3_v11_20260926_rerun (492 bins),fix_v11_20260924 (71 bins),human_v11_20260925 (107 bins),marine_v11_20260925 (152 bins),medium_v11_20260924 (16 bins),small_test_v4 (3 bins),sweep_001_ref (17 bins),tiny_test_n101 (1 bins)",
+  "state": "published_verified",
+  "version": "4"
+}=== v3 receipt for comparison ===
+{
+  "bytes": 520343638,
+  "concept_doi": "10.5281/zenodo.22935024",
+  "concept_doi_resolver_http": 200,
+  "concept_doi_resolver_target": "https://zenodo.org/records/22973575 (already resolves to v3)",
+  "content_sha256": "eea303263357a63f3d51cee8576e1a09565244458ed5ae7a81aaa269e08823e2",
+  "doi": "10.5281/zenodo.22973575",
+  "doi_resolver_http": 404,
+  "file_verified": "public size+md5 match local tarball (API record state=done, 2026-09-26T07:47Z)",
+  "filename": "comebin_benchmark_release_v3_20260926.tar.gz",
+  "license": "MIT",
+  "md5": "b8b1b6471288b2bad43cdcd8627e3c27",
+  "published_at_utc": "2026-09-26T07:45:00+00:00",
+  "receipt_path": "/vol/data/benchmark/meta/zenodo_benchmark_release_v3.json",
+  "record_id": 22973575,
+  "recovery_note": "Auto-chain crashed post-publish (zenodo_update.sh assumed Zenodo API files dict; record returned list -> AttributeError 'list' object has no attribute 'get'), so receipt+marker were written by the agent; publish itself succeeded and was verified via API.",
+  "runs": "baseline_rerun_autorestart1 (60 bins),cami3_v11_20260926_rerun (492 bins),fix_v11_20260924 (71 bins),human_v11_20260925 (107 bins),marine_v11_20260925 (152 bins),medium_v11_20260924 (16 bins),small_test_v4 (3 bins),tiny_test_n101 (1 bins)",
+  "state": "published_verified",
+  "title": "COMEBin metagenomic binning benchmark \u2014 datasets and run results",
+  "upload_path": "run_eval.sh auto-reporting chain -> scripts/zenodo_update.sh (first continuous update)",
+  "version": "3.0",
+  "version_doi_note": "Known DataCite propagation lag: at 2026-09-26T07:47Z (2 min post-publish) doi.org/10.5281/zenodo.22973575 returned 404 while the concept DOI already resolved to the new record; v2 showed the same pattern (findable ~68 min after publish). Recheck recorded below. Rechecked 2026-09-26T08:14:28Z: doi.org/10.5281/zenodo.22973575 HTTP 200 - DataCite propagation complete.",
+  "version_doi_recheck_http": 200,
+  "version_doi_recheck_utc": "2026-09-26T08:14:28Z"
+}
+> build · big-pickle
+v4 (record `23017738`) was already published 28 Sep 14:14Z by the auto-chain — Zenodo archival of all existing runs incl. `sweep_001_ref` is complete; deletion waits post-sweep (needs human/cami3 for follow-ons, disk has headroom). My AMBER artifacts will fold into a v5 at sweep end. Let me verify final git state and check for any new owner comments since 01:10Z:
+[0m$ [0mcd /vol/data/benchmark
+echo "=== issues updated in last 10 min ==="
+gh issue list -R paulzierep/metagenomic-binning-benchmark --state open --json number,title,updatedAt --jq '.[] | select(.updatedAt > "2026-09-29T01:10:00Z") | "#\(.number) [\(.updatedAt)] \(.title)"'
+echo "(none above = no new owner activity)"
+echo "=== git clean check ==="
+git -C /vol/data/repos/metagenomic-binning-benchmark status --porcelain | grep -vE "status/agent-activity|status/agent-run|status/status|status/current|status/watchdog|status/supervisor|status/meta|runs/|README.md" | head
+echo "=== sweep still alive ==="
+pgrep -af "run_sweep_medium.sh" | grep -v pgrep | head -1 | cut -c1-80
+pgrep -af "main.py train" | grep -v pgrep | head -1 | cut -c1-100
+echo "=== .active_run pid alive? ==="
+ps -p 2566376 -o pid,etime,comm 2>/dev/null | tail -1
+touch .heartbeat
+=== issues updated in last 10 min ===
+#29 [2026-09-29T01:10:33Z] Small test data
+#28 [2026-09-29T01:10:32Z] Fix this issue
+#25 [2026-09-29T01:12:28Z] Improve optimization
+(none above = no new owner activity)
+=== git clean check ===
+=== sweep still alive ===
+2566340 bash /vol/data/repos/metagenomic-binning-benchmark/scripts/run_sweep_med
+2567198 python /vol/data/repos/COMEBin-v11/COMEBin/main.py train --data /vol/data/benchmark/runs/swe
+=== .active_run pid alive? ===
+2566376       32:02 bash
+> build · big-pickle
+All state verified and clean. Turn summary:
+
+## What I did this turn
+
+**State verification**
+- Sweep is **live and healthy**: driver `run_sweep_medium.sh` (pid 2566340) resumed by the sibling session at 00:41Z is running cell 3 (`sweep_003_issue28fix` = the #28 fix `41606c8`, epoch ~122/200, pid 2566376 in `.active_run`). Cell 1 done+eval'd (17 bins, CheckM2 34.22/4.11), cell 2 documented failure (stock master KeyError). Cells 4–24 queued serially.
+- Issues: no new *owner* comments. The 01:10Z #28/#29 updates are the **sibling's** posts (harness `ALLOW_ZERO_BINS=1` fix `99b8980d` + Galaxy fixture runner `run_galaxy_fixture_test.sh`) — nothing to duplicate. #25's 01:12Z update is my own comment.
+
+**#25 AMBER deliverable (my owned issue)** — first official CAMI-standard evaluation:
+- Scored `marine_v11_20260925` (152 bins) against the official **CAMI II marine gold standard** (`binning_gs.tsv`, 1.48 M rows) using [AMBER](https://github.com/CAMI-challenge/AMBER) in a dedicated env `/vol/data/envs/amber` (kept separate from the in-use `comebin` env).
+- **Results (bp-weighted)**: F1 **0.330**, precision_avg 0.735 / weighted 0.862, recall_avg 0.213 / weighted 0.296, ARI 0.844, accuracy 0.294, misclassification 0.138, 34.1 % of bp assigned. Sequence-level caveat documented (2.7 % seq assigned — COMEBin keeps large contigs).
+- Committed `e42e1d72` + pushed: `docs/14-amber-cami2-marine.md`, `results/amber/marine/` (results.tsv, bin_metrics.tsv, interactive report, heatmap, regenerable `comebin_v11_marine.binning`), `scripts/make_amber_prediction.py` (one-liner for human/CAMI III post-sweep), docs/13 status→LIVE, PROGRESS.md synced.
+- Posted results summary on #25 (`5881728669`).
+
+**Zenodo check**: v4 (`10.5281/zenodo.23017738`) already published 28 Sep with all runs incl. `sweep_001_ref`; my AMBER artifacts + final sweep rankings will fold into a v5. Dataset deletion deferred — human/CAMI III are still needed for the winner follow-ons and disk has headroom.
+
+Logs kept per protocol: `.heartbeat` touched, `.activity` + `status/agent-activity.log` appended, PROGRESS.md in sync (verified diff-clean).
+
+**Next**: let the sweep run (~20 h); when all 24 CSVs land → `rank_sweep_medium.py` → all-runs/README/docs update → winner advances to CAMI II/III human with AMBER + biobox export → v5 Zenodo.
+[0m
+> build · big-pickle
+[0m$ [0mcd /vol/data/benchmark
+echo "=== time / TASK_COMPLETE check ==="
+date -u +%FT%TZ
+ls TASK_COMPLETE 2>/dev/null && echo "TASK_COMPLETE PRESENT - EXIT" || echo "no TASK_COMPLETE"
+echo "=== .active_run ==="
+cat .active_run 2>/dev/null || echo CLEAR
+echo "=== sweep driver / train ==="
+pgrep -af "run_sweep_medium.sh" | grep -v pgrep | head -1 || echo "no driver"
+pgrep -af "main.py train" | grep -v pgrep | head -1 | cut -c1-110 || echo "no train"
+echo "=== sweep log tail ==="
+tail -5 status/sweep_medium.log
+echo "=== results csv count ==="
+ls /vol/data/repos/metagenomic-binning-benchmark/results/sweep_*.csv 2>/dev/null | wc -l
+ls /vol/data/repos/metagenomic-binning-benchmark/results/sweep_*.csv 2>/dev/null | xargs -n1 basename 2>/dev/null | tr '\n' ' '; echo
+echo "=== issues both repos ==="
+gh issue list -R paulzierep/metagenomic-binning-benchmark --state open --json number,title,updatedAt --jq '.[] | "#\(.number) [\(.updatedAt)] \(.title)"'
+echo "--- COMEBin ---"
+gh issue list -R paulzierep/COMEBin --state open --json number,title,updatedAt --jq '.[] | "#\(.number) [\(.updatedAt)] \(.title)"' 2>/dev/null
+touch .heartbeat
+=== time / TASK_COMPLETE check ===
+2026-09-29T01:13:54Z
+no TASK_COMPLETE
+=== .active_run ===
+2566376 2566340 /vol/data/benchmark/runs/sweep_003_issue28fix/comebin_run.log /vol/data/benchmark/runs/sweep_003_issue28fix 1790642472 medium /vol/data/benchmark/../repos/COMEBin-v11 /vol/data/datasets/comebin_medium/contigs.fa /vol/data/datasets/comebin_medium/bamfiles
+=== sweep driver / train ===
+2566340 bash /vol/data/repos/metagenomic-binning-benchmark/scripts/run_sweep_medium.sh --from 3
+2567198 python /vol/data/repos/COMEBin-v11/COMEBin/main.py train --data /vol/data/benchmark/runs/sweep_003_iss
+=== sweep log tail ===
+[2026-09-28T14:15:53Z] SWEEP COMPLETE (24 cells processed)
+[2026-09-29T00:26:50Z] ABORT: sweep driver pid=2559226 already running; singleton guard, not starting a second
+[2026-09-29T00:29:55Z] ABORT: sweep driver pid=2560340 already running; singleton guard, not starting a second ()
+[2026-09-29T00:31:57Z] ABORT: sweep driver pid=2561301 already running; singleton guard, not starting a second ()
+[2026-09-29T00:41:12Z] START sweep_003_issue28fix src=COMEBin-v11 @ 41606c8 threads=8 seed=42 temp=ref emb=ref emb_cov=ref batch=ref max_edges=ref lw=ref heval=ref n_views=6
+=== results csv count ===
+1
+sweep_001_ref.csv 
+=== issues both repos ===
+#29 [2026-09-29T01:10:33Z] Small test data
+#28 [2026-09-29T01:10:32Z] Fix this issue
+#27 [2026-09-28T12:52:42Z] Are u ok ?
+#26 [2026-09-28T13:00:08Z] Improve logging
+#25 [2026-09-29T01:12:28Z] Improve optimization
+#23 [2026-09-28T13:02:38Z] Where does the assembly for cami3 come from
+#22 [2026-09-28T13:00:05Z] is there a summary table for all runs
+#21 [2026-09-28T13:02:14Z] use a seed for all runs
+#20 [2026-09-28T13:02:13Z] what are your ideas for further optimization ?
+#6 [2026-09-26T07:56:10Z] Optimization
+#1 [2026-09-23T14:53:13Z] Idea inbox: benchmark ideas, COMEBin fixes, dataset requests
+--- COMEBin ---
+> build · big-pickle
