@@ -105,7 +105,10 @@ fi
 ANCESTORS=" $$ $PPID"
 _probe=$PPID
 while [ "${_probe:-0}" -gt 1 ] 2>/dev/null; do
-  _probe=$(ps -o ppid= -p "$_probe" 2>/dev/null | tr -d ' ')
+  # `|| true` is not optional here: pipefail + a pid that just exited would
+  # otherwise make this assignment return 1 and set -e would kill the driver
+  # silently (that is what the 00:36Z silent rc=1 was).
+  _probe=$(ps -o ppid= -p "$_probe" 2>/dev/null | tr -d ' ' || true)
   [ -n "${_probe:-}" ] || break
   ANCESTORS="$ANCESTORS $_probe"
 done
@@ -114,7 +117,7 @@ related_to_us() {
   while [ "${p:-0}" -gt 1 ] && [ "$hops" -lt 64 ]; do
     [ "$p" = "$$" ] && return 0
     case " $ANCESTORS " in *" $p "*) return 0 ;; esac
-    p=$(ps -o ppid= -p "$p" 2>/dev/null | tr -d ' ')
+    p=$(ps -o ppid= -p "$p" 2>/dev/null | tr -d ' ' || true)
     [ -n "${p:-}" ] || return 1
     hops=$((hops + 1))
   done
@@ -124,11 +127,16 @@ for _attempt in 1 2; do
   _found=""
   for other in $(pgrep -f 'run_sweep_medium\.sh' 2>/dev/null || true); do
     related_to_us "$other" && continue
+    # Transients die within milliseconds of the scan (the launch chain, our own
+    # pgrep subshell, another agent's poll); a real foreign driver has been up
+    # for seconds. Require >=5 s of age before treating a match as foreign.
+    _age=$(ps -o etimes= -p "$other" 2>/dev/null | tr -d ' ' || true)
+    [ -n "${_age:-}" ] && [ "$_age" -ge 5 ] 2>/dev/null || continue
     _found="$other"
   done
   [ -z "$_found" ] && break
   if [ "$_attempt" = 2 ]; then
-    log "ABORT: sweep driver pid=$_found already running; singleton guard, not starting a second ($(ps -o args= -p "$_found" 2>/dev/null | cut -c1-160))"
+    log "ABORT: sweep driver pid=$_found already running; singleton guard, not starting a second ($(ps -o args= -p "$_found" 2>/dev/null | cut -c1-160 || true))"
     exit 0
   fi
   sleep 2
