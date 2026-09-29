@@ -94,11 +94,30 @@ if ! flock -n 9; then
   echo "another sweep driver holds $SWEEP_LOCK" >&2
   exit 0
 fi
-for other in $(pgrep -f 'run_sweep_medium\.sh' 2>/dev/null || true); do
-  [ "$other" = "$$" ] && continue
-  [ "$other" = "$PPID" ] && continue
-  log "ABORT: sweep driver pid=$other already running; singleton guard, not starting a second"
-  exit 0
+# Process scan for an instance started BEFORE this guard existed. It is
+# advisory and confirmed twice, 2 s apart: the launch chain (nohup/setsid
+# wrappers, tool shell) briefly shares our argv, and a single-shot scan once
+# aborted a perfectly good launch on such a transient. Any pid in our own
+# ancestor chain is ignored; a match that survives the second probe is real.
+ANCESTORS=" $$ $PPID"
+_probe=$PPID
+while [ "${_probe:-0}" -gt 1 ] 2>/dev/null; do
+  _probe=$(ps -o ppid= -p "$_probe" 2>/dev/null | tr -d ' ')
+  [ -n "${_probe:-}" ] || break
+  ANCESTORS="$ANCESTORS $_probe"
+done
+for _attempt in 1 2; do
+  _found=""
+  for other in $(pgrep -f 'run_sweep_medium\.sh' 2>/dev/null || true); do
+    case " $ANCESTORS " in *" $other "*) continue ;; esac
+    _found="$other"
+  done
+  [ -z "$_found" ] && break
+  if [ "$_attempt" = 2 ]; then
+    log "ABORT: sweep driver pid=$_found already running; singleton guard, not starting a second ($(ps -o args= -p "$_found" 2>/dev/null | cut -c1-160))"
+    exit 0
+  fi
+  sleep 2
 done
 
 
