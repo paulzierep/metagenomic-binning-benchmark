@@ -107458,3 +107458,301 @@ sweep_001_ref.csv
 #1 [2026-09-23T14:53:13Z] Idea inbox: benchmark ideas, COMEBin fixes, dataset requests
 --- COMEBin ---
 > build · big-pickle
+State consistent with the last turn: sweep cell 3 training (~122/200), only `sweep_001_ref.csv` so far, no new owner comments (the 01:10–01:12Z updates are mine/sibling's own). Let me verify PROGRESS.md vs disk and sanity-check the post-sweep pipeline (rank script smoke test + human/CAMI III dataset readiness) — all non-overlapping with the run:
+[0m$ [0mcd /vol/data/benchmark
+echo "=== PROGRESS.py sync + current-state tail ==="
+diff -q PROGRESS.md /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md && echo "PROGRESS in sync"
+sed -n '1,12p' PROGRESS.md
+echo "=== rank script smoke test on the 1 cell done ==="
+cd /vol/data/repos/metagenomic-binning-benchmark
+python3 scripts/rank_sweep_medium.py 2>&1 | tail -15
+echo "=== does it write rankings? ==="
+ls -la results/sweep_rankings.md 2>/dev/null && head -20 results/sweep_rankings.md || echo "(no rankings yet)"
+=== PROGRESS.py sync + current-state tail ===
+PROGRESS in sync
+# PROGRESS — metagenomic-binning-benchmark
+
+> **Resume document.** If you (the agent) are reading this after a restart, start here,
+> verify "Current state" against what is actually on disk under `/vol/data`, and
+> continue from the first unfinished step. Update this file after every meaningful step.
+> Live copy: `/vol/data/benchmark/PROGRESS.md` (keep both in sync: edit both, or copy
+> one over the other after each update).
+
+> ⚠️ **Before any git operation on `paulzierep/COMEBin` (branch, commit, push, rebase),
+> read [`docs/12-comebin-master-divergence.md`](docs/12-comebin-master-divergence.md).**
+> `master` tracks the upstream v1.1.0 baseline: never force-push it, never reset it
+> backwards, always `git fetch` before branching. 4 of the 5 older pre-v1.1.0 bug
+=== rank script smoke test on the 1 cell done ===
+| Rank | Cell | Commit | Seed | Params (non-ref) | Wall | Bins | CheckM2 comp | CheckM2 cont | HQ / MQ | F1 | CheckM1 comp / cont |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| 1 | `sweep_001_ref` | `95f5ea8` | 42 | reference (defaults) | 2827 | 17 | 34.22 | 4.11 | 0 / 2 | 50.44 | 32.00 / 5.31 |
+
+wrote /vol/data/repos/metagenomic-binning-benchmark/results/sweep_rankings.md
+=== does it write rankings? ===
+-rw-rw-r-- 1 ubuntu ubuntu 526 Sep 29 01:14 results/sweep_rankings.md
+# Issue #25 sweep — medium-dataset ranking
+
+Rule: bin stats first (CheckM2 comp/cont + HQ/MQ + F1 = 2·c·p/(c+p), p = 100−cont), then wall time tiebreak. Only the winning parameter set advances to CAMI II/III human.
+
+| Rank | Cell | Commit | Seed | Params (non-ref) | Wall | Bins | CheckM2 comp | CheckM2 cont | HQ / MQ | F1 | CheckM1 comp / cont |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| 1 | `sweep_001_ref` | `95f5ea8` | 42 | reference (defaults) | 2827 | 17 | 34.22 | 4.11 | 0 / 2 | 50.44 | 32.00 / 5.31 |
+> build · big-pickle
+Rank script works (F1 50.44 for cell 1, matches 2·c·p/(c+p)). Now checking what post-sweep follow-ons remain in docs/13 and the human/CAMI III dataset readiness:
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark
+echo "=== docs/13 follow-on section ==="
+grep -n "Follow-on\|follow-on\|CAMI\|amber\|AMBER\|biobox\|zenodo\|Zenodo\|winner" docs/13-optimization-sweep-medium.md | head -20
+echo "=== full tail ==="
+sed -n '95,140p' docs/13-optimization-sweep-medium.md
+echo "=== human dataset readiness ==="
+ls /vol/data/datasets/cami_II_human/human_sample0_input/contigs.fa /vol/data/datasets/cami_II_human/human_sample0_input/bamfiles 2>/dev/null | head -4
+ls /vol/data/datasets/cami_II_human/human_sample0_input/bamfiles/ 2>/dev/null | head -3
+echo "=== cami3 human? ==="
+find /vol/data/datasets/cami_III -maxdepth 2 -type d 2>/dev/null | head -10
+ls /vol/data/datasets/cami_III/human_sample0_input 2>/dev/null | head
+=== docs/13 follow-on section ===
+31:> from now on. Archive the other benchmark data in zenodo and remove to get
+32:> disc space. Use amber for performance of cami II, use the gold standard if
+34:> binning results as biobox format (CAMI standard), also export each binning
+35:> result: bins in fasta, biobox output, stats.
+101:3. Only the winning parameter set advances to **CAMI II & III human** runs.
+103:## Follow-on per issue #25
+105:- **Restrict large data to human**: CAMI II human (4,900 contigs) and CAMI III
+107:  Zenodo (already v2/v3 for main runs) and delete local copies to free disk.
+108:- **AMBER**: use [AMBER](https://github.com/CAMI-challenge/AMBER) against the
+109:  CAMI II gold standard (`binning_gs.tsv`) for official precision/recall/F1 on
+112:- **No trimming**: use the full assembly/contigs when present (CAMI II/III
+115:- **Biobox export (CAMI standard)**:
+116:  `scripts/export_biobox.sh <run>` → per-run
+117:  `runs/<run>/biobox/` containing bins in FASTA (`bin_*.fa`; already produced
+118:  by COMEBin as `comebin_res_bins/*.fa`), a CAMI biobox `binning` tar.gz
+120:  `binning_summary.tsv`), and per-run stats. Validate with the biobox
+121:  validator (`bioboxes/validator` container) before pushing to Zenodo.
+122:- **Archive each binning result**: bins FASTA + biobox output + stats shipped
+123:  with the run's Zenodo archive record.
+=== full tail ===
+1. **Bin stats first**: CheckM2 mean completeness / contamination (HQ + MQ
+   counts), then CheckM v1. Higher completeness + lower contamination +
+   more HQ/MQ wins. F1 (harmonic mean of completeness and purity) as the
+   summary.
+2. **Runtime tiebreak**: if bin stats are statistically similar (~±1 pt), the
+   shorter wall time wins.
+3. Only the winning parameter set advances to **CAMI II & III human** runs.
+
+## Follow-on per issue #25
+
+- **Restrict large data to human**: CAMI II human (4,900 contigs) and CAMI III
+  toy human (5,000) only; **archive** demo / marine / medium / small / tiny in
+  Zenodo (already v2/v3 for main runs) and delete local copies to free disk.
+- **AMBER**: use [AMBER](https://github.com/CAMI-challenge/AMBER) against the
+  CAMI II gold standard (`binning_gs.tsv`) for official precision/recall/F1 on
+  the human set once imported (docs/01: gold-standard binning lives in
+  `setup.tar.gz` — not yet pulled in).
+- **No trimming**: use the full assembly/contigs when present (CAMI II/III
+  publish full assemblies); only the demo/medium/small/tiny derivations were
+  length-filtered for COMEBin feasibility.
+- **Biobox export (CAMI standard)**:
+  `scripts/export_biobox.sh <run>` → per-run
+  `runs/<run>/biobox/` containing bins in FASTA (`bin_*.fa`; already produced
+  by COMEBin as `comebin_res_bins/*.fa`), a CAMI biobox `binning` tar.gz
+  (folder `/<binning-engine>/<version>/binning/<sample>/<bin_id>.fna` +
+  `binning_summary.tsv`), and per-run stats. Validate with the biobox
+  validator (`bioboxes/validator` container) before pushing to Zenodo.
+- **Archive each binning result**: bins FASTA + biobox output + stats shipped
+  with the run's Zenodo archive record.=== human dataset readiness ===
+/vol/data/datasets/cami_II_human/human_sample0_input/contigs.fa
+
+/vol/data/datasets/cami_II_human/human_sample0_input/bamfiles:
+human.bam
+human.bam
+human.bam.bai
+=== cami3 human? ===
+/vol/data/datasets/cami_III
+/vol/data/datasets/cami_III/toy_human_input_2samples
+/vol/data/datasets/cami_III/toy_human_input_2samples/bamfiles
+/vol/data/datasets/cami_III/toy_human_input_2samples/logs
+> build · big-pickle
+Human input dirs exist; the missing post-sweep piece per docs/13/docs/01 is the **CAMI II human gold standard** (`setup.tar.gz`) for AMBER. Let me check docs/01 for the source and whether it's already on disk:
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark
+echo "=== docs/01 gold-standard refs ==="
+grep -n "setup.tar.gz\|gold.standard\|binning_gs\|Binning_gs\|gold standard" docs/01-datasets.md docs/14-amber-cami2-marine.md 2>/dev/null | head -15
+echo "=== human dataset full layout ==="
+ls /vol/data/datasets/cami_II_human/
+echo "=== any setup.tar.gz on disk anywhere? ==="
+find /vol/data/datasets -maxdepth 4 -name "setup.tar.gz" -o -maxdepth 4 -name "binning_gs*" 2>/dev/null | grep -v marine | head
+=== docs/01 gold-standard refs ===
+docs/01-datasets.md:124:| `marmgCAMI2_genomes.tar.gz` | 798 M | gold-standard reference genomes |
+docs/01-datasets.md:133:  **1,475,972 contigs / 909 Mbp**), `binning_gs.tsv` (ground truth `S0C* → Otu genome`),
+docs/01-datasets.md:149:- ground truth = `binning_gs.tsv` subset to kept contigs → direct recall/ARI eval
+docs/01-datasets.md:166:| Ground truth | ⚠️ `binning_gs.tsv` is **not** inside `sample_0.tar.gz` (only the gsa name maps) → bin quality is scored with CheckM2 + CheckM v1 like every other run; the gold-standard binning lives in `setup.tar.gz` (1.8 GB) / the CAMI goldstandard bundle → **TODO** if a recall/ARI evaluation is wanted |
+docs/01-datasets.md:178:| Sample IDs | `cami3_toy_human_gut_short_read_sample_[0..19]`; `…_pooled_assembly` = gold-standard pooled assembly |
+docs/01-datasets.md:182:| Ground truth | gold-standard pooled assembly + per-sample `gsa`/`gsa_mapping` (details to confirm on download) |
+docs/14-amber-cami2-marine.md:6:official CAMI II marine gold standard.
+docs/14-amber-cami2-marine.md:15:- **Gold standard**: official CAMI II marine `binning_gs.tsv`
+docs/14-amber-cami2-marine.md:18:  `/vol/data/datasets/cami_II/marine_reads/.../contigs/binning_gs.tsv`.
+docs/14-amber-cami2-marine.md:24:  amber/marine_comebin.binning -g <binning_gs.tsv> -o output_marine -l comebin_v11
+docs/14-amber-cami2-marine.md:33:## Results (comebin_v11 vs marine gold standard)
+=== human dataset full layout ===
+extract
+gastrooral_sample_0.tar.gz
+human_sample0_input
+=== any setup.tar.gz on disk anywhere? ===
+> build · big-pickle
+The human gold-standard (`setup.tar.gz`, 1.8 GB) is noted as TODO in docs/01. Let me find its source URL to pull it (non-overlapping prep for the post-sweep AMBER human eval):
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark
+echo "=== docs/01 around the CAMI II human row ==="
+sed -n '150,175p' docs/01-datasets.md
+echo "=== where did marine_reads come from? prep script source ==="
+grep -rn "marine_reads\|http\|wget\|curl\|S3\|download" docs/01-datasets.md | head -15
+echo "=== human extract source ==="
+ls -la /vol/data/datasets/cami_II_human/extract/2017.12.04_18.45.54_sample_0/contigs/ 2>/dev/null | head
+=== docs/01 around the CAMI II human row ===
+- prep: `scripts/prep_cami2_marine.sh` (bwa index/mem + samtools sort/index + input_meta)
+- run: `scripts/run_comebin_fix.sh` with `CONTIGS=…/marine_sample0_input/contigs.fa`,
+  `BAMDIR=…/bamfiles`, `MODE=cami2`, `SRC_COMEBIN=/vol/data/repos/COMEBin-v11`
+  (v1.1.0, `-d cpu`, `-s 42`)
+
+### CAMI II human host-associated — issue #18 "Benchmark size" (sample 0 prepped 2026-09-25)
+
+| | |
+|---|---|
+| Source | **CAMI II Toy Human Microbiome Project** (CAMISIM simulation of HMP body sites), block 2 = gastrointestinal + oral — `https://frl.publisso.de/data/frl:6425518/` |
+| Archive | `gastrooral/sample_0.tar.gz` — **9,738,621,091 B**, md5 `60e04c041c38ea168af03fc55dff15d6` ✅ verified (`md5sum -c`) 2026-09-25 01:43 UTC; server md5 from `md5sums.tsv` in the same directory |
+| Downloaded to | `/vol/data/datasets/cami_II_human/gastrooral_sample_0.tar.gz` (~97 MB/s, 100 s) |
+| Members | `2017.12.04_18.45.54_sample_0/{bam,contigs,reads}` — `bam/` = **139 per-OTU BAMs** (same "per-genome BAMs do not merge" problem as marine), `contigs/` = `anonymous_gsa.fasta.gz` (**68,417 contigs**) + `gsa_mapping.tsv.gz` + `gsa_mapping_new.tsv.gz`, `reads/` = `anonymous_reads.fq` (**10.6 GB, uncompressed**, interleaved PE `@S0R0/1`+`@S0R0/2`) + `reads_mapping.tsv.gz` (293 MB, read → **genome**) + `subsample_0.{sam,bam,fq}` |
+| Extracted (contigs + reads only, `bam/` skipped) | `/vol/data/datasets/cami_II_human/extract/2017.12.04_18.45.54_sample_0/` |
+| Input decision (issue #18: "1/6 the size of the big one") | 29,434 demo contigs / 6 ≈ 4,900 → **top 4,900 GSA contigs by length** (166.0 Mbp; the 4,900th is 4,733 bp; ≥5,000 bp would give 4,462) + **all** reads mapped `bwa mem -p -t 32` → `human_sample0_input/{contigs.fa,bamfiles/human.bam}` |
+| Prep script | [`scripts/prep_cami2_human.sh`](../scripts/prep_cami2_human.sh) (refuses to overwrite an existing build; writes `logs/input_meta.txt` with md5s) |
+| Ground truth | ⚠️ `binning_gs.tsv` is **not** inside `sample_0.tar.gz` (only the gsa name maps) → bin quality is scored with CheckM2 + CheckM v1 like every other run; the gold-standard binning lives in `setup.tar.gz` (1.8 GB) / the CAMI goldstandard bundle → **TODO** if a recall/ARI evaluation is wanted |
+| Expected wall time | ≈ 1/6 of the 6.9 h demo run → **≈ 1 h** for 200 epochs (verified by the run once launched) |
+
+## 3. CAMI III challenge data (planned)
+
+**Verified 2026-09-25 from <https://cami-challenge.org/datasets/> (HTTP):**
+
+| | |
+|---|---|
+| Datasets released | **Human gut only so far** — no CAMI III marine/plant yet: (a) *Longitudinal Human Gut* (9 individuals × 4 time points), (b) *Toy Longitudinal Human Gut* (10 individuals × 2 time points = **20 samples**). Both short **and** long reads. |
+=== where did marine_reads come from? prep script source ===
+7:| Origin | Google Drive link in the [COMEBin README](https://github.com/paulzierep/COMEBin), file id `1xWpN2z8JTaAzWW4TcOl0Lr4Y_x--Fs5s` |
+46:The owner-approved small release is published as **[10.5281/zenodo.22935025](https://doi.org/10.5281/zenodo.22935025)**
+106:| Assemblies record | https://doi.org/10.5281/zenodo.5013479 |
+110:| Short reads (marine) | https://frl.publisso.de/data/frl:6425521/marine/ (challenge download page) |
+117:**Marine reads + per-sample inputs** (https://frl.publisso.de/data/frl:6425521/marine/):
+126:Sample 0 (short-read) contigs+BAM pre-downloaded → `/vol/data/datasets/cami_II/marine_reads/`
+129:downloaded + extracted (2026-09-23) → `reads_0/.../reads/`.
+159:| Source | **CAMI II Toy Human Microbiome Project** (CAMISIM simulation of HMP body sites), block 2 = gastrointestinal + oral — `https://frl.publisso.de/data/frl:6425518/` |
+171:**Verified 2026-09-25 from <https://cami-challenge.org/datasets/> (HTTP):**
+176:| Download lists | `https://cami-challenge.org/static/CAMI3_toy_dataset_download.list` (short, 86 URLs) · `…_long_download.list` (long) → `wget -i` |
+177:| Object store | `https://s3.bi.denbi.de/swift/v1/cami3__human-gut-toy/{short,long}/` — per-sample `sample_N_{bam,contigs,gsa,reads}.tar.gz` (N = 0..19) + pooled `gsa_pooled.fasta.gz`, `coverages.tar.gz`, `taxonomic_profiles.tar.gz`, `source_genomes.tar.gz`, `sample_subject_mapping.tsv` |
+182:| Ground truth | gold-standard pooled assembly + per-sample `gsa`/`gsa_mapping` (details to confirm on download) |
+184:| Status | **to download after the CAMI II marine run**; sample-0 sizes verified; DOI "TBA" (cite the datasets page meanwhile) |
+=== human extract source ===
+total 86256
+drwxrwxr-x 2 ubuntu ubuntu     4096 Sep 25 01:49 .
+drwxrwxr-x 4 ubuntu ubuntu     4096 Sep 25 01:49 ..
+-rw-r--r-- 1 ubuntu ubuntu 86053200 Dec  9  2017 anonymous_gsa.fasta.gz
+-rw-r--r-- 1 ubuntu ubuntu  1234944 Dec  9  2017 gsa_mapping.tsv.gz
+-rw-r--r-- 1 ubuntu ubuntu  1022681 Feb 19  2018 gsa_mapping_new.tsv.gz
+> build · big-pickle
+The human gold standard lives in `setup.tar.gz` (1.8 GB) still on the CAMI server — it's the one missing piece for the post-sweep AMBER human eval. Let me try to pull it (network + disk, no run-slot overlap):
+[0m$ [0mcd /vol/data/datasets/cami_II_human
+echo "=== probe setup.tar.gz head (server) ==="
+timeout 25 curl -sI "https://frl.publisso.de/data/frl:6425518/gastrooral/setup.tar.gz" 2>&1 | head -8
+echo "=== directory listing probe ==="
+timeout 25 curl -s "https://frl.publisso.de/data/frl:6425518/gastrooral/" 2>&1 | grep -oiE "href=\"[^\"]*(setup|binning_gs|md5)[^\"]*\"" | head -10
+=== probe setup.tar.gz head (server) ===
+HTTP/2 200 
+last-modified: Sat, 29 Jan 2022 10:04:04 GMT
+etag: "71a36171-5d6b5abe5ed1c"
+accept-ranges: bytes
+content-length: 1906532721
+content-type: application/x-gzip
+date: Tue, 29 Sep 2026 01:14:17 GMT
+server: Apache
+=== directory listing probe ===
+href="setup.tar.gz"
+> build · big-pickle
+`setup.tar.gz` (1.9 GB) is live on the CAMI server. Downloading it in the background:
+[0m$ [0mcd /vol/data/datasets/cami_II_human
+curl -s -o setup.tar.gz "https://frl.publisso.de/data/frl:6425518/gastrooral/setup.tar.gz" && echo "SETUP_DOWNLOAD_DONE" && ls -la setup.tar.gz && tar -tzf setup.tar.gz 2>/dev/null | head -15
+Command moved to the background (shell ID: sh_0eaba1af5001pT3mjttP3Wlfye).
+Output is streaming to: /home/ubuntu/.local/share/opencode/shell/1751ba12936fd079fff18cea3db58f28811c2004/sh_0eaba1af5001pT3mjttP3Wlfye.out
+> build · big-pickle
+While that downloads, let me check the biobox validator (docs/13 requires validating biobox exports with the `bioboxes/validator` container before Zenodo):
+[0m$ [0mcd /vol/data/benchmark
+echo "=== biobox validator image present? ==="
+docker images 2>/dev/null | grep -i biobox || echo "no biobox image"
+echo "=== export_biobox.sh full usage ==="
+sed -n '1,60p' /vol/data/repos/metagenomic-binning-benchmark/scripts/export_biobox.sh | grep -vE "^\s*#" | head -30
+echo "=== any prior biobox exports on disk? ==="
+find /vol/data/benchmark/runs -maxdepth 2 -name "biobox" -type d 2>/dev/null | head
+echo "=== marine run biobox? ==="
+ls /vol/data/benchmark/runs/marine_v11_20260925/biobox 2>/dev/null || echo "(none)"
+=== biobox validator image present? ===
+no biobox image
+=== export_biobox.sh full usage ===
+set -euo pipefail
+
+RUN_DIR=${1:?usage: export_biobox.sh <run_dir>}
+[ -d "$RUN_DIR" ] || { echo "ERROR: not a dir: $RUN_DIR"; exit 1; }
+BINS_DIR="$RUN_DIR/comebin_out/comebin_res/comebin_res_bins"
+[ -d "$BINS_DIR" ] || { echo "ERROR: no comebin_res_bins in $RUN_DIR"; exit 1; }
+
+ENGINE=${ENGINE:-comebin}
+VERSION=${VERSION:-v11}
+SAMPLE=${SAMPLE:-unknown_sample}
+OUT="$RUN_DIR/biobox"
+TREE="$OUT/tree/$ENGINE/$VERSION/binning/$SAMPLE"
+mkdir -p "$TREE"
+
+bin_count=0
+for f in "$BINS_DIR"/*.fa; do
+  [ -e "$f" ] || continue
+  id=$(basename "$f" .fa)
+  cp "$f" "$TREE/$id.fna"
+  bin_count=$((bin_count + 1))
+done
+[ "$bin_count" -gt 0 ] || { echo "ERROR: no bin fastas found"; exit 1; }
+
+summary="$OUT/tree/$ENGINE/$VERSION/binning_summary.tsv"
+{
+  echo -e "bin_id\tcontig_id\tcontig_len"
+  for f in "$TREE"/*.fna; do
+    bin_id=$(basename "$f" .fna)
+    awk -v bin="$bin_id" '
+      /^>/ {
+=== any prior biobox exports on disk? ===
+/vol/data/benchmark/runs/medium_v11_20260924/biobox
+=== marine run biobox? ===
+(none)
+> build · big-pickle
+Marine lacks a biobox export (owner #25 requires biobox output per binning result). Let me generate it for the completed runs and pull the validator container in parallel:
+[0m$ [0mcd /vol/data/benchmark
+echo "=== export biobox for marine ==="
+ENGINE=comebin VERSION=v11 SAMPLE=marine /vol/data/repos/metagenomic-binning-benchmark/scripts/export_biobox.sh /vol/data/benchmark/runs/marine_v11_20260925 2>&1 | tail -5
+echo "=== output tree ==="
+find /vol/data/benchmark/runs/marine_v11_20260925/biobox -maxdepth 4 | head -8
+echo "=== binning sample dir count ==="
+ls /vol/data/benchmark/runs/marine_v11_20260925/biobox/tree/comebin/v11/binning/marine/ | wc -l
+echo "=== export for human + cami3 rerun + medium (has one) ==="
+for r in human_v11_20260925 cami3_v11_20260926_rerun; do
+  [ -d "/vol/data/benchmark/runs/$r" ] && { ENGINE=comebin VERSION=v11 SAMPLE=${r%%_v11*} /vol/data/repos/metagenomic-binning-benchmark/scripts/export_biobox.sh "/vol/data/benchmark/runs/$r" 2>&1 | tail -2; }
+done
+echo "=== pull biobox validator ==="
+timeout 180 docker pull bioboxes/validator 2>&1 | tail -2
+=== export biobox for marine ===
+/bin/bash: line 3: /vol/data/repos/metagenomic-binning-benchmark/scripts/export_biobox.sh: Permission denied
+=== output tree ===
+find: ‘/vol/data/benchmark/runs/marine_v11_20260925/biobox’: No such file or directory
+=== binning sample dir count ===
+ls: cannot access '/vol/data/benchmark/runs/marine_v11_20260925/biobox/tree/comebin/v11/binning/marine/': No such file or directory
+0
+=== export for human + cami3 rerun + medium (has one) ===
+/bin/bash: line 10: /vol/data/repos/metagenomic-binning-benchmark/scripts/export_biobox.sh: Permission denied
+/bin/bash: line 10: /vol/data/repos/metagenomic-binning-benchmark/scripts/export_biobox.sh: Permission denied
+=== pull biobox validator ===
+Using default tag: latest
+Error response from daemon: pull access denied for bioboxes/validator, repository does not exist or may require 'docker login'
+> build · big-pickle
+Two issues: script lacks +x, and `bioboxes/validator` isn't on Docker Hub. Let me fix permissions and find the right validator image path:
