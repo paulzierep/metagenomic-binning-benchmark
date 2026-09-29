@@ -100030,3 +100030,60 @@ runs/sweep_001_ref/run_meta.txt
 SYNTAX_OK
 HARNESS_OK
 > build · mimo-v2.6-flash-free
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && (
+  flock -w 300 200 || { echo LOCK_FAILED; exit 1; }
+  git add scripts/run_sweep_medium.sh scripts/rank_sweep_medium.py results/sweep_001_ref.csv results/figures/comp_vs_cont_all-runs.png results/figures/comp_vs_cont_by_dataset.png status/agent-activity.log
+  git status --short
+  git commit -q -m "sweep #25: singleton driver guard, cell-1 results + ranking script
+
+- scripts/run_sweep_medium.sh: flock + process-scan singleton guard so a
+  second driver can never walk the same cell list concurrently (that race
+  produced the 14:15Z lock-error failures for cells 3-24).
+- scripts/rank_sweep_medium.py: rank finished sweep cells by the docs/13
+  rule (bin stats first, wall time tiebreak).
+- results/sweep_001_ref.csv + regenerated comparison figures for the one
+  completed cell (17 bins, CheckM2 34.22/4.11)." && git log --oneline -1
+) 200>/tmp/bench-repo.lock
+M  results/figures/comp_vs_cont_all-runs.png
+M  results/figures/comp_vs_cont_by_dataset.png
+A  results/sweep_001_ref.csv
+A  scripts/rank_sweep_medium.py
+M  scripts/run_sweep_medium.sh
+fa69730a sweep #25: singleton driver guard, cell-1 results + ranking script
+> build · mimo-v2.6-flash-free
+[0m← [0mWrite /tmp/opencode/launch_sweep2.sh
+Created file successfully: /tmp/opencode/launch_sweep2.sh
+> build · mimo-v2.6-flash-free
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && ( flock -w 300 200 && git push -q origin main && echo PUSHED ) 200>/tmp/bench-repo.lock; nohup bash /tmp/opencode/launch_sweep2.sh >/dev/null 2>&1 & sleep 12; echo "=== driver procs:"; pgrep -af 'run_sweep_medium' ; echo "=== active_run:"; cat /vol/data/benchmark/.active_run 2>/dev/null || echo NONE; echo "=== log tail:"; tail -6 /vol/data/benchmark/status/sweep_medium.log
+PUSHED
+=== driver procs:
+2559157 /bin/bash -c cd /vol/data/repos/metagenomic-binning-benchmark && ( flock -w 300 200 && git push -q origin main && echo PUSHED ) 200>/tmp/bench-repo.lock; nohup bash /tmp/opencode/launch_sweep2.sh >/dev/null 2>&1 & sleep 12; echo "=== driver procs:"; pgrep -af 'run_sweep_medium' ; echo "=== active_run:"; cat /vol/data/benchmark/.active_run 2>/dev/null || echo NONE; echo "=== log tail:"; tail -6 /vol/data/benchmark/status/sweep_medium.log
+=== active_run:
+NONE
+=== log tail:
+[2026-09-28T14:15:53Z] START sweep_023_embcov512_batch512 src=COMEBin-v11-sweep @ 95f5ea8 threads=8 seed=42 temp=ref emb=ref emb_cov=512 batch=512 max_edges=ref lw=ref heval=ref n_views=6
+[2026-09-28T14:15:53Z] FAIL sweep_023_embcov512_batch512: run_comebin_fix.sh rc=0
+[2026-09-28T14:15:53Z] START sweep_024_seed7 src=COMEBin-v11-sweep @ 95f5ea8 threads=8 seed=7 temp=ref emb=ref emb_cov=ref batch=ref max_edges=ref lw=ref heval=ref n_views=6
+[2026-09-28T14:15:53Z] FAIL sweep_024_seed7: run_comebin_fix.sh rc=0
+[2026-09-28T14:15:53Z] SWEEP COMPLETE (24 cells processed)
+[2026-09-29T00:26:50Z] ABORT: sweep driver pid=2559226 already running; singleton guard, not starting a second
+> build · mimo-v2.6-flash-free
+[0m$ [0mdate -u; echo "=== ps 2559226:"; ps -o pid,ppid,pgid,sid,stat,lstart,args -p 2559226 2>&1; echo "=== pgrep pattern:"; pgrep -af 'run_sweep_medium\.sh'; echo "=== all bash with sweep:"; ps -eo pid,ppid,stat,lstart,args | grep -i sweep | grep -v grep; echo "=== log tail:"; tail -4 /vol/data/benchmark/status/sweep_medium.log; echo "=== active:"; cat /vol/data/benchmark/.active_run 2>/dev/null || echo NONE; echo "=== driver out tail:"; tail -4 /vol/data/benchmark/status/sweep-driver.out
+Tue Sep 29 00:27:48 UTC 2026
+=== ps 2559226:
+    PID    PPID    PGID     SID STAT                  STARTED COMMAND
+=== pgrep pattern:
+=== all bash with sweep:
+=== log tail:
+[2026-09-28T14:15:53Z] START sweep_024_seed7 src=COMEBin-v11-sweep @ 95f5ea8 threads=8 seed=7 temp=ref emb=ref emb_cov=ref batch=ref max_edges=ref lw=ref heval=ref n_views=6
+[2026-09-28T14:15:53Z] FAIL sweep_024_seed7: run_comebin_fix.sh rc=0
+[2026-09-28T14:15:53Z] SWEEP COMPLETE (24 cells processed)
+[2026-09-29T00:26:50Z] ABORT: sweep driver pid=2559226 already running; singleton guard, not starting a second
+=== active:
+NONE
+=== driver out tail:
+[2026-09-28T14:15:53Z] START sweep_024_seed7 src=COMEBin-v11-sweep @ 95f5ea8 threads=8 seed=7 temp=ref emb=ref emb_cov=ref batch=ref max_edges=ref lw=ref heval=ref n_views=6
+[2026-09-28T14:15:53Z] FAIL sweep_024_seed7: run_comebin_fix.sh rc=0
+[2026-09-28T14:15:53Z] SWEEP COMPLETE (24 cells processed)
+[2026-09-29T00:26:50Z] ABORT: sweep driver pid=2559226 already running; singleton guard, not starting a second
+> build · mimo-v2.6-flash-free
