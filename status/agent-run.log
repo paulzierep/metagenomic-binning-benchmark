@@ -101863,3 +101863,198 @@ clears the flag (back to default). Rate limit 6 restarts / 6 h; stops when
 > build · mimo-v2.6-flash-free
 [0m→ [0mRead /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md [90m[offset=192, limit=70][0m
 > build · mimo-v2.6-flash-free
+[0m→ [0mRead /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md [90m[offset=640, limit=45][0m
+> build · mimo-v2.6-flash-free
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md
+Index: /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md
++++ /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md
+@@ -675,8 +675,60 @@
+   are never clipped. Regenerated PNG + SVG + `results/main_runs_table.md`;
+   bin copy synced so the next eval auto-regeneration uses it. Delivery comment
+   posted.
+ 
++### 2026-09-29 resume (00:24–01:00Z): sweep relaunched, guard fixes, #28 + #29 answered
++
++- **State on resume**: `TASK_COMPLETE` absent, no live sweep/benchmark process,
++  heartbeat had gone cold. PROGRESS.md read first, per protocol.
++- **#25 stall root-caused instead of blindly relaunched**: pass 1 (13:07:50Z)
++  aborted *every* cell because `/vol/data/benchmark/bin/run_comebin_fix.sh`
++  still carried the unguarded `[ -n "$TEMP" ]` (line 76) → `set -u` death before
++  launch; pass 2 completed cell 1, then cells 3–24 died instantly on the
++  concurrent-driver `/tmp/benchmark-start.lock` race (all logged `FAIL … rc=0`
++  with **no run dir created**, so nothing was falsely marked done).
++- **Singleton guard fixed (two bugs)**: `$(pgrep …)` forks a subshell that
++  inherits the driver argv → self-match; and a `ps` on a dead transient pid
++  makes the assignment return 1, which under `pipefail` + `set -e` killed the
++  driver **silently** after one cell. Fix = ancestor/child relatedness walk +
++  ≥5 s process age + double probe + `|| true` on every `ps`-based probe.
++  `flock` remains the hard mutex; the guards are only the fast path.
++  Pushed: `fa69730a`, `55ad99dd`, `57b9cb5d`, `20ca7e39`.
++- **Sweep relaunched detached 00:41:12Z**: `run_sweep_medium.sh --from 3`,
++  driver pid 2566340, `.active_run` pid 2566376 → `runs/sweep_003_issue28fix`
++  (src `COMEBin-v11` @ `41606c8`). Cells 1/2 skipped by design; 22 cells ×
++  ~55 min ≈ 20 h, ETA ~2026-09-30 evening UTC. Verified only `sweep_001/002/003`
++  run dirs exist → no cell will be wrongly skipped as done. Watchdog owns the
++  handoff; agent keeps `.heartbeat` fresh.
++- **Cell 1 recorded** — `sweep_001_ref`: rc 0, 2,827 s, **17 bins**, CheckM2
++  34.22/4.11 (HQ 0, MQ 2), CheckM 32.00/5.31 → `results/sweep_001_ref.csv`.
++- **Cell 2 root cause pinned** — `sweep_002_master` (stock `904f649`, exit 1 @
++  108 s): `train_CLmodel.py:46 length_weight.append(lengths[seq_id])` →
++  `KeyError: 'BATS_SAMN07137077_METAG-scaffold_22978'`. Measured on its own
++  artifacts: `aug0_datacoverage_mean.tsv` = **29,435 lines** (header + the full
++  BAM `@SQ` list, incl. scaffold_22978) vs `aug0/sequences_aug0.fasta` =
++  **3,000** contigs (scaffold_22978 absent). Upstream enumerates coverage rows
++  from the BAM, lengths from the assembly → the issue-#2 producer/consumer
++  mismatch on our medium fixture. v11 is structurally immune (`gen_cov.py`
++  allocates over the retained assembly contigs and ignores extra `@SQ`), which
++  cell 1 confirms empirically. Evidence kept in `runs/sweep_002_master/`.
++- **#28 answered** — acknowledged the owner's directive (medium first → merge
++  fix + optimization into `master` asap), reported grid state, cell-1 numbers,
++  cell-2 root cause and the plan: push `41606c8` → PR into `master` →
++  confirmation medium run on merged master → bioconda prep. `41606c8` is still
++  **local only** (origin `comebin-optimizations-v11` = `95f5ea8`).
++- **#29 answered** — Galaxy IUC fixture measured: 40 contigs × exactly 20,000 bp
++  (800 kb, ids `g1k_0…g4k_9`, GC 26.97 %), coordinate-sorted BAM with 40 `@SQ`
++  refs **identical** to the FASTA ids, 2,000 reads / 94 mapped, no `.bai`;
++  wrapper pins `comebin 1.1.0`, test uses `max_edges=20` (XML help: must be
++  < contig count) and `batch=1024`; PR #8351 merged 2026-08-25 with
++  `Test tools (0, 3.11): success`. Caveats posted: `MINIMUM_FINAL_BIN_SIZE =
++  200000` vs an 800 kb assembly → smoke test only (a 0-bin run is still green),
++  and a pre-#28-fix checkout crashes on the empty marker seed. Fixture stored
++  at `/vol/data/datasets/galaxy_comebin_fixture/` (md5 `e6b5f3bb…` fasta,
++  `373f4411…` bam); end-to-end run on `41606c8` is queued behind the sweep
++  (overlap rule).
++
+ ## Watchdog / restart
+ 
+ `scripts/agent-watchdog.sh` (installed at `/vol/data/benchmark/bin/`, cron `*/5 * * * *`):
+ stale heartbeat (>15 min) → `opencode run` continues session
+
+> build · mimo-v2.6-flash-free
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && cp PROGRESS.md /vol/data/benchmark/PROGRESS.md && md5sum PROGRESS.md /vol/data/benchmark/PROGRESS.md && git status --porcelain | head -30 && git log --oneline -3
+66a3328da4170c2275e47a213752378b  PROGRESS.md
+66a3328da4170c2275e47a213752378b  /vol/data/benchmark/PROGRESS.md
+ M PROGRESS.md
+7fcdf5ce status: yes — sweep_003_issue28fix epoch 59/200 loss 5.181173324584961 acc 21.708984375 model mimo-v2.6-flash-free — 2026-09-29T00:55:31Z issue-triage: comme
+a03be548 status: yes — sweep_003_issue28fix epoch 50/200 loss 5.318391799926758 acc 17.571613311767578 model mimo-v2.6-flash-free — 2026-09-25T12:16:00Z | marine_v11_202609 2026-09-25T15:34:55Z | issues triaged: # 2026-09-25T20:49:23Z | issues triaged: # 2026-09-25T21:11:13Z | issues #12 and #8 2026-09-25T21:24:00Z | CAMI III prep scr 2026-09-25T21:54:00Z | agent: started CA 2026-09-26T00:49:54Z marine-eval-launche 2026-09-26T00:50:20Z marine-eval-launche 2026-09-26T00:50:42Z marine-eval-launche 2026-09-26T01:14:16Z marine-eval-retry-l 2026-09-26T01:41:50Z zenodo-v2-published 2026-09-26T01:46:27Z commit: pushed mari 2026-09-26T01:46:47Z delivery-comments-p 2026-09-26T01:47:11Z progress-committed 2026-09-26T01:49:18Z progress-synced 2026-09-26T02:02:36Z docs10-fix-committe 2026-09-26T02:41:03Z finish-prep-launche 2026-09-26T02:45:37Z cami3-run-launched 2026-09-26T02:45:58Z cami3-progress-comm 2026-09-26T02:54:43Z version-doi-verifie 2026-09-26T02:55:42Z doi-followup-commen 2026-09-26T02:56:38Z progress-committed 2026-09-26T02:57:25Z dryrun-tarball-dele 2026-09-26T02:59:24Z results-csv-label-f 2026-09-26T02:59:32Z progress-committed 2026-09-26T04:22:06Z 2026-09-26T04:26:43Z disk-full-incident- 2026-09-26T04:50:51Z rerun-launched-pid3 2026-09-26T05:23:51Z rerun-on-track-epoc 2026-09-26T06:19:21Z rerun-done-eval-run 2026-09-26T06:19:27Z eval started cami3_ 2026-09-26T06:41:54Z eval-checkm-v1-ppla 2026-09-26T07:10:51Z checkm2-retry-16t 2026-09-26T07:47:33Z zenodo-v3-published 2026-09-26T07:52:47Z docs-cami3-delivere 2026-09-26T07:56:10Z issue6-comment-cami 2026-09-26T07:56:26Z zenodo-v3-version-d 2026-09-26T07:56:48Z turn-activity docs+ 2026-09-26T07:58:24Z progress-finalized 2026-09-26T07:58:26Z zenodo-v3-version-d 2026-09-26T08:00:26Z zenodo-v3-version-d 2026-09-26T08:02:27Z zenodo-v3-version-d 2026-09-26T08:04:27Z zenodo-v3-version-d 2026-09-26T08:06:27Z zenodo-v3-version-d 2026-09-26T08:08:27Z zenodo-v3-version-d 2026-09-26T08:10:27Z zenodo-v3-version-d 2026-09-26T08:12:27Z zenodo-v3-version-d 2026-09-26T08:14:28Z doi-recheck-200 2026-09-26T08:29:56Z | committed script 2026-09-26T09:02:54Z | issue triage: rev 2026-09-26T09:20:00Z Agent restart resum 2026-09-26T10:03:14Z | issues triaged: # 2026-09-26T10:54:30Z | issues triaged: # 2026-09-26T11:43:03Z | resumed: verified 2026-09-26T14:20:00Z | issue comments po 2026-09-26T14:25:00Z | PROGRESS.md updat 2026-09-26T13:25:38Z | heartbeat touched 2026-09-26T14:02:55Z | agent active 2026-09-26T14:37:44Z | agent resumed aft 2026-09-26T14:39:42Z | restart-complete: 2026-09-26T15:06:38Z 2026-09-26T15:06:26Z agent-resume-starte 2026-09-26T15:13:07Z 2026-09-26T15:06:26Z agent-resume-second 2026-09-26T15:32:52Z | resume: agent res 2026-09-26 15:50:51 UTC - agent resume: 2026-09-26T16:42:06Z | agent resume: all 2026-09-28T12:59:45Z docs-deliverables: #24 README a-f, #22 a 2026-09-28T13:03:24Z delayed closeout: PROGRESS synced after [2026-09-28T13:11:23Z] #25 sweep LIVE: c [2026-09-28T13:11:55Z] #25 sweep live: c [2026-09-28T13:15:10Z] #24+#19 owner fee [2026-09-28T13:15:35Z] #24+#19 delivered 2026-09-29T00:24:15Z | resume-after-rest 2026-09-29T00:42:01Z | #25 sweep RESUMED
+024d5263 meta: supervise tick 2026-09-29T00:53:01Z — 0 fix(es)
+> build · mimo-v2.6-flash-free
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && exec 9>/tmp/bench-repo.lock && flock -w 120 9 && echo "lock acquired" && git add PROGRESS.md && git status --porcelain && git -c user.name="agent" -c user.email="agent@localhost" commit -q -m "PROGRESS: 2026-09-29 resume — sweep relaunched (cell 3 = 41606c8), guard fixes, cell-2 root cause pinned, #28 + #29 answered" && git pull --rebase -q origin main && git push -q origin main && git log --oneline -2
+lock acquired
+M  PROGRESS.md
+6f4cfe46 PROGRESS: 2026-09-29 resume — sweep relaunched (cell 3 = 41606c8), guard fixes, cell-2 root cause pinned, #28 + #29 answered
+7fcdf5ce status: yes — sweep_003_issue28fix epoch 59/200 loss 5.181173324584961 acc 21.708984375 model mimo-v2.6-flash-free — 2026-09-29T00:55:31Z issue-triage: comme
+> build · mimo-v2.6-flash-free
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark; echo "=== push check ==="; git fetch -q origin && git status -sb | head -2; echo "=== rank script ==="; ls -l scripts/rank_sweep_medium.py 2>/dev/null && python3 -m py_compile scripts/rank_sweep_medium.py && echo "py_compile OK"; echo "=== fixture runner inputs ==="; sed -n 1,60p scripts/run_comebin_fix.sh
+=== push check ===
+## main...origin/main
+=== rank script ===
+-rw-rw-r-- 1 ubuntu ubuntu 5695 Sep 28 13:16 scripts/rank_sweep_medium.py
+  File "scripts/rank_sweep_medium.py", line 137
+    del par for par in []  # keep formatting simple
+    ^^^
+SyntaxError: invalid syntax
+=== fixture runner inputs ===
+#!/usr/bin/env bash
+# run_comebin_fix.sh — run a FIXED COMEBin source tree on the demo dataset and
+# record the run exactly like the baseline. The default is the current v1.1.0
+# optimization worktree; override with SRC_COMEBIN=/path/to/repo.
+set -euo pipefail
+
+MM=/vol/data/tools/bin/micromamba
+ENV=/vol/data/envs/comebin
+SRC=${SRC_COMEBIN:-/vol/data/repos/COMEBin-v11}
+DATA=${DATA:-/vol/data/datasets/comebin_test_data}
+CONTIGS=${CONTIGS:-"$DATA/BATS_SAMN07137077_METAG.scaffolds.min500.fasta.f1k.fasta"}
+BAMDIR=${BAMDIR:-"$DATA/bamfiles"}
+MODE=${MODE:-fix}
+[ -f "$CONTIGS" ] || { echo "ERROR: contigs file not found: $CONTIGS"; exit 1; }
+[ -d "$BAMDIR" ] || { echo "ERROR: bamdir not found: $BAMDIR"; exit 1; }
+RUNDIR=$(realpath -m "${1:-/vol/data/benchmark/runs/fix_v11}")
+THREADS=${THREADS:-32}
+SEED=${SEED:-}
+START_LOCK=/tmp/benchmark-start.lock
+ACTIVE=/vol/data/benchmark/.active_run
+[ -f "$SRC/COMEBin/run_comebin.sh" ] || { echo "ERROR: invalid SRC_COMEBIN repo root: $SRC"; exit 1; }
+
+exec 9>"$START_LOCK"
+flock -n 9 || { echo "ERROR: another benchmark launch holds $START_LOCK"; exit 1; }
+if [ -f "$ACTIVE" ] && [ "${BENCHMARK_WATCHDOG_REPLACE:-0}" != "1" ]; then
+  read -r active_pid active_pgid active_log active_dir active_start active_mode active_src < "$ACTIVE" || true
+  active_state=$(ps -o stat= -p "${active_pid:-0}" 2>/dev/null | tr -d ' ' || true)
+  if [ -n "${active_pid:-}" ] && kill -0 "$active_pid" 2>/dev/null && [[ "$active_state" != Z* ]]; then
+    echo "ERROR: benchmark already active: pid=$active_pid dir=$active_dir mode=${active_mode:-baseline}"
+    exit 1
+  fi
+  old_rc=$(grep -m1 '^exit_code:' "${active_dir:-/nonexistent}/run_meta.txt" 2>/dev/null | awk '{print $2}' || true)
+  [ "${old_rc:-}" = "0" ] || { echo "ERROR: stale failed run requires benchmark-watchdog triage: $active_dir"; exit 1; }
+  rm -f "$ACTIVE"
+fi
+if [ -f "$RUNDIR/run_meta.txt" ] || [ -d "$RUNDIR/comebin_out" ]; then
+  echo "ERROR: refusing to overwrite existing run directory: $RUNDIR"
+  exit 1
+fi
+
+# Pre-flight free space.  A full filesystem does not fail at launch: it silently
+# poisons CheckM's marker tables and then kills get_result hours later.
+# cami3_v11_20260926 burned 6,677 s and produced 0 bins because prep leftovers
+# (13.8 GB in /tmp) had filled / to 100%.  Fail fast, before the run starts.
+# Placed before the .active_run registration, so a refusal cannot be mistaken by
+# benchmark-watchdog for a crashed run and restarted.
+MIN_FREE_GB=${MIN_FREE_GB:-2}
+RUN_FS=$(df -Pk "$(dirname "$RUNDIR")" 2>/dev/null | awk 'NR==2{print int($4/1048576)}')
+TMP_FS=$(df -Pk /tmp 2>/dev/null | awk 'NR==2{print int($4/1048576)}')
+echo "preflight_free_gb: run_fs=${RUN_FS:-unknown} tmp_fs=${TMP_FS:-unknown} floor=${MIN_FREE_GB}"
+for fs_avail in "$RUN_FS" "$TMP_FS"; do
+  if [ -n "$fs_avail" ] && [ "$fs_avail" -lt "$MIN_FREE_GB" ]; then
+    echo "ERROR: only ${fs_avail} GiB free, need >= ${MIN_FREE_GB} GiB (stale prep leftovers in /tmp are the usual cause)"
+    echo "Free space first, or override deliberately with MIN_FREE_GB=0"
+    exit 1
+  fi
+done
+
+mkdir -p "$RUNDIR/logs"
+COMMIT=$(git -C "$SRC" rev-parse HEAD)
+> build · mimo-v2.6-flash-free
+[0m→ [0mRead /vol/data/repos/metagenomic-binning-benchmark/scripts/rank_sweep_medium.py 
+> build · mimo-v2.6-flash-free
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/scripts/rank_sweep_medium.py
+Index: /vol/data/repos/metagenomic-binning-benchmark/scripts/rank_sweep_medium.py
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/scripts/rank_sweep_medium.py
++++ /vol/data/repos/metagenomic-binning-benchmark/scripts/rank_sweep_medium.py
+@@ -108,14 +108,27 @@
+             return int(float(v))
+         except (TypeError, ValueError):
+             return float("inf")
+ 
++    def as_int(v):
++        try:
++            return int(float(v))
++        except (TypeError, ValueError):
++            return 0
++
++    def as_float(v, default):
++        try:
++            x = float(v)
++            return x if x == x else default  # NaN -> default
++        except (TypeError, ValueError):
++            return default
++
+     # Rank: CheckM2 comp (desc), cont (asc), HQ+MQ (desc), F1 (desc), wall (asc).
+     cells.sort(key=lambda c: (
+-        -float(c["c2c"] if c["c2c"] not in ("-", "") else -1),
+-        float(c["c2n"] if c["c2n"] not in ("-", "") else 1e9),
+-        -(int(c["hq2"] or 0) + int(c["mq2"] or 0)),
+-        -c["f1"],
++        -as_float(c["c2c"], -1.0),
++        as_float(c["c2n"], 1e9),
++        -(as_int(c["hq2"]) + as_int(c["mq2"])),
++        -as_float(c["f1"], float("-inf")),
+         wall_s(c["wall"]),
+         c["cell"],
+     ))
+ 
+
