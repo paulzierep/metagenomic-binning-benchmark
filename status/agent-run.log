@@ -108366,3 +108366,286 @@ https://github.com/paulzierep/metagenomic-binning-benchmark/issues/25#issuecomme
 posted
 > build · big-pickle
 While the cami3 export runs, let me find the correct biobox validator image (docs/13 requires validation before Zenodo):
+[0m◈ [0mWeb Search via Exa "bioboxes validator docker image bioboxes/validator biobox binning format validation" 
+> build · big-pickle
+Docker Hub only carries the *assembler* validator; the genome-binning one isn't public. Let me try candidates, then fall back to a structural conformance check:
+[0m$ [0mfor img in bioboxes/validator-genome-binning bioboxes/genome-binning-validator quay.io/biocontainers/bioboxes-validator; do
+  echo "--- $img ---"
+  timeout 40 docker pull "$img" 2>&1 | tail -1
+done
+--- bioboxes/validator-genome-binning ---
+Error response from daemon: pull access denied for bioboxes/validator-genome-binning, repository does not exist or may require 'docker login'
+--- bioboxes/genome-binning-validator ---
+Error response from daemon: pull access denied for bioboxes/genome-binning-validator, repository does not exist or may require 'docker login'
+--- quay.io/biocontainers/bioboxes-validator ---
+Error response from daemon: unknown: failed to resolve reference "quay.io/biocontainers/bioboxes-validator:latest": unexpected status from HEAD request to https://quay.io/v2/biocontainers/bioboxes-validator/manifests/latest: 401 Unauthorized
+> build · big-pickle
+The upstream binning validator image isn't publicly distributable (docs/13 assumed it). Let me write a local structural validator against the CAMI biobox genome-binning layout instead. First, the export's exact layout:
+[0m$ [0mcd /vol/data/benchmark
+echo "=== full export_biobox.sh ==="
+sed -n '1,120p' /vol/data/repos/metagenomic-binning-benchmark/scripts/export_biobox.sh
+echo "=== marine export tree ==="
+find runs/marine_v11_20260925/biobox -maxdepth 6 | head -12
+echo "=== binning_summary head ==="
+head -3 runs/marine_v11_20260925/biobox/tree/comebin/v11/binning_summary.tsv
+wc -l runs/marine_v11_20260925/biobox/tree/comebin/v11/binning_summary.tsv
+=== full export_biobox.sh ===
+#!/usr/bin/env bash
+# export_biobox.sh <run_dir>  — export a run's bins as a CAMI biobox tarball.
+#
+# Issue #25 (owner): "learn to export binning results as biobox format - cami
+# standard, also export each binning result: bins in fasta, biobox output,
+# stats".
+#
+# CAMI biobox binning layout (https://github.com/bioboxes/rfc/blob/master/
+# data-format/binning.rst):
+#
+#   <input>/binning/<engine>/<version>/binning/<sample>/<bin_id>.fna
+#   <input>/binning/<engine>/<version>/binning_summary.tsv
+#
+# Our run layout:
+#   runs/<run>/comebin_out/comebin_res/comebin_res_bins/<id>.fa   (cluster bins)
+#   runs/<run>/per_bin_results.csv                                (stats)
+#
+# Output (written next to the run dir):
+#   runs/<run>/biobox/binning.tar.gz                              (CAMI-compliant)
+#   runs/<run>/biobox/bins.fasta.gz                               (all bins, concat)
+#   runs/<run>/biobox/binning_summary.tsv                         (per-bin stats)
+#
+# Usage:
+#   bash scripts/export_biobox.sh /vol/data/benchmark/runs/medium_v11_20260924
+#   ENGINE=comebin VERSION=v11.1.0 SAMPLE=cami_sample0  # overridable
+set -euo pipefail
+
+RUN_DIR=${1:?usage: export_biobox.sh <run_dir>}
+[ -d "$RUN_DIR" ] || { echo "ERROR: not a dir: $RUN_DIR"; exit 1; }
+BINS_DIR="$RUN_DIR/comebin_out/comebin_res/comebin_res_bins"
+[ -d "$BINS_DIR" ] || { echo "ERROR: no comebin_res_bins in $RUN_DIR"; exit 1; }
+
+ENGINE=${ENGINE:-comebin}
+VERSION=${VERSION:-v11}
+SAMPLE=${SAMPLE:-unknown_sample}
+OUT="$RUN_DIR/biobox"
+TREE="$OUT/tree/$ENGINE/$VERSION/binning/$SAMPLE"
+mkdir -p "$TREE"
+
+bin_count=0
+for f in "$BINS_DIR"/*.fa; do
+  [ -e "$f" ] || continue
+  id=$(basename "$f" .fa)
+  cp "$f" "$TREE/$id.fna"
+  bin_count=$((bin_count + 1))
+done
+[ "$bin_count" -gt 0 ] || { echo "ERROR: no bin fastas found"; exit 1; }
+
+# binning_summary.tsv (biobox column layout: bin_id, contig_id, contig_len) —
+# one row per contig membership; contig length parsed from the FASTA defline
+# `length=<bp>` when present, else computed on the fly.
+summary="$OUT/tree/$ENGINE/$VERSION/binning_summary.tsv"
+{
+  echo -e "bin_id\tcontig_id\tcontig_len"
+  for f in "$TREE"/*.fna; do
+    bin_id=$(basename "$f" .fna)
+    awk -v bin="$bin_id" '
+      /^>/ {
+        name = substr($1, 2)
+        if (match($0, /length=[0-9]+/))
+          len = substr($0, RSTART + 7, RLENGTH - 7)
+        else
+          len = "NA"
+        print bin "\t" name "\t" len
+      }
+    ' "$f"
+  done
+} > "$summary"
+
+# Concatenated bins (for easy archival + stats consumers).
+cat "$TREE"/*.fna | gzip > "$OUT/bins.fasta.gz"
+
+# tarball rooted at <engine>/... so the biobox validator accepts it directly.
+tar -C "$OUT/tree" -czf "$OUT/binning.tar.gz" "$ENGINE"
+
+cat > "$OUT/README.txt" <<EOF
+CAMI biobox export of $RUN_DIR
+
+engine:  $ENGINE
+version: $VERSION
+sample:  $SAMPLE
+bins:    $bin_count
+
+Contents:
+  binning.tar.gz          CAMI biobox compliant (engine/version/binning_summary.tsv)
+  bins.fasta.gz           all bins concatenated, FASTA
+  binning_summary.tsv     contig membership + length per bin
+  stats.csv               per-bin CheckM2/CheckM v1 (from per_bin_results.csv)
+
+Validate with the biobox validator (container) before archival:
+  docker run -v $(pwd):/data bioboxes/validator /data/binning.tar.gz binning
+EOF
+
+# Per-bin stats snapshot when available.
+if [ -f "$RUN_DIR/per_bin_results.csv" ]; then
+  cp "$RUN_DIR/per_bin_results.csv" "$OUT/stats.csv"
+fi
+
+echo "wrote $OUT (bins=$bin_count)"
+ls -la "$OUT" | awk '{print $5, $9}'=== marine export tree ===
+runs/marine_v11_20260925/biobox
+runs/marine_v11_20260925/biobox/binning.tar.gz
+runs/marine_v11_20260925/biobox/bins.fasta.gz
+runs/marine_v11_20260925/biobox/tree
+runs/marine_v11_20260925/biobox/tree/comebin
+runs/marine_v11_20260925/biobox/tree/comebin/v11
+runs/marine_v11_20260925/biobox/tree/comebin/v11/binning_summary.tsv
+runs/marine_v11_20260925/biobox/tree/comebin/v11/binning
+runs/marine_v11_20260925/biobox/tree/comebin/v11/binning/marine
+runs/marine_v11_20260925/biobox/tree/comebin/v11/binning/marine/40.fna
+runs/marine_v11_20260925/biobox/tree/comebin/v11/binning/marine/58.fna
+runs/marine_v11_20260925/biobox/tree/comebin/v11/binning/marine/68.fna
+=== binning_summary head ===
+bin_id	contig_id	contig_len
+0	S0C612	NA
+0	S0C1538	NA
+40211 runs/marine_v11_20260925/biobox/tree/comebin/v11/binning_summary.tsv
+> build · big-pickle
+Found a real conformance gap: `binning_summary.tsv` writes `contig_len = NA` (COMEBin deflines lack `length=`), but the CAMI biobox spec requires a numeric contig length. Let me confirm the spec and fix the exporter:
+[0m✗ [0mWebFetch https://raw.githubusercontent.com/bioboxes/rfc/master/data-format/binning.rst failed
+[91m[1mError: [0mStatusCode: non 2xx status code (404 GET https://raw.githubusercontent.com/bioboxes/rfc/master/data-format/binning.rst)
+> build · big-pickle
+[0m% [0mWebFetch https://github.com/bioboxes/rfc/tree/master/data-format 
+> build · big-pickle
+[0m% [0mWebFetch https://raw.githubusercontent.com/bioboxes/rfc/4bb19a633a6a969c2332f1f298852114c5f89b1b/data-format/binning.mkd 
+> build · big-pickle
+The authoritative CAMI spec (`binning.mkd` v0.9.1) is a **single `.binning` text file** (`@@SEQUENCEID BINID`), not `binning_summary.tsv`. Our exporter emits a tree + NA lengths but **no `.binning` file** — a real gap. Let me fix the exporter: emit the CAMI `.binning`, compute numeric contig lengths, and correct the spec reference:
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/scripts/export_biobox.sh
+Index: /vol/data/repos/metagenomic-binning-benchmark/scripts/export_biobox.sh
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/scripts/export_biobox.sh
++++ /vol/data/repos/metagenomic-binning-benchmark/scripts/export_biobox.sh
+@@ -4,20 +4,24 @@
+ # Issue #25 (owner): "learn to export binning results as biobox format - cami
+ # standard, also export each binning result: bins in fasta, biobox output,
+ # stats".
+ #
+-# CAMI biobox binning layout (https://github.com/bioboxes/rfc/blob/master/
+-# data-format/binning.rst):
++# CAMI binning output format v0.9.1 (authoritative, bioboxes/rfc data-format/
++# binning.mkd): a single TAB-delimited `<sample>.binning` text file with a
++# header (`@Version:0.9.1`, `@SampleID:<sample>`) and columns
++# `@@SEQUENCEID	BINID`. This is exactly what AMBER consumes.
+ #
+-#   <input>/binning/<engine>/<version>/binning/<sample>/<bin_id>.fna
+-#   <input>/binning/<engine>/<version>/binning_summary.tsv
++# We additionally ship the per-bin FASTA (owner #25: "bins in fasta") and a
++# convenience `binning_summary.tsv` (bin_id, contig_id, contig_len) whose
++# contig_len is computed from the FASTA sequence.
+ #
+ # Our run layout:
+ #   runs/<run>/comebin_out/comebin_res/comebin_res_bins/<id>.fa   (cluster bins)
+ #   runs/<run>/per_bin_results.csv                                (stats)
+ #
+ # Output (written next to the run dir):
+-#   runs/<run>/biobox/binning.tar.gz                              (CAMI-compliant)
++#   runs/<run>/biobox/<sample>.binning                            (CAMI v0.9.1)
++#   runs/<run>/biobox/binning.tar.gz                              (tree of bins)
+ #   runs/<run>/biobox/bins.fasta.gz                               (all bins, concat)
+ #   runs/<run>/biobox/binning_summary.tsv                         (per-bin stats)
+ #
+ # Usage:
+
+> build · big-pickle
+[0m→ [0mRead /vol/data/repos/metagenomic-binning-benchmark/scripts/export_biobox.sh 
+> build · big-pickle
+Now fixing the exporter: compute numeric contig lengths and emit the authoritative CAMI `.binning` file:
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/scripts/export_biobox.sh
+Index: /vol/data/repos/metagenomic-binning-benchmark/scripts/export_biobox.sh
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/scripts/export_biobox.sh
++++ /vol/data/repos/metagenomic-binning-benchmark/scripts/export_biobox.sh
+@@ -49,29 +49,37 @@
+   bin_count=$((bin_count + 1))
+ done
+ [ "$bin_count" -gt 0 ] || { echo "ERROR: no bin fastas found"; exit 1; }
+ 
+-# binning_summary.tsv (biobox column layout: bin_id, contig_id, contig_len) —
+-# one row per contig membership; contig length parsed from the FASTA defline
+-# `length=<bp>` when present, else computed on the fly.
++# binning_summary.tsv (convenience: bin_id, contig_id, contig_len) and the
++# authoritative CAMI v0.9.1 `<sample>.binning` (SEQUENCEID -> BINID), built in
++# one pass. contig_len is computed from the FASTA sequence (COMEBin bin deflines
++# carry no `length=` tag; the sequence is authoritative anyway).
+ summary="$OUT/tree/$ENGINE/$VERSION/binning_summary.tsv"
++binning="$OUT/$SAMPLE.binning"
+ {
+   echo -e "bin_id\tcontig_id\tcontig_len"
+   for f in "$TREE"/*.fna; do
+     bin_id=$(basename "$f" .fna)
+     awk -v bin="$bin_id" '
+       /^>/ {
++        if (name != "") print bin "\t" name "\t" len
+         name = substr($1, 2)
+-        if (match($0, /length=[0-9]+/))
+-          len = substr($0, RSTART + 7, RLENGTH - 7)
+-        else
+-          len = "NA"
+-        print bin "\t" name "\t" len
++        len = 0
++        next
+       }
++      { len += length($0) }
++      END { if (name != "") print bin "\t" name "\t" len }
+     ' "$f"
+   done
+ } > "$summary"
+ 
++{
++  printf '@Version:0.9.1\n@SampleID:%s\n' "$SAMPLE"
++  printf '@@SEQUENCEID\tBINID\n'
++  tail -n +2 "$summary" | awk -F'\t' '{print $2 "\t" $1}'
++} > "$binning"
++
+ # Concatenated bins (for easy archival + stats consumers).
+ cat "$TREE"/*.fna | gzip > "$OUT/bins.fasta.gz"
+ 
+ # tarball rooted at <engine>/... so the biobox validator accepts it directly.
+
+> build · big-pickle
+[0m→ [0mRead /vol/data/repos/metagenomic-binning-benchmark/scripts/export_biobox.sh [90m[offset=86, limit=30][0m
+> build · big-pickle
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/scripts/export_biobox.sh
+Index: /vol/data/repos/metagenomic-binning-benchmark/scripts/export_biobox.sh
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/scripts/export_biobox.sh
++++ /vol/data/repos/metagenomic-binning-benchmark/scripts/export_biobox.sh
+@@ -93,15 +93,18 @@
+ sample:  $SAMPLE
+ bins:    $bin_count
+ 
+ Contents:
+-  binning.tar.gz          CAMI biobox compliant (engine/version/binning_summary.tsv)
++  $SAMPLE.binning        CAMI binning format v0.9.1 (SEQUENCEID -> BINID)
++  binning.tar.gz          per-bin FASTA tree (engine/version/binning/sample/*.fna)
+   bins.fasta.gz           all bins concatenated, FASTA
+-  binning_summary.tsv     contig membership + length per bin
++  tree/.../binning_summary.tsv  contig membership + computed length per bin
+   stats.csv               per-bin CheckM2/CheckM v1 (from per_bin_results.csv)
+ 
+-Validate with the biobox validator (container) before archival:
+-  docker run -v $(pwd):/data bioboxes/validator /data/binning.tar.gz binning
++CAMI binning format v0.9.1: https://github.com/bioboxes/rfc (data-format/binning.mkd).
++This is the same file AMBER consumes (scripts/make_amber_prediction.py).
++Validate structurally before archival:
++  python3 scripts/validate_binning.py $OUT/$SAMPLE.binning
+ EOF
+ 
+ # Per-bin stats snapshot when available.
+ if [ -f "$RUN_DIR/per_bin_results.csv" ]; then
+
+> build · big-pickle
+[0m→ [0mRead /vol/data/repos/metagenomic-binning-benchmark/scripts/export_biobox.sh [90m[limit=30, offset=86][0m
+> build · big-pickle
+Now creating the local structural validator referenced by the exporter:
+[0m← [0mWrite /vol/data/repos/metagenomic-binning-benchmark/scripts/validate_binning.py
+Created file successfully: /vol/data/repos/metagenomic-binning-benchmark/scripts/validate_binning.py
+> build · big-pickle
+Now let me test the fixed exporter and re-export the runs (marine, human, medium) with numeric lengths + CAMI `.binning`:
