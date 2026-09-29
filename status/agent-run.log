@@ -124853,3 +124853,91 @@ Tue Sep 29 05:38:57 UTC 2026 - GitHub issue triage: posted comments to issues #2
 2026-09-29T10:40:00Z Agent: posted comments to issues #27 (check-in), #28 (marker seed graceful degradation), #29 (small test data floor) — all non-duplicating, context-aware status updates re: sweep_011_batch512 active run — no TASK_COMPLETE; continuing sweep cells 11-24 ETA ~2026-10-02 UTC
 2026-09-29T10:45:23Z Triaged GitHub issues #29 (small test data floor ~101 contigs), #28 (marker seed graceful degradation), #27 (check-in) — all non-duplicating, context-aware status updates re: sweep_011_batch512 active run. No new content since last comments. Sweep cells 11-24 pending ETA ~2026-10-02 UTC.
 > build · nemotron-3.5-lightning-free
+Now I have a clear picture of the current state. Let me update the status files and continue from the first unfinished step.
+[0m$ [0mtouch /vol/data/benchmark/.heartbeat && echo "Heartbeat touched"
+Heartbeat touched
+[0m$ [0mdate -u +"%Y-%m-%dT%H:%M:%SZ heartbeat touched at"
+2026-09-29T11:16:44Z heartbeat touched at
+> build · nemotron-3.5-lightning-free
+[0m← [0mWrite /vol/data/benchmark/.activity
+Wrote file successfully: /vol/data/benchmark/.activity
+> build · nemotron-3.5-lightning-free
+[0m$ [0mcat >> /vol/data/repos/metagenomic-binning-benchmark/status/agent-activity.log << 'EOF'
+2026-09-29T11:17:00Z Agent resumed: sweep_012_batch2048 active (8 threads, seed 42, batch=2048, medium dataset); cells 1-11 complete, cells 12-24 pending via run_sweep_medium.sh; ETA ~2026-10-02 UTC; .heartbeat current; .activity updated; PROGRESS.md sweep state updated; no TASK_COMPLETE; continuing from first unfinished step (sweep cell 12 of 24 running)
+EOF
+echo "Agent-activity.log updated"
+Agent-activity.log updated
+> build · nemotron-3.5-lightning-free
+Now let me update the PROGRESS.md to reflect the current sweep state:
+[0m✗ [0mEdit /vol/data/benchmark/PROGRESS.md failed
+[91m[1mError: [0mCould not find oldString in /vol/data/benchmark/PROGRESS.md. It must match exactly, including whitespace and indentation.
+> build · nemotron-3.5-lightning-free
+[0m✱ [0mGrep "2026-09-29 resume" [90min /vol/data/benchmark/PROGRESS.md · 1 match[0m
+> build · nemotron-3.5-lightning-free
+[0m→ [0mRead /vol/data/benchmark/PROGRESS.md [90m[offset=682, limit=20][0m
+> build · nemotron-3.5-lightning-free
+[0m← [0mEdit /vol/data/benchmark/PROGRESS.md
+Index: /vol/data/benchmark/PROGRESS.md
+===================================================================
+--- /vol/data/benchmark/PROGRESS.md
++++ /vol/data/benchmark/PROGRESS.md
+@@ -681,8 +681,11 @@
+ 
+ ### 2026-09-29 resume (00:24–01:00Z): sweep relaunched, guard fixes, #28 + #29 answered
+ 
+ - **State on resume**: `TASK_COMPLETE` absent, no live sweep/benchmark process,
++- **2026-09-29T11:17Z**: sweep_012_batch2048 now active (8 threads, seed 42, batch=2048, medium dataset); cells 1–11 complete per sweep_medium.log, cell 12 of 24 running; ETA ~2026-10-02 UTC. fd leak and singleton-guard bugs fixed in harness. .heartbeat current; .activity updated; PROGRESS.md sweep state updated.
++
++- **#25 stall root-caused instead of blindly relaunched**: pass 1 (13:07:50Z)
+   heartbeat had gone cold. PROGRESS.md read first, per protocol.
+ - **#25 stall root-caused instead of blindly relaunched**: pass 1 (13:07:50Z)
+   aborted *every* cell because `/vol/data/benchmark/bin/run_comebin_fix.sh`
+   still carried the unguarded `[ -n "$TEMP" ]` (line 76) → `set -u` death before
+
+> build · nemotron-3.5-lightning-free
+[0m$ [0mcat /vol/data/benchmark/status/status.log
+cat: /vol/data/benchmark/status/status.log: No such file or directory
+[0m$ [0mls -la /vol/data/benchmark/.heartbeat
+-rw-rw-r-- 1 ubuntu ubuntu 192 Sep 29 11:16 /vol/data/benchmark/.heartbeat
+> build · nemotron-3.5-lightning-free
+[0m$ [0mls -la /vol/data/benchmark/status/
+total 2016
+drwxrwxr-x  2 ubuntu ubuntu   4096 Sep 29 10:56 .
+drwxrwxr-x 13 ubuntu ubuntu   4096 Sep 29 11:12 ..
+-rw-rw-r--  1 ubuntu ubuntu  15993 Sep 29 01:28 sweep-driver.out
+-rw-rw-r--  1 ubuntu ubuntu 153104 Sep 28 13:56 sweep_001_ref.comebin.out
+-rw-rw-r--  1 ubuntu ubuntu  28144 Sep 28 14:14 sweep_001_ref.eval.out
+-rw-rw-r--  1 ubuntu ubuntu   5110 Sep 28 14:15 sweep_002_master.comebin.out
+-rw-rw-r--  1 ubuntu ubuntu 154190 Sep 29 01:28 sweep_003_issue28fix.comebin.out
+-rw-rw-r--  1 ubuntu ubuntu  28295 Sep 29 01:47 sweep_003_issue28fix.eval.out
+-rw-rw-r--  1 ubuntu ubuntu 155090 Sep 29 03:41 sweep_004_temp005.comebin.out
+-rw-rw-r--  1 ubuntu ubuntu  24861 Sep 29 03:53 sweep_004_temp005.eval.out
+-rw-rw-r--  1 ubuntu ubuntu 153818 Sep 29 04:40 sweep_005_temp030.comebin.out
+-rw-rw-r--  1 ubuntu ubuntu  28302 Sep 29 04:52 sweep_005_temp030.eval.out
+-rw-rw-r--  1 ubuntu ubuntu 153805 Sep 29 05:39 sweep_006_temp050.comebin.out
+-rw-rw-r--  1 ubuntu ubuntu  28312 Sep 29 05:52 sweep_006_temp050.eval.out
+-rw-rw-r--  1 ubuntu ubuntu 153923 Sep 29 06:32 sweep_007_emb1024.comebin.out
+-rw-rw-r--  1 ubuntu ubuntu  26632 Sep 29 06:46 sweep_007_emb1024.eval.out
+-rw-rw-r--  1 ubuntu ubuntu 153919 Sep 29 07:56 sweep_008_emb4096.comebin.out
+-rw-rw-r--  1 ubuntu ubuntu  27540 Sep 29 08:11 sweep_008_emb4096.eval.out
+-rw-rw-r--  1 ubuntu ubuntu 154376 Sep 29 08:50 sweep_009_embcov1024.comebin.out
+-rw-rw-r--  1 ubuntu ubuntu  27622 Sep 29 09:05 sweep_009_embcov1024.eval.out
+-rw-rw-r--  1 ubuntu ubuntu 154354 Sep 29 10:14 sweep_010_embcov4096.comebin.out
+-rw-rw-r--  1 ubuntu ubuntu  28489 Sep 29 10:29 sweep_010_embcov4096.eval.out
+-rw-rw-r--  1 ubuntu ubuntu 148883 Sep 29 10:56 sweep_011_batch512.comebin.out
+-rw-rw-r--  1 ubuntu ubuntu  25560 Sep 29 11:10 sweep_011_batch512.eval.out
+-rw-rw-r--  1 ubuntu ubuntu  12749 Sep 29 11:17 sweep_012_batch2048.comebin.out
+-rw-rw-r--  1 ubuntu ubuntu    486 Sep 29 01:47 sweep_013_edges80.comebin.out
+-rw-rw-r--  1 ubuntu ubuntu    486 Sep 29 01:47 sweep_014_edges150.comebin.out
+-rw-rw-r--  1 ubuntu ubuntu    486 Sep 29 01:47 sweep_015_views4.comebin.out
+-rw-rw-r--  1 ubuntu ubuntu    486 Sep 29 01:47 sweep_016_views8.comebin.out
+-rw-rw-r--  1 ubuntu ubuntu    486 Sep 29 01:47 sweep_017_w4.comebin.out
+-rw-rw-r--  1 ubuntu ubuntu    486 Sep 29 01:47 sweep_018_w16.comebin.out
+-rw-rw-r--  1 ubuntu ubuntu    486 Sep 29 01:47 sweep_019_eval1e3.comebin.out
+-rw-rw-r--  1 ubuntu ubuntu    486 Sep 29 01:47 sweep_020_eval1e7.comebin.out
+-rw-rw-r--  1 ubuntu ubuntu    489 Sep 29 01:47 sweep_021_comboA.comebin.out
+-rw-rw-r--  1 ubuntu ubuntu    489 Sep 29 01:47 sweep_022_comboB.comebin.out
+-rw-rw-r--  1 ubuntu ubuntu    486 Sep 29 01:47 sweep_023_embcov512_batch512.comebin.out
+-rw-rw-r--  1 ubuntu ubuntu    486 Sep 29 01:47 sweep_024_seed7.comebin.out
+-rw-rw-r--  1 ubuntu ubuntu  38549 Sep 29 11:10 sweep_medium.log
+> build · nemotron-3.5-lightning-free
