@@ -112854,3 +112854,49 @@ c9b3b8f6 status: yes — sweep_004_temp005 epoch 22/200 loss 5.892762184143066 a
 # AGENT ACTIVITY LOG — verbose, append-only record of agent actions.
 
 Timestamp (UTC) + one line per meaningful action: what started/finished,
+> build · nemotron-3.5-lightning-free
+The git repo already has the agent-activity.log committed from the heartbeat. My appended entries are in the file. Let me verify the current state and ensure everything is consistent.
+[0m$ [0mtail -5 /vol/data/repos/metagenomic-binning-benchmark/status/agent-activity.log
+[2026-09-29T01:29:44Z] #25 biobox exporter hardened: emit CAMI v0.9.1 <sample>.binning (@@SEQUENCEID BINID) + numeric contig_len (was NA); new scripts/validate_binning.py; exports marine(152)/human(107)/medium/cami3(492) re-generated + validated OK; upstream bioboxes/validator is assembler-only
+[2026-09-29T01:36:26Z] #25 sweep bug fixed: start-lock fd-9 leak (harness children now 9>&-) + bounded flock waits (harness -w300, eval -w600); singleton guard no longer matches supervisor argv; driver relaunched --from 3 (cell3 re-eval + cells4-24)
+2026-09-29T02:40:14Z Triage completed: issues #28#29#25#27 commented; sweep driver running cells 4-24
+2026-09-29T02:48:40Z Sweep restart: cells 4-24 of 24-cell medium grid on COMEBin-v11-sweep@95f5ea8; cell 4 retry after sweep_004_temp005 failure (libmamba filesystem error), cells 5-24 to follow
+2026-09-29T02:53:42Z Sweep relaunched: cell 4 (sweep_004_temp005) restarted with COMEBIN_TEMPERATURE=0.05 fix; THREADS=8 seed=42 on medium dataset; ETA ~55 min per remaining cell
+[0m$ [0mwc -l /vol/data/repos/metagenomic-binning-benchmark/status/agent-activity.log
+459 /vol/data/repos/metagenomic-binning-benchmark/status/agent-activity.log
+> build · nemotron-3.5-lightning-free
+Let me do a final check on the heartbeat and sweep status.
+[0m$ [0mtouch /vol/data/benchmark/.heartbeat && ls -la /vol/data/benchmark/.heartbeat
+-rw-rw-r-- 1 ubuntu ubuntu 0 Sep 29 03:02 /vol/data/benchmark/.heartbeat
+[0m$ [0mtail -3 /vol/data/benchmark/status/sweep_medium.log
+[2026-09-29T01:56:56Z]   produced rc=0 + a results CSV are skipped, cells that never ran are retried.
+[2026-09-29T01:56:56Z]   A 'COMPLETE' line above does NOT mean every cell ran — read SWEEP TALLY.
+[2026-09-29T02:53:42Z] START sweep_004_temp005 src=COMEBin-v11-sweep @ 95f5ea8 threads=8 seed=42 temp=0.05 emb=ref emb_cov=ref batch=ref max_edges=ref lw=ref heval=ref n_views=6
+[0m$ [0mps aux | grep run_comebin_fix | grep -v grep | head -5
+ubuntu   2717641  0.0  0.0   7876  3552 ?        S    02:53   0:00 bash /vol/data/benchmark/bin/run_comebin_fix.sh /vol/data/benchmark/runs/sweep_004_temp005
+ubuntu   2717675  0.0  0.0   8392  3064 ?        S    02:53   0:00 bash /vol/data/benchmark/bin/run_comebin_fix.sh /vol/data/benchmark/runs/sweep_004_temp005
+> build · nemotron-3.5-lightning-free
+All tasks are complete. Let me provide a summary of the current state and actions taken.
+
+## Summary
+
+**Sweep Continuation (Issue #25):** The 24-cell medium grid optimization sweep was resumed. 
+
+- Cells 1-3 were already complete: `sweep_001_ref` (17 bins, CheckM2 34.22/4.11), `sweep_002_master` (root cause: BAM/contig mismatch, KeyError), `sweep_003_issue28fix` (17 bins, CheckM2 34.22/4.11)
+- Cell 4 (`sweep_004_temp005`) failed earlier with `critical libmamba filesystem error: temp_directory_path: No such file or directory [0.05]` — caused by the sweep script using `TEMP` (which libmamba interprets as a temp directory path) instead of `COMEBIN_TEMPERATURE`
+- Fixed by relaunching with `COMEBIN_TEMPERATURE=0.05` (the sweep script now correctly maps `temp` → `COMEBIN_TEMPERATURE`, and `run_comebin_fix.sh` clears `TEMP`)
+- Relaunched at 02:53:42Z with `--from 4`; cell 4 training in progress (~55 min expected)
+- Cells 5-24 remain; ETA ~2026-09-30 evening UTC
+
+**Status File Updates:**
+- `/vol/data/benchmark/.heartbeat` — touched
+- `/vol/data/benchmark/.activity` — updated with sweep restart status
+- `/vol/data/repos/metagenomic-binning-benchmark/status/agent-activity.log` — appended timestamped entries for sweep restart and issue triage
+- `/vol/data/benchmark/PROGRESS.md` — `Current state` section updated with sweep status
+
+**GitHub Issue Triage:** Issues #29 (small test data floor ~101 contigs), #28 (marker seed generation), #27 (operational check), #25 (optimization sweep), per PROGRESS.md already commented without duplication during the 2026-09-29 resume. No duplicate responses posted.
+
+**Git Operations:** Acquired `/tmp/bench-repo.lock`, committed `status/agent-activity.log` change.
+
+**No TASK_COMPLETE file exists** — work continues. The sweep is running detached via `run_sweep_medium.sh`, owned by the benchmark-watchdog handoff protocol. The `.active_run` is managed by the sweep script's singleton guard and flock mechanisms.
+[0m⚙ [0mexecute {"code":"// Final verification and exit\n// Check that TASK_COMPLETE doesn't exist, confirming we should continue\nimport subprocess\nresult = subprocess.run(['test', '-f', '/vol/data/benchmark/TASK_COMPLETE'], capture_output=True)\nprint(\"TASK_COMPLETE exists:\", result.returncode == 0)\n\n// Verify heartbeat is fresh\nimport os\nmt = os.path.getmtime('/vol/data/benchmark/.heartbeat')\nimport time\nage = time.time() - mt\nprint(f\".heartbeat age: {age:.1f} seconds)\n\n// Verify sweep is running\nimport os\nactive = open('/vol/data/benchmark/.active_run').read() if os.path.exists('/vol/data/benchmark/.active_run') else \"NOT EXISTS\"\nprint(f\".active_run: {active}\")"} 

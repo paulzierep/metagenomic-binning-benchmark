@@ -3,10 +3,10 @@
 | | |
 |---|---|
 | Status | 🟢 `running` |
-| ⏱ Updated (Europe/Berlin) | `2026-09-29T05:02 CEST` |
-| 🏃 Live benchmark | `sweep_004_temp005` — **epoch 31/200** · loss `5.471731185913086` · top1 acc `8.53515625` (log 12s fresh) |
+| ⏱ Updated (Europe/Berlin) | `2026-09-29T05:04 CEST` |
+| 🏃 Live benchmark | `sweep_004_temp005` — **epoch 40/200** · loss `5.064834117889404` · top1 acc `13.274739265441895` (log 7s fresh) |
 | 🧠 Model (last turn) | `nemotron-3.5-lightning-free` (watchdog rotates to free models on quota) |
-| 📌 Agent note · **3 min old** | 2026-09-29T01:02:00Z rank-script-fix + galaxy-fixture-runner committed
+| 📌 Agent note · **5 min old** | 2026-09-29T01:02:00Z rank-script-fix + galaxy-fixture-runner committed
 [2026-09-29T01:08:17Z] #25 AMBER: inputs staged (marine pred + GS), env installing
 [2026-09-29T01:12:11Z] AMBER marine eval done (F1 0.330 bp); docs/14 + scripts/make_amber_prediction.py; sweep_003 running
 [2026-09-29T01:23:01Z] AMBER human eval done (F1 0.681 bp, 99.3% assigned); human GS imported; biobox exports marine/human/cami3
@@ -15,9 +15,9 @@
 2026-09-29T02:40:14Z Issue triaging: commented on #29 (small test data floor ~101 contigs), #28 (marker seed generation graceful handle), #25 (sweep in progress cells 4-24), #27 (operational check)
 2026-09-29T02:40:14Z Sweep status: driver pid 2709575 running cells 4-24 of 24-cell medium grid; cells 1-3 complete (sweep_001_ref: 17 bins, sweep_002_master: root cause identified, sweep_003_issue28fix: 17 bins CheckM2 34.22/4.11 CheckM 32.00/5.31)
 2026-09-29T02:48:40Z Sweep restart: cells 4-24 of 24-cell medium grid on COMEBin-v11-sweep@95f5ea8; cell 4 retry after sweep_004_temp005 failure (libmamba filesystem error - fixed by using COMEBIN_TEMPERATURE instead of TEMP), cells 5-24 to follow. Cell 4 (sweep_004_temp005) training started at 02:53, temperature 0.05, ~55 min expected. |
-| ⚙️ Load · uptime | `7.62 6.14 3.09` · 5 days, 13 hours, 26 minutes — 32 cores, 62 GiB, no GPU |
-| 💾 RAM used/total | `5754/64295 MB` |
+| ⚙️ Load · uptime | `8.07 6.82 3.71` · 5 days, 13 hours, 28 minutes — 32 cores, 62 GiB, no GPU |
+| 💾 RAM used/total | `5181/64295 MB` |
 | 🔗 Session | `ses_f31799c77ffeTq9gcYgqc4hBhg` |
-| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `c9b3b8f6 status: yes — sweep_004_temp005 epoch 22/200 loss 5.892762184143066 a` |
-| 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `10875673 B` — every run, command & tool result |
+| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `94fdb0c5 meta: supervise tick 2026-09-29T03:03:01Z — 0 fix(es)` |
+| 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `10880967 B` — every run, command & tool result |
 | 📈 Timeline | [status/status.log](status/status.log) |

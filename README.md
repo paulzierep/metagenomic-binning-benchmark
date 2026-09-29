@@ -1,6 +1,6 @@
 <!--AGENT-STATUS-->
 
-> 🟢 **Agent status:** `running` · ⏱ `2026-09-29T05:02 CEST` · 🏃 train sweep_004_temp005: epoch 31/200 · loss 5.471731185913086 · top1 8.53515625 · 🧠 `nemotron-3.5-lightning-free` · [status.log](status/status.log)
+> 🟢 **Agent status:** `running` · ⏱ `2026-09-29T05:04 CEST` · 🏃 train sweep_004_temp005: epoch 40/200 · loss 5.064834117889404 · top1 13.274739265441895 · 🧠 `nemotron-3.5-lightning-free` · [status.log](status/status.log)
 
 # Metagenomic binning benchmark
 
