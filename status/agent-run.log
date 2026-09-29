@@ -102557,3 +102557,667 @@ Done with this pass — everything from the resume plan's items 1–4 is landed,
 Next: monitor cell 3 → when the grid closes, `python3 scripts/rank_sweep_medium.py`, post the table to #25/#28, then `scripts/run_galaxy_fixture_test.sh` for the #29 end-to-end result.
 [0m
 > build · big-pickle
+[0m$ [0mcd /vol/data/benchmark
+echo "=== time ==="
+date -u +%FT%TZ
+echo "=== .active_run ==="
+cat .active_run 2>/dev/null || echo CLEAR
+echo "=== sweep driver / train ==="
+pgrep -af "run_sweep_medium.sh" | grep -v pgrep | head -1 || echo "no driver"
+pgrep -af "main.py train" | grep -v pgrep | head -1 | cut -c1-120 || echo "no train"
+echo "=== sweep log tail ==="
+tail -8 status/sweep_medium.log 2>/dev/null
+echo "=== completed sweep cells (results csv) ==="
+ls /vol/data/repos/metagenomic-binning-benchmark/results/sweep_*.csv 2>/dev/null | wc -l
+ls /vol/data/repos/metagenomic-binning-benchmark/results/sweep_*.csv 2>/dev/null | xargs -n1 basename 2>/dev/null | tr '\n' ' '; echo
+echo "=== issues: benchmark repo ==="
+gh issue list -R paulzierep/metagenomic-binning-benchmark --state open --json number,title,updatedAt --jq '.[] | "#\(.number) [\(.updatedAt)] \(.title)"' 2>/dev/null
+echo "=== issues: COMEBin repo ==="
+gh issue list -R paulzierep/COMEBin --state open --json number,title,updatedAt --jq '.[] | "#\(.number) [\(.updatedAt)] \(.title)"' 2>/dev/null
+touch .heartbeat
+=== time ===
+2026-09-29T01:04:02Z
+=== .active_run ===
+2566376 2566340 /vol/data/benchmark/runs/sweep_003_issue28fix/comebin_run.log /vol/data/benchmark/runs/sweep_003_issue28fix 1790642472 medium /vol/data/benchmark/../repos/COMEBin-v11 /vol/data/datasets/comebin_medium/contigs.fa /vol/data/datasets/comebin_medium/bamfiles
+=== sweep driver / train ===
+2566340 bash /vol/data/repos/metagenomic-binning-benchmark/scripts/run_sweep_medium.sh --from 3
+2567198 python /vol/data/repos/COMEBin-v11/COMEBin/main.py train --data /vol/data/benchmark/runs/sweep_003_issue28fix/co
+=== sweep log tail ===
+[2026-09-28T14:15:53Z] FAIL sweep_023_embcov512_batch512: run_comebin_fix.sh rc=0
+[2026-09-28T14:15:53Z] START sweep_024_seed7 src=COMEBin-v11-sweep @ 95f5ea8 threads=8 seed=7 temp=ref emb=ref emb_cov=ref batch=ref max_edges=ref lw=ref heval=ref n_views=6
+[2026-09-28T14:15:53Z] FAIL sweep_024_seed7: run_comebin_fix.sh rc=0
+[2026-09-28T14:15:53Z] SWEEP COMPLETE (24 cells processed)
+[2026-09-29T00:26:50Z] ABORT: sweep driver pid=2559226 already running; singleton guard, not starting a second
+[2026-09-29T00:29:55Z] ABORT: sweep driver pid=2560340 already running; singleton guard, not starting a second ()
+[2026-09-29T00:31:57Z] ABORT: sweep driver pid=2561301 already running; singleton guard, not starting a second ()
+[2026-09-29T00:41:12Z] START sweep_003_issue28fix src=COMEBin-v11 @ 41606c8 threads=8 seed=42 temp=ref emb=ref emb_cov=ref batch=ref max_edges=ref lw=ref heval=ref n_views=6
+=== completed sweep cells (results csv) ===
+1
+sweep_001_ref.csv 
+=== issues: benchmark repo ===
+#29 [2026-09-29T00:55:19Z] Small test data
+#28 [2026-09-29T00:55:20Z] Fix this issue
+#27 [2026-09-28T12:52:42Z] Are u ok ?
+#26 [2026-09-28T13:00:08Z] Improve logging
+#25 [2026-09-28T13:11:51Z] Improve optimization
+#24 [2026-09-28T13:15:15Z] Main readme needs cleaning
+#23 [2026-09-28T13:02:38Z] Where does the assembly for cami3 come from
+#22 [2026-09-28T13:00:05Z] is there a summary table for all runs
+#21 [2026-09-28T13:02:14Z] use a seed for all runs
+#20 [2026-09-28T13:02:13Z] what are your ideas for further optimization ?
+#19 [2026-09-28T13:15:17Z] better plots
+#6 [2026-09-26T07:56:10Z] Optimization
+#1 [2026-09-23T14:53:13Z] Idea inbox: benchmark ideas, COMEBin fixes, dataset requests
+=== issues: COMEBin repo ===
+> build · big-pickle
+A day has passed. Big developments: the sweep driver completed/failed cells quickly, a new driver resumed at cell 3 (running now), and there are **new owner comments** on #28 and a brand-new **#29 "Small test data"**. Let me investigate the sweep history and read the new comments:
+[0m$ [0mcd /vol/data/benchmark
+echo "=== #29 latest comments ==="
+gh issue view 29 -R paulzierep/metagenomic-binning-benchmark --json comments --jq '.comments[-3:] | .[] | "--- " + .createdAt + " " + .author.login + " ---\n" + (.body[0:900])' 2>/dev/null
+echo
+echo "=== #28 latest comment ==="
+gh issue view 28 -R paulzierep/metagenomic-binning-benchmark --json comments --jq '.comments[-2:] | .[] | "--- " + .createdAt + " " + .author.login + " ---\n" + (.body[0:700])' 2>/dev/null
+echo
+echo "=== sweep cells on disk with run_meta exit_code ==="
+for d in /vol/data/benchmark/runs/sweep_*/; do
+  n=$(basename "$d")
+  ec=$(grep -E "^exit_code:" "$d/run_meta.txt" 2>/dev/null | awk '{print $2}')
+  bins=$(grep -E "^bins:" "$d/run_meta.txt" 2>/dev/null | awk '{print $2}')
+  echo "$n exit=$ec bins=$bins"
+done
+=== #29 latest comments ===
+--- 2026-09-29T00:55:19Z paulzierep ---
+## A small test dataset already exists upstream — Galaxy IUC `tools/comebin/test-data`
+
+Source: https://github.com/galaxyproject/tools-iuc/tree/main/tools/comebin/test-data — exactly two files, `input_single.fasta` (813,640 B) and `input_single.bam` (200,915 B). I downloaded both and measured them (md5 `e6b5f3bb…` / `373f4411…`, now kept at `/vol/data/datasets/galaxy_comebin_fixture/`).
+
+### What it is
+
+| property | value (measured) |
+|---|---|
+| contigs | **40**, every one exactly **20,000 bp** → **800,000 bp total** |
+| IDs | `g1k_0` … `g4k_9` (4 groups × 10, synthetic, no taxonomy) |
+| GC | 26.97 % |
+| BAM | coordinate-sorted, **40 `@SQ` refs**, `set(refs) == set(fasta IDs)` (no dup, no mismatch) |
+| reads | **2,000** total, **94 mapped (4.7 %)** |
+| index | no `.bai` shipped (the wrapper does not need one) |
+
+### How Galaxy runs it
+
+From `tools/comebin/comebin.xml` + `macros.xml`:
+
+-
+
+=== #28 latest comment ===
+--- 2026-09-28T13:11:47Z paulzierep ---
+I would like to have this fix and the working optimization merged together and(after all has been tested on the medium dataset in master asap
+--- 2026-09-29T00:55:20Z paulzierep ---
+Acknowledged — that's the plan I'm executing, in the order you asked: **medium-dataset first, then straight into `master`, asap.**
+
+### Where the medium sweep stands right now (2026-09-29 00:50Z)
+
+Grid: 24 cells, one at a time, `scripts/run_sweep_medium.sh`, resumable, never overlaps a registered run.
+
+| cell | state |
+|---|---|
+| `sweep_001_ref` (v11 `95f5ea8`, reference params) | ✅ **done** — exit 0, 2,827 s, **17 bins**, CheckM2 **34.22 / 4.11** (HQ 0, MQ 2), CheckM 32.00 / 5.31 (HQ 0, MQ 3) |
+| `sweep_002_master` (stock upstream `904f649`) | ❌ exit 1 after 108 s, 0 bins — **documented, not retried** (see below) |
+| `sweep_003_issue28fix` (**your fix, `41606c8`**) | 🟡 **training now** — e
+
+=== sweep cells on disk with run_meta exit_code ===
+sweep_001_ref exit=0 bins=17
+sweep_002_master exit=1 bins=0
+sweep_003_issue28fix exit= bins=
+> build · big-pickle
+Substantial developments. The sweep was resumed by a driver running cell 3 now, a **new issue #29** appeared, and sibling posted status comments on #28. Let me dig deeper — #29's body/ownership, the sweep driver history, and my unfinished `rank_sweep_medium.py`:
+[0m$ [0mcd /vol/data/benchmark
+echo "=== #29 issue body ==="
+gh issue view 29 -R paulzierep/metagenomic-binning-benchmark --json title,body,createdAt,author --jq '.createdAt + " by " + .author.login + ":\n" + .title + "\n---\n" + (.body[0:1200])' 2>/dev/null
+echo
+echo "=== sweep log: full cell1->complete section ==="
+grep -nE "^(START|DONE|FAIL|EVAL|wait|SWEEP|RESUME|ABORT)" /vol/data/benchmark/status/sweep_medium.log | sed -n '1,120p'
+echo
+echo "=== driver script flock/who runs it ==="
+ps -o pid,ppid,etime,args -p 2566340 2>/dev/null
+ps -o pid,ppid,etime,args -p 2566376 2>/dev/null | cut -c1-140
+=== #29 issue body ===
+2026-09-28T14:18:29Z by paulzierep:
+Small test data
+---
+can you check if this test data works: https://github.com/galaxyproject/tools-iuc/tree/main/tools/comebin/test-data
+
+=== sweep log: full cell1->complete section ===
+
+=== driver script flock/who runs it ===
+    PID    PPID     ELAPSED COMMAND
+2566340       1       23:12 bash /vol/data/repos/metagenomic-binning-benchmark/scripts/run_sweep_medium.sh --from 3
+    PID    PPID     ELAPSED COMMAND
+2566376 2566340       23:11 bash /vol/data/benchmark/bin/run_comebin_fix.sh /vol/data/benchmark/runs/sweep_003_issue28fix
+> build · big-pickle
+[0m$ [0mcd /vol/data/benchmark
+echo "=== full sweep_medium.log ==="
+cat status/sweep_medium.log
+echo
+echo "=== results/sweep_*.csv in repo ==="
+ls -la /vol/data/repos/metagenomic-binning-benchmark/results/sweep_*.csv 2>/dev/null
+echo "=== runs dir sweep cells ==="
+ls /vol/data/benchmark/runs/ | grep sweep
+echo "=== git status repo ==="
+git -C /vol/data/repos/metagenomic-binning-benchmark status --porcelain | head -20
+echo "=== rank script syntax check ==="
+python3 -c "import ast; ast.parse(open('/vol/data/repos/metagenomic-binning-benchmark/scripts/rank_sweep_medium.py').read()); print('rank_sweep_medium.py: syntax OK')" 2>&1 | tail -1
+=== full sweep_medium.log ===
+[2026-09-28T13:07:50Z] START sweep_001_ref src=COMEBin-v11-sweep @ 95f5ea8 threads=8 seed=42 temp=ref emb=ref emb_cov=ref batch=ref max_edges=ref lw=ref heval=ref n_views=6
+[2026-09-28T13:07:50Z] FAIL sweep_001_ref: run_comebin_fix.sh rc=1
+[2026-09-28T13:07:50Z] START sweep_002_master src=COMEBin-master904 @ 904f649 threads=8 seed=none temp=ref emb=ref emb_cov=ref batch=ref max_edges=ref lw=ref heval=ref n_views=6
+[2026-09-28T13:07:50Z] FAIL sweep_002_master: run_comebin_fix.sh rc=1
+[2026-09-28T13:07:50Z] START sweep_003_issue28fix src=COMEBin-v11 @ 41606c8 threads=8 seed=42 temp=ref emb=ref emb_cov=ref batch=ref max_edges=ref lw=ref heval=ref n_views=6
+[2026-09-28T13:07:50Z] FAIL sweep_003_issue28fix: run_comebin_fix.sh rc=1
+[2026-09-28T13:07:50Z] START sweep_004_temp005 src=COMEBin-v11-sweep @ 95f5ea8 threads=8 seed=42 temp=0.05 emb=ref emb_cov=ref batch=ref max_edges=ref lw=ref heval=ref n_views=6
+[2026-09-28T13:07:50Z] FAIL sweep_004_temp005: run_comebin_fix.sh rc=1
+[2026-09-28T13:07:50Z] START sweep_005_temp030 src=COMEBin-v11-sweep @ 95f5ea8 threads=8 seed=42 temp=0.30 emb=ref emb_cov=ref batch=ref max_edges=ref lw=ref heval=ref n_views=6
+[2026-09-28T13:07:50Z] FAIL sweep_005_temp030: run_comebin_fix.sh rc=1
+[2026-09-28T13:07:50Z] START sweep_006_temp050 src=COMEBin-v11-sweep @ 95f5ea8 threads=8 seed=42 temp=0.50 emb=ref emb_cov=ref batch=ref max_edges=ref lw=ref heval=ref n_views=6
+[2026-09-28T13:07:50Z] FAIL sweep_006_temp050: run_comebin_fix.sh rc=1
+[2026-09-28T13:07:50Z] START sweep_007_emb1024 src=COMEBin-v11-sweep @ 95f5ea8 threads=8 seed=42 temp=ref emb=1024 emb_cov=ref batch=ref max_edges=ref lw=ref heval=ref n_views=6
+[2026-09-28T13:07:50Z] FAIL sweep_007_emb1024: run_comebin_fix.sh rc=1
+[2026-09-28T13:07:50Z] START sweep_008_emb4096 src=COMEBin-v11-sweep @ 95f5ea8 threads=8 seed=42 temp=ref emb=4096 emb_cov=ref batch=ref max_edges=ref lw=ref heval=ref n_views=6
+[2026-09-28T13:07:50Z] FAIL sweep_008_emb4096: run_comebin_fix.sh rc=1
+[2026-09-28T13:07:50Z] START sweep_009_embcov1024 src=COMEBin-v11-sweep @ 95f5ea8 threads=8 seed=42 temp=ref emb=ref emb_cov=1024 batch=ref max_edges=ref lw=ref heval=ref n_views=6
+[2026-09-28T13:07:50Z] FAIL sweep_009_embcov1024: run_comebin_fix.sh rc=1
+[2026-09-28T13:07:50Z] START sweep_010_embcov4096 src=COMEBin-v11-sweep @ 95f5ea8 threads=8 seed=42 temp=ref emb=ref emb_cov=4096 batch=ref max_edges=ref lw=ref heval=ref n_views=6
+[2026-09-28T13:07:50Z] FAIL sweep_010_embcov4096: run_comebin_fix.sh rc=1
+[2026-09-28T13:07:50Z] START sweep_011_batch512 src=COMEBin-v11-sweep @ 95f5ea8 threads=8 seed=42 temp=ref emb=ref emb_cov=ref batch=512 max_edges=ref lw=ref heval=ref n_views=6
+[2026-09-28T13:07:50Z] FAIL sweep_011_batch512: run_comebin_fix.sh rc=1
+[2026-09-28T13:07:50Z] START sweep_012_batch2048 src=COMEBin-v11-sweep @ 95f5ea8 threads=8 seed=42 temp=ref emb=ref emb_cov=ref batch=2048 max_edges=ref lw=ref heval=ref n_views=6
+[2026-09-28T13:07:50Z] FAIL sweep_012_batch2048: run_comebin_fix.sh rc=1
+[2026-09-28T13:07:50Z] START sweep_013_edges80 src=COMEBin-v11-sweep @ 95f5ea8 threads=8 seed=42 temp=ref emb=ref emb_cov=ref batch=ref max_edges=80 lw=ref heval=ref n_views=6
+[2026-09-28T13:07:50Z] FAIL sweep_013_edges80: run_comebin_fix.sh rc=1
+[2026-09-28T13:07:50Z] START sweep_014_edges150 src=COMEBin-v11-sweep @ 95f5ea8 threads=8 seed=42 temp=ref emb=ref emb_cov=ref batch=ref max_edges=150 lw=ref heval=ref n_views=6
+[2026-09-28T13:07:50Z] FAIL sweep_014_edges150: run_comebin_fix.sh rc=1
+[2026-09-28T13:07:50Z] START sweep_015_views4 src=COMEBin-v11-sweep @ 95f5ea8 threads=8 seed=42 temp=ref emb=ref emb_cov=ref batch=ref max_edges=ref lw=ref heval=ref n_views=4
+[2026-09-28T13:07:51Z] FAIL sweep_015_views4: run_comebin_fix.sh rc=1
+[2026-09-28T13:07:51Z] START sweep_016_views8 src=COMEBin-v11-sweep @ 95f5ea8 threads=8 seed=42 temp=ref emb=ref emb_cov=ref batch=ref max_edges=ref lw=ref heval=ref n_views=8
+[2026-09-28T13:07:51Z] FAIL sweep_016_views8: run_comebin_fix.sh rc=1
+[2026-09-28T13:07:51Z] START sweep_017_w4 src=COMEBin-v11-sweep @ 95f5ea8 threads=8 seed=42 temp=ref emb=ref emb_cov=ref batch=ref max_edges=ref lw=4 heval=ref n_views=6
+[2026-09-28T13:07:51Z] FAIL sweep_017_w4: run_comebin_fix.sh rc=1
+[2026-09-28T13:07:51Z] START sweep_018_w16 src=COMEBin-v11-sweep @ 95f5ea8 threads=8 seed=42 temp=ref emb=ref emb_cov=ref batch=ref max_edges=ref lw=16 heval=ref n_views=6
+[2026-09-28T13:07:51Z] FAIL sweep_018_w16: run_comebin_fix.sh rc=1
+[2026-09-28T13:07:51Z] START sweep_019_eval1e3 src=COMEBin-v11-sweep @ 95f5ea8 threads=8 seed=42 temp=ref emb=ref emb_cov=ref batch=ref max_edges=ref lw=ref heval=1e-3 n_views=6
+[2026-09-28T13:07:51Z] FAIL sweep_019_eval1e3: run_comebin_fix.sh rc=1
+[2026-09-28T13:07:51Z] START sweep_020_eval1e7 src=COMEBin-v11-sweep @ 95f5ea8 threads=8 seed=42 temp=ref emb=ref emb_cov=ref batch=ref max_edges=ref lw=ref heval=1e-7 n_views=6
+[2026-09-28T13:07:51Z] FAIL sweep_020_eval1e7: run_comebin_fix.sh rc=1
+[2026-09-28T13:07:51Z] START sweep_021_comboA src=COMEBin-v11-sweep @ 95f5ea8 threads=8 seed=42 temp=0.30 emb=1024 emb_cov=ref batch=512 max_edges=ref lw=ref heval=ref n_views=6
+[2026-09-28T13:07:51Z] FAIL sweep_021_comboA: run_comebin_fix.sh rc=1
+[2026-09-28T13:07:51Z] START sweep_022_comboB src=COMEBin-v11-sweep @ 95f5ea8 threads=8 seed=42 temp=0.05 emb=4096 emb_cov=ref batch=2048 max_edges=ref lw=ref heval=ref n_views=6
+[2026-09-28T13:07:51Z] FAIL sweep_022_comboB: run_comebin_fix.sh rc=1
+[2026-09-28T13:07:51Z] START sweep_023_embcov512_batch512 src=COMEBin-v11-sweep @ 95f5ea8 threads=8 seed=42 temp=ref emb=ref emb_cov=512 batch=512 max_edges=ref lw=ref heval=ref n_views=6
+[2026-09-28T13:07:51Z] FAIL sweep_023_embcov512_batch512: run_comebin_fix.sh rc=1
+[2026-09-28T13:07:51Z] START sweep_024_seed7 src=COMEBin-v11-sweep @ 95f5ea8 threads=8 seed=42 temp=ref emb=ref emb_cov=ref batch=ref max_edges=ref lw=ref heval=ref n_views=6
+[2026-09-28T13:07:51Z] FAIL sweep_024_seed7: run_comebin_fix.sh rc=1
+[2026-09-28T13:07:51Z] SWEEP COMPLETE (24 cells processed)
+[2026-09-28T13:09:26Z] START sweep_001_ref src=COMEBin-v11-sweep @ 95f5ea8 threads=8 seed=42 temp=ref emb=ref emb_cov=ref batch=ref max_edges=ref lw=ref heval=ref n_views=6
+[2026-09-28T13:11:12Z] wait: foreign run pid=2185694 active (0s elapsed); sleeping 60
+[2026-09-28T13:12:12Z] wait: foreign run pid=2185694 active (60s elapsed); sleeping 60
+[2026-09-28T13:13:12Z] wait: foreign run pid=2185694 active (120s elapsed); sleeping 60
+[2026-09-28T13:14:12Z] wait: foreign run pid=2185694 active (180s elapsed); sleeping 60
+[2026-09-28T13:15:12Z] wait: foreign run pid=2185694 active (240s elapsed); sleeping 60
+[2026-09-28T13:16:12Z] wait: foreign run pid=2185694 active (300s elapsed); sleeping 60
+[2026-09-28T13:16:43Z] ABORT: sweep driver pid=2186812 already running; singleton guard, not starting a second
+[2026-09-28T13:16:59Z] ABORT: sweep driver pid=2186812 already running; singleton guard, not starting a second
+[2026-09-28T13:17:12Z] wait: foreign run pid=2185694 active (360s elapsed); sleeping 60
+[2026-09-28T13:18:12Z] wait: foreign run pid=2185694 active (420s elapsed); sleeping 60
+[2026-09-28T13:19:12Z] wait: foreign run pid=2185694 active (480s elapsed); sleeping 60
+[2026-09-28T13:20:12Z] wait: foreign run pid=2185694 active (540s elapsed); sleeping 60
+[2026-09-28T13:21:12Z] wait: foreign run pid=2185694 active (600s elapsed); sleeping 60
+[2026-09-28T13:22:12Z] wait: foreign run pid=2185694 active (660s elapsed); sleeping 60
+[2026-09-28T13:23:12Z] wait: foreign run pid=2185694 active (720s elapsed); sleeping 60
+[2026-09-28T13:24:12Z] wait: foreign run pid=2185694 active (780s elapsed); sleeping 60
+[2026-09-28T13:25:12Z] wait: foreign run pid=2185694 active (840s elapsed); sleeping 60
+[2026-09-28T13:26:12Z] wait: foreign run pid=2185694 active (900s elapsed); sleeping 60
+[2026-09-28T13:27:12Z] wait: foreign run pid=2185694 active (960s elapsed); sleeping 60
+[2026-09-28T13:28:12Z] wait: foreign run pid=2185694 active (1020s elapsed); sleeping 60
+[2026-09-28T13:29:12Z] wait: foreign run pid=2185694 active (1080s elapsed); sleeping 60
+[2026-09-28T13:30:12Z] wait: foreign run pid=2185694 active (1140s elapsed); sleeping 60
+[2026-09-28T13:31:12Z] wait: foreign run pid=2185694 active (1200s elapsed); sleeping 60
+[2026-09-28T13:32:12Z] wait: foreign run pid=2185694 active (1260s elapsed); sleeping 60
+[2026-09-28T13:33:12Z] wait: foreign run pid=2185694 active (1320s elapsed); sleeping 60
+[2026-09-28T13:34:12Z] wait: foreign run pid=2185694 active (1380s elapsed); sleeping 60
+[2026-09-28T13:35:12Z] wait: foreign run pid=2185694 active (1440s elapsed); sleeping 60
+[2026-09-28T13:36:12Z] wait: foreign run pid=2185694 active (1500s elapsed); sleeping 60
+[2026-09-28T13:37:12Z] wait: foreign run pid=2185694 active (1560s elapsed); sleeping 60
+[2026-09-28T13:38:12Z] wait: foreign run pid=2185694 active (1620s elapsed); sleeping 60
+[2026-09-28T13:39:12Z] wait: foreign run pid=2185694 active (1680s elapsed); sleeping 60
+[2026-09-28T13:40:12Z] wait: foreign run pid=2185694 active (1740s elapsed); sleeping 60
+[2026-09-28T13:41:12Z] wait: foreign run pid=2185694 active (1800s elapsed); sleeping 60
+[2026-09-28T13:42:12Z] wait: foreign run pid=2185694 active (1860s elapsed); sleeping 60
+[2026-09-28T13:43:12Z] wait: foreign run pid=2185694 active (1920s elapsed); sleeping 60
+[2026-09-28T13:44:12Z] wait: foreign run pid=2185694 active (1980s elapsed); sleeping 60
+[2026-09-28T13:45:12Z] wait: foreign run pid=2185694 active (2040s elapsed); sleeping 60
+[2026-09-28T13:46:12Z] wait: foreign run pid=2185694 active (2100s elapsed); sleeping 60
+[2026-09-28T13:47:12Z] wait: foreign run pid=2185694 active (2160s elapsed); sleeping 60
+[2026-09-28T13:48:12Z] wait: foreign run pid=2185694 active (2220s elapsed); sleeping 60
+[2026-09-28T13:49:12Z] wait: foreign run pid=2185694 active (2280s elapsed); sleeping 60
+[2026-09-28T13:50:12Z] wait: foreign run pid=2185694 active (2340s elapsed); sleeping 60
+[2026-09-28T13:51:12Z] wait: foreign run pid=2185694 active (2400s elapsed); sleeping 60
+[2026-09-28T13:52:12Z] wait: foreign run pid=2185694 active (2460s elapsed); sleeping 60
+[2026-09-28T13:53:12Z] wait: foreign run pid=2185694 active (2520s elapsed); sleeping 60
+[2026-09-28T13:54:12Z] wait: foreign run pid=2185694 active (2580s elapsed); sleeping 60
+[2026-09-28T13:55:12Z] wait: foreign run pid=2185694 active (2640s elapsed); sleeping 60
+[2026-09-28T13:56:12Z] wait: foreign run pid=2185694 active (2700s elapsed); sleeping 60
+[2026-09-28T13:57:12Z] RESUME sweep_001_ref (rc=0 but no results csv — evaling orphaned run)
+[2026-09-28T14:14:05Z] DONE sweep_001_ref (orphaned run EVAL'd OK)
+[2026-09-28T14:14:05Z] START sweep_002_master src=COMEBin-master904 @ 904f649 threads=8 seed=42 temp=ref emb=ref emb_cov=ref batch=ref max_edges=ref lw=ref heval=ref n_views=6
+[2026-09-28T14:15:53Z] FAIL sweep_002_master: run_comebin_fix.sh rc=0
+[2026-09-28T14:15:53Z] START sweep_003_issue28fix src=COMEBin-v11 @ 41606c8 threads=8 seed=42 temp=ref emb=ref emb_cov=ref batch=ref max_edges=ref lw=ref heval=ref n_views=6
+[2026-09-28T14:15:53Z] FAIL sweep_003_issue28fix: run_comebin_fix.sh rc=0
+[2026-09-28T14:15:53Z] START sweep_004_temp005 src=COMEBin-v11-sweep @ 95f5ea8 threads=8 seed=42 temp=0.05 emb=ref emb_cov=ref batch=ref max_edges=ref lw=ref heval=ref n_views=6
+[2026-09-28T14:15:53Z] FAIL sweep_004_temp005: run_comebin_fix.sh rc=0
+[2026-09-28T14:15:53Z] START sweep_005_temp030 src=COMEBin-v11-sweep @ 95f5ea8 threads=8 seed=42 temp=0.30 emb=ref emb_cov=ref batch=ref max_edges=ref lw=ref heval=ref n_views=6
+[2026-09-28T14:15:53Z] FAIL sweep_005_temp030: run_comebin_fix.sh rc=0
+[2026-09-28T14:15:53Z] START sweep_006_temp050 src=COMEBin-v11-sweep @ 95f5ea8 threads=8 seed=42 temp=0.50 emb=ref emb_cov=ref batch=ref max_edges=ref lw=ref heval=ref n_views=6
+[2026-09-28T14:15:53Z] FAIL sweep_006_temp050: run_comebin_fix.sh rc=0
+[2026-09-28T14:15:53Z] START sweep_007_emb1024 src=COMEBin-v11-sweep @ 95f5ea8 threads=8 seed=42 temp=ref emb=1024 emb_cov=ref batch=ref max_edges=ref lw=ref heval=ref n_views=6
+[2026-09-28T14:15:53Z] FAIL sweep_007_emb1024: run_comebin_fix.sh rc=0
+[2026-09-28T14:15:53Z] START sweep_008_emb4096 src=COMEBin-v11-sweep @ 95f5ea8 threads=8 seed=42 temp=ref emb=4096 emb_cov=ref batch=ref max_edges=ref lw=ref heval=ref n_views=6
+[2026-09-28T14:15:53Z] FAIL sweep_008_emb4096: run_comebin_fix.sh rc=0
+[2026-09-28T14:15:53Z] START sweep_009_embcov1024 src=COMEBin-v11-sweep @ 95f5ea8 threads=8 seed=42 temp=ref emb=ref emb_cov=1024 batch=ref max_edges=ref lw=ref heval=ref n_views=6
+[2026-09-28T14:15:53Z] FAIL sweep_009_embcov1024: run_comebin_fix.sh rc=0
+[2026-09-28T14:15:53Z] START sweep_010_embcov4096 src=COMEBin-v11-sweep @ 95f5ea8 threads=8 seed=42 temp=ref emb=ref emb_cov=4096 batch=ref max_edges=ref lw=ref heval=ref n_views=6
+[2026-09-28T14:15:53Z] FAIL sweep_010_embcov4096: run_comebin_fix.sh rc=0
+[2026-09-28T14:15:53Z] START sweep_011_batch512 src=COMEBin-v11-sweep @ 95f5ea8 threads=8 seed=42 temp=ref emb=ref emb_cov=ref batch=512 max_edges=ref lw=ref heval=ref n_views=6
+[2026-09-28T14:15:53Z] FAIL sweep_011_batch512: run_comebin_fix.sh rc=0
+[2026-09-28T14:15:53Z] START sweep_012_batch2048 src=COMEBin-v11-sweep @ 95f5ea8 threads=8 seed=42 temp=ref emb=ref emb_cov=ref batch=2048 max_edges=ref lw=ref heval=ref n_views=6
+[2026-09-28T14:15:53Z] FAIL sweep_012_batch2048: run_comebin_fix.sh rc=0
+[2026-09-28T14:15:53Z] START sweep_013_edges80 src=COMEBin-v11-sweep @ 95f5ea8 threads=8 seed=42 temp=ref emb=ref emb_cov=ref batch=ref max_edges=80 lw=ref heval=ref n_views=6
+[2026-09-28T14:15:53Z] FAIL sweep_013_edges80: run_comebin_fix.sh rc=0
+[2026-09-28T14:15:53Z] START sweep_014_edges150 src=COMEBin-v11-sweep @ 95f5ea8 threads=8 seed=42 temp=ref emb=ref emb_cov=ref batch=ref max_edges=150 lw=ref heval=ref n_views=6
+[2026-09-28T14:15:53Z] FAIL sweep_014_edges150: run_comebin_fix.sh rc=0
+[2026-09-28T14:15:53Z] START sweep_015_views4 src=COMEBin-v11-sweep @ 95f5ea8 threads=8 seed=42 temp=ref emb=ref emb_cov=ref batch=ref max_edges=ref lw=ref heval=ref n_views=4
+[2026-09-28T14:15:53Z] FAIL sweep_015_views4: run_comebin_fix.sh rc=0
+[2026-09-28T14:15:53Z] START sweep_016_views8 src=COMEBin-v11-sweep @ 95f5ea8 threads=8 seed=42 temp=ref emb=ref emb_cov=ref batch=ref max_edges=ref lw=ref heval=ref n_views=8
+[2026-09-28T14:15:53Z] FAIL sweep_016_views8: run_comebin_fix.sh rc=0
+[2026-09-28T14:15:53Z] START sweep_017_w4 src=COMEBin-v11-sweep @ 95f5ea8 threads=8 seed=42 temp=ref emb=ref emb_cov=ref batch=ref max_edges=ref lw=4 heval=ref n_views=6
+[2026-09-28T14:15:53Z] FAIL sweep_017_w4: run_comebin_fix.sh rc=0
+[2026-09-28T14:15:53Z] START sweep_018_w16 src=COMEBin-v11-sweep @ 95f5ea8 threads=8 seed=42 temp=ref emb=ref emb_cov=ref batch=ref max_edges=ref lw=16 heval=ref n_views=6
+[2026-09-28T14:15:53Z] FAIL sweep_018_w16: run_comebin_fix.sh rc=0
+[2026-09-28T14:15:53Z] START sweep_019_eval1e3 src=COMEBin-v11-sweep @ 95f5ea8 threads=8 seed=42 temp=ref emb=ref emb_cov=ref batch=ref max_edges=ref lw=ref heval=1e-3 n_views=6
+[2026-09-28T14:15:53Z] FAIL sweep_019_eval1e3: run_comebin_fix.sh rc=0
+[2026-09-28T14:15:53Z] START sweep_020_eval1e7 src=COMEBin-v11-sweep @ 95f5ea8 threads=8 seed=42 temp=ref emb=ref emb_cov=ref batch=ref max_edges=ref lw=ref heval=1e-7 n_views=6
+[2026-09-28T14:15:53Z] FAIL sweep_020_eval1e7: run_comebin_fix.sh rc=0
+[2026-09-28T14:15:53Z] START sweep_021_comboA src=COMEBin-v11-sweep @ 95f5ea8 threads=8 seed=42 temp=0.30 emb=1024 emb_cov=ref batch=512 max_edges=ref lw=ref heval=ref n_views=6
+[2026-09-28T14:15:53Z] FAIL sweep_021_comboA: run_comebin_fix.sh rc=0
+[2026-09-28T14:15:53Z] START sweep_022_comboB src=COMEBin-v11-sweep @ 95f5ea8 threads=8 seed=42 temp=0.05 emb=4096 emb_cov=ref batch=2048 max_edges=ref lw=ref heval=ref n_views=6
+[2026-09-28T14:15:53Z] FAIL sweep_022_comboB: run_comebin_fix.sh rc=0
+[2026-09-28T14:15:53Z] START sweep_023_embcov512_batch512 src=COMEBin-v11-sweep @ 95f5ea8 threads=8 seed=42 temp=ref emb=ref emb_cov=512 batch=512 max_edges=ref lw=ref heval=ref n_views=6
+[2026-09-28T14:15:53Z] FAIL sweep_023_embcov512_batch512: run_comebin_fix.sh rc=0
+[2026-09-28T14:15:53Z] START sweep_024_seed7 src=COMEBin-v11-sweep @ 95f5ea8 threads=8 seed=7 temp=ref emb=ref emb_cov=ref batch=ref max_edges=ref lw=ref heval=ref n_views=6
+[2026-09-28T14:15:53Z] FAIL sweep_024_seed7: run_comebin_fix.sh rc=0
+[2026-09-28T14:15:53Z] SWEEP COMPLETE (24 cells processed)
+[2026-09-29T00:26:50Z] ABORT: sweep driver pid=2559226 already running; singleton guard, not starting a second
+[2026-09-29T00:29:55Z] ABORT: sweep driver pid=2560340 already running; singleton guard, not starting a second ()
+[2026-09-29T00:31:57Z] ABORT: sweep driver pid=2561301 already running; singleton guard, not starting a second ()
+[2026-09-29T00:41:12Z] START sweep_003_issue28fix src=COMEBin-v11 @ 41606c8 threads=8 seed=42 temp=ref emb=ref emb_cov=ref batch=ref max_edges=ref lw=ref heval=ref n_views=6
+
+=== results/sweep_*.csv in repo ===
+-rw-rw-r-- 1 ubuntu ubuntu 328 Sep 28 14:02 /vol/data/repos/metagenomic-binning-benchmark/results/sweep_001_ref.csv
+=== runs dir sweep cells ===
+sweep_001_ref
+sweep_002_master
+sweep_003_issue28fix
+=== git status repo ===
+=== rank script syntax check ===
+rank_sweep_medium.py: syntax OK
+> build · big-pickle
+The sweep history is now clear. Let me read the full #29 and #28 comments (to see if the Galaxy fixture was actually *run*), and check recent commits:
+[0m$ [0mcd /vol/data/benchmark
+echo "=== #29 full latest comment ==="
+gh issue view 29 -R paulzierep/metagenomic-binning-benchmark --json comments --jq '.comments[-1].body' 2>/dev/null | tail -30
+echo
+echo "=== #28 full latest comment (tail) ==="
+gh issue view 28 -R paulzierep/metagenomic-binning-benchmark --json comments --jq '.comments[-1].body' 2>/dev/null | tail -25
+echo
+echo "=== recent git log ==="
+git -C /vol/data/repos/metagenomic-binning-benchmark log --oneline -12
+echo "=== is rank script committed? ==="
+git -C /vol/data/repos/metagenomic-binning-benchmark ls-files scripts/rank_sweep_medium.py
+echo "=== galaxy fixture on disk? ==="
+ls -la /vol/data/datasets/galaxy_comebin_fixture/ 2>/dev/null || echo "not present"
+=== #29 full latest comment ===
+|---|---|
+| contigs | **40**, every one exactly **20,000 bp** → **800,000 bp total** |
+| IDs | `g1k_0` … `g4k_9` (4 groups × 10, synthetic, no taxonomy) |
+| GC | 26.97 % |
+| BAM | coordinate-sorted, **40 `@SQ` refs**, `set(refs) == set(fasta IDs)` (no dup, no mismatch) |
+| reads | **2,000** total, **94 mapped (4.7 %)** |
+| index | no `.bai` shipped (the wrapper does not need one) |
+
+### How Galaxy runs it
+
+From `tools/comebin/comebin.xml` + `macros.xml`:
+
+- tool version = **`comebin 1.1.0`** (`@TOOL_VERSION@`), profile 25.0, exercised under Python 3.11.
+- test params: `batch=1024`, `max_edges=20`. The lowered `max_edges` is deliberate — the XML help says it *"must be smaller than the number of contigs in the assembly, otherwise the clustering step fails"* (`ValueError: max_edges must be between 1 and the retained contig count minus one`), i.e. exactly the trap a 40-contig fixture would hit at the default 100.
+- `batch=1024` > 40 contigs: our `run_comebin.sh` caps the loader batch to the dataset, so there is no empty-batch / `drop_last` `logits` crash.
+- **CI proof it actually runs**: PR [#8351](https://github.com/galaxyproject/tools-iuc/pull/8351) *"Update tools/comebin to 1.1.0"* merged **2026-08-25 15:13Z**, head `2237854` → check **`Test tools (0, 3.11): success`** (plus lint/file-size checks). So this fixture is green end-to-end on 1.1.0 on every merge to tools-iuc.
+
+### Two caveats before we adopt it as our own gate
+
+1. **It is a smoke test, not a quality gate.** `MINIMUM_FINAL_BIN_SIZE = 200000` (`COMEBin/get_final_result.py:17`) against an 800 kb assembly means at most ~4 bins can ever be retained and most Leiden clusters get filtered out; Galaxy's test only asserts stdout / the bins file exist, so a *0-bin* run still passes. Any quality claim (CheckM2, F1) on it is meaningless.
+2. **It happens to exercise the #28 path.** Synthetic contigs almost certainly produce no usable marker seed (exit 2/3/4 from `test_getmarker_2quarter.pl`). On upstream ≤ 1.1.0 that is a hard `RuntimeError: Marker seed generation failed`; on our fix `41606c8` it exits 0 with `Reporting 0 bins`. So on a pre-fix checkout this fixture crashes, and after the fix it passes — a genuinely useful regression case, and the opposite of what a "green in Galaxy CI" line might suggest (their 1.1.0 predates the fix).
+
+### What it does *not* give us
+
+The fixture's BAM header and its assembly agree perfectly, so it cannot reproduce the producer/consumer mismatch behind issue #2 — the thing that kills our stock-master cell (`sweep_002_master`) with `KeyError: 'BATS_SAMN07137077_METAG-scaffold_22978'`, where the medium BAM header carries all 29,434 refs while the assembly has 3,000. Reproducing *that* needs a deliberately mismatched FASTA/BAM pair (BAM superset of assembly), which I can add as a second fixture if you want that pinned as a test.
+
+### Status
+
+An end-to-end run of this fixture on our fixed branch (`41606c8`) is queued behind the #25 medium sweep — cells 3–24 are training right now, and the harness refuses to launch anything that overlaps a registered run, so I am deliberately **not** running it concurrently. Output (stdout, exit code, bin count, wall time) will be posted here when the slot frees.
+
+
+=== #28 full latest comment (tail) ===
+| `data_augmentation/aug0_datacoverage_mean.tsv` (= the `namelist`) | **29,435 lines = header + 29,434 contigs** — the full demo `@SQ` list, incl. `scaffold_22978` |
+| `data_augmentation/aug0/sequences_aug0.fasta` (= `lengths`) | **3,000** contigs — our assembly; `scaffold_22978` absent |
+
+Upstream derives the coverage rows from the **BAM** (`reads.bam_0_depth.txt` → all 29,434 refs of the original demo assembly) but the lengths from the **assembly fasta** (top-3,000 subset). `for seq_id in namelist: lengths[seq_id]` then dies on the first BAM-only name. That is exactly the issue-#2 producer/consumer mismatch, on the medium fixture we built.
+
+**v11 is structurally immune**: `COMEBin/data_aug/gen_cov.py` allocates the coverage arrays over the *retained assembly* contigs (`context.contig_names`) and streams the BAM into them — extra `@SQ` refs are simply ignored, and it raises only if BAM coverage is *missing* an assembly contig (`BAM coverage is missing N retained contigs`). Cell 1 (same dataset, v11 `95f5ea8`) finished cleanly, which is the empirical confirmation.
+
+Cell 2 is therefore a **documented stock-master failure with evidence on disk** (`runs/sweep_002_master/`), not a data point to be re-run. If you want a clean master number anyway, the fix is on the data side: emit a BAM whose `@SQ` list matches the assembly — say the word and I'll prep that as a separate dataset.
+
+### Two harness bugs found and fixed while the sweep was stalled
+
+1. **Launch-pass failures (13:07Z)**: `/vol/data/benchmark/bin/run_comebin_fix.sh` still had the unguarded `if [ -n "$TEMP" ]` (line 76) → `set -u` abort before any cell started. Fixed with `${TEMP:-}`-style guards and `-l/-e/-b` forwarding, verified by a truncated-copy test.
+2. **Singleton-guard false aborts**: `$(pgrep …)` forks a subshell that inherits the driver argv (self-match), and under `pipefail` + `set -e` a `ps` on a dead transient pid made an assignment return 1 and **killed the driver silently** after one cell. Fixed by an ancestor/child relatedness walk + ≥5 s process age + double probe + `|| true` on every `ps`-based probe. **`flock` remains the hard mutex** — the guards are only a fast path.
+
+Pushed: `fa69730a`, `55ad99dd`, `57b9cb5d`, `20ca7e39`.
+
+### Remaining steps after the grid
+
+1. Rank 24 cells → post the table here and on #25.
+2. **Push `41606c8` to `origin/comebin-optimizations-v11`** (currently local-only, origin still at `95f5ea8`) and open the PR into `master` — the branch is a clean 2-commit fast-forward ahead of `master`, no divergence.
+3. Confirmation medium run **on `master` after the merge** (the gate you asked for), then bioconda prep as promised on #27.
+4. Not-mine-to-close note from before still stands: `41606c8` is not on GitHub yet, so nothing about this fix is releasable until step 2 happens.
+
+Separately, on #29 (small test data): Galaxy IUC ships a 40-contig × 20 kb fixture that runs green on `comebin 1.1.0` in CI — full measurement + caveats are in that thread. It doubles as a regression case for this issue: on a pre-fix checkout the fixture's empty marker seed is a hard `RuntimeError`, on `41606c8` it exits 0. Its end-to-end run on our branch is queued behind this sweep so nothing overlaps.
+
+
+=== recent git log ===
+9ce4b50a status: yes — sweep_003_issue28fix epoch 95/200 loss 4.700143814086914 acc 39.176429748535156 model big-pickle — 2026-09-29T01:02:00Z rank-script-fix + g
+dd687250 meta: supervise tick 2026-09-29T01:03:01Z — 1 fix(es)
+8f694854 status: yes — sweep_003_issue28fix epoch 90/200 loss 4.786633491516113 acc 35.983070373535156 model mimo-v2.6-flash-free — 2026-09-29T01:02:00Z rank-script-fix + g
+4e2a2fca PROGRESS: record rank-script fix + galaxy fixture runner in the 2026-09-29 resume section
+3c62a47e status: yes — sweep_003_issue28fix epoch 86/200 loss 4.808887958526611 acc 35.029296875 model mimo-v2.6-flash-free — 2026-09-29T01:02:00Z rank-script-fix + g
+3ac437d7 scripts: add run_galaxy_fixture_test.sh (Galaxy IUC 40-contig fixture, issue #29) — smoke test, not a quality gate
+72bac89b status: yes — sweep_003_issue28fix epoch 77/200 loss 4.905470848083496 acc 30.813800811767578 model mimo-v2.6-flash-free — 2026-09-29T00:55:31Z issue-triage: comme
+9d36e82c fix(rank): remove stray syntax error in rank_sweep_medium.py, harden sort/format, treat n_views=6 as the reference grid value
+ae52c1e4 status: yes — sweep_003_issue28fix epoch 68/200 loss 5.029028415679932 acc 26.11328125 model mimo-v2.6-flash-free — 2026-09-29T00:55:31Z issue-triage: comme
+6f4cfe46 PROGRESS: 2026-09-29 resume — sweep relaunched (cell 3 = 41606c8), guard fixes, cell-2 root cause pinned, #28 + #29 answered
+7fcdf5ce status: yes — sweep_003_issue28fix epoch 59/200 loss 5.181173324584961 acc 21.708984375 model mimo-v2.6-flash-free — 2026-09-29T00:55:31Z issue-triage: comme
+a03be548 status: yes — sweep_003_issue28fix epoch 50/200 loss 5.318391799926758 acc 17.571613311767578 model mimo-v2.6-flash-free — 2026-09-25T12:16:00Z | marine_v11_202609 2026-09-25T15:34:55Z | issues triaged: # 2026-09-25T20:49:23Z | issues triaged: # 2026-09-25T21:11:13Z | issues #12 and #8 2026-09-25T21:24:00Z | CAMI III prep scr 2026-09-25T21:54:00Z | agent: started CA 2026-09-26T00:49:54Z marine-eval-launche 2026-09-26T00:50:20Z marine-eval-launche 2026-09-26T00:50:42Z marine-eval-launche 2026-09-26T01:14:16Z marine-eval-retry-l 2026-09-26T01:41:50Z zenodo-v2-published 2026-09-26T01:46:27Z commit: pushed mari 2026-09-26T01:46:47Z delivery-comments-p 2026-09-26T01:47:11Z progress-committed 2026-09-26T01:49:18Z progress-synced 2026-09-26T02:02:36Z docs10-fix-committe 2026-09-26T02:41:03Z finish-prep-launche 2026-09-26T02:45:37Z cami3-run-launched 2026-09-26T02:45:58Z cami3-progress-comm 2026-09-26T02:54:43Z version-doi-verifie 2026-09-26T02:55:42Z doi-followup-commen 2026-09-26T02:56:38Z progress-committed 2026-09-26T02:57:25Z dryrun-tarball-dele 2026-09-26T02:59:24Z results-csv-label-f 2026-09-26T02:59:32Z progress-committed 2026-09-26T04:22:06Z 2026-09-26T04:26:43Z disk-full-incident- 2026-09-26T04:50:51Z rerun-launched-pid3 2026-09-26T05:23:51Z rerun-on-track-epoc 2026-09-26T06:19:21Z rerun-done-eval-run 2026-09-26T06:19:27Z eval started cami3_ 2026-09-26T06:41:54Z eval-checkm-v1-ppla 2026-09-26T07:10:51Z checkm2-retry-16t 2026-09-26T07:47:33Z zenodo-v3-published 2026-09-26T07:52:47Z docs-cami3-delivere 2026-09-26T07:56:10Z issue6-comment-cami 2026-09-26T07:56:26Z zenodo-v3-version-d 2026-09-26T07:56:48Z turn-activity docs+ 2026-09-26T07:58:24Z progress-finalized 2026-09-26T07:58:26Z zenodo-v3-version-d 2026-09-26T08:00:26Z zenodo-v3-version-d 2026-09-26T08:02:27Z zenodo-v3-version-d 2026-09-26T08:04:27Z zenodo-v3-version-d 2026-09-26T08:06:27Z zenodo-v3-version-d 2026-09-26T08:08:27Z zenodo-v3-version-d 2026-09-26T08:10:27Z zenodo-v3-version-d 2026-09-26T08:12:27Z zenodo-v3-version-d 2026-09-26T08:14:28Z doi-recheck-200 2026-09-26T08:29:56Z | committed script 2026-09-26T09:02:54Z | issue triage: rev 2026-09-26T09:20:00Z Agent restart resum 2026-09-26T10:03:14Z | issues triaged: # 2026-09-26T10:54:30Z | issues triaged: # 2026-09-26T11:43:03Z | resumed: verified 2026-09-26T14:20:00Z | issue comments po 2026-09-26T14:25:00Z | PROGRESS.md updat 2026-09-26T13:25:38Z | heartbeat touched 2026-09-26T14:02:55Z | agent active 2026-09-26T14:37:44Z | agent resumed aft 2026-09-26T14:39:42Z | restart-complete: 2026-09-26T15:06:38Z 2026-09-26T15:06:26Z agent-resume-starte 2026-09-26T15:13:07Z 2026-09-26T15:06:26Z agent-resume-second 2026-09-26T15:32:52Z | resume: agent res 2026-09-26 15:50:51 UTC - agent resume: 2026-09-26T16:42:06Z | agent resume: all 2026-09-28T12:59:45Z docs-deliverables: #24 README a-f, #22 a 2026-09-28T13:03:24Z delayed closeout: PROGRESS synced after [2026-09-28T13:11:23Z] #25 sweep LIVE: c [2026-09-28T13:11:55Z] #25 sweep live: c [2026-09-28T13:15:10Z] #24+#19 owner fee [2026-09-28T13:15:35Z] #24+#19 delivered 2026-09-29T00:24:15Z | resume-after-rest 2026-09-29T00:42:01Z | #25 sweep RESUMED
+=== is rank script committed? ===
+scripts/rank_sweep_medium.py
+=== galaxy fixture on disk? ===
+total 1008
+drwxrwxr-x  3 ubuntu ubuntu   4096 Sep 29 01:01 .
+drwxrwxr-x 11 ubuntu ubuntu   4096 Sep 29 00:51 ..
+drwxrwxr-x  2 ubuntu ubuntu   4096 Sep 29 01:01 bamfiles
+-rw-rw-r--  1 ubuntu ubuntu 200915 Sep 29 00:51 input_single.bam
+-rw-rw-r--  1 ubuntu ubuntu 813640 Sep 29 00:51 input_single.fasta
+> build · big-pickle
+The picture is clear: the sibling session (or a supervisor restart) resumed the sweep overnight with fixed guards — cell 3 (`sweep_003_issue28fix`, the #28 fix) is training at epoch 95/200, and #28/#29 already have substantive answers. My rank script was fixed and committed by that session too. Let me verify PROGRESS.md against disk and identify non-overlapping work (Zenodo archival per docs/13 is a #25 follow-on that doesn't use the run slot):
+[0m$ [0mcd /vol/data/benchmark
+echo "=== PROGRESS.md tail (current state section) ==="
+sed -n '1,60p' PROGRESS.md
+echo "=== datasets on disk + sizes ==="
+du -sh /vol/data/datasets/* 2>/dev/null | sort -rh | head -15
+echo "=== disk free ==="
+df -h /vol/data | tail -1
+=== PROGRESS.md tail (current state section) ===
+# PROGRESS — metagenomic-binning-benchmark
+
+> **Resume document.** If you (the agent) are reading this after a restart, start here,
+> verify "Current state" against what is actually on disk under `/vol/data`, and
+> continue from the first unfinished step. Update this file after every meaningful step.
+> Live copy: `/vol/data/benchmark/PROGRESS.md` (keep both in sync: edit both, or copy
+> one over the other after each update).
+
+> ⚠️ **Before any git operation on `paulzierep/COMEBin` (branch, commit, push, rebase),
+> read [`docs/12-comebin-master-divergence.md`](docs/12-comebin-master-divergence.md).**
+> `master` tracks the upstream v1.1.0 baseline: never force-push it, never reset it
+> backwards, always `git fetch` before branching. 4 of the 5 older pre-v1.1.0 bug
+> fixes are already fixed upstream in v1.1.0 — re-porting them conflicts and is
+> wasted work. Keep this note when you rewrite the file.
+
+## Task definition
+
+Benchmark multiple metagenomic genome binners, starting with COMEBin
+(https://github.com/paulzierep/COMEBin). Document the whole process in this repo
+(https://github.com/paulzierep/metagenomic-binning-benchmark) so the work can be
+picked up later by anyone/any session.
+
+Requirements from the user:
+1. Modify COMEBin's source code to improve performance and fix bugs — **in a branch**,
+   **one commit per batch of fixes**.
+2. **Baseline first**: benchmark *unmodified* COMEBin, then apply fix batches,
+   re-running the benchmark after each batch.
+3. Record: parameters used, datasets used, performance/timing, bin quality with
+   **CheckM2 and CheckM (v1)**.
+4. Document everything in this repo.
+
+## Standing authorizations (user-confirmed 2026-09-23 — do NOT re-ask)
+
+1. **This VM, fully**: shell commands (incl. passwordless sudo), installing packages,
+   creating/modifying anything under `/vol/data` and `/home/ubuntu`, long-running
+   background jobs. Backed by `~/.config/opencode/opencode.json`
+   (permissions: `*`→allow incl. external_directory). OpenCode default already allows
+   `*`; the only rule that matters is `external_directory: * → allow` (that was the
+   source of the prompts, because `/vol/data` is outside the session location).
+2. **Both GitHub repos**: `paulzierep/metagenomic-binning-benchmark` AND
+   `paulzierep/COMEBin` — git commit/push (credential helper `~/.git-credentials`,
+   mode 600) and gh CLI (authenticated, `~/.config/gh/hosts.yml`).
+3. **Issues workflow**: the user files ideas/instructions as GitHub **issues**; the
+   agent reads them and **comments** back (see below). ⚠️ the Issues feature is
+   currently DISABLED on `paulzierep/COMEBin` (needs a token with Administration scope
+   or a manual repo-Settings toggle — user must flip it or grant scope). Ideas go to
+   the benchmark repo for now (idea box: issue #1).
+
+## Run logging — where everything is (per run: `runs/<run>/`)
+
+| Path | Content | Granularity |
+|---|---|---|
+| `run_meta.txt` | date, source commit, threads, dataset, exit_code, wall time, #bins | start + end |
+| `comebin_run.log` | **full stdout+stderr of `run_comebin.sh`** — verbose timestamps, every stage (`generate_aug_data`, coverage, FragGeneScan, epochs with progress bars, clustering) | live (tee) |
+| `logs/resources.tsv` | per-run resource sampler: every 30 s — CPU %, RSS (GB) of the wrapper pid, system mem used | 30 s |
+| `logs/sampler.out` | sampler stderr | — |
+| `comebin_out/` | ALL COMEBin internal artifacts: `data_augmentation/` (fasta, kmer, covariance, depth), trained `models/`, `tensorboard*/`, `cluster_res/` (embeddings, leiden runs, bins) | — |
+| (parent) `run_meta.txt` JSON-style CSV in `results/` | parsed metrics row | after eval |
+
+**Everything above is mirrored into this repo** at `runs/<run>/` (small log files
+=== datasets on disk + sizes ===
+64G	/vol/data/datasets/cami_II
+25G	/vol/data/datasets/cami_II_human
+16G	/vol/data/datasets/cami_III
+6.4G	/vol/data/datasets/comebin_test_data
+5.2G	/vol/data/datasets/comebin_test_data.zip
+424M	/vol/data/datasets/comebin_medium
+100M	/vol/data/datasets/comebin_small
+47M	/vol/data/datasets/comebin_tiny_101
+45M	/vol/data/datasets/comebin_tiny
+1004K	/vol/data/datasets/galaxy_comebin_fixture
+=== disk free ===
+/dev/vdb        492G  152G  315G  33% /vol/data
+> build · big-pickle
+The sibling session resumed the sweep overnight — cell 3 (the #28 fix) is training at epoch 95/200, and #28/#29 already have substantive replies. My non-overlapping, high-value work: docs/13 status refresh, and the **AMBER + gold-standard CAMI II prep** (a documented #25 follow-on that doesn't touch the run slot). Let me check what exists:
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark
+echo "=== docs/13 tail (follow-ons) ==="
+sed -n '36,120p' docs/13-optimization-sweep-medium.md
+echo "=== any AMBER refs in repo? ==="
+grep -rln "amber" docs/ scripts/ README.md 2>/dev/null | head
+echo "=== .activity tail ==="
+tail -6 /vol/data/benchmark/.activity
+echo "=== git status ==="
+git status --porcelain | head
+=== docs/13 tail (follow-ons) ===
+  -E HMM_EVALUE`. The fixed-flag wrapper only forwards `-a -p -o -n -t -d -s`
+  today. The sweep needs a small harness extension that maps env vars →
+  these flags (e.g. `TEMP=0.30 EMB=1024 BATCH=512 MAX_EDGES=80`) before
+  invoking `run_comebin.sh`. Keep the default values as the **reference run**
+  (current `medium_v11_20260924`: 16 bins, CheckM2 35.93/4.67).
+
+## Grid (24 cells — all seed 42, THREADS 8)
+
+Purpose: one-factor-at-a-time around the reference defaults
+(`-n 6`, temp 0.15, emb 2048, emb_cov 2048, batch 1024, max_edges 100,
+leiden_workers = threads).
+
+| # | Axis | Value | run name |
+|---|---|---|---|
+| 1 | reference (no override) | defaults | `sweep_001_ref` |
+| 2 | commit | **master 904f649** (unmodified) | `sweep_002_master` |
+| 3 | commit | **41606c8** (issue #28 fix, v11) | `sweep_003_issue28fix` |
+| 4 | temperature `-l` | 0.05 | `sweep_004_temp005` |
+| 5 | temperature `-l` | 0.30 | `sweep_005_temp030` |
+| 6 | temperature `-l` | 0.50 | `sweep_006_temp050` |
+| 7 | emb_szs `-e` | 1024 | `sweep_007_emb1024` |
+| 8 | emb_szs `-e` | 4096 | `sweep_008_emb4096` |
+| 9 | emb_szs_forcov `-c` | 1024 | `sweep_009_embcov1024` |
+| 10 | emb_szs_forcov `-c` | 4096 | `sweep_010_embcov4096` |
+| 11 | batch_size `-b` | 512 | `sweep_011_batch512` |
+| 12 | batch_size `-b` | 2048 | `sweep_012_batch2048` |
+| 13 | max_edges `-m` | 80 | `sweep_013_edges80` |
+| 14 | max_edges `-m` | 150 | `sweep_014_edges150` |
+| 15 | n_views `-n` | 4 | `sweep_015_views4` |
+| 16 | n_views `-n` | 8 | `sweep_016_views8` |
+| 17 | leiden_workers `-w` | 4 | `sweep_017_w4` |
+| 18 | leiden_workers `-w` | 16 | `sweep_018_w16` |
+| 19 | hmm_evalue `-E` | 1e-3 | `sweep_019_eval1e3` |
+| 20 | hmm_evalue `-E` | 1e-7 | `sweep_020_eval1e7` |
+| 21 | combo | temp 0.3 + emb 1024 + batch 512 | `sweep_021_comboA` |
+| 22 | combo | temp 0.05 + emb 4096 + batch 2048 | `sweep_022_comboB` |
+| 23 | combo | emb_cov 512 + batch 512 (early-stop disabled — `--earlystop` is hardcoded in `run_comebin.sh`, not a CLI flag — so this cell tests the small-emb-cov regime instead) | `sweep_023_embcov512_batch512` |
+| 24 | seed sanity | seed 7 (reproducibility check) | `sweep_024_seed7` |
+
+## Ranking rule (owner's order)
+
+1. **Bin stats first**: CheckM2 mean completeness / contamination (HQ + MQ
+   counts), then CheckM v1. Higher completeness + lower contamination +
+   more HQ/MQ wins. F1 (harmonic mean of completeness and purity) as the
+   summary.
+2. **Runtime tiebreak**: if bin stats are statistically similar (~±1 pt), the
+   shorter wall time wins.
+3. Only the winning parameter set advances to **CAMI II & III human** runs.
+
+## Follow-on per issue #25
+
+- **Restrict large data to human**: CAMI II human (4,900 contigs) and CAMI III
+  toy human (5,000) only; **archive** demo / marine / medium / small / tiny in
+  Zenodo (already v2/v3 for main runs) and delete local copies to free disk.
+- **AMBER**: use [AMBER](https://github.com/CAMI-challenge/AMBER) against the
+  CAMI II gold standard (`binning_gs.tsv`) for official precision/recall/F1 on
+  the human set once imported (docs/01: gold-standard binning lives in
+  `setup.tar.gz` — not yet pulled in).
+- **No trimming**: use the full assembly/contigs when present (CAMI II/III
+  publish full assemblies); only the demo/medium/small/tiny derivations were
+  length-filtered for COMEBin feasibility.
+- **Biobox export (CAMI standard)**:
+  `scripts/export_biobox.sh <run>` → per-run
+  `runs/<run>/biobox/` containing bins in FASTA (`bin_*.fa`; already produced
+  by COMEBin as `comebin_res_bins/*.fa`), a CAMI biobox `binning` tar.gz
+  (folder `/<binning-engine>/<version>/binning/<sample>/<bin_id>.fna` +
+  `binning_summary.tsv`), and per-run stats. Validate with the biobox
+  validator (`bioboxes/validator` container) before pushing to Zenodo.
+- **Archive each binning result**: bins FASTA + biobox output + stats shipped
+  with the run's Zenodo archive record.=== any AMBER refs in repo? ===
+docs/13-optimization-sweep-medium.md
+=== .activity tail ===
+2026-09-29T01:02:00Z rank-script-fix + galaxy-fixture-runner committed
+=== git status ===
+> build · big-pickle
+docs/13's status header is stale ("not yet launched") and the CAMI II gold standard prep is a documented #25 follow-on that doesn't overlap the run slot. Let me check the CAMI II dataset for the gold-standard file and confirm the zenodo update tooling:
+[0m$ [0mcd /vol/data
+echo "=== docs/13 header ==="
+head -3 /vol/data/repos/metagenomic-binning-benchmark/docs/13-optimization-sweep-medium.md
+echo "=== cami_II layout ==="
+ls /vol/data/datasets/cami_II/ | head
+echo "=== search for gold standard / binning_gs ==="
+find /vol/data/datasets/cami_II -maxdepth 3 \( -iname "*binning_gs*" -o -iname "*gs*tsv*" \) 2>/dev/null | head
+echo "=== cami_II contents top ==="
+du -sh /vol/data/datasets/cami_II/* 2>/dev/null | sort -rh | head -12
+echo "=== zenodo scripts ==="
+ls /vol/data/repos/metagenomic-binning-benchmark/scripts/ | grep -i zenodo
+echo "=== does upstream have amber tooling? ==="
+ls /vol/data/repos/CAMI-AMBER 2>/dev/null || ls /vol/data/repos | head -20
+=== docs/13 header ===
+# Optimization sweep on the medium dataset (issue #25)
+
+Status: **design / plan — not yet launched**. Launch blocked while
+=== cami_II layout ===
+marine
+marine.zip
+marine_reads
+marine_sample0_input
+=== search for gold standard / binning_gs ===
+/vol/data/datasets/cami_II/marine_sample0_input/binning_gs_subset.tsv
+=== cami_II contents top ===
+29G	/vol/data/datasets/cami_II/marine
+21G	/vol/data/datasets/cami_II/marine_reads
+8.8G	/vol/data/datasets/cami_II/marine.zip
+5.9G	/vol/data/datasets/cami_II/marine_sample0_input
+=== zenodo scripts ===
+zenodo_update.sh
+=== does upstream have amber tooling? ===
+COMEBin
+COMEBin-master904
+COMEBin-opt
+COMEBin-small-fix
+COMEBin-v11
+COMEBin-v11-sweep
+metagenomic-binning-benchmark
+> build · big-pickle
+docs/13 is stale — the sweep is live now. Let me inspect the CAMI sample0 input for the gold-standard file and check AMBER reachability before committing to that follow-on:
+[0m$ [0mcd /vol/data/datasets/cami_II
+echo "=== marine_sample0_input contents ==="
+ls -la marine_sample0_input/ | head -20
+echo "=== binning_gs_subset.tsv head ==="
+head -6 marine_sample0_input/binning_gs_subset.tsv
+wc -l marine_sample0_input/binning_gs_subset.tsv
+echo "=== full binning_gs? ==="
+find /vol/data/datasets/cami_II -maxdepth 2 -name "binning_gs*" 2>/dev/null
+echo "=== cami II human dataset structure ==="
+ls /vol/data/datasets/cami_II_human/ | head
+=== marine_sample0_input contents ===
+total 1294608
+drwxrwxr-x 4 ubuntu ubuntu      4096 Sep 25 12:48 .
+drwxrwxr-x 5 ubuntu ubuntu      4096 Sep 25 04:01 ..
+drwxrwxr-x 2 ubuntu ubuntu      4096 Sep 25 04:13 bamfiles
+-rw-rw-r-- 1 ubuntu ubuntu   1269337 Sep 25 04:13 binning_gs_subset.tsv
+-rw-rw-r-- 1 ubuntu ubuntu 320310469 Sep 25 04:01 contigs.fa
+-rw-rw-r-- 1 ubuntu ubuntu      2422 Sep 25 04:05 contigs.fa.amb
+-rw-rw-r-- 1 ubuntu ubuntu   1511942 Sep 25 04:05 contigs.fa.ann
+-rw------- 1 ubuntu ubuntu       808 Sep 25 12:48 contigs.fa.bacar_marker.2quarter_lencutoff_1001.seed
+-rw-rw-r-- 1 ubuntu ubuntu         0 Sep 25 12:48 contigs.fa.bacar_marker.2quarter_lencutoff_1001.seed.err
+-rw-rw-r-- 1 ubuntu ubuntu         0 Sep 25 12:48 contigs.fa.bacar_marker.2quarter_lencutoff_1001.seed.out
+-rw------- 1 ubuntu ubuntu   1199150 Sep 25 12:48 contigs.fa.bacar_marker.hmmout
+-rw-rw-r-- 1 ubuntu ubuntu         0 Sep 25 12:47 contigs.fa.bacar_marker.hmmout.err
+-rw-rw-r-- 1 ubuntu ubuntu   8595165 Sep 25 12:48 contigs.fa.bacar_marker.hmmout.out
+-rw-rw-r-- 1 ubuntu ubuntu 319796332 Sep 25 04:05 contigs.fa.bwt
+-rw-rw-r-- 1 ubuntu ubuntu         0 Sep 25 12:46 contigs.fa.frag.err
+-rw-rw-r-- 1 ubuntu ubuntu 102016054 Sep 25 12:47 contigs.fa.frag.faa
+-rw-rw-r-- 1 ubuntu ubuntu 289359728 Sep 25 12:47 contigs.fa.frag.ffn
+-rw-rw-r-- 1 ubuntu ubuntu  30725750 Sep 25 12:47 contigs.fa.frag.gff
+-rw-rw-r-- 1 ubuntu ubuntu  10990446 Sep 25 12:47 contigs.fa.frag.out
+=== binning_gs_subset.tsv head ===
+S0C1468008	Otu523	39960	2056
+S0C437807	Otu833	1229909	4838
+S0C273664	Otu235.0	2742	3829
+S0C895222	Otu283.0	873	2693
+S0C299424	Otu301	404011	2008
+S0C164214	Otu71	161895	2253
+41988 marine_sample0_input/binning_gs_subset.tsv
+=== full binning_gs? ===
+/vol/data/datasets/cami_II/marine_sample0_input/binning_gs_subset.tsv
+=== cami II human dataset structure ===
+extract
+gastrooral_sample_0.tar.gz
+human_sample0_input
