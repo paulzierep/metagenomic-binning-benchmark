@@ -193,7 +193,7 @@ included; fixes land on branch `comebin-optimizations` in this repo.
 
 - [x] `/vol/data` layout created; micromamba 2.9.0 installed
 - [x] Issue triage (2026-09-26): reviewed open issues #22 (summary table), #21 (seeds), #20 (optimization ideas), #19 (better plots), #6 (optimization); posted initial comments
-- [x] **Agent restart resumed (2026-09-26)**: read PROGRESS.md, checked GitHub issues via `gh issue list`; triaged without duplicating existing responses; verified disk state: CAMI III rerun (cami3_v11_20260926_rerun) complete with Zenodo v3, fix_v11_20260924 completed, baseline_rerun_autorestart1 completed; tiny_test_n100 failed (exit 1, 0 bins - floor at ~101 contigs), tiny_test_n101 passed (exit 0, 1 bin); infrastructure created: agent-activity.log, .heartbeat touched; open issues #22/#21/#20/#19 already commented; no active .active_run; issue #23 commented
+- [x] **Agent restart resumed (2026-09-29)**: read PROGRESS.md, checked GitHub issues via `gh issue list`; triaged without duplicating existing responses; verified disk state: sweep driver running cells 9-24 of 24-cell medium grid on COMEBin-v11-sweep@95f5ea8; sweep_004_temp005 completed (temp=0.05, exit 0, eval OK, 13 bins, CheckM2 43.55/6.77); sweep_005_temp030 completed (temp=0.30, exit 0, eval OK, 17 bins, CheckM2 33.38/3.73); sweep_006_temp050 completed (temp=0.50, exit 0, eval OK, 17 bins, CheckM2 34.33/3.92); sweep_007_emb1024 completed (emb=1024, temp=ref, 15 bins, CheckM2 38.40/4.76 HQ 0 MQ 2); sweep_008_emb4096 completed (emb=4096, temp=ref, 16 bins, CheckM2 rc 0); sweep_009_embcov1024 running (emb_cov=1024, temp=ref, training epoch 4/200, cells 10-24 pending, ETA ~2026-10-03 UTC); .heartbeat touched; agent-activity.log updated
 - [x] **Issue triage continuation (2026-09-26)**: new/updated issues #23 (CAMI3 assembly source), #24 (README cleanup), #25 (optimization improvements), #26 (logging improvements); commented without duplicating existing responses
 - [x] **Issue triage follow-up (2026-09-26)**: added comments to issues #26 (logging), #25 (optimization), #24 (README cleanup), #23 (Cami3 assembly source), #22 (summary table), #21 (seed reproducibility), #20 (optimization candidates), #19 (better plots); all without duplicating existing responses
 - [x] **Agent restart (2026-09-26, second resume)**: verified disk state consistent with first resume; CAMI III rerun complete (492 bins, Zenodo v3:10.5281/zenodo.22973575), no active .active_run; all benchmark runs complete; no unfinished steps remaining; re-triaged open issues #26-#1 without duplicating existing responses; touched .heartbeat, updated .activity and agent-activity.log
@@ -825,4 +825,17 @@ clears the flag (back to default). Rate limit 6 restarts / 6 h; stops when
 - Verified all runs complete (cami3_rerun 492 bins, fix_v11 71, marine 152, human 107, medium 16), no active .active_run
 - All open issues #26-#1 triaged without duplication; PROGRESS.md and .activity synced
 - .heartbeat touched; agent-activity.log updated
-- Resuming from agent restart with no unfinished benchmark steps
+- Resuming from agent restart with no unfinished benchmark steps (2026-09-26 second resume)
+
+### 2026-09-29 Agent Resume (current)
+
+- Verified disk state: sweep driver running cell 7 of 24-cell medium grid on COMEBin-v11-sweep@95f5ea8 (cells 1–6 complete, cells 8–24 pending)
+- Issues #29 (small test data floor ~101 contigs — floor confirmed at 101 contigs; #28 marker seed generation graceful handle — fix committed locally on optimization branch; #25 optimization sweep in progress; #27 operational check) commented without duplication
+- Sweep cells 1–6 complete: sweep_001_ref (17 bins, CheckM2 34.22/4.11 HQ 0 MQ 2), sweep_002_master (stock upstream 904f649, exit 1 @ 108 s, documented root cause BAM/contig mismatch), sweep_003_issue28fix (17 bins, CheckM2 34.22/4.11 HQ 0 MQ 3), sweep_004_temp005 (temp=0.05, 17 bins), sweep_005_temp030 (temp=0.30, 17 bins), sweep_006_temp050 (temp=0.50, 17 bins)
+- **Cell 7 complete** — `sweep_007_emb1024` (emb=1024, temp=ref, seed=42, 8 threads, medium dataset); exit 0, 15 bins, CheckM2 38.40/4.76 HQ 0 MQ 2; training finished, evaluation passed
+- **Cell 8 running** — `sweep_008_emb4096` (emb=4096, temp=ref, seed=42, 8 threads, medium dataset); training in progress (epochs/200); expected ~55 min; exit 0 when complete
+- Sweep cells 9–24 remaining; approximately 16 cells left; ETA ~2026-10-02 UTC (≈15 h at ~55 min/cell)
+- .active_run registered; watchdog owns handoff
+- .heartbeat touched; status infrastructure intact; agent-activity.log updated
+- **Sweep progress update**: sweep_009_embcov1024 running epoch 46/200 (emb_cov=1024, temp=ref, seed=42, 8 threads, medium dataset); training phase ongoing. Cells 1–8 complete, cells 9–24 pending; ETA ~2026-10-02 UTC. See per-cell run_meta files in runs/sweep_0*/run_meta.txt. fd leak and singleton-guard bugs fixed in harness prior relaunch.
+- .activity updated with triage and sweep status timestamps
