@@ -2,14 +2,14 @@
 
 | | |
 |---|---|
-| Status | 🔴 `stopped (watchdog will restart)` |
-| ⏱ Updated (Europe/Berlin) | `2026-09-29T13:24 CEST` |
-| 🏃 Live benchmark | `sweep_012_batch2048` — **epoch 35/200** · loss `6.966679096221924` · top1 acc `1.5983072519302368` (log 1s fresh) |
+| Status | 🟢 `running` |
+| ⏱ Updated (Europe/Berlin) | `2026-09-29T13:26 CEST` |
+| 🏃 Live benchmark | `sweep_012_batch2048` — **epoch 40/200** · loss `6.88238000869751` · top1 acc `2.0100910663604736` (log 18s fresh) |
 | 🧠 Model (last turn) | `nemotron-3.5-lightning-free` (watchdog rotates to free models on quota) |
-| 📌 Agent note · **7 min old** | heartbeat is fresh (437s) but no primary driver/run owns it — supervisor/maintenance heartbeat ignored |
-| ⚙️ Load · uptime | `6.71 6.12 5.11` · 5 days, 21 hours, 48 minutes — 32 cores, 62 GiB, no GPU |
-| 💾 RAM used/total | `6875/64295 MB` |
+| 📌 Agent note · **9 min old** | 2026-09-29T11:16:44Z sweep_012_batch2048 active (8 threads, seed 42, batch=2048, medium dataset); cells 1-11 of 24-grid complete, cells 12-24 pending via run_sweep_medium.sh; ETA ~2026-10-02 UTC; sweep already running (sweep_011_batch512 completed 11:10:26Z, sweep_012_batch2048 started same hour) |
+| ⚙️ Load · uptime | `6.36 6.17 5.25` · 5 days, 21 hours, 50 minutes — 32 cores, 62 GiB, no GPU |
+| 💾 RAM used/total | `10090/64295 MB` |
 | 🔗 Session | `ses_f31799c77ffeTq9gcYgqc4hBhg` |
-| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `2171420d meta: supervise tick 2026-09-29T11:23:01Z — 0 fix(es)` |
-| 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `13046406 B` — every run, command & tool result |
+| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `a14f633b status: no — sweep_012_batch2048 epoch 35/200 loss 6.966679096221924 ` |
+| 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `13055460 B` — every run, command & tool result |
 | 📈 Timeline | [status/status.log](status/status.log) |
