@@ -67100,3 +67100,218 @@ MAMBA_OK
 1
 rc=0
 > build · big-pickle
+micromamba works now — the error was transient. Let me find why 21 cells died at once, and check the sweep driver's concurrency.
+[0m$ [0mecho "=== unique FAIL/START timestamps 01:46-01:48 ==="; grep -E "START|FAIL|SKIP|DONE|COMPLETE" /vol/data/benchmark/status/sweep_medium.log | awk '$2>="01:46"&&$2<="01:49"' | sed 's/ src=.*threads/ threads/' | sort -u | head -40
+=== unique FAIL/START timestamps 01:46-01:48 ===
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && echo "=== TMPDIR/temp handling in run_comebin_fix.sh ==="; grep -n "TMPDIR\|tmp\|TEMP" scripts/run_comebin_fix.sh | head -10; echo "=== sweep driver: concurrency? ==="; grep -n "for cell\|&\s*$\|wait\|MAX_PAR\|parallel" scripts/run_sweep_medium.sh | head -20
+=== TMPDIR/temp handling in run_comebin_fix.sh ===
+19:START_LOCK=/tmp/benchmark-start.lock
+47:# (13.8 GB in /tmp) had filled / to 100%.  Fail fast, before the run starts.
+52:TMP_FS=$(df -Pk /tmp 2>/dev/null | awk 'NR==2{print int($4/1048576)}')
+53:echo "preflight_free_gb: run_fs=${RUN_FS:-unknown} tmp_fs=${TMP_FS:-unknown} floor=${MIN_FREE_GB}"
+56:    echo "ERROR: only ${fs_avail} GiB free, need >= ${MIN_FREE_GB} GiB (stale prep leftovers in /tmp are the usual cause)"
+79:if [ -n "${TEMP:-}" ]; then
+80:  grep -q -- '-l FLOAT' "$SRC/COMEBin/run_comebin.sh" && COMEBIN_ARGS+=(-l "$TEMP")
+112:  echo "sweep:      temp=${TEMP:-ref} emb=${EMB:-ref} emb_cov=${EMB_COV:-ref} batch=${BATCH:-ref} max_edges=${MAX_EDGES:-ref} leiden_workers=${LEIDEN_WORKERS:-ref} hmm_evalue=${HMM_EVALUE:-ref} n_views=${N_VIEWS:-6}"
+122:  "$RUNDIR/comebin_run.log" "$RUNDIR" "$(date +%s)" "$MODE" "$SRC" "$CONTIGS" "$BAMDIR" > "$ACTIVE.tmp.$$"
+123:mv "$ACTIVE.tmp.$$" "$ACTIVE"
+=== sweep driver: concurrency? ===
+163:wait_active_clear() {
+164:  local waited=0
+172:    if [ "$waited" -ge "$WAIT_MAX_S" ]; then
+173:      log "ABORT: registered run pid=$active_pid still alive after ${waited}s; refusing overlap"
+176:    log "wait: foreign run pid=$active_pid active (${waited}s elapsed); sleeping 60"
+178:    waited=$((waited + 60))
+182:wait_active_clear
+> build · big-pickle
+[0m$ [0mgrep -n "01:4[5-9]" /vol/data/benchmark/status/sweep_medium.log | sed 's/ src=[^ ]*//; s/threads=[0-9]*//; s/emb[^ ]*//g; s/max_edges[^ ]*//g' | head -30
+204:[2026-09-29T01:47:19Z] DONE sweep_003_issue28fix (orphaned run EVAL'd OK)
+205:[2026-09-29T01:47:19Z] DONE sweep_003_issue28fix (orphaned run EVAL'd OK)
+206:[2026-09-29T01:47:19Z] START sweep_004_temp005 @ 95f5ea8  seed=42 temp=0.05   batch=ref  lw=ref heval=ref n_views=6
+207:[2026-09-29T01:47:19Z] START sweep_004_temp005 @ 95f5ea8  seed=42 temp=0.05   batch=ref  lw=ref heval=ref n_views=6
+208:[2026-09-29T01:47:19Z] FAIL sweep_004_temp005: run_comebin_fix.sh rc=0
+209:[2026-09-29T01:47:19Z] FAIL sweep_004_temp005: run_comebin_fix.sh rc=0
+210:[2026-09-29T01:47:19Z] START sweep_005_temp030 @ 95f5ea8  seed=42 temp=0.30   batch=ref  lw=ref heval=ref n_views=6
+211:[2026-09-29T01:47:19Z] START sweep_005_temp030 @ 95f5ea8  seed=42 temp=0.30   batch=ref  lw=ref heval=ref n_views=6
+212:[2026-09-29T01:47:19Z] FAIL sweep_005_temp030: run_comebin_fix.sh rc=0
+213:[2026-09-29T01:47:19Z] FAIL sweep_005_temp030: run_comebin_fix.sh rc=0
+214:[2026-09-29T01:47:19Z] START sweep_006_temp050 @ 95f5ea8  seed=42 temp=0.50   batch=ref  lw=ref heval=ref n_views=6
+215:[2026-09-29T01:47:19Z] START sweep_006_temp050 @ 95f5ea8  seed=42 temp=0.50   batch=ref  lw=ref heval=ref n_views=6
+216:[2026-09-29T01:47:19Z] FAIL sweep_006_temp050: run_comebin_fix.sh rc=0
+217:[2026-09-29T01:47:19Z] FAIL sweep_006_temp050: run_comebin_fix.sh rc=0
+218:[2026-09-29T01:47:19Z] START sweep_007_ @ 95f5ea8  seed=42 temp=ref   batch=ref  lw=ref heval=ref n_views=6
+219:[2026-09-29T01:47:19Z] START sweep_007_ @ 95f5ea8  seed=42 temp=ref   batch=ref  lw=ref heval=ref n_views=6
+220:[2026-09-29T01:47:19Z] FAIL sweep_007_ run_comebin_fix.sh rc=0
+221:[2026-09-29T01:47:19Z] FAIL sweep_007_ run_comebin_fix.sh rc=0
+222:[2026-09-29T01:47:19Z] START sweep_008_ @ 95f5ea8  seed=42 temp=ref   batch=ref  lw=ref heval=ref n_views=6
+223:[2026-09-29T01:47:19Z] START sweep_008_ @ 95f5ea8  seed=42 temp=ref   batch=ref  lw=ref heval=ref n_views=6
+224:[2026-09-29T01:47:19Z] FAIL sweep_008_ run_comebin_fix.sh rc=0
+225:[2026-09-29T01:47:19Z] FAIL sweep_008_ run_comebin_fix.sh rc=0
+226:[2026-09-29T01:47:19Z] START sweep_009_ @ 95f5ea8  seed=42 temp=ref   batch=ref  lw=ref heval=ref n_views=6
+227:[2026-09-29T01:47:19Z] START sweep_009_ @ 95f5ea8  seed=42 temp=ref   batch=ref  lw=ref heval=ref n_views=6
+228:[2026-09-29T01:47:19Z] FAIL sweep_009_ run_comebin_fix.sh rc=0
+229:[2026-09-29T01:47:19Z] FAIL sweep_009_ run_comebin_fix.sh rc=0
+230:[2026-09-29T01:47:19Z] START sweep_010_ @ 95f5ea8  seed=42 temp=ref   batch=ref  lw=ref heval=ref n_views=6
+231:[2026-09-29T01:47:19Z] START sweep_010_ @ 95f5ea8  seed=42 temp=ref   batch=ref  lw=ref heval=ref n_views=6
+232:[2026-09-29T01:47:19Z] FAIL sweep_010_ run_comebin_fix.sh rc=0
+233:[2026-09-29T01:47:19Z] FAIL sweep_010_ run_comebin_fix.sh rc=0
+> build · big-pickle
+The error names a missing temp dir. Let me check for a leaked `TMPDIR` across cells.
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && echo "=== TMPDIR anywhere in scripts ==="; grep -rn "TMPDIR" scripts/ | head -20; echo "=== TMPDIR in run_eval.sh / sweep driver context ==="; grep -n "TMPDIR\|mktemp\|rm -rf" scripts/run_eval.sh | head -15
+=== TMPDIR anywhere in scripts ===
+=== TMPDIR in run_eval.sh / sweep driver context ===
+102:    mv "$CHECKM2_OUT" "$stale_ck2" 2>/dev/null || rm -rf "$CHECKM2_OUT"
+[0m$ [0mecho "=== micromamba 2.9 run: does it use TMPDIR? test with bogus TMPDIR ==="; TMPDIR=/nonexistent/xyz timeout 60 /vol/data/tools/bin/micromamba run -p /vol/data/envs/comebin bash -c 'echo SHOULD_NOT_PRINT' 2>&1 | tail -3; echo "rc=$?"; echo "=== same, with valid TMPDIR ==="; TMPDIR=/tmp timeout 60 /vol/data/tools/bin/micromamba run -p /vol/data/envs/comebin bash -c 'echo VALID_TMPDIR_OK' 2>&1 | tail -2
+=== micromamba 2.9 run: does it use TMPDIR? test with bogus TMPDIR ===
+critical libmamba filesystem error: temp_directory_path: No such file or directory [/nonexistent/xyz]
+rc=0
+=== same, with valid TMPDIR ===
+VALID_TMPDIR_OK
+> build · big-pickle
+**Reproduced exactly** — micromamba reports the offending value in brackets. sweep_004 showed `[0.05]`, which is its `temp` parameter. Let me confirm the pattern.
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && echo "=== how run_comebin_fix.sh builds/executes the command ==="; grep -n "CMD_TEXT\|eval \|export \|env " scripts/run_comebin_fix.sh | head -25
+=== how run_comebin_fix.sh builds/executes the command ===
+1:#!/usr/bin/env bash
+76:# Map env vars -> run_comebin.sh flags ONLY if the invoked copy supports them
+100:CMD_TEXT=$(printf '%q ' "$MM" run -p "$ENV" bash run_comebin.sh "${COMEBIN_ARGS[@]}")
+114:  echo "cmd_wrapper: $CMD_TEXT"
+117:export MAMBA_ROOT_PREFIX=/vol/data/envs/.mamba
+[0m$ [0mfor c in sweep_005_temp030 sweep_011_batch512 sweep_019_eval1e3 sweep_024_seed7; do printf "%-24s %s\n" "$c" "$(cat /vol/data/benchmark/runs/$c/comebin_run.log 2>/dev/null | head -1)"; done
+sweep_005_temp030        
+sweep_011_batch512       
+sweep_019_eval1e3        
+sweep_024_seed7
+> build · big-pickle
+[0m→ [0mRead /vol/data/repos/metagenomic-binning-benchmark/scripts/run_comebin_fix.sh [90m[limit=40, offset=96][0m
+[0m$ [0mfor c in sweep_005_temp030 sweep_011_batch512; do echo "=== $c ($(stat -c%s /vol/data/benchmark/runs/$c/comebin_run.log 2>/dev/null) B) ==="; cat /vol/data/benchmark/runs/$c/comebin_run.log 2>&1 | tr -s '\n' '\n' | head -3; done
+=== sweep_005_temp030 ( B) ===
+cat: /vol/data/benchmark/runs/sweep_005_temp030/comebin_run.log: No such file or directory
+=== sweep_011_batch512 ( B) ===
+cat: /vol/data/benchmark/runs/sweep_011_batch512/comebin_run.log: No such file or directory
+> build · big-pickle
+Run dirs for cells 5+ don't even exist. Let me find what sets `TMPDIR` — checking COMEBin's own runner.
+[0m$ [0mecho "=== TMPDIR in COMEBin runners ==="; grep -rn "TMPDIR" /vol/data/repos/COMEBin-v11-sweep/COMEBin/run_comebin.sh /vol/data/repos/COMEBin-v11/COMEBin/run_comebin.sh 2>/dev/null | head; echo "=== -l flag handling in sweep run_comebin.sh ==="; grep -n '\-l \|temp\|TEMPERATURE' /vol/data/repos/COMEBin-v11-sweep/COMEBin/run_comebin.sh 2>/dev/null | head -12; echo "=== runs dir now ==="; ls /vol/data/benchmark/runs/ | tr '\n' ' '
+=== TMPDIR in COMEBin runners ===
+=== -l flag handling in sweep run_comebin.sh ===
+28:	echo "  -l FLOAT        temperature in loss function (default=0.07 for assemblies with an N50 > 10000, default=0.15 for others)"
+53:temperature=
+91:  l) temperature=${OPTARG}
+141:temperature_options=()
+142:if [ -n "${temperature}" ]; then
+143:    temperature_options=(--temperature "${temperature}")
+144:    echo "Tau(temperature): ${temperature}"
+146:    echo "Tau(temperature): automatic from complete-assembly N50 in feature_manifest.json"
+197:    --device "${device}" --num_threads "${num_threads}" "${temperature_options[@]}" "${seed_options[@]}"
+=== runs dir now ===
+baseline_rerun baseline_rerun_autorestart1 baseline_unmodified cami3_v11_20260926 cami3_v11_20260926_rerun fix_v11_20260924 human_v11_20260925 marine_v11_20260925 medium_v11_20260924 small_test small_test_v2 small_test_v3 small_test_v4 small_v11_issue28_regression sweep_001_ref sweep_002_master sweep_003_issue28fix sweep_004_temp005 tiny_test_n100 tiny_test_n101
+> build · big-pickle
+Let me look at how the sweep driver invokes cells and evals — cell 3's eval ran immediately before the cascade.
+[0m✗ [0mcd /vol/data/repos/metagenomic-binning-benchmark && echo "=== cell invocation + eval in run_sweep_medium.sh ==="; grep -n "run_eval\|run_comebin_fix\|TEMP=\|env \|eval " scripts/run_sweep_medium.sh | head -30 failed
+[91m[1mError: [0mNo tool named "bash" is currently available. Please use a tool from the available tool list.
+> build · big-pickle
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && grep -n "run_eval\|run_comebin_fix\|TEMP=\|env \|eval \|eval_cell" scripts/run_sweep_medium.sh | head -30
+1:#!/usr/bin/env bash
+14:#   * THREADS=8 default (medium is small; leave cores for eval + agent)
+15:#   * each cell: run via bin/run_comebin_fix.sh (self-registers .active_run,
+16:#     watchdog owns handoff) then bin/run_eval.sh (CheckM2 + CheckM + auto
+191:  if "$BIN/run_eval.sh" "$RUN" > "$BENCH/status/$name.eval.out" 2>&1; then
+194:    log "EVAL_FAIL $name (rc=$?) — will re-eval later"
+202:  IFS='|' read -r name src temp emb emb_cov batch max_edges lw heval nviews cellseed <<< "$spec"
+225:  # Build env overrides, dropping "ref".
+227:  [ "$temp"     != "ref" ] && SWEEP_ENV+=(TEMP="$temp")
+238:  log "START $name src=$(basename "$src") @ $(git -C "$src" rev-parse --short HEAD 2>/dev/null || echo '?') threads=$THREADS seed=$SEED_FOR_RUN temp=$temp emb=$emb emb_cov=$emb_cov batch=$batch max_edges=$max_edges lw=$lw heval=$heval n_views=$nviews"
+240:  if ! env SRC_COMEBIN="$src" DATA="$DATA" CONTIGS="$CONTIGS" BAMDIR="$BAMDIR" \
+243:      "$BIN/run_comebin_fix.sh" "$RUN" >> "$BENCH/status/$name.comebin.out" 2>&1; then
+244:    log "FAIL $name: run_comebin_fix.sh rc=$?"
+256:  # brief grace for run_comebin_fix.sh cleanup of .active_run
+258:  if ! "$BIN/run_eval.sh" "$RUN" > "$BENCH/status/$name.eval.out" 2>&1; then
+259:    log "EVAL_FAIL $name (rc=$?) — results CSV may be missing; will re-eval later"
+262:  log "DONE $name (eval OK, results CSV + per-bin plots generated)"
+> build · big-pickle
+[0m→ [0mRead /vol/data/repos/metagenomic-binning-benchmark/scripts/run_sweep_medium.sh [90m[limit=30, offset=222][0m
+> build · big-pickle
+Key hypothesis: libmamba may read the legacy `TEMP` env var — which is exactly what the sweep driver sets. Testing:
+[0m$ [0mecho "=== TEMP=0.05 (as the sweep sets it) ==="; TEMP=0.05 timeout 60 /vol/data/tools/bin/micromamba run -p /vol/data/envs/comebin bash -c 'echo SHOULD_PRINT' 2>&1 | tail -2
+echo "=== TEMP=/tmp (valid dir) ==="; TEMP=/tmp timeout 60 /vol/data/tools/bin/micromamba run -p /vol/data/envs/comebin bash -c 'echo TEMP_VALID_OK' 2>&1 | tail -2
+echo "=== bash version ==="; bash --version | head -1
+echo "=== empty array under set -u ==="; bash -c 'set -u; a=(); env X=1 "${a[@]}" bash -c "echo EMPTY_ARRAY_OK"' 2>&1 | tail -2
+=== TEMP=0.05 (as the sweep sets it) ===
+critical libmamba filesystem error: temp_directory_path: No such file or directory [0.05]
+=== TEMP=/tmp (valid dir) ===
+TEMP_VALID_OK
+=== bash version ===
+GNU bash, version 5.2.21(1)-release (x86_64-pc-linux-gnu)
+=== empty array under set -u ===
+EMPTY_ARRAY_OK
+> build · big-pickle
+**Root cause confirmed and exactly reproduced**: libmamba reads the legacy `TEMP` env var as a temp-dir path, and the sweep driver passes the COMEBin temperature via `TEMP=0.05`. Let me confirm across cells.
+[0m$ [0mcd /vol/data/benchmark/status && for f in sweep_004_temp005 sweep_007_emb1024 sweep_011_batch512; do echo "=== $f.comebin.out (tail) ==="; tail -3 "$f.comebin.out" 2>&1; done; echo "=== current shell TEMP? ==="; echo "TEMP=${TEMP:-unset} TMPDIR=${TMPDIR:-unset}"
+=== sweep_004_temp005.comebin.out (tail) ===
+wall_s:     0
+finished:   2026-09-29T01:47:19+00:00
+bins:       0  -> /vol/data/benchmark/runs/sweep_004_temp005/comebin_out/comebin_res/comebin_res_bins (missing or empty)
+=== sweep_007_emb1024.comebin.out (tail) ===
+ERROR: another benchmark launch holds /tmp/benchmark-start.lock
+ERROR: another benchmark launch holds /tmp/benchmark-start.lock
+ERROR: stale failed run requires benchmark-watchdog triage: /vol/data/benchmark/runs/sweep_004_temp005
+=== sweep_011_batch512.comebin.out (tail) ===
+ERROR: another benchmark launch holds /tmp/benchmark-start.lock
+ERROR: another benchmark launch holds /tmp/benchmark-start.lock
+ERROR: stale failed run requires benchmark-watchdog triage: /vol/data/benchmark/runs/sweep_004_temp005
+=== current shell TEMP? ===
+TEMP=unset TMPDIR=unset
+> build · big-pickle
+Full picture: cell 4 died from the `TEMP` collision, and its leftover "stale failed run" then blocked **all** of cells 5–24 — which the driver still logged as "SWEEP COMPLETE". Let me check the skip/resume logic.
+[0m→ [0mRead /vol/data/repos/metagenomic-binning-benchmark/scripts/run_sweep_medium.sh [90m[limit=24, offset=203][0m
+> build · big-pickle
+Now I understand the full failure chain. Let me fix the root cause — the `TEMP` env collision.
+[0m→ [0mRead /vol/data/repos/metagenomic-binning-benchmark/scripts/run_comebin_fix.sh [90m[limit=10, offset=76][0m
+> build · big-pickle
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/scripts/run_comebin_fix.sh
+Index: /vol/data/repos/metagenomic-binning-benchmark/scripts/run_comebin_fix.sh
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/scripts/run_comebin_fix.sh
++++ /vol/data/repos/metagenomic-binning-benchmark/scripts/run_comebin_fix.sh
+@@ -75,10 +75,11 @@
+ # ---- issue #25 sweep: forward optional training/compute params ------------ #
+ # Map env vars -> run_comebin.sh flags ONLY if the invoked copy supports them
+ # (avoids "illegal option" on older/mismatched sources). Defaults = upstream
+ # reference values (current medium_v11_20260924 run). `${X:-}` guards set -u.
+-if [ -n "${TEMP:-}" ]; then
+-  grep -q -- '-l FLOAT' "$SRC/COMEBin/run_comebin.sh" && COMEBIN_ARGS+=(-l "$TEMP")
++if [ -n "${COMEBIN_TEMPERATURE:-${TEMP:-}}" ]; then
++  grep -q -- '-l FLOAT' "$SRC/COMEBin/run_comebin.sh" && \
++    COMEBIN_ARGS+=(-l "${COMEBIN_TEMPERATURE:-${TEMP:-}}")
+ fi
+ if [ -n "${EMB:-}" ]; then
+   grep -q -- '-e INT' "$SRC/COMEBin/run_comebin.sh" && COMEBIN_ARGS+=(-e "$EMB")
+ fi
+
+> build · big-pickle
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/scripts/run_comebin_fix.sh
+Index: /vol/data/repos/metagenomic-binning-benchmark/scripts/run_comebin_fix.sh
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/scripts/run_comebin_fix.sh
++++ /vol/data/repos/metagenomic-binning-benchmark/scripts/run_comebin_fix.sh
+@@ -115,8 +115,20 @@
+   echo "cmd_wrapper: $CMD_TEXT"
+ } | tee "$RUNDIR/run_meta.txt"
+ 
+ export MAMBA_ROOT_PREFIX=/vol/data/envs/.mamba
++# libmamba resolves its scratch directory from TMPDIR, TMP, TEMP and TEMPDIR.
++# TEMP is a long-standing POSIX name for "temporary directory", so exporting
++# TEMP=<float> (the COMEBin loss temperature) makes micromamba abort before
++# COMEBin starts with
++#   critical libmamba filesystem error: temp_directory_path: No such file or
++#   directory [0.05]
++# which cost an entire 24-cell sweep on 2026-09-29: the temperature cells died
++# in <1 s and were indistinguishable from real failures. The parameter now
++# travels as COMEBIN_TEMPERATURE, and any inherited TEMP is cleared so no
++# caller can reintroduce the collision.
++unset TEMP TEMPDIR
++export TMPDIR="${TMPDIR:-/tmp}"
+ cd "$SRC/COMEBin"   # upstream resolves ../auxiliary relative to CWD
+ 
+ # Fields: pid pgid logfile rundir start_epoch mode source_repo contigs bamdir.
+ printf '%s %s %s %s %s %s %s %s %s\n' "$$" "$(ps -o pgid= -p $$ | tr -d ' ')" \
+
