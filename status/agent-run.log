@@ -106827,3 +106827,236 @@ dd687250 meta: supervise tick 2026-09-29T01:03:01Z — 1 fix(es)
 === rank script committed? ===
 scripts/rank_sweep_medium.py
 > build · big-pickle
+The sibling session has been committing (harness fix `99b8980d`, supervise ticks). My AMBER deliverable is staged. Let me update PROGRESS.md's 2026-09-29 section with my AMBER work, then append activity logs:
+[0m$ [0mcd /vol/data/benchmark
+echo "=== PROGRESS.md 2026-09-29 resume section ==="
+grep -n "2026-09-29" PROGRESS.md | head
+echo "---"
+sed -n '/## 2026-09-29 resume/,/^## /p' PROGRESS.md | head -60
+=== PROGRESS.md 2026-09-29 resume section ===
+679:### 2026-09-29 resume (00:24–01:00Z): sweep relaunched, guard fixes, #28 + #29 answered
+---
+### 2026-09-29 resume (00:24–01:00Z): sweep relaunched, guard fixes, #28 + #29 answered
+
+- **State on resume**: `TASK_COMPLETE` absent, no live sweep/benchmark process,
+  heartbeat had gone cold. PROGRESS.md read first, per protocol.
+- **#25 stall root-caused instead of blindly relaunched**: pass 1 (13:07:50Z)
+  aborted *every* cell because `/vol/data/benchmark/bin/run_comebin_fix.sh`
+  still carried the unguarded `[ -n "$TEMP" ]` (line 76) → `set -u` death before
+  launch; pass 2 completed cell 1, then cells 3–24 died instantly on the
+  concurrent-driver `/tmp/benchmark-start.lock` race (all logged `FAIL … rc=0`
+  with **no run dir created**, so nothing was falsely marked done).
+- **Singleton guard fixed (two bugs)**: `$(pgrep …)` forks a subshell that
+  inherits the driver argv → self-match; and a `ps` on a dead transient pid
+  makes the assignment return 1, which under `pipefail` + `set -e` killed the
+  driver **silently** after one cell. Fix = ancestor/child relatedness walk +
+  ≥5 s process age + double probe + `|| true` on every `ps`-based probe.
+  `flock` remains the hard mutex; the guards are only the fast path.
+  Pushed: `fa69730a`, `55ad99dd`, `57b9cb5d`, `20ca7e39`.
+- **Sweep relaunched detached 00:41:12Z**: `run_sweep_medium.sh --from 3`,
+  driver pid 2566340, `.active_run` pid 2566376 → `runs/sweep_003_issue28fix`
+  (src `COMEBin-v11` @ `41606c8`). Cells 1/2 skipped by design; 22 cells ×
+  ~55 min ≈ 20 h, ETA ~2026-09-30 evening UTC. Verified only `sweep_001/002/003`
+  run dirs exist → no cell will be wrongly skipped as done. Watchdog owns the
+  handoff; agent keeps `.heartbeat` fresh.
+- **Cell 1 recorded** — `sweep_001_ref`: rc 0, 2,827 s, **17 bins**, CheckM2
+  34.22/4.11 (HQ 0, MQ 2), CheckM 32.00/5.31 → `results/sweep_001_ref.csv`.
+- **Cell 2 root cause pinned** — `sweep_002_master` (stock `904f649`, exit 1 @
+  108 s): `train_CLmodel.py:46 length_weight.append(lengths[seq_id])` →
+  `KeyError: 'BATS_SAMN07137077_METAG-scaffold_22978'`. Measured on its own
+  artifacts: `aug0_datacoverage_mean.tsv` = **29,435 lines** (header + the full
+  BAM `@SQ` list, incl. scaffold_22978) vs `aug0/sequences_aug0.fasta` =
+  **3,000** contigs (scaffold_22978 absent). Upstream enumerates coverage rows
+  from the BAM, lengths from the assembly → the issue-#2 producer/consumer
+  mismatch on our medium fixture. v11 is structurally immune (`gen_cov.py`
+  allocates over the retained assembly contigs and ignores extra `@SQ`), which
+  cell 1 confirms empirically. Evidence kept in `runs/sweep_002_master/`.
+- **#28 answered** — acknowledged the owner's directive (medium first → merge
+  fix + optimization into `master` asap), reported grid state, cell-1 numbers,
+  cell-2 root cause and the plan: push `41606c8` → PR into `master` →
+  confirmation medium run on merged master → bioconda prep. `41606c8` is still
+  **local only** (origin `comebin-optimizations-v11` = `95f5ea8`).
+- **#29 answered** — Galaxy IUC fixture measured: 40 contigs × exactly 20,000 bp
+  (800 kb, ids `g1k_0…g4k_9`, GC 26.97 %), coordinate-sorted BAM with 40 `@SQ`
+  refs **identical** to the FASTA ids, 2,000 reads / 94 mapped, no `.bai`;
+  wrapper pins `comebin 1.1.0`, test uses `max_edges=20` (XML help: must be
+  < contig count) and `batch=1024`; PR #8351 merged 2026-08-25 with
+  `Test tools (0, 3.11): success`. Caveats posted: `MINIMUM_FINAL_BIN_SIZE =
+  200000` vs an 800 kb assembly → smoke test only (a 0-bin run is still green),
+  and a pre-#28-fix checkout crashes on the empty marker seed. Fixture stored
+  at `/vol/data/datasets/galaxy_comebin_fixture/` (md5 `e6b5f3bb…` fasta,
+  `373f4411…` bam); end-to-end run on `41606c8` is queued behind the sweep
+  (overlap rule).
+- **Post-sweep tooling hardened while waiting**: `scripts/rank_sweep_medium.py`
+  shipped with a **stray syntax error** (`del par for par in []` in the format
+  call) that would have killed the ranking the moment the grid finished —
+  removed, plus defensive `as_int`/`as_float`/`fmt_f1` guards (a `-`/empty CSV
+  cell no longer raises `ValueError`) and `n_views=6` normalised to `ref` so
+  the reference cell shows "reference (defaults)". Verified out-of-tree against
+  a synthetic malformed row. `scripts/run_galaxy_fixture_test.sh` (NEW) wraps
+  the issue-#29 fixture run: `CONTIGS`/`BAMDIR`/`MODE=galaxy_fixture`,
+  `MAX_EDGES=20` (Galaxy's own value; 100 > 40 contigs → `ValueError`),
+> build · big-pickle
+[0m$ [0mcd /vol/data/benchmark
+echo "=== rest of 2026-09-29 section ==="
+sed -n '679,780p' PROGRESS.md | sed -n '/Post-sweep tooling/,$p' | head -40
+echo "=== section boundary after end ==="
+grep -n "^### \|^## " PROGRESS.md | awk -F: '$1>679' | head -4
+echo "=== is agent-activity.log committed? ==="
+git -C /vol/data/repos/metagenomic-binning-benchmark ls-files status/agent-activity.log .activity; git -C /vol/data/repos/metagenomic-binning-benchmark log --oneline -2 -- status/agent-activity.log
+echo "=== is c04812bb carrying my activity line? ==="
+git -C /vol/data/repos/metagenomic-binning-benchmark show --stat --oneline c04812bb | head -15
+=== rest of 2026-09-29 section ===
+- **Post-sweep tooling hardened while waiting**: `scripts/rank_sweep_medium.py`
+  shipped with a **stray syntax error** (`del par for par in []` in the format
+  call) that would have killed the ranking the moment the grid finished —
+  removed, plus defensive `as_int`/`as_float`/`fmt_f1` guards (a `-`/empty CSV
+  cell no longer raises `ValueError`) and `n_views=6` normalised to `ref` so
+  the reference cell shows "reference (defaults)". Verified out-of-tree against
+  a synthetic malformed row. `scripts/run_galaxy_fixture_test.sh` (NEW) wraps
+  the issue-#29 fixture run: `CONTIGS`/`BAMDIR`/`MODE=galaxy_fixture`,
+  `MAX_EDGES=20` (Galaxy's own value; 100 > 40 contigs → `ValueError`),
+  `bamfiles/` symlink created, and it inherits the harness's
+  no-overlap/no-overwrite guards. Pushed `9d36e82c`, `3ac437d7`.
+
+## Watchdog / restart
+
+`scripts/agent-watchdog.sh` (installed at `/vol/data/benchmark/bin/`, cron `*/5 * * * *`):
+stale heartbeat (>15 min) → `opencode run` continues session
+`ses_f31799c77ffeTq9gcYgqc4hBhg`; if that failed → fresh session with resume prompt.
+Both prompts first check GitHub issues for user instructions. On quota/token/context
+errors it forces `--model` rotation through the free model list; a successful run
+clears the flag (back to default). Rate limit 6 restarts / 6 h; stops when
+`TASK_COMPLETE` exists. **Agent: touch `/vol/data/benchmark/.heartbeat` regularly.**
+
+### 2026-09-26 Agent Resume
+
+- Verified all benchmark runs complete: cami3_rerun (492 bins), fix_v11 (71 bins), marine (152 bins), human (107 bins), medium (16 bins)
+- No active `.active_run`; no `TASK_COMPLETE` file
+- All open issues #26-#1 triaged without duplication (last comment 2026-09-26T14:25:00Z)
+- Issues #26 (logging), #25 (optimization), #6 (optimization), #1 (inbox) all previously addressed
+- `.heartbeat` touched routinely; status infrastructure intact
+
+### 2026-09-26 Agent Resume (second)
+
+- Verified all runs complete (cami3_rerun 492 bins, fix_v11 71, marine 152, human 107, medium 16), no active .active_run
+- All open issues #26-#1 triaged without duplication; PROGRESS.md and .activity synced
+- .heartbeat touched; agent-activity.log updated
+- Resuming from agent restart with no unfinished benchmark steps=== section boundary after end ===
+742:## Watchdog / restart
+752:### 2026-09-26 Agent Resume
+760:### 2026-09-26 Agent Resume (second)
+=== is agent-activity.log committed? ===
+status/agent-activity.log
+c04812bb status: yes — sweep_003_issue28fix epoch 122/200 loss 4.466258525848389 acc 49.375 model big-pickle — 2026-09-29T01:02:00Z rank-script-fix + g [2026-09-29T01:08:17Z] #25 AMBER: inputs
+8f694854 status: yes — sweep_003_issue28fix epoch 90/200 loss 4.786633491516113 acc 35.983070373535156 model mimo-v2.6-flash-free — 2026-09-29T01:02:00Z rank-script-fix + g
+=== is c04812bb carrying my activity line? ===
+c04812bb status: yes — sweep_003_issue28fix epoch 122/200 loss 4.466258525848389 acc 49.375 model big-pickle — 2026-09-29T01:02:00Z rank-script-fix + g [2026-09-29T01:08:17Z] #25 AMBER: inputs
+ README.md                                          |   2 +-
+ runs/sweep_003_issue28fix/comebin_res/comebin.log  |  10 ++++++++++
+ runs/sweep_003_issue28fix/comebin_res/training.log |  20 +++++++++++++++++++
+ runs/sweep_003_issue28fix/comebin_run.log          |  22 ++++++++++++++++++++-
+ runs/sweep_003_issue28fix/logs/resources.tsv       |   4 ++++
+ status/agent-activity.log                          |   1 +
+ status/agent-run.log                               | Bin 10091059 -> 10103130 bytes
+ status/current.md                                  |  15 +++++++-------
+ status/meta/close-log.txt                          |   2 ++
+ status/status.log                                  |   2 ++
+ status/supervisor-run.log                          | Bin 9143596 -> 9163659 bytes
+ status/watchdog.log                                |   1 +
+ 12 files changed, 70 insertions(+), 9 deletions(-)
+> build · big-pickle
+Heartbeats already carried my `status/agent-activity.log` line. Now adding my AMBER work into the 2026-09-29 PROGRESS section, then syncing:
+[0m← [0mEdit /vol/data/benchmark/PROGRESS.md
+Index: /vol/data/benchmark/PROGRESS.md
+===================================================================
+--- /vol/data/benchmark/PROGRESS.md
++++ /vol/data/benchmark/PROGRESS.md
+@@ -737,8 +737,21 @@
+   the issue-#29 fixture run: `CONTIGS`/`BAMDIR`/`MODE=galaxy_fixture`,
+   `MAX_EDGES=20` (Galaxy's own value; 100 > 40 contigs → `ValueError`),
+   `bamfiles/` symlink created, and it inherits the harness's
+   no-overlap/no-overwrite guards. Pushed `9d36e82c`, `3ac437d7`.
++- **AMBER marine evaluation delivered (01:11Z, #25 follow-on)**: official
++  CAMI-standard scoring of `marine_v11_20260925` (152 final bins) against the
++  official CAMI II marine gold standard (`binning_gs.tsv` @Version 0.9.1,
++  1,475,976 rows). AMBER cloned to `/vol/data/repos/CAMI-AMBER`, env
++  `/vol/data/envs/amber` (Python 3.11); prediction regenerable via new
++  `scripts/make_amber_prediction.py` and archived as
++  `results/amber/marine/comebin_v11_marine.binning`. **RESULTS (bp-weighted)**:
++  F1 0.330, precision_avg 0.735 (weighted 0.862), recall_avg 0.213 (weighted
++  0.296), ARI 0.844, accuracy 0.294, misclassification 0.138, 34.1 % of bp
++  assigned. Full write-up `docs/14-amber-cami2-marine.md`; artifacts in
++  `results/amber/marine/` (amber_results.tsv, bin_metrics.tsv,
++  amber_report.html, heatmap_bar.png). Human + CAMI III AMBER evals can now be
++  one-liners after the sweep winner is chosen.
+ 
+ ## Watchdog / restart
+ 
+ `scripts/agent-watchdog.sh` (installed at `/vol/data/benchmark/bin/`, cron `*/5 * * * *`):
+
+> build · big-pickle
+Now sync PROGRESS.md to the repo copy and append activity logs:
+[0m$ [0mcd /vol/data/benchmark
+cp PROGRESS.md /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md
+echo "[$(date -u +%FT%TZ)] #25 AMBER follow-on: marine run scored vs official CAMI II gold standard — F1_bp 0.330, prec_avg 0.735, recall_avg 0.213, ARI 0.844, assigned 34.1% bp; env /vol/data/envs/amber; docs/14 + results/amber/marine + scripts/make_amber_prediction.py; PROGRESS synced" >> /vol/data/repos/metagenomic-binning-benchmark/status/agent-activity.log
+echo "[$(date -u +%FT%TZ)] AMBER marine eval done (F1 0.330 bp); docs/14 + scripts/make_amber_prediction.py; sweep_003 running" >> .activity
+tail -2 .activity
+tail -1 /vol/data/repos/metagenomic-binning-benchmark/status/agent-activity.log
+touch .heartbeat
+echo "=== verify PROGRESS synced ==="
+diff -q /vol/data/benchmark/PROGRESS.md /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md && echo "in sync"
+[2026-09-29T01:08:17Z] #25 AMBER: inputs staged (marine pred + GS), env installing
+[2026-09-29T01:12:11Z] AMBER marine eval done (F1 0.330 bp); docs/14 + scripts/make_amber_prediction.py; sweep_003 running
+[2026-09-29T01:12:11Z] #25 AMBER follow-on: marine run scored vs official CAMI II gold standard — F1_bp 0.330, prec_avg 0.735, recall_avg 0.213, ARI 0.844, assigned 34.1% bp; env /vol/data/envs/amber; docs/14 + results/amber/marine + scripts/make_amber_prediction.py; PROGRESS synced
+=== verify PROGRESS synced ===
+in sync
+> build · big-pickle
+Now committing under the lock (intended paths only):
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark
+(
+  flock 9
+  git add docs/13-optimization-sweep-medium.md docs/14-amber-cami2-marine.md results/amber/ scripts/make_amber_prediction.py PROGRESS.md
+  git status --porcelain
+  git commit -m "issue #25: AMBER marine evaluation vs official CAMI II gold standard + sweep docs
+
+- AMBER (CAMI-challenge/AMBER) scored marine_v11_20260925 (152 bins) against
+  the official CAMI II marine binning_gs.tsv (@Version 0.9.1, 1.48M rows):
+  F1_bp 0.330, precision_avg 0.735 (weighted 0.862), recall_avg 0.213 (weighted
+  0.296), ARI 0.844, accuracy 0.294, 34.1% of bp assigned. Enforcement env
+  /vol/data/envs/amber (py3.11), AMBER at /vol/data/repos/CAMI-AMBER.
+- New scripts/make_amber_prediction.py: run_dir+sample_id -> @@SEQUENCEID BINID
+  AMBER prediction (regenerable; canonical marine copy in results/amber/marine).
+- New docs/14-amber-cami2-marine.md: what was evaluated, command, metrics table,
+  provenance notes, follow-on path for human/CAMI III.
+- docs/13: status header refreshed to LIVE with per-cell status (sweep relaunched
+  --from 3, cell 3 training); PROGRESS.md 2026-09-29 section updated." | tail -4
+  git log --oneline -1
+) 9>/tmp/bench-repo.lock
+M  PROGRESS.md
+M  docs/13-optimization-sweep-medium.md
+A  docs/14-amber-cami2-marine.md
+A  results/amber/marine/amber_report.html
+A  results/amber/marine/amber_results.tsv
+A  results/amber/marine/bin_metrics.tsv
+A  results/amber/marine/comebin_v11_marine.binning
+A  results/amber/marine/heatmap_bar.png
+A  scripts/make_amber_prediction.py
+ M status/agent-activity.log
+ create mode 100644 results/amber/marine/bin_metrics.tsv
+ create mode 100644 results/amber/marine/comebin_v11_marine.binning
+ create mode 100644 results/amber/marine/heatmap_bar.png
+ create mode 100644 scripts/make_amber_prediction.py
+e42e1d72 issue #25: AMBER marine evaluation vs official CAMI II gold standard + sweep docs
+> build · big-pickle
+Committed `e42e1d72`. Now push under the lock:
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark
+(
+  flock 9
+  git fetch origin 2>&1 | tail -1
+  git log --oneline origin/main..HEAD | head -5
+  git push origin main 2>&1 | tail -3
+) 9>/tmp/bench-repo.lock
+e42e1d72 issue #25: AMBER marine evaluation vs official CAMI II gold standard + sweep docs
+To https://github.com/paulzierep/metagenomic-binning-benchmark
+   43b04aa9..e42e1d72  main -> main

@@ -64921,3 +64921,46 @@ remote: 0f6fb44a1e73fac7df7ea576bc2896a45ef5e755
 PUSH OK (nothing of mine outstanding)
 final local : 0f6fb44a1e73fac7df7ea576bc2896a45ef5e755
 final remote: 0f6fb44a1e73fac7df7ea576bc2896a45ef5e755
+> build · big-pickle
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && echo "=== my commit in pushed history? ==="; git merge-base --is-ancestor 99b8980d origin/main && echo "YES 99b8980d is on origin/main" || echo "NO"; git log --oneline -1 99b8980d; echo; echo "=== the two fixed files on remote are the fixed versions ==="; git show origin/main:scripts/run_comebin_fix.sh | grep -c "ALLOW_ZERO_BINS"; git show origin/main:scripts/run_galaxy_fixture_test.sh | grep -c "ALLOW_ZERO_BINS=1"; echo; echo "=== cleanup my temp test dir ==="; rm -rf /tmp/opencode/zerobin-test /tmp/opencode/c28.md /tmp/opencode/c29.md /tmp/opencode/checks-at-escalation.tsv && echo "removed"; echo; echo "=== live run final check ==="; ps -o pid=,stat= -p 2566376; grep -a "epoch=" /vol/data/benchmark/runs/sweep_003_issue28fix/comebin_run.log | tail -1
+=== my commit in pushed history? ===
+YES 99b8980d is on origin/main
+99b8980d harness: let a verified 0-bin COMEBin result count as success (issue #28/#29)
+
+=== the two fixed files on remote are the fixed versions ===
+4
+2
+
+=== cleanup my temp test dir ===
+removed
+
+=== live run final check ===
+2566376 S
+2026-09-29 01:11:59,217 - NN training: epoch=132/200, batches=2, loss=4.4449325, top1=50.9310, elapsed=13.047s, process_memory={'VmPeak': '6613928 kB', 'VmRSS': '1573876 kB'}, gpu_memory=None.
+> build · big-pickle
+Supervisor pass complete. Only C8 was broken; everything else was ok, so I triaged the issues and fixed one real defect the checks don't cover.
+
+**Real bug found and fixed** (`99b8980d`, on `origin/main`)
+
+`run_comebin_fix.sh` converted *any* zero-bin run into `exit_code: 1`. But on COMEBin `41606c8` an empty marker seed is now a *verified* outcome — `main.py` logs `Reporting 0 bins … This is an empty result for this input, not an error.` and exits 0 — so the harness was re-raising the exact error issue #28 removed, one layer up. The 800 kb Galaxy fixture from #29 could therefore only ever be recorded as a failed run, no matter how well the fix behaved.
+
+Added a deliberately narrow opt-in `ALLOW_ZERO_BINS=1`, honoured **only** when COMEBin's own log carries that empty-result marker. Verified with a truncated copy (micromamba / launch-lock / `.active_run` redirected to temp paths, live run never touched):
+
+| case | rc |
+|---|---|
+| 0 bins + empty-result marker + opt-in | 0 |
+| 0 bins + marker, default (no opt-in) | 1 |
+| 0 bins, no marker, opt-in on | 1 |
+| bins present | 0 |
+
+Default behaviour is unchanged, so the #25 sweep cells and the medium/large gates keep their strictness.
+
+**Deploys** — cleared 4 pending scripts that were provably *not* executing (`rank_sweep_medium.py`, `run_sweep_medium.sh`, `run_galaxy_fixture_test.sh`, `make_amber_prediction.py`), each checked for open fds and exact argv match against `/proc` first. C1b drift had been held for the whole 20 h sweep by a blanket deferral. I deliberately did **not** deploy `run_comebin_fix.sh` — the live cell has that file open and bash reads scripts incrementally — so C1b stays honestly `ok / deferred` with exactly that one item, and installs it itself when the cell ends.
+
+**Issues** — verified #24 and #19 against `origin/main` rather than trusting the delivery comments, wrote `.issues_done/24` and `.issues_done/19`, and let the deterministic closer close them (verified CLOSED 01:09:51Z/01:09:54Z, markers consumed). No issue closed any other way. One new comment each on #28 and #29, covering only the harness fix and fixture runner; nothing on #25, whose status was already accurate.
+
+**Deliberately not done** — I did not push COMEBin `41606c8` to origin. You set the sequence medium-first-then-master, cell 3 is still training (epoch 132/200), and publishing an unreleased commit to a public remote is the driver's call. The sha is recorded in the pushed benchmark repo so it can't be lost with the local checkout.
+
+**Untouched:** the live run (pid 2566376, epoch 132/200, log fresh), no cron reinstall (C1 was ok), no service/driver restart. The concurrent driver's in-flight `docs/13`, `docs/14`, `results/amber/`, `scripts/make_amber_prediction.py` were left uncommitted and alone; my commit used an explicit 2-path pathspec under `/tmp/bench-repo.lock` with the index verified empty first. `HEAD`=`origin/main`, worktree shows only the driver's files.
+
+C8 will stay `broken` until this run returns, because the parent tick advances the seen-markers for #28/#29/#25 only after the supervisor exits — that's the mechanism working as designed, not a regression.
