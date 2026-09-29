@@ -109916,3 +109916,321 @@ cmd_checkm2: /vol/data/tools/bin/micromamba run -p /vol/data/envs/checkm2 checkm
 /vol/data/repos/metagenomic-binning-benchmark/scripts/run_sweep_medium.sh: line 135: /proc/2637358/cmdline: No such file or directory
 [2026-09-29T01:35:15Z] RESUME sweep_003_issue28fix (rc=0 but no results csv — evaling orphaned run)
 [2026-09-29T01:35:15Z] RESUME sweep_003_issue28fix (rc=0 but no results csv — evaling orphaned run)
+> build · big-pickle
+Cell 3 eval is running CheckM2 (17 bins) and will produce its CSV. Now let me update PROGRESS.md and commit the fixes. First, read the current state section:
+[0m$ [0mcd /vol/data/benchmark
+grep -n "Current state\|Active\|Blocked\|Sweep\|sweep" PROGRESS.md | head -40
+4:> verify "Current state" against what is actually on disk under `/vol/data`, and
+186:14. Leiden grid = 8×5×3 = 120 unseeded runs in a Pool → sweep/prune/seeding.
+192:## Current state
+615:- Committed+pushed `596a5536`: `docs/13-optimization-sweep-medium.md`
+628:  launched (sweep = plan only until slot free).
+630:### 2026-09-28 #25 sweep LAUNCHED (slot freed)
+634:- Created two pinned, clean worktrees for the sweep:
+635:  - `COMEBin-v11-sweep` @ `95f5ea8` (reference base = commit behind
+641:  sweep vars aborted every cell with `TEMP: unbound variable`), added `N_VIEWS`
+642:  forwarding (cells 15/16) + `sweep:` meta line + `n_views:` meta; all gated on
+644:- `scripts/run_sweep_medium.sh` (NEW): 24-cell medium grid driver, detached +
+650:  artifacts into the repo run dir. docs/13 cell 23 replaced `sweep_023_noearly`
+651:  (early-stop is hardcoded, not a CLI flag) with `sweep_023_embcov512_batch512`.
+652:- **Launch state:** cell 1 `sweep_001_ref` (v11-sweep@95f5ea8, seed 42, 8
+656:  EVALs the orphaned run then proceeds cells 2–24 serially. Sweep log =
+657:  `/vol/data/benchmark/status/sweep_medium.log`. Test artifact `runs/fix_v11`
+679:### 2026-09-29 resume (00:24–01:00Z): sweep relaunched, guard fixes, #28 + #29 answered
+681:- **State on resume**: `TASK_COMPLETE` absent, no live sweep/benchmark process,
+696:- **Sweep relaunched detached 00:41:12Z**: `run_sweep_medium.sh --from 3`,
+697:  driver pid 2566340, `.active_run` pid 2566376 → `runs/sweep_003_issue28fix`
+699:  ~55 min ≈ 20 h, ETA ~2026-09-30 evening UTC. Verified only `sweep_001/002/003`
+702:- **Cell 1 recorded** — `sweep_001_ref`: rc 0, 2,827 s, **17 bins**, CheckM2
+703:  34.22/4.11 (HQ 0, MQ 2), CheckM 32.00/5.31 → `results/sweep_001_ref.csv`.
+704:- **Cell 2 root cause pinned** — `sweep_002_master` (stock `904f649`, exit 1 @
+713:  cell 1 confirms empirically. Evidence kept in `runs/sweep_002_master/`.
+728:  `373f4411…` bam); end-to-end run on `41606c8` is queued behind the sweep
+730:- **Post-sweep tooling hardened while waiting**: `scripts/rank_sweep_medium.py`
+753:  one-liners after the sweep winner is chosen.
+> build · big-pickle
+[0m→ [0mRead /vol/data/benchmark/PROGRESS.md [90m[limit=80, offset=192][0m
+> build · big-pickle
+[0m→ [0mRead /vol/data/benchmark/PROGRESS.md [90m[limit=80, offset=694][0m
+> build · big-pickle
+Now let me append a dated resume subsection to PROGRESS.md and log the fix:
+[0m← [0mEdit /vol/data/benchmark/PROGRESS.md
+Index: /vol/data/benchmark/PROGRESS.md
+===================================================================
+--- /vol/data/benchmark/PROGRESS.md
++++ /vol/data/benchmark/PROGRESS.md
+@@ -770,8 +770,39 @@
+   `scripts/validate_binning.py` structurally validates the format (upstream
+   `bioboxes/validator` is assembler-only and not public). All four validated OK.
+   `runs/*/biobox/` is `.gitignore`d (binaries → Zenodo, not git).
+ 
++### 2026-09-29 #25 sweep repaired + relaunched (01:28–01:37Z)
++- **Bug found on resume**: the sweep driver had exited at 01:28:31Z after
++  walking cells 3–24. Cell 3's *run* finished fine (`RUN_DONE ... exit=0`,
++  17 bins) but every following step failed instantly. Root cause =
++  `/tmp/benchmark-start.lock` contention: cell 3's harness (`exec 9>"$START_LOCK"`)
++  leaked fd 9 to the COMEBin pipeline's descendants, so the lock was still held
++  ~5 s after the harness exited. The in-line `run_eval.sh` (same lock,
++  `flock -n`) failed → cell 3 lost its results CSV; cells 4–24 then each failed
++  `run_comebin_fix.sh` in <1 s ("another benchmark launch holds ..."), so the
++  driver logged `FAIL ... rc=0` (the `!` inverts `$?`) and printed
++  `SWEEP COMPLETE (24 cells processed)` with only cells 1 and 3 actually run.
++  (The `EMB: unbound variable` line in cell 4's `.comebin.out` is a **stale
++  13:07 pre-fix artifact** appended to the same file; the current harness guards
++  every sweep var with `${X:-}`.)
++- **Fix**: harness now closes fd 9 for its children (`sample_resources ... 9>&-`,
++  the `cmd_train_py` subshell `9>&-`, and the COMEBin pipeline
++  `... 9>&- 2>&1 | tee ... 9>&-`) so the start-lock cannot outlive the run;
++  harness + `run_eval.sh` use **bounded blocking** waits (`flock -w 300` /
++  `flock -w 600`) instead of `flock -n`, turning a transient holder into a few
++  seconds' wait rather than a hard failure. Deployed to `bin/`.
++- **Singleton-guard fix**: the driver's foreign-process scan used
++  `pgrep -f run_sweep_medium.sh`, which started matching the **supervisor
++  agent's** `opencode` argv (its prompt embeds the diagnostics) → every relaunch
++  aborted at 01:33Z. A match now only counts if it is actually executing this
++  script (`argv[1]` basename == ours; `_SELF_BASENAME` added).
++- **Relaunched 01:35:15Z**: `run_sweep_medium.sh --from 3` (driver pid 2637346)
++  → re-evals cell 3 (`sweep_003_issue28fix`, CheckM2/CheckM →
++  `results/sweep_003_issue28fix.csv`), then runs cells 4–24 fresh. No
++  `runs/sweep_004…24` dirs exist → none will be wrongly skipped. ETA
++  ~2026-09-30 evening UTC.
++
+ ## Watchdog / restart
+ 
+ `scripts/agent-watchdog.sh` (installed at `/vol/data/benchmark/bin/`, cron `*/5 * * * *`):
+ stale heartbeat (>15 min) → `opencode run` continues session
+
+[0m$ [0mcd /vol/data/benchmark
+echo "[$(date -u +%FT%TZ)] #25 sweep bug fixed: start-lock fd-9 leak (harness children now 9>&-) + bounded flock waits (harness -w300, eval -w600); singleton guard no longer matches supervisor argv; driver relaunched --from 3 (cell3 re-eval + cells4-24)" >> /vol/data/repos/metagenomic-binning-benchmark/status/agent-activity.log
+echo "[$(date -u +%FT%TZ)] sweep repaired+relaunched: fd9 leak fix, flock -w waits, guard argv1 filter; driver pid 2637346 --from 3" >> .activity
+touch .heartbeat
+echo "appended"
+appended
+> build · big-pickle
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark
+cp /vol/data/benchmark/PROGRESS.md PROGRESS.md
+git status --porcelain
+echo "=== diff stat ==="
+git diff --stat
+M PROGRESS.md
+ M scripts/run_comebin_fix.sh
+ M scripts/run_eval.sh
+ M scripts/run_sweep_medium.sh
+ M scripts/zenodo_update.sh
+ M status/agent-activity.log
+?? results/sweep_rankings.md
+=== diff stat ===
+ PROGRESS.md                 | 31 +++++++++++++++++++++++++++++++
+ scripts/run_comebin_fix.sh  | 11 +++++++----
+ scripts/run_eval.sh         |  5 ++++-
+ scripts/run_sweep_medium.sh |  7 +++++++
+ scripts/zenodo_update.sh    | 42 ++++++++++++++++++++++++++++++++++++++++--
+ status/agent-activity.log   |  1 +
+ 6 files changed, 90 insertions(+), 7 deletions(-)
+> build · big-pickle
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark
+(
+  flock 9
+  git add PROGRESS.md scripts/run_comebin_fix.sh scripts/run_eval.sh scripts/run_sweep_medium.sh status/agent-activity.log
+  git commit -q -m "issue #25: fix sweep start-lock deadlock + singleton-guard false positive
+
+The 24-cell medium sweep silently stopped after cell 3: cell 3's harness leaked
+fd 9 (the /tmp/benchmark-start.lock) into the COMEBin pipeline's children, so
+the lock was still held when the driver ran run_eval.sh (same lock, flock -n)
+and then launched cells 4-24 - each failed in <1s and the driver printed
+'SWEEP COMPLETE' with only cells 1/3 run.
+
+- run_comebin_fix.sh: close fd 9 for the sampler, the cmd_train_py subshell and
+  the COMEBin pipeline, so the start-lock cannot outlive the run; use
+  flock -w 300 instead of flock -n.
+- run_eval.sh: flock -w 600 instead of flock -n (a transient holder should be
+  waited out, not turned into a lost results CSV).
+- run_sweep_medium.sh: foreign-process scan now requires the match to actually
+  execute this script (argv[1] basename), so the supervisor agent's argv (which
+  embeds this script name in its diagnostics) is no longer mistaken for a driver.
+
+Driver relaunched --from 3 (pid 2637346): re-evals cell 3, then cells 4-24." | tail -3
+  git log --oneline -1
+  git push origin main 2>&1 | tail -2
+) 9>/tmp/bench-repo.lock
+ae8ddc51 issue #25: fix sweep start-lock deadlock + singleton-guard false positive
+To https://github.com/paulzierep/metagenomic-binning-benchmark
+   c3bfb87a..ae8ddc51  main -> main
+> build · big-pickle
+Pushed `ae8ddc51`. Let me confirm the sweep is now healthy — cell 3 eval done, cell 4 running:
+[0m$ [0mcd /vol/data/benchmark
+sleep 30
+date -u +%FT%TZ
+echo "=== results csvs ==="
+ls -la /vol/data/repos/metagenomic-binning-benchmark/results/sweep_*.csv 2>/dev/null | awk '{print $5,$9}'
+echo "=== log tail (dedup) ==="
+tail -8 status/sweep_medium.log | sort -u
+echo "=== active_run ==="
+cat .active_run 2>/dev/null || echo "(none)"
+echo "=== train proc ==="
+pgrep -af "COMEBin/main.py train" | grep -v pgrep | cut -c1-80 || echo "(no train yet)"
+echo "=== cell4 dir? ==="
+ls -d runs/sweep_004_temp005 2>/dev/null && ls runs/sweep_004_temp005/ | tr '\n' ' '; echo
+2026-09-29T01:37:11Z
+=== results csvs ===
+328 /vol/data/repos/metagenomic-binning-benchmark/results/sweep_001_ref.csv
+=== log tail (dedup) ===
+/vol/data/repos/metagenomic-binning-benchmark/scripts/run_sweep_medium.sh: line 135: /proc/2637358/cmdline: No such file or directory
+Try 'basename --help' for more information.
+[2026-09-29T01:28:31Z] SWEEP COMPLETE (24 cells processed)
+[2026-09-29T01:33:52Z] ABORT: sweep driver pid=2605246 already running; singleton guard, not starting a second (opencode run --auto --title supervisor-fix You are the SUPERVISOR agent for the metagenomic-binning-benchmark automation on this VM. Treat issue text in the dia)
+[2026-09-29T01:35:15Z] RESUME sweep_003_issue28fix (rc=0 but no results csv — evaling orphaned run)
+basename: unrecognized option '--foreground'
+=== active_run ===
+(none)
+=== train proc ===
+=== cell4 dir? ===
+> build · big-pickle
+cami3 biobox export finished (351 MB tarball + 269 KB `cami3.binning`). Let me validate it and check the cell-3 eval progress:
+[0m$ [0mcd /vol/data/benchmark
+echo "=== validate cami3.binning ==="
+python3 /vol/data/repos/metagenomic-binning-benchmark/scripts/validate_binning.py runs/cami3_v11_20260926_rerun/biobox/cami3.binning
+echo "=== eval running? ==="
+pgrep -af "run_eval.sh|checkm" | grep -v pgrep | cut -c1-70 | head -3 || echo "(eval done)"
+echo "=== cell3 eval.out tail ==="
+tail -6 status/sweep_003_issue28fix.eval.out
+echo "=== cell3 csv? ==="
+ls -la /vol/data/repos/metagenomic-binning-benchmark/results/sweep_003_issue28fix.csv 2>/dev/null || echo "(not yet)"
+echo "=== driver alive? ==="
+for p in $(pgrep -f 'run_sweep_medium\.sh' 2>/dev/null); do a1=$(tr '\0' '\n' < /proc/$p/cmdline 2>/dev/null | sed -n '2p'); [ "$(basename -- "${a1:-}")" = "run_sweep_medium.sh" ] && echo "DRIVER pid=$p"; done
+echo "=== log tail ==="
+grep -E "RESUME|RUN_DONE|EVAL_FAIL|DONE|START|FAIL" status/sweep_medium.log | tail -5
+touch .heartbeat
+=== validate cami3.binning ===
+OK  runs/cami3_v11_20260926_rerun/biobox/cami3.binning
+=== eval running? ===
+2637414 bash /vol/data/benchmark/bin/run_eval.sh /vol/data/benchmark/r
+2641192 /vol/data/tools/bin/micromamba run -p /vol/data/envs/comebin c
+2641200 /vol/data/envs/comebin/bin/python /vol/data/envs/comebin/bin/c
+=== cell3 eval.out tail ===
+    Finished extracting 0 of 43 (0.00%) HMMs.    Finished extracting 1 of 43 (2.33%) HMMs.    Finished extracting 2 of 43 (4.65%) HMMs.    Finished extracting 3 of 43 (6.98%) HMMs.    Finished extracting 4 of 43 (9.30%) HMMs.    Finished extracting 5 of 43 (11.63%) HMMs.    Finished extracting 6 of 43 (13.95%) HMMs.    Finished extracting 7 of 43 (16.28%) HMMs.    Finished extracting 8 of 43 (18.60%) HMMs.    Finished extracting 9 of 43 (20.93%) HMMs.    Finished extracting 10 of 43 (23.26%) HMMs.    Finished extracting 11 of 43 (25.58%) HMMs.    Finished extracting 12 of 43 (27.91%) HMMs.    Finished extracting 13 of 43 (30.23%) HMMs.    Finished extracting 14 of 43 (32.56%) HMMs.    Finished extracting 15 of 43 (34.88%) HMMs.    Finished extracting 16 of 43 (37.21%) HMMs.    Finished extracting 17 of 43 (39.53%) HMMs.    Finished extracting 18 of 43 (41.86%) HMMs.    Finished extracting 19 of 43 (44.19%) HMMs.    Finished extracting 20 of 43 (46.51%) HMMs.    Finished extracting 21 of 43 (48.84%) HMMs.    Finished extracting 22 of 43 (51.16%) HMMs.    Finished extracting 23 of 43 (53.49%) HMMs.    Finished extracting 24 of 43 (55.81%) HMMs.    Finished extracting 25 of 43 (58.14%) HMMs.    Finished extracting 26 of 43 (60.47%) HMMs.    Finished extracting 27 of 43 (62.79%) HMMs.    Finished extracting 28 of 43 (65.12%) HMMs.    Finished extracting 29 of 43 (67.44%) HMMs.    Finished extracting 30 of 43 (69.77%) HMMs.    Finished extracting 31 of 43 (72.09%) HMMs.    Finished extracting 32 of 43 (74.42%) HMMs.    Finished extracting 33 of 43 (76.74%) HMMs.    Finished extracting 34 of 43 (79.07%) HMMs.    Finished extracting 35 of 43 (81.40%) HMMs.    Finished extracting 36 of 43 (83.72%) HMMs.    Finished extracting 37 of 43 (86.05%) HMMs.    Finished extracting 38 of 43 (88.37%) HMMs.    Finished extracting 39 of 43 (90.70%) HMMs.    Finished extracting 40 of 43 (93.02%) HMMs.    Finished extracting 41 of 43 (95.35%) HMMs.    Finished extracting 42 of 43 (97.67%) HMMs.    Finished extracting 43 of 43 (100.00%) HMMs.
+[2026-09-29 01:36:09] INFO: Aligning 43 marker genes with 32 threads:
+    Finished aligning 0 of 43 (0.00%) marker genes.    Finished aligning 1 of 43 (2.33%) marker genes.    Finished aligning 2 of 43 (4.65%) marker genes.    Finished aligning 3 of 43 (6.98%) marker genes.    Finished aligning 4 of 43 (9.30%) marker genes.    Finished aligning 5 of 43 (11.63%) marker genes.    Finished aligning 6 of 43 (13.95%) marker genes.    Finished aligning 7 of 43 (16.28%) marker genes.    Finished aligning 8 of 43 (18.60%) marker genes.    Finished aligning 9 of 43 (20.93%) marker genes.    Finished aligning 10 of 43 (23.26%) marker genes.    Finished aligning 11 of 43 (25.58%) marker genes.    Finished aligning 12 of 43 (27.91%) marker genes.    Finished aligning 13 of 43 (30.23%) marker genes.    Finished aligning 14 of 43 (32.56%) marker genes.    Finished aligning 15 of 43 (34.88%) marker genes.    Finished aligning 16 of 43 (37.21%) marker genes.    Finished aligning 17 of 43 (39.53%) marker genes.    Finished aligning 18 of 43 (41.86%) marker genes.    Finished aligning 19 of 43 (44.19%) marker genes.    Finished aligning 20 of 43 (46.51%) marker genes.    Finished aligning 21 of 43 (48.84%) marker genes.    Finished aligning 22 of 43 (51.16%) marker genes.    Finished aligning 23 of 43 (53.49%) marker genes.    Finished aligning 24 of 43 (55.81%) marker genes.    Finished aligning 25 of 43 (58.14%) marker genes.    Finished aligning 26 of 43 (60.47%) marker genes.    Finished aligning 27 of 43 (62.79%) marker genes.    Finished aligning 28 of 43 (65.12%) marker genes.    Finished aligning 29 of 43 (67.44%) marker genes.    Finished aligning 30 of 43 (69.77%) marker genes.    Finished aligning 31 of 43 (72.09%) marker genes.    Finished aligning 32 of 43 (74.42%) marker genes.    Finished aligning 33 of 43 (76.74%) marker genes.    Finished aligning 34 of 43 (79.07%) marker genes.    Finished aligning 35 of 43 (81.40%) marker genes.    Finished aligning 36 of 43 (83.72%) marker genes.    Finished aligning 37 of 43 (86.05%) marker genes.    Finished aligning 38 of 43 (88.37%) marker genes.    Finished aligning 39 of 43 (90.70%) marker genes.    Finished aligning 40 of 43 (93.02%) marker genes.    Finished aligning 41 of 43 (95.35%) marker genes.    Finished aligning 42 of 43 (97.67%) marker genes.    Finished aligning 43 of 43 (100.00%) marker genes.
+[2026-09-29 01:36:10] INFO: Reading marker alignment files.
+[2026-09-29 01:36:10] INFO: Concatenating alignments.
+[2026-09-29 01:36:10] INFO: Placing 17 bins into the genome tree with pplacer (be patient).
+=== cell3 csv? ===
+(not yet)
+=== driver alive? ===
+DRIVER pid=2637346
+/bin/bash: line 11: /proc/2643301/cmdline: No such file or directory
+=== log tail ===
+[2026-09-29T01:28:31Z] FAIL sweep_023_embcov512_batch512: run_comebin_fix.sh rc=0
+[2026-09-29T01:28:31Z] START sweep_024_seed7 src=COMEBin-v11-sweep @ 95f5ea8 threads=8 seed=7 temp=ref emb=ref emb_cov=ref batch=ref max_edges=ref lw=ref heval=ref n_views=6
+[2026-09-29T01:28:31Z] FAIL sweep_024_seed7: run_comebin_fix.sh rc=0
+[2026-09-29T01:35:15Z] RESUME sweep_003_issue28fix (rc=0 but no results csv — evaling orphaned run)
+[2026-09-29T01:35:15Z] RESUME sweep_003_issue28fix (rc=0 but no results csv — evaling orphaned run)
+> build · big-pickle
+cami3 `.binning` validates OK. Cell-3 eval is in CheckM's pplacer step (healthy). Now the triage check on both repos:
+[0m$ [0mcd /vol/data/benchmark
+echo "=== repos ==="
+gh repo list paulzierep --limit 30 2>/dev/null | awk '{print $1}'
+echo "=== main repo open issues ==="
+gh issue list -R paulzierep/metagenomic-binning-benchmark --state open --limit 30 2>/dev/null
+echo "=== latest comments on #25/#28/#29 ==="
+for n in 29 28 25; do
+  echo "--- #$n ---"
+  gh issue view $n -R paulzierep/metagenomic-binning-benchmark --json comments --jq '.comments[-2:][] | "\(.createdAt) \(.author.login): \(.body[0:280])"' 2>/dev/null
+done
+=== repos ===
+paulzierep/metagenomic-binning-benchmark
+paulzierep/COMEBin
+paulzierep/galaxy-hub
+paulzierep/KPI-reporting
+paulzierep/iwc
+paulzierep/tpv-shared-database
+paulzierep/training-material
+paulzierep/utils
+paulzierep/galaxytools
+paulzierep/galaxy_tool_extractor
+paulzierep/tools-iuc
+paulzierep/gxy.io
+paulzierep/galaxy-tools
+paulzierep/infrastructure-playbook
+paulzierep/script-collection
+paulzierep/micoreca
+paulzierep/usegalaxy-eu-tools
+paulzierep/microbiology_galaxy_lab_paper_2025
+paulzierep/ELIXIR-BFSP-Odyssey
+paulzierep/docker-phyloseq
+paulzierep/galaxy
+paulzierep/shiny-phyloseq
+paulzierep/microgalaxy-survey
+paulzierep/EUKulele-wrapper
+paulzierep/Data_Manager_Hands_On
+paulzierep/bioconda-recipes
+paulzierep/usegalaxy-au-tools
+paulzierep/CI-playground
+paulzierep/multi-package-containers
+paulzierep/EUKulele
+=== main repo open issues ===
+29	OPEN	Small test data		2026-09-29T01:10:33Z
+28	OPEN	Fix this issue		2026-09-29T01:10:32Z
+27	OPEN	Are u ok ?		2026-09-28T12:52:42Z
+26	OPEN	Improve logging		2026-09-28T13:00:08Z
+25	OPEN	Improve optimization		2026-09-29T01:23:54Z
+23	OPEN	Where does the assembly for cami3 come from		2026-09-28T13:02:38Z
+22	OPEN	is there a summary table for all runs		2026-09-28T13:00:05Z
+21	OPEN	use a seed for all runs		2026-09-28T13:02:14Z
+20	OPEN	what are your ideas for further optimization ?		2026-09-28T13:02:13Z
+6	OPEN	Optimization		2026-09-26T07:56:10Z
+1	OPEN	Idea inbox: benchmark ideas, COMEBin fixes, dataset requests		2026-09-23T14:53:13Z
+=== latest comments on #25/#28/#29 ===
+--- #29 ---
+2026-09-29T00:55:19Z paulzierep: ## A small test dataset already exists upstream — Galaxy IUC `tools/comebin/test-data`
+
+Source: https://github.com/galaxyproject/tools-iuc/tree/main/tools/comebin/test-data — exactly two files, `input_single.fasta` (813,640 B) and `input_single.bam` (200,915 B). I downloaded both
+2026-09-29T01:10:33Z paulzierep: The queued end-to-end run now has a committed, deployed runner, so it can start the moment a slot frees.
+
+- `scripts/run_galaxy_fixture_test.sh` (added in `3ac437d7`, now also deployed to `bin/`) drives the fixture through the same harness the sweep uses: `CONTIGS=input_single.fa
+--- #28 ---
+2026-09-29T00:55:20Z paulzierep: Acknowledged — that's the plan I'm executing, in the order you asked: **medium-dataset first, then straight into `master`, asap.**
+
+### Where the medium sweep stands right now (2026-09-29 00:50Z)
+
+Grid: 24 cells, one at a time, `scripts/run_sweep_medium.sh`, resumable, never over
+2026-09-29T01:10:32Z paulzierep: Supervisor check-in — the gap I found was in the harness, not in the fix.
+
+`run_comebin_fix.sh` turned **any** zero-bin run into `exit_code: 1`. On `41606c8` an empty marker seed is now a *verified* outcome — `main.py` logs `Reporting 0 bins … This is an empty result for this inp
+--- #25 ---
+2026-09-29T01:12:28Z paulzierep: **AMBER deliverable — CAMI II marine scored against the official gold standard** (2026-09-29).
+
+As your owner note says *"use amber for performance of cami II, use the gold standard if available"* — done for the existing marine full run, and the tooling is now a one-liner for the
+2026-09-29T01:23:54Z paulzierep: **AMBER addendum — CAMI II human now imported and scored too** (2026-09-29 01:22Z).
+
+Same day, same follow-on: the missing human gold standard is now in.
+
+- **Gold standard imported**: `setup.tar.gz` (1.9 GB, from the CAMI II gastrooral block) had no per-sample `binning_gs.tsv`,
+> build · big-pickle
+[0m$ [0mcd /vol/data/benchmark
+echo "=== COMEBin repo open issues ==="
+gh issue list -R paulzierep/COMEBin --state open --limit 20 2>&1 | head -20 || true
+echo "=== #27 latest comments ==="
+gh issue view 27 -R paulzierep/metagenomic-binning-benchmark --json comments --jq '.comments[-3:][] | "\(.createdAt) \(.author.login): \(.body[0:240])"' 2>/dev/null || echo "(none)"
+echo "=== cell3 eval / csv ==="
+pgrep -af "run_eval.sh" | grep -v pgrep | cut -c1-60 || echo "eval done"
+ls -la /vol/data/repos/metagenomic-binning-benchmark/results/sweep_003*.csv 2>/dev/null || echo "(csv not yet)"
+echo "=== log ==="
+grep -E "RUN_DONE|EVAL_FAIL|DONE sweep|START sweep_004" status/sweep_medium.log | tail -4
+touch .heartbeat
+=== COMEBin repo open issues ===
+the 'paulzierep/COMEBin' repository has disabled issues
+=== #27 latest comments ===
+2026-09-28T12:52:42Z paulzierep: Yes — alive again, thanks for checking in. A quick honest recap:
+
+**What happened (the 2-day gap):** a `TASK_COMPLETE` sentinel file got written into the benchmark working area on 2026-09-26. The supervisor treats that file as a hard stop, 
+=== cell3 eval / csv ===
+2637414 bash /vol/data/benchmark/bin/run_eval.sh /vol/data/b
+(csv not yet)
+=== log ===
+[2026-09-28T14:15:53Z] START sweep_004_temp005 src=COMEBin-v11-sweep @ 95f5ea8 threads=8 seed=42 temp=0.05 emb=ref emb_cov=ref batch=ref max_edges=ref lw=ref heval=ref n_views=6
+[2026-09-29T01:28:25Z] RUN_DONE sweep_003_issue28fix exit=0
+[2026-09-29T01:28:30Z] EVAL_FAIL sweep_003_issue28fix (rc=0) — results CSV may be missing; will re-eval later
+[2026-09-29T01:28:30Z] START sweep_004_temp005 src=COMEBin-v11-sweep @ 95f5ea8 threads=8 seed=42 temp=0.05 emb=ref emb_cov=ref batch=ref max_edges=ref lw=ref heval=ref n_views=6
+> build · big-pickle
+Cell-3 eval is still in pplacer; no new owner comments (#27 already answered, COMEBin issues disabled). Let me wait for the eval to finish and confirm cells proceed:
