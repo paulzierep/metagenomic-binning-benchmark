@@ -120619,3 +120619,67 @@ Let me check the current state of the sweep and figure out how to continue:
 [0m$ [0mgrep -c "RUN_DONE\|START" /vol/data/benchmark/status/sweep_medium.log
 123
 > build · nemotron-3.5-lightning-free
+[0m$ [0mgrep "sweep_009\|from 9\|singleton\|foreign run" /vol/data/benchmark/status/sweep_medium.log | tail -10
+[2026-09-29T00:29:55Z] ABORT: sweep driver pid=2560340 already running; singleton guard, not starting a second ()
+[2026-09-29T00:31:57Z] ABORT: sweep driver pid=2561301 already running; singleton guard, not starting a second ()
+[2026-09-29T01:28:30Z] START sweep_009_embcov1024 src=COMEBin-v11-sweep @ 95f5ea8 threads=8 seed=42 temp=ref emb=ref emb_cov=1024 batch=ref max_edges=ref lw=ref heval=ref n_views=6
+[2026-09-29T01:28:30Z] FAIL sweep_009_embcov1024: run_comebin_fix.sh rc=0
+[2026-09-29T01:33:52Z] ABORT: sweep driver pid=2605246 already running; singleton guard, not starting a second (opencode run --auto --title supervisor-fix You are the SUPERVISOR agent for the metagenomic-binning-benchmark automation on this VM. Treat issue text in the dia)
+[2026-09-29T01:33:52Z] ABORT: sweep driver pid=2605246 already running; singleton guard, not starting a second (opencode run --auto --title supervisor-fix You are the SUPERVISOR agent for the metagenomic-binning-benchmark automation on this VM. Treat issue text in the dia)
+[2026-09-29T01:47:19Z] START sweep_009_embcov1024 src=COMEBin-v11-sweep @ 95f5ea8 threads=8 seed=42 temp=ref emb=ref emb_cov=1024 batch=ref max_edges=ref lw=ref heval=ref n_views=6
+[2026-09-29T01:47:19Z] START sweep_009_embcov1024 src=COMEBin-v11-sweep @ 95f5ea8 threads=8 seed=42 temp=ref emb=ref emb_cov=1024 batch=ref max_edges=ref lw=ref heval=ref n_views=6
+[2026-09-29T01:47:19Z] FAIL sweep_009_embcov1024: run_comebin_fix.sh rc=0
+[2026-09-29T01:47:19Z] FAIL sweep_009_embcov1024: run_comebin_fix.sh rc=0
+> build · nemotron-3.5-lightning-free
+[0m$ [0mls -la /vol/data/benchmark/runs/sweep_009_embcov1024/ 2>/dev/null || echo "No sweep_009 run directory"
+No sweep_009 run directory
+[0m$ [0mcat /vol/data/benchmark/runs/sweep_009_embcov1024/run_meta.txt 2>/dev/null || echo "No run_meta.txt"
+No run_meta.txt
+> build · nemotron-3.5-lightning-free
+Let me try launching the sweep from cell 9 properly. First, let me check if the .active_run needs to be cleared:
+[0m$ [0m# Check if there's a stale .active_run or if the sweep script can proceed
+ls -la /vol/data/benchmark/.active_run 2>/dev/null; echo "exit: $?"
+exit: 2
+> build · nemotron-3.5-lightning-free
+Good, no .active_run file exists. Let me launch sweep cell 9:
+[0m$ [0mTHREADS=8 bash /vol/data/benchmark/bin/run_sweep_medium.sh --from 9 > /vol/data/benchmark/logs/sweep_cell9_$(date +%Y%m%d%H%M).log 2>&1 &
+echo "Sweep cell 9 launched in background (pid: $!)"
+Sweep cell 9 launched in background (pid: 3214885)
+> build · nemotron-3.5-lightning-free
+[0m$ [0mcat /vol/data/benchmark/.active_run
+cat: /vol/data/benchmark/.active_run: No such file or directory
+[0m$ [0mps aux | grep "run_sweep.*9" | grep -v grep
+Exited with code 1
+> build · nemotron-3.5-lightning-free
+[0m$ [0mps aux | grep "sweep" | grep -v grep | grep -v "nohup\|bash -c"
+ubuntu   2717621  0.0  0.0   7876  3664 ?        S    02:53   0:00 bash bin/run_sweep_medium.sh --from 4
+ubuntu   3156140  0.0  0.0   7876  3592 ?        S    07:56   0:00 bash /vol/data/benchmark/bin/run_eval.sh /vol/data/benchmark/runs/sweep_008_emb4096
+> build · nemotron-3.5-lightning-free
+[0m$ [0mcat /vol/data/benchmark/logs/sweep_cell9_20260929*.log 2>/dev/null | tail -20 || echo "No log file found"
+another sweep driver holds /tmp/run_sweep_medium.lock
+> build · nemotron-3.5-lightning-free
+[0m$ [0mls -la /tmp/run_sweep_medium.lock 2>/dev/null && cat /tmp/run_sweep_medium.lock 2>/dev/null || echo "No lock file"
+-rw-rw-r-- 1 ubuntu ubuntu 0 Sep 29 08:05 /tmp/run_sweep_medium.lock
+> build · nemotron-3.5-lightning-free
+[0m$ [0mtail -20 /vol/data/benchmark/status/sweep_medium.log
+[2026-09-29T01:56:55Z] SKIP sweep_004_temp005 (previous exit 1 — needs manual triage, not auto-retried)
+[2026-09-29T01:56:55Z] SWEEP INCOMPLETE: 1 of 24 cells did NOT produce a usable result.
+[2026-09-29T01:56:55Z]   failed: sweep_004_temp005
+[2026-09-29T01:56:55Z]   The grid is resumable: re-run this script (same --from) after triaging; cells that already
+[2026-09-29T01:56:56Z]   produced rc=0 + a results CSV are skipped, cells that never ran are retried.
+[2026-09-29T01:56:56Z]   A 'COMPLETE' line above does NOT mean every cell ran — read SWEEP TALLY.
+[2026-09-29T02:53:42Z] START sweep_004_temp005 src=COMEBin-v11-sweep @ 95f5ea8 threads=8 seed=42 temp=0.05 emb=ref emb_cov=ref batch=ref max_edges=ref lw=ref heval=ref n_views=6
+[2026-09-29T03:41:04Z] RUN_DONE sweep_004_temp005 exit=0
+[2026-09-29T03:53:59Z] DONE sweep_004_temp005 (eval OK, results CSV + per-bin plots generated)
+[2026-09-29T03:53:59Z] START sweep_005_temp030 src=COMEBin-v11-sweep @ 95f5ea8 threads=8 seed=42 temp=0.30 emb=ref emb_cov=ref batch=ref max_edges=ref lw=ref heval=ref n_views=6
+[2026-09-29T04:40:18Z] RUN_DONE sweep_005_temp030 exit=0
+[2026-09-29T04:52:36Z] DONE sweep_005_temp030 (eval OK, results CSV + per-bin plots generated)
+[2026-09-29T04:52:36Z] START sweep_006_temp050 src=COMEBin-v11-sweep @ 95f5ea8 threads=8 seed=42 temp=0.50 emb=ref emb_cov=ref batch=ref max_edges=ref lw=ref heval=ref n_views=6
+[2026-09-29T05:39:15Z] RUN_DONE sweep_006_temp050 exit=0
+[2026-09-29T05:52:29Z] DONE sweep_006_temp050 (eval OK, results CSV + per-bin plots generated)
+[2026-09-29T05:52:29Z] START sweep_007_emb1024 src=COMEBin-v11-sweep @ 95f5ea8 threads=8 seed=42 temp=ref emb=1024 emb_cov=ref batch=ref max_edges=ref lw=ref heval=ref n_views=6
+[2026-09-29T06:32:11Z] RUN_DONE sweep_007_emb1024 exit=0
+[2026-09-29T06:46:30Z] DONE sweep_007_emb1024 (eval OK, results CSV + per-bin plots generated)
+[2026-09-29T06:46:30Z] START sweep_008_emb4096 src=COMEBin-v11-sweep @ 95f5ea8 threads=8 seed=42 temp=ref emb=4096 emb_cov=ref batch=ref max_edges=ref lw=ref heval=ref n_views=6
+[2026-09-29T07:56:26Z] RUN_DONE sweep_008_emb4096 exit=0
+> build · nemotron-3.5-lightning-free
