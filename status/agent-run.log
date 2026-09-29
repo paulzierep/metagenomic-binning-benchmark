@@ -104408,3 +104408,2422 @@ rc=0
 log.txt
 > build · big-pickle
 The query file needs a `@SampleID` metadata line matching the gold standard. Let me fix the prediction header:
+[0m$ [0mcd /vol/data/benchmark/amber
+{ echo "@Version:0.9.1"; echo "@SampleID:marine"; echo "@@SEQUENCEID	BINID"; tail -n +3 marine_comebin.binning; } > marine_comebin.binning.tmp && mv marine_comebin.binning.tmp marine_comebin.binning
+head -5 marine_comebin.binning
+echo "=== rerun AMBER ==="
+export MAMBA_ROOT_PREFIX=/vol/data/envs/.mamba
+GS=/vol/data/datasets/cami_II/marine_reads/contigs_0/simulation_short_read/2018.08.15_09.49.32_sample_0/contigs/binning_gs.tsv
+rm -rf output_marine
+/vol/data/tools/bin/micromamba run -p /vol/data/envs/amber python3 /vol/data/repos/CAMI-AMBER/amber.py marine_comebin.binning -g "$GS" -o output_marine -l comebin_v11 2>&1 | tail -12
+echo "rc=$?"
+ls output_marine/ 2>/dev/null
+@Version:0.9.1
+@SampleID:marine
+@@SEQUENCEID	BINID
+S0C1538	bin_0
+S0C3070	bin_0
+=== rerun AMBER ===
+2026-09-29 01:09:29,148 INFO Found @SampleID:marine in comebin_v11
+2026-09-29 01:09:29,148 INFO Found @Version:0.9.1 in Gold standard
+2026-09-29 01:09:29,163 INFO Found @SampleID:marine in Gold standard
+2026-09-29 01:09:29,697 INFO Creating output directories
+2026-09-29 01:09:29,697 INFO Evaluating Gold standard, sample marine, genome binning
+2026-09-29 01:09:29,697 INFO Loading marine of Gold standard
+2026-09-29 01:09:49,416 INFO Evaluating comebin_v11, sample marine, genome binning
+2026-09-29 01:09:49,479 INFO Loading marine of comebin_v11
+2026-09-29 01:09:59,191 INFO Saving computed metrics
+2026-09-29 01:09:59,217 INFO Creating genome binning plots
+2026-09-29 01:10:02,770 INFO Creating HTML page
+2026-09-29 01:10:03,639 INFO AMBER finished successfully. All results have been saved to /vol/data/benchmark/amber/output_marine
+rc=0
+bin_metrics.tsv
+genome
+genome_metrics_cami1.tsv
+heatmap_bar.png
+index.html
+log.txt
+results.tsv
+> build · big-pickle
+AMBER ran successfully on the marine run against the official CAMI II gold standard. Let me extract the key metrics:
+[0m$ [0mcd /vol/data/benchmark/amber
+echo "=== results.tsv ==="
+cat output_marine/results.tsv
+echo
+echo "=== quick summary columns ==="
+python3 - <<'EOF'
+import csv
+with open("output_marine/results.tsv") as f:
+    rows = list(csv.DictReader(f, delimiter="\t"))
+for r in rows:
+    if r.get("sample") == "marine":
+        keys = [k for k in r if r[k] not in ("", "NA")]
+        for k in keys:
+            print(f"{k} = {r[k]}")
+EOF
+=== results.tsv ===
+Sample	Tool	accuracy_bp	accuracy_seq	adjusted_rand_index_bp	adjusted_rand_index_seq	binning type	f1_score_bp	f1_score_bp_cami1	f1_score_per_bp	f1_score_per_seq	f1_score_seq	f1_score_seq_cami1	misclassification_bp	misclassification_seq	percentage_of_assigned_bps	percentage_of_assigned_seqs	precision_avg_bp	precision_avg_bp_sem	precision_avg_bp_var	precision_avg_seq	precision_avg_seq_sem	precision_weighted_bp	precision_weighted_seq	rand_index_bp	rand_index_seq	rank	recall_avg_bp	recall_avg_bp_cami1	recall_avg_bp_sem	recall_avg_bp_sem_cami1	recall_avg_bp_var	recall_avg_bp_var_cami1	recall_avg_seq	recall_avg_seq_cami1	recall_avg_seq_sem	recall_avg_seq_sem_cami1	recall_weighted_bp	recall_weighted_seq
+marine	Gold standard	1.0	1.0	1.0	1.0	genome	1.0	1.0	1.0	1.0	1.0	1.0	0.0	0.0	1.0	1.0	1.0	0.0	0.0	1.0	0.0	1.0	1.0	1.0	1.0	NA	1.0	1.0	0.0	0.0	0.0	0.0	1.0	1.0	0.0	0.0	1.0	1.0
+marine	comebin_v11	0.29371965396975486	0.019440070678847565	0.8435080656543441	0.7102193706052193	genome	0.3302554126971181	0.21363812512111455	0.44068283923699847	0.04400723748604047	0.2673149583439497	0.17042616153491066	0.1383677992798863	0.28640354149568503	0.3408875082944638	0.027242386711943047	0.7348961032842853	0.0238692143921022	0.0866003881458131	0.6589724083972177	0.026806186336387334	0.8616322007201137	0.713596458504315	0.9965862542016523	0.9920489927791436	NA	0.21298427324588357	0.12498612071821295	0.014738102495085168	0.011685631598602005	0.1279376707766694	0.08589245710483655	0.16766435913054364	0.09786868179075835	0.013221750350325173	0.010132482865070123	0.29604863798221154	0.022703682725688564
+
+=== quick summary columns ===
+> build · big-pickle
+The AMBER evaluation works. Let me parse the comebin_v11 row cleanly and document it into the repo (a #25 follow-on deliverable):
+[0m$ [0mcd /vol/data/benchmark/amber
+python3 - <<'EOF'
+import csv
+with open("output_marine/results.tsv") as f:
+    rows = [r for r in csv.DictReader(f, delimiter="\t") if r["Tool"] != "Gold standard"]
+r = rows[0]
+sel = ["accuracy_bp","accuracy_seq","adjusted_rand_index_bp","f1_score_bp","f1_score_seq",
+       "misclassification_bp","misclassification_seq","percentage_of_assigned_bps",
+       "percentage_of_assigned_seqs","precision_avg_bp","precision_avg_seq",
+       "precision_weighted_bp","recall_avg_bp","recall_avg_seq","recall_weighted_bp"]
+for k in sel:
+    print(f"{k:28s} {r[k]}")
+EOF
+accuracy_bp                  0.29371965396975486
+accuracy_seq                 0.019440070678847565
+adjusted_rand_index_bp       0.8435080656543441
+f1_score_bp                  0.3302554126971181
+f1_score_seq                 0.2673149583439497
+misclassification_bp         0.1383677992798863
+misclassification_seq        0.28640354149568503
+percentage_of_assigned_bps   0.3408875082944638
+percentage_of_assigned_seqs  0.027242386711943047
+precision_avg_bp             0.7348961032842853
+precision_avg_seq            0.6589724083972177
+precision_weighted_bp        0.8616322007201137
+recall_avg_bp                0.21298427324588357
+recall_avg_seq               0.16766435913054364
+recall_weighted_bp           0.29604863798221154
+> build · big-pickle
+Excellent — official CAMI AMBER metrics for the marine run. Let me add this as a repo deliverable (results + doc) — a concrete #25 follow-on ($) that doesn't overlap the sweep:
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark
+mkdir -p results/amber/marine
+cp /vol/data/benchmark/amber/output_marine/results.tsv results/amber/marine/amber_results.tsv
+cp /vol/data/benchmark/amber/output_marine/bin_metrics.tsv results/amber/marine/ 2>/dev/null
+cp /vol/data/benchmark/amber/output_marine/heatmap_bar.png results/amber/marine/ 2>/dev/null
+cp /vol/data/benchmark/amber/output_marine/index.html results/amber/marine/amber_report.html
+ls -la results/amber/marine/
+echo "=== write docs/14-amber-cami2-marine.md ==="
+total 3424
+drwxrwxr-x 2 ubuntu ubuntu    4096 Sep 29 01:10 .
+drwxrwxr-x 3 ubuntu ubuntu    4096 Sep 29 01:10 ..
+-rw-rw-r-- 1 ubuntu ubuntu 3387587 Sep 29 01:10 amber_report.html
+-rw-rw-r-- 1 ubuntu ubuntu    1597 Sep 29 01:10 amber_results.tsv
+-rw-rw-r-- 1 ubuntu ubuntu   96962 Sep 29 01:10 bin_metrics.tsv
+-rw-rw-r-- 1 ubuntu ubuntu     353 Sep 29 01:10 heatmap_bar.png
+=== write docs/14-amber-cami2-marine.md ===
+> build · big-pickle
+[0m← [0mWrite /vol/data/repos/metagenomic-binning-benchmark/docs/14-amber-cami2-marine.md
+Created file successfully: /vol/data/repos/metagenomic-binning-benchmark/docs/14-amber-cami2-marine.md
+> build · big-pickle
+Now let me add the AMBER tooling as reusable scripts (predict-from-bins + a runner doc), so the human/CAMI III evals are one-liners later:
+[0m← [0mWrite /vol/data/repos/metagenomic-binning-benchmark/scripts/make_amber_prediction.py
+Created file successfully: /vol/data/repos/metagenomic-binning-benchmark/scripts/make_amber_prediction.py
+> build · big-pickle
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark
+echo "=== verify script reproduces identical marine prediction ==="
+python3 scripts/make_amber_prediction.py runs/marine_v11_20260925 marine > /tmp/opencode/marine_check.binning 2>/tmp/opencode/marine_check.err
+cat /tmp/opencode/marine_check.err
+diff <(tail -n +4 /tmp/opencode/marine_check.binning) <(tail -n +4 /vol/data/benchmark/amber/marine_comebin.binning) && echo "IDENTICAL to staged prediction"
+echo "=== also add AMBER to docs/13 follow-on status ==="
+tail -6 docs/13-optimization-sweep-medium.md
+> S0C654466	bin_79
+> S0C688123	bin_79
+> S0C695941	bin_79
+> S0C943774	bin_79
+> S0C1147731	bin_79
+> S0C1168654	bin_79
+> S0C1198402	bin_79
+> S0C1221488	bin_79
+> S0C1308090	bin_79
+> S0C1350391	bin_79
+> S0C1474350	bin_79
+> S0C128	bin_8
+> S0C1855	bin_8
+> S0C2480	bin_8
+> S0C3299	bin_8
+> S0C6615	bin_8
+> S0C7454	bin_8
+> S0C8995	bin_8
+> S0C11458	bin_8
+> S0C11595	bin_8
+> S0C13239	bin_8
+> S0C15135	bin_8
+> S0C15405	bin_8
+> S0C15440	bin_8
+> S0C16842	bin_8
+> S0C17604	bin_8
+> S0C17814	bin_8
+> S0C18488	bin_8
+> S0C18822	bin_8
+> S0C19727	bin_8
+> S0C19997	bin_8
+> S0C21283	bin_8
+> S0C24696	bin_8
+> S0C27770	bin_8
+> S0C28736	bin_8
+> S0C29219	bin_8
+> S0C30136	bin_8
+> S0C30885	bin_8
+> S0C33556	bin_8
+> S0C33963	bin_8
+> S0C38370	bin_8
+> S0C39378	bin_8
+> S0C39915	bin_8
+> S0C41707	bin_8
+> S0C41717	bin_8
+> S0C41723	bin_8
+> S0C43215	bin_8
+> S0C44550	bin_8
+> S0C44786	bin_8
+> S0C45369	bin_8
+> S0C46307	bin_8
+> S0C49956	bin_8
+> S0C49999	bin_8
+> S0C51192	bin_8
+> S0C52833	bin_8
+> S0C53981	bin_8
+> S0C54101	bin_8
+> S0C57051	bin_8
+> S0C57174	bin_8
+> S0C58769	bin_8
+> S0C62403	bin_8
+> S0C63129	bin_8
+> S0C63409	bin_8
+> S0C63835	bin_8
+> S0C63921	bin_8
+> S0C65800	bin_8
+> S0C65933	bin_8
+> S0C66307	bin_8
+> S0C68974	bin_8
+> S0C70019	bin_8
+> S0C71802	bin_8
+> S0C80160	bin_8
+> S0C80907	bin_8
+> S0C81115	bin_8
+> S0C81249	bin_8
+> S0C81306	bin_8
+> S0C82791	bin_8
+> S0C83210	bin_8
+> S0C83852	bin_8
+> S0C84227	bin_8
+> S0C84550	bin_8
+> S0C90634	bin_8
+> S0C91691	bin_8
+> S0C96532	bin_8
+> S0C97305	bin_8
+> S0C98167	bin_8
+> S0C98672	bin_8
+> S0C99137	bin_8
+> S0C100952	bin_8
+> S0C102309	bin_8
+> S0C103374	bin_8
+> S0C104607	bin_8
+> S0C104973	bin_8
+> S0C105305	bin_8
+> S0C118302	bin_8
+> S0C121225	bin_8
+> S0C123552	bin_8
+> S0C127409	bin_8
+> S0C127563	bin_8
+> S0C127695	bin_8
+> S0C128543	bin_8
+> S0C129868	bin_8
+> S0C134750	bin_8
+> S0C135966	bin_8
+> S0C139247	bin_8
+> S0C140371	bin_8
+> S0C140679	bin_8
+> S0C141478	bin_8
+> S0C142049	bin_8
+> S0C142547	bin_8
+> S0C144902	bin_8
+> S0C144970	bin_8
+> S0C150729	bin_8
+> S0C151130	bin_8
+> S0C151849	bin_8
+> S0C152325	bin_8
+> S0C154141	bin_8
+> S0C154663	bin_8
+> S0C154741	bin_8
+> S0C156078	bin_8
+> S0C157315	bin_8
+> S0C159382	bin_8
+> S0C159632	bin_8
+> S0C161907	bin_8
+> S0C162300	bin_8
+> S0C167103	bin_8
+> S0C170278	bin_8
+> S0C172710	bin_8
+> S0C172945	bin_8
+> S0C174676	bin_8
+> S0C177779	bin_8
+> S0C177861	bin_8
+> S0C179136	bin_8
+> S0C180632	bin_8
+> S0C185342	bin_8
+> S0C187059	bin_8
+> S0C188868	bin_8
+> S0C189566	bin_8
+> S0C190383	bin_8
+> S0C191064	bin_8
+> S0C192727	bin_8
+> S0C194722	bin_8
+> S0C195234	bin_8
+> S0C196762	bin_8
+> S0C197603	bin_8
+> S0C200295	bin_8
+> S0C201753	bin_8
+> S0C206812	bin_8
+> S0C207172	bin_8
+> S0C207260	bin_8
+> S0C207658	bin_8
+> S0C209947	bin_8
+> S0C212965	bin_8
+> S0C214792	bin_8
+> S0C215158	bin_8
+> S0C216657	bin_8
+> S0C216901	bin_8
+> S0C217970	bin_8
+> S0C218710	bin_8
+> S0C219829	bin_8
+> S0C221010	bin_8
+> S0C224837	bin_8
+> S0C225020	bin_8
+> S0C226572	bin_8
+> S0C232382	bin_8
+> S0C239970	bin_8
+> S0C240409	bin_8
+> S0C241093	bin_8
+> S0C241166	bin_8
+> S0C241245	bin_8
+> S0C241279	bin_8
+> S0C242377	bin_8
+> S0C243283	bin_8
+> S0C245293	bin_8
+> S0C246003	bin_8
+> S0C247732	bin_8
+> S0C248046	bin_8
+> S0C249212	bin_8
+> S0C249979	bin_8
+> S0C251206	bin_8
+> S0C253539	bin_8
+> S0C254784	bin_8
+> S0C254981	bin_8
+> S0C255096	bin_8
+> S0C255595	bin_8
+> S0C260629	bin_8
+> S0C262075	bin_8
+> S0C262763	bin_8
+> S0C263261	bin_8
+> S0C264629	bin_8
+> S0C264899	bin_8
+> S0C265267	bin_8
+> S0C269232	bin_8
+> S0C269812	bin_8
+> S0C270610	bin_8
+> S0C272204	bin_8
+> S0C273249	bin_8
+> S0C273827	bin_8
+> S0C274973	bin_8
+> S0C277843	bin_8
+> S0C278379	bin_8
+> S0C278547	bin_8
+> S0C282447	bin_8
+> S0C282499	bin_8
+> S0C282852	bin_8
+> S0C283144	bin_8
+> S0C283857	bin_8
+> S0C283946	bin_8
+> S0C284442	bin_8
+> S0C286440	bin_8
+> S0C287466	bin_8
+> S0C288184	bin_8
+> S0C290898	bin_8
+> S0C291574	bin_8
+> S0C291733	bin_8
+> S0C297479	bin_8
+> S0C301061	bin_8
+> S0C301945	bin_8
+> S0C302197	bin_8
+> S0C302829	bin_8
+> S0C303680	bin_8
+> S0C303833	bin_8
+> S0C306280	bin_8
+> S0C309381	bin_8
+> S0C309435	bin_8
+> S0C309978	bin_8
+> S0C312940	bin_8
+> S0C313087	bin_8
+> S0C314256	bin_8
+> S0C315327	bin_8
+> S0C317808	bin_8
+> S0C317850	bin_8
+> S0C320828	bin_8
+> S0C323004	bin_8
+> S0C324687	bin_8
+> S0C330611	bin_8
+> S0C333297	bin_8
+> S0C333509	bin_8
+> S0C333879	bin_8
+> S0C335793	bin_8
+> S0C339785	bin_8
+> S0C342679	bin_8
+> S0C343294	bin_8
+> S0C343553	bin_8
+> S0C343962	bin_8
+> S0C350158	bin_8
+> S0C351283	bin_8
+> S0C352100	bin_8
+> S0C353448	bin_8
+> S0C356866	bin_8
+> S0C358028	bin_8
+> S0C363150	bin_8
+> S0C364894	bin_8
+> S0C365638	bin_8
+> S0C368264	bin_8
+> S0C369692	bin_8
+> S0C372275	bin_8
+> S0C374492	bin_8
+> S0C375194	bin_8
+> S0C377288	bin_8
+> S0C377455	bin_8
+> S0C378358	bin_8
+> S0C378629	bin_8
+> S0C380591	bin_8
+> S0C382793	bin_8
+> S0C383784	bin_8
+> S0C386181	bin_8
+> S0C388911	bin_8
+> S0C392888	bin_8
+> S0C393170	bin_8
+> S0C396019	bin_8
+> S0C396717	bin_8
+> S0C403478	bin_8
+> S0C403672	bin_8
+> S0C404039	bin_8
+> S0C405854	bin_8
+> S0C406013	bin_8
+> S0C407145	bin_8
+> S0C411151	bin_8
+> S0C412062	bin_8
+> S0C414398	bin_8
+> S0C416421	bin_8
+> S0C417807	bin_8
+> S0C422967	bin_8
+> S0C423282	bin_8
+> S0C425305	bin_8
+> S0C425772	bin_8
+> S0C427397	bin_8
+> S0C428592	bin_8
+> S0C431034	bin_8
+> S0C433800	bin_8
+> S0C435155	bin_8
+> S0C436430	bin_8
+> S0C439150	bin_8
+> S0C440583	bin_8
+> S0C441825	bin_8
+> S0C442421	bin_8
+> S0C444766	bin_8
+> S0C448131	bin_8
+> S0C448799	bin_8
+> S0C450674	bin_8
+> S0C450874	bin_8
+> S0C451971	bin_8
+> S0C453225	bin_8
+> S0C454735	bin_8
+> S0C456540	bin_8
+> S0C456925	bin_8
+> S0C459043	bin_8
+> S0C460541	bin_8
+> S0C467275	bin_8
+> S0C468625	bin_8
+> S0C468786	bin_8
+> S0C469531	bin_8
+> S0C469610	bin_8
+> S0C471488	bin_8
+> S0C472208	bin_8
+> S0C473382	bin_8
+> S0C477989	bin_8
+> S0C479099	bin_8
+> S0C480479	bin_8
+> S0C482426	bin_8
+> S0C482839	bin_8
+> S0C486070	bin_8
+> S0C490195	bin_8
+> S0C491050	bin_8
+> S0C491067	bin_8
+> S0C491478	bin_8
+> S0C492831	bin_8
+> S0C501206	bin_8
+> S0C503968	bin_8
+> S0C505132	bin_8
+> S0C507310	bin_8
+> S0C508659	bin_8
+> S0C510786	bin_8
+> S0C511103	bin_8
+> S0C511809	bin_8
+> S0C514951	bin_8
+> S0C516688	bin_8
+> S0C516762	bin_8
+> S0C520472	bin_8
+> S0C521963	bin_8
+> S0C524673	bin_8
+> S0C525463	bin_8
+> S0C527034	bin_8
+> S0C528607	bin_8
+> S0C529044	bin_8
+> S0C529360	bin_8
+> S0C529753	bin_8
+> S0C531367	bin_8
+> S0C533271	bin_8
+> S0C534055	bin_8
+> S0C534101	bin_8
+> S0C536511	bin_8
+> S0C536514	bin_8
+> S0C537396	bin_8
+> S0C537992	bin_8
+> S0C538191	bin_8
+> S0C541919	bin_8
+> S0C542059	bin_8
+> S0C543251	bin_8
+> S0C545992	bin_8
+> S0C547374	bin_8
+> S0C547380	bin_8
+> S0C548108	bin_8
+> S0C548433	bin_8
+> S0C549956	bin_8
+> S0C550306	bin_8
+> S0C553027	bin_8
+> S0C557329	bin_8
+> S0C559183	bin_8
+> S0C565029	bin_8
+> S0C566632	bin_8
+> S0C570243	bin_8
+> S0C571936	bin_8
+> S0C572845	bin_8
+> S0C573786	bin_8
+> S0C580123	bin_8
+> S0C582417	bin_8
+> S0C585065	bin_8
+> S0C585242	bin_8
+> S0C585955	bin_8
+> S0C589902	bin_8
+> S0C591249	bin_8
+> S0C593210	bin_8
+> S0C596509	bin_8
+> S0C597874	bin_8
+> S0C615075	bin_8
+> S0C616078	bin_8
+> S0C616991	bin_8
+> S0C618668	bin_8
+> S0C620339	bin_8
+> S0C624376	bin_8
+> S0C624428	bin_8
+> S0C624945	bin_8
+> S0C625196	bin_8
+> S0C627929	bin_8
+> S0C629431	bin_8
+> S0C629983	bin_8
+> S0C630647	bin_8
+> S0C631787	bin_8
+> S0C636374	bin_8
+> S0C636762	bin_8
+> S0C637120	bin_8
+> S0C637246	bin_8
+> S0C637370	bin_8
+> S0C637931	bin_8
+> S0C641662	bin_8
+> S0C643064	bin_8
+> S0C643971	bin_8
+> S0C644299	bin_8
+> S0C649636	bin_8
+> S0C651903	bin_8
+> S0C652641	bin_8
+> S0C653217	bin_8
+> S0C653817	bin_8
+> S0C655926	bin_8
+> S0C655972	bin_8
+> S0C658694	bin_8
+> S0C661844	bin_8
+> S0C662915	bin_8
+> S0C664415	bin_8
+> S0C665163	bin_8
+> S0C665586	bin_8
+> S0C666553	bin_8
+> S0C667057	bin_8
+> S0C668224	bin_8
+> S0C670291	bin_8
+> S0C672991	bin_8
+> S0C674317	bin_8
+> S0C677662	bin_8
+> S0C679463	bin_8
+> S0C685365	bin_8
+> S0C687773	bin_8
+> S0C687983	bin_8
+> S0C688276	bin_8
+> S0C688365	bin_8
+> S0C689905	bin_8
+> S0C690262	bin_8
+> S0C691594	bin_8
+> S0C692695	bin_8
+> S0C692886	bin_8
+> S0C698183	bin_8
+> S0C701226	bin_8
+> S0C704967	bin_8
+> S0C707562	bin_8
+> S0C713850	bin_8
+> S0C716939	bin_8
+> S0C718477	bin_8
+> S0C720432	bin_8
+> S0C720837	bin_8
+> S0C721095	bin_8
+> S0C721590	bin_8
+> S0C722119	bin_8
+> S0C722574	bin_8
+> S0C724871	bin_8
+> S0C727088	bin_8
+> S0C729601	bin_8
+> S0C730139	bin_8
+> S0C731120	bin_8
+> S0C732526	bin_8
+> S0C733816	bin_8
+> S0C734099	bin_8
+> S0C734523	bin_8
+> S0C734743	bin_8
+> S0C735108	bin_8
+> S0C735114	bin_8
+> S0C737394	bin_8
+> S0C737400	bin_8
+> S0C737639	bin_8
+> S0C738162	bin_8
+> S0C738259	bin_8
+> S0C739206	bin_8
+> S0C739484	bin_8
+> S0C739535	bin_8
+> S0C741110	bin_8
+> S0C741198	bin_8
+> S0C741474	bin_8
+> S0C743674	bin_8
+> S0C743703	bin_8
+> S0C744763	bin_8
+> S0C748733	bin_8
+> S0C749053	bin_8
+> S0C749735	bin_8
+> S0C749925	bin_8
+> S0C753049	bin_8
+> S0C756086	bin_8
+> S0C759226	bin_8
+> S0C761090	bin_8
+> S0C762568	bin_8
+> S0C765217	bin_8
+> S0C765969	bin_8
+> S0C766015	bin_8
+> S0C768717	bin_8
+> S0C770660	bin_8
+> S0C772039	bin_8
+> S0C778615	bin_8
+> S0C779974	bin_8
+> S0C780421	bin_8
+> S0C780437	bin_8
+> S0C781033	bin_8
+> S0C784468	bin_8
+> S0C786208	bin_8
+> S0C788805	bin_8
+> S0C794314	bin_8
+> S0C795650	bin_8
+> S0C798385	bin_8
+> S0C799187	bin_8
+> S0C802508	bin_8
+> S0C805746	bin_8
+> S0C806645	bin_8
+> S0C807022	bin_8
+> S0C810278	bin_8
+> S0C810659	bin_8
+> S0C813713	bin_8
+> S0C814978	bin_8
+> S0C816601	bin_8
+> S0C817395	bin_8
+> S0C817553	bin_8
+> S0C818214	bin_8
+> S0C819353	bin_8
+> S0C819423	bin_8
+> S0C819922	bin_8
+> S0C820478	bin_8
+> S0C823560	bin_8
+> S0C827791	bin_8
+> S0C829846	bin_8
+> S0C831441	bin_8
+> S0C832781	bin_8
+> S0C832843	bin_8
+> S0C833135	bin_8
+> S0C833800	bin_8
+> S0C834749	bin_8
+> S0C836780	bin_8
+> S0C837826	bin_8
+> S0C839693	bin_8
+> S0C840960	bin_8
+> S0C841766	bin_8
+> S0C842294	bin_8
+> S0C843484	bin_8
+> S0C847550	bin_8
+> S0C848958	bin_8
+> S0C849173	bin_8
+> S0C849520	bin_8
+> S0C851043	bin_8
+> S0C854730	bin_8
+> S0C855091	bin_8
+> S0C858415	bin_8
+> S0C862518	bin_8
+> S0C863171	bin_8
+> S0C863989	bin_8
+> S0C864029	bin_8
+> S0C865580	bin_8
+> S0C869246	bin_8
+> S0C870100	bin_8
+> S0C871903	bin_8
+> S0C872401	bin_8
+> S0C873472	bin_8
+> S0C876348	bin_8
+> S0C879887	bin_8
+> S0C882876	bin_8
+> S0C883820	bin_8
+> S0C885036	bin_8
+> S0C885059	bin_8
+> S0C886386	bin_8
+> S0C887799	bin_8
+> S0C888517	bin_8
+> S0C890108	bin_8
+> S0C890792	bin_8
+> S0C895740	bin_8
+> S0C895956	bin_8
+> S0C898212	bin_8
+> S0C901043	bin_8
+> S0C902342	bin_8
+> S0C903670	bin_8
+> S0C906194	bin_8
+> S0C906800	bin_8
+> S0C907922	bin_8
+> S0C909181	bin_8
+> S0C909271	bin_8
+> S0C909421	bin_8
+> S0C909947	bin_8
+> S0C911266	bin_8
+> S0C912887	bin_8
+> S0C913085	bin_8
+> S0C916649	bin_8
+> S0C918912	bin_8
+> S0C919054	bin_8
+> S0C919120	bin_8
+> S0C919332	bin_8
+> S0C919390	bin_8
+> S0C919403	bin_8
+> S0C921281	bin_8
+> S0C924442	bin_8
+> S0C928821	bin_8
+> S0C929388	bin_8
+> S0C930202	bin_8
+> S0C930896	bin_8
+> S0C932480	bin_8
+> S0C932773	bin_8
+> S0C935417	bin_8
+> S0C936682	bin_8
+> S0C937402	bin_8
+> S0C938733	bin_8
+> S0C939637	bin_8
+> S0C940486	bin_8
+> S0C941549	bin_8
+> S0C944876	bin_8
+> S0C947146	bin_8
+> S0C947547	bin_8
+> S0C948360	bin_8
+> S0C949478	bin_8
+> S0C953740	bin_8
+> S0C954125	bin_8
+> S0C954851	bin_8
+> S0C955373	bin_8
+> S0C956720	bin_8
+> S0C958080	bin_8
+> S0C958575	bin_8
+> S0C958855	bin_8
+> S0C960001	bin_8
+> S0C961214	bin_8
+> S0C964115	bin_8
+> S0C965402	bin_8
+> S0C969183	bin_8
+> S0C971108	bin_8
+> S0C975329	bin_8
+> S0C980543	bin_8
+> S0C982413	bin_8
+> S0C983718	bin_8
+> S0C989433	bin_8
+> S0C989922	bin_8
+> S0C991860	bin_8
+> S0C992542	bin_8
+> S0C993655	bin_8
+> S0C994465	bin_8
+> S0C994512	bin_8
+> S0C996087	bin_8
+> S0C998734	bin_8
+> S0C998821	bin_8
+> S0C1001032	bin_8
+> S0C1002237	bin_8
+> S0C1005666	bin_8
+> S0C1008906	bin_8
+> S0C1011501	bin_8
+> S0C1013748	bin_8
+> S0C1015705	bin_8
+> S0C1016420	bin_8
+> S0C1020593	bin_8
+> S0C1020884	bin_8
+> S0C1021787	bin_8
+> S0C1021838	bin_8
+> S0C1022906	bin_8
+> S0C1023531	bin_8
+> S0C1025038	bin_8
+> S0C1025441	bin_8
+> S0C1026685	bin_8
+> S0C1026721	bin_8
+> S0C1028501	bin_8
+> S0C1031181	bin_8
+> S0C1033976	bin_8
+> S0C1036590	bin_8
+> S0C1036662	bin_8
+> S0C1039536	bin_8
+> S0C1039693	bin_8
+> S0C1039822	bin_8
+> S0C1040459	bin_8
+> S0C1040601	bin_8
+> S0C1042147	bin_8
+> S0C1043623	bin_8
+> S0C1046214	bin_8
+> S0C1049484	bin_8
+> S0C1049793	bin_8
+> S0C1052534	bin_8
+> S0C1054467	bin_8
+> S0C1055574	bin_8
+> S0C1056975	bin_8
+> S0C1060729	bin_8
+> S0C1063302	bin_8
+> S0C1065359	bin_8
+> S0C1065898	bin_8
+> S0C1066178	bin_8
+> S0C1073754	bin_8
+> S0C1073924	bin_8
+> S0C1075309	bin_8
+> S0C1075412	bin_8
+> S0C1077004	bin_8
+> S0C1077425	bin_8
+> S0C1079162	bin_8
+> S0C1081468	bin_8
+> S0C1084931	bin_8
+> S0C1086156	bin_8
+> S0C1086969	bin_8
+> S0C1088381	bin_8
+> S0C1088639	bin_8
+> S0C1089782	bin_8
+> S0C1089880	bin_8
+> S0C1090449	bin_8
+> S0C1090965	bin_8
+> S0C1093327	bin_8
+> S0C1095930	bin_8
+> S0C1097989	bin_8
+> S0C1102997	bin_8
+> S0C1103453	bin_8
+> S0C1103707	bin_8
+> S0C1103850	bin_8
+> S0C1104170	bin_8
+> S0C1108894	bin_8
+> S0C1112273	bin_8
+> S0C1117708	bin_8
+> S0C1118760	bin_8
+> S0C1121968	bin_8
+> S0C1122594	bin_8
+> S0C1123461	bin_8
+> S0C1126013	bin_8
+> S0C1127113	bin_8
+> S0C1127163	bin_8
+> S0C1129272	bin_8
+> S0C1131444	bin_8
+> S0C1133988	bin_8
+> S0C1134405	bin_8
+> S0C1136413	bin_8
+> S0C1141539	bin_8
+> S0C1141852	bin_8
+> S0C1141905	bin_8
+> S0C1142983	bin_8
+> S0C1146926	bin_8
+> S0C1147099	bin_8
+> S0C1147432	bin_8
+> S0C1148379	bin_8
+> S0C1150144	bin_8
+> S0C1151252	bin_8
+> S0C1151728	bin_8
+> S0C1152093	bin_8
+> S0C1153223	bin_8
+> S0C1153632	bin_8
+> S0C1155067	bin_8
+> S0C1155159	bin_8
+> S0C1157868	bin_8
+> S0C1158261	bin_8
+> S0C1158452	bin_8
+> S0C1161033	bin_8
+> S0C1163823	bin_8
+> S0C1164879	bin_8
+> S0C1167196	bin_8
+> S0C1167214	bin_8
+> S0C1171515	bin_8
+> S0C1175163	bin_8
+> S0C1175386	bin_8
+> S0C1175981	bin_8
+> S0C1176188	bin_8
+> S0C1176902	bin_8
+> S0C1178268	bin_8
+> S0C1178964	bin_8
+> S0C1179427	bin_8
+> S0C1179746	bin_8
+> S0C1180599	bin_8
+> S0C1180903	bin_8
+> S0C1181824	bin_8
+> S0C1182220	bin_8
+> S0C1184337	bin_8
+> S0C1186865	bin_8
+> S0C1187534	bin_8
+> S0C1187754	bin_8
+> S0C1188607	bin_8
+> S0C1193867	bin_8
+> S0C1197800	bin_8
+> S0C1198095	bin_8
+> S0C1198714	bin_8
+> S0C1199363	bin_8
+> S0C1199892	bin_8
+> S0C1202958	bin_8
+> S0C1203971	bin_8
+> S0C1205614	bin_8
+> S0C1207016	bin_8
+> S0C1207826	bin_8
+> S0C1208437	bin_8
+> S0C1209760	bin_8
+> S0C1210075	bin_8
+> S0C1210118	bin_8
+> S0C1213172	bin_8
+> S0C1213496	bin_8
+> S0C1215775	bin_8
+> S0C1217389	bin_8
+> S0C1218972	bin_8
+> S0C1219550	bin_8
+> S0C1220049	bin_8
+> S0C1222757	bin_8
+> S0C1223194	bin_8
+> S0C1223281	bin_8
+> S0C1223685	bin_8
+> S0C1223931	bin_8
+> S0C1224662	bin_8
+> S0C1227051	bin_8
+> S0C1227578	bin_8
+> S0C1227890	bin_8
+> S0C1228771	bin_8
+> S0C1230586	bin_8
+> S0C1231494	bin_8
+> S0C1232535	bin_8
+> S0C1233030	bin_8
+> S0C1233511	bin_8
+> S0C1236086	bin_8
+> S0C1236374	bin_8
+> S0C1239030	bin_8
+> S0C1239549	bin_8
+> S0C1244844	bin_8
+> S0C1245168	bin_8
+> S0C1245259	bin_8
+> S0C1246654	bin_8
+> S0C1247515	bin_8
+> S0C1248419	bin_8
+> S0C1249577	bin_8
+> S0C1249786	bin_8
+> S0C1251997	bin_8
+> S0C1253950	bin_8
+> S0C1256705	bin_8
+> S0C1259118	bin_8
+> S0C1262620	bin_8
+> S0C1264383	bin_8
+> S0C1265180	bin_8
+> S0C1269598	bin_8
+> S0C1269963	bin_8
+> S0C1272111	bin_8
+> S0C1272878	bin_8
+> S0C1276507	bin_8
+> S0C1278357	bin_8
+> S0C1279031	bin_8
+> S0C1279664	bin_8
+> S0C1280420	bin_8
+> S0C1280760	bin_8
+> S0C1282862	bin_8
+> S0C1283311	bin_8
+> S0C1283676	bin_8
+> S0C1284585	bin_8
+> S0C1284801	bin_8
+> S0C1284951	bin_8
+> S0C1285525	bin_8
+> S0C1286915	bin_8
+> S0C1287388	bin_8
+> S0C1289297	bin_8
+> S0C1289578	bin_8
+> S0C1289965	bin_8
+> S0C1290699	bin_8
+> S0C1296453	bin_8
+> S0C1296851	bin_8
+> S0C1297099	bin_8
+> S0C1298155	bin_8
+> S0C1299967	bin_8
+> S0C1303568	bin_8
+> S0C1307038	bin_8
+> S0C1309015	bin_8
+> S0C1318669	bin_8
+> S0C1326127	bin_8
+> S0C1326137	bin_8
+> S0C1326508	bin_8
+> S0C1329250	bin_8
+> S0C1332335	bin_8
+> S0C1332829	bin_8
+> S0C1334075	bin_8
+> S0C1336443	bin_8
+> S0C1339350	bin_8
+> S0C1341179	bin_8
+> S0C1342269	bin_8
+> S0C1342803	bin_8
+> S0C1342926	bin_8
+> S0C1343242	bin_8
+> S0C1344791	bin_8
+> S0C1346762	bin_8
+> S0C1348568	bin_8
+> S0C1349041	bin_8
+> S0C1350062	bin_8
+> S0C1350373	bin_8
+> S0C1352304	bin_8
+> S0C1355542	bin_8
+> S0C1356539	bin_8
+> S0C1362284	bin_8
+> S0C1365178	bin_8
+> S0C1365245	bin_8
+> S0C1365346	bin_8
+> S0C1367458	bin_8
+> S0C1369356	bin_8
+> S0C1370805	bin_8
+> S0C1371524	bin_8
+> S0C1372235	bin_8
+> S0C1374192	bin_8
+> S0C1376445	bin_8
+> S0C1380573	bin_8
+> S0C1381354	bin_8
+> S0C1382197	bin_8
+> S0C1385879	bin_8
+> S0C1386402	bin_8
+> S0C1386588	bin_8
+> S0C1387197	bin_8
+> S0C1387747	bin_8
+> S0C1388756	bin_8
+> S0C1389028	bin_8
+> S0C1392782	bin_8
+> S0C1393535	bin_8
+> S0C1394267	bin_8
+> S0C1395514	bin_8
+> S0C1396024	bin_8
+> S0C1404200	bin_8
+> S0C1404847	bin_8
+> S0C1405206	bin_8
+> S0C1413886	bin_8
+> S0C1416611	bin_8
+> S0C1417796	bin_8
+> S0C1420004	bin_8
+> S0C1420175	bin_8
+> S0C1423339	bin_8
+> S0C1423873	bin_8
+> S0C1425742	bin_8
+> S0C1430550	bin_8
+> S0C1434613	bin_8
+> S0C1435397	bin_8
+> S0C1437103	bin_8
+> S0C1438786	bin_8
+> S0C1440001	bin_8
+> S0C1440184	bin_8
+> S0C1440685	bin_8
+> S0C1443032	bin_8
+> S0C1443735	bin_8
+> S0C1445971	bin_8
+> S0C1455377	bin_8
+> S0C1457445	bin_8
+> S0C1457650	bin_8
+> S0C1458305	bin_8
+> S0C1458483	bin_8
+> S0C1461186	bin_8
+> S0C1468228	bin_8
+> S0C1469242	bin_8
+> S0C1470816	bin_8
+> S0C1471371	bin_8
+> S0C1471556	bin_8
+> S0C1472174	bin_8
+> S0C1474912	bin_8
+> S0C43904	bin_80
+> S0C57067	bin_80
+> S0C101384	bin_80
+> S0C108618	bin_80
+> S0C179856	bin_80
+> S0C182417	bin_80
+> S0C215189	bin_80
+> S0C217238	bin_80
+> S0C219191	bin_80
+> S0C253411	bin_80
+> S0C260295	bin_80
+> S0C279209	bin_80
+> S0C288497	bin_80
+> S0C297715	bin_80
+> S0C340473	bin_80
+> S0C424872	bin_80
+> S0C430099	bin_80
+> S0C430223	bin_80
+> S0C433048	bin_80
+> S0C434716	bin_80
+> S0C438159	bin_80
+> S0C443760	bin_80
+> S0C451976	bin_80
+> S0C454782	bin_80
+> S0C473393	bin_80
+> S0C493016	bin_80
+> S0C498282	bin_80
+> S0C500615	bin_80
+> S0C509960	bin_80
+> S0C519696	bin_80
+> S0C554794	bin_80
+> S0C557485	bin_80
+> S0C564605	bin_80
+> S0C566664	bin_80
+> S0C575594	bin_80
+> S0C595240	bin_80
+> S0C618990	bin_80
+> S0C624084	bin_80
+> S0C648860	bin_80
+> S0C736593	bin_80
+> S0C770125	bin_80
+> S0C795029	bin_80
+> S0C830242	bin_80
+> S0C866867	bin_80
+> S0C870155	bin_80
+> S0C932242	bin_80
+> S0C984309	bin_80
+> S0C998374	bin_80
+> S0C1053306	bin_80
+> S0C1085463	bin_80
+> S0C1089557	bin_80
+> S0C1163813	bin_80
+> S0C1165400	bin_80
+> S0C1182701	bin_80
+> S0C1220851	bin_80
+> S0C1226034	bin_80
+> S0C1299854	bin_80
+> S0C1385610	bin_80
+> S0C1393433	bin_80
+> S0C1466770	bin_80
+> S0C65063	bin_81
+> S0C66332	bin_81
+> S0C82135	bin_81
+> S0C121619	bin_81
+> S0C128995	bin_81
+> S0C146977	bin_81
+> S0C151441	bin_81
+> S0C154716	bin_81
+> S0C196566	bin_81
+> S0C198467	bin_81
+> S0C205720	bin_81
+> S0C226345	bin_81
+> S0C269628	bin_81
+> S0C277980	bin_81
+> S0C288905	bin_81
+> S0C289522	bin_81
+> S0C344555	bin_81
+> S0C372978	bin_81
+> S0C384933	bin_81
+> S0C396967	bin_81
+> S0C409531	bin_81
+> S0C412809	bin_81
+> S0C414677	bin_81
+> S0C461943	bin_81
+> S0C486016	bin_81
+> S0C488331	bin_81
+> S0C507700	bin_81
+> S0C535712	bin_81
+> S0C573088	bin_81
+> S0C589031	bin_81
+> S0C598707	bin_81
+> S0C646654	bin_81
+> S0C688573	bin_81
+> S0C691850	bin_81
+> S0C713516	bin_81
+> S0C730168	bin_81
+> S0C787491	bin_81
+> S0C797067	bin_81
+> S0C802799	bin_81
+> S0C816535	bin_81
+> S0C828610	bin_81
+> S0C850432	bin_81
+> S0C873799	bin_81
+> S0C932745	bin_81
+> S0C937736	bin_81
+> S0C955841	bin_81
+> S0C981844	bin_81
+> S0C989278	bin_81
+> S0C1019119	bin_81
+> S0C1035183	bin_81
+> S0C1042234	bin_81
+> S0C1046713	bin_81
+> S0C1056213	bin_81
+> S0C1109360	bin_81
+> S0C1124582	bin_81
+> S0C1155224	bin_81
+> S0C1267691	bin_81
+> S0C1287601	bin_81
+> S0C1294372	bin_81
+> S0C1305660	bin_81
+> S0C1316876	bin_81
+> S0C1341567	bin_81
+> S0C1344876	bin_81
+> S0C1347633	bin_81
+> S0C1370524	bin_81
+> S0C1390978	bin_81
+> S0C1426257	bin_81
+> S0C1447216	bin_81
+> S0C2035	bin_82
+> S0C73492	bin_82
+> S0C86156	bin_82
+> S0C95202	bin_82
+> S0C113290	bin_82
+> S0C119108	bin_82
+> S0C124217	bin_82
+> S0C154900	bin_82
+> S0C158931	bin_82
+> S0C169538	bin_82
+> S0C201917	bin_82
+> S0C210509	bin_82
+> S0C220739	bin_82
+> S0C233156	bin_82
+> S0C258386	bin_82
+> S0C301076	bin_82
+> S0C302961	bin_82
+> S0C308294	bin_82
+> S0C336199	bin_82
+> S0C345651	bin_82
+> S0C377516	bin_82
+> S0C412338	bin_82
+> S0C436864	bin_82
+> S0C450493	bin_82
+> S0C450637	bin_82
+> S0C501700	bin_82
+> S0C525930	bin_82
+> S0C547593	bin_82
+> S0C550289	bin_82
+> S0C588426	bin_82
+> S0C617225	bin_82
+> S0C630396	bin_82
+> S0C630760	bin_82
+> S0C630928	bin_82
+> S0C647977	bin_82
+> S0C660150	bin_82
+> S0C667925	bin_82
+> S0C694362	bin_82
+> S0C735453	bin_82
+> S0C743269	bin_82
+> S0C748800	bin_82
+> S0C752029	bin_82
+> S0C752440	bin_82
+> S0C757159	bin_82
+> S0C779875	bin_82
+> S0C789865	bin_82
+> S0C802646	bin_82
+> S0C803462	bin_82
+> S0C874603	bin_82
+> S0C883284	bin_82
+> S0C904809	bin_82
+> S0C926413	bin_82
+> S0C928693	bin_82
+> S0C1001090	bin_82
+> S0C1034988	bin_82
+> S0C1048472	bin_82
+> S0C1063592	bin_82
+> S0C1079351	bin_82
+> S0C1080175	bin_82
+> S0C1096344	bin_82
+> S0C1149581	bin_82
+> S0C1159575	bin_82
+> S0C1169198	bin_82
+> S0C1172469	bin_82
+> S0C1187233	bin_82
+> S0C1290977	bin_82
+> S0C1306304	bin_82
+> S0C1306525	bin_82
+> S0C1311827	bin_82
+> S0C1326774	bin_82
+> S0C1345890	bin_82
+> S0C1346314	bin_82
+> S0C1383158	bin_82
+> S0C1414349	bin_82
+> S0C1419146	bin_82
+> S0C1464767	bin_82
+> S0C1466400	bin_82
+> S0C34507	bin_83
+> S0C78647	bin_83
+> S0C94680	bin_83
+> S0C132551	bin_83
+> S0C178718	bin_83
+> S0C243536	bin_83
+> S0C322725	bin_83
+> S0C327405	bin_83
+> S0C372515	bin_83
+> S0C374971	bin_83
+> S0C415120	bin_83
+> S0C434288	bin_83
+> S0C450761	bin_83
+> S0C477569	bin_83
+> S0C487761	bin_83
+> S0C539358	bin_83
+> S0C542413	bin_83
+> S0C563583	bin_83
+> S0C600884	bin_83
+> S0C626538	bin_83
+> S0C679394	bin_83
+> S0C758420	bin_83
+> S0C829078	bin_83
+> S0C862049	bin_83
+> S0C876715	bin_83
+> S0C897841	bin_83
+> S0C906951	bin_83
+> S0C909747	bin_83
+> S0C967006	bin_83
+> S0C985581	bin_83
+> S0C1089336	bin_83
+> S0C1149173	bin_83
+> S0C1183220	bin_83
+> S0C1259452	bin_83
+> S0C1318528	bin_83
+> S0C1331348	bin_83
+> S0C1343410	bin_83
+> S0C1350586	bin_83
+> S0C1351760	bin_83
+> S0C4448	bin_84
+> S0C22596	bin_84
+> S0C102601	bin_84
+> S0C109331	bin_84
+> S0C173247	bin_84
+> S0C205327	bin_84
+> S0C264901	bin_84
+> S0C287031	bin_84
+> S0C287932	bin_84
+> S0C293765	bin_84
+> S0C358100	bin_84
+> S0C377178	bin_84
+> S0C399935	bin_84
+> S0C430613	bin_84
+> S0C439534	bin_84
+> S0C452023	bin_84
+> S0C471154	bin_84
+> S0C472621	bin_84
+> S0C484722	bin_84
+> S0C488027	bin_84
+> S0C498001	bin_84
+> S0C517838	bin_84
+> S0C519672	bin_84
+> S0C544455	bin_84
+> S0C611570	bin_84
+> S0C629325	bin_84
+> S0C638995	bin_84
+> S0C682398	bin_84
+> S0C688240	bin_84
+> S0C695721	bin_84
+> S0C708181	bin_84
+> S0C740955	bin_84
+> S0C755273	bin_84
+> S0C767835	bin_84
+> S0C784546	bin_84
+> S0C807883	bin_84
+> S0C846699	bin_84
+> S0C850691	bin_84
+> S0C865547	bin_84
+> S0C872998	bin_84
+> S0C893957	bin_84
+> S0C902167	bin_84
+> S0C915728	bin_84
+> S0C940833	bin_84
+> S0C980844	bin_84
+> S0C991819	bin_84
+> S0C1088536	bin_84
+> S0C1097339	bin_84
+> S0C1119893	bin_84
+> S0C1129914	bin_84
+> S0C1153097	bin_84
+> S0C1223075	bin_84
+> S0C1255150	bin_84
+> S0C1334537	bin_84
+> S0C1349834	bin_84
+> S0C1352922	bin_84
+> S0C1355207	bin_84
+> S0C1372691	bin_84
+> S0C1407729	bin_84
+> S0C1412529	bin_84
+> S0C1449469	bin_84
+> S0C1472657	bin_84
+> S0C221	bin_85
+> S0C26214	bin_85
+> S0C82292	bin_85
+> S0C102221	bin_85
+> S0C110903	bin_85
+> S0C118390	bin_85
+> S0C129889	bin_85
+> S0C142701	bin_85
+> S0C204588	bin_85
+> S0C223605	bin_85
+> S0C229518	bin_85
+> S0C233192	bin_85
+> S0C239724	bin_85
+> S0C253930	bin_85
+> S0C263621	bin_85
+> S0C272055	bin_85
+> S0C273278	bin_85
+> S0C297070	bin_85
+> S0C342501	bin_85
+> S0C361711	bin_85
+> S0C362639	bin_85
+> S0C396559	bin_85
+> S0C403480	bin_85
+> S0C422669	bin_85
+> S0C485599	bin_85
+> S0C506229	bin_85
+> S0C544662	bin_85
+> S0C550423	bin_85
+> S0C550957	bin_85
+> S0C558918	bin_85
+> S0C570404	bin_85
+> S0C583276	bin_85
+> S0C594713	bin_85
+> S0C612484	bin_85
+> S0C636687	bin_85
+> S0C719688	bin_85
+> S0C734734	bin_85
+> S0C749563	bin_85
+> S0C770613	bin_85
+> S0C771686	bin_85
+> S0C783363	bin_85
+> S0C807993	bin_85
+> S0C808474	bin_85
+> S0C863138	bin_85
+> S0C863821	bin_85
+> S0C883618	bin_85
+> S0C930100	bin_85
+> S0C948994	bin_85
+> S0C969351	bin_85
+> S0C1008825	bin_85
+> S0C1011050	bin_85
+> S0C1028350	bin_85
+> S0C1042166	bin_85
+> S0C1053234	bin_85
+> S0C1057234	bin_85
+> S0C1073119	bin_85
+> S0C1098006	bin_85
+> S0C1125901	bin_85
+> S0C1125906	bin_85
+> S0C1128442	bin_85
+> S0C1147007	bin_85
+> S0C1164168	bin_85
+> S0C1168118	bin_85
+> S0C1189883	bin_85
+> S0C1193526	bin_85
+> S0C1211306	bin_85
+> S0C1235677	bin_85
+> S0C1252732	bin_85
+> S0C1318032	bin_85
+> S0C1349981	bin_85
+> S0C1372296	bin_85
+> S0C1432100	bin_85
+> S0C1452202	bin_85
+> S0C5756	bin_86
+> S0C79129	bin_86
+> S0C80175	bin_86
+> S0C84723	bin_86
+> S0C101837	bin_86
+> S0C123538	bin_86
+> S0C137522	bin_86
+> S0C166966	bin_86
+> S0C238563	bin_86
+> S0C246728	bin_86
+> S0C255226	bin_86
+> S0C274455	bin_86
+> S0C299587	bin_86
+> S0C357577	bin_86
+> S0C363938	bin_86
+> S0C397037	bin_86
+> S0C405595	bin_86
+> S0C434312	bin_86
+> S0C498500	bin_86
+> S0C507230	bin_86
+> S0C563118	bin_86
+> S0C614773	bin_86
+> S0C736725	bin_86
+> S0C782596	bin_86
+> S0C783028	bin_86
+> S0C799848	bin_86
+> S0C802343	bin_86
+> S0C819754	bin_86
+> S0C887316	bin_86
+> S0C937287	bin_86
+> S0C940960	bin_86
+> S0C949056	bin_86
+> S0C950320	bin_86
+> S0C980527	bin_86
+> S0C986023	bin_86
+> S0C1003833	bin_86
+> S0C1051642	bin_86
+> S0C1067307	bin_86
+> S0C1079083	bin_86
+> S0C1079486	bin_86
+> S0C1088289	bin_86
+> S0C1117464	bin_86
+> S0C1123274	bin_86
+> S0C1158161	bin_86
+> S0C1192024	bin_86
+> S0C1226563	bin_86
+> S0C1252184	bin_86
+> S0C1263553	bin_86
+> S0C1353096	bin_86
+> S0C1353783	bin_86
+> S0C1379883	bin_86
+> S0C1381699	bin_86
+> S0C1393322	bin_86
+> S0C1407906	bin_86
+> S0C1475566	bin_86
+> S0C7328	bin_9
+> S0C26716	bin_9
+> S0C99361	bin_9
+> S0C108326	bin_9
+> S0C156625	bin_9
+> S0C197816	bin_9
+> S0C204051	bin_9
+> S0C256887	bin_9
+> S0C305987	bin_9
+> S0C313754	bin_9
+> S0C316658	bin_9
+> S0C347109	bin_9
+> S0C350065	bin_9
+> S0C351216	bin_9
+> S0C351759	bin_9
+> S0C357551	bin_9
+> S0C365456	bin_9
+> S0C365961	bin_9
+> S0C401995	bin_9
+> S0C461349	bin_9
+> S0C473945	bin_9
+> S0C489867	bin_9
+> S0C498807	bin_9
+> S0C499520	bin_9
+> S0C514043	bin_9
+> S0C551828	bin_9
+> S0C553125	bin_9
+> S0C566233	bin_9
+> S0C573806	bin_9
+> S0C600833	bin_9
+> S0C609300	bin_9
+> S0C627992	bin_9
+> S0C631342	bin_9
+> S0C639855	bin_9
+> S0C662345	bin_9
+> S0C686033	bin_9
+> S0C727375	bin_9
+> S0C727419	bin_9
+> S0C738159	bin_9
+> S0C741310	bin_9
+> S0C743671	bin_9
+> S0C813393	bin_9
+> S0C846224	bin_9
+> S0C881756	bin_9
+> S0C891169	bin_9
+> S0C945837	bin_9
+> S0C976656	bin_9
+> S0C977342	bin_9
+> S0C1027879	bin_9
+> S0C1036011	bin_9
+> S0C1039133	bin_9
+> S0C1056187	bin_9
+> S0C1061562	bin_9
+> S0C1076089	bin_9
+> S0C1140988	bin_9
+> S0C1146893	bin_9
+> S0C1152242	bin_9
+> S0C1155830	bin_9
+> S0C1172972	bin_9
+> S0C1192569	bin_9
+> S0C1197873	bin_9
+> S0C1326288	bin_9
+> S0C1391450	bin_9
+> S0C1412118	bin_9
+> S0C1421135	bin_9
+> S0C1434086	bin_9
+> S0C1458254	bin_9
+> S0C1464679	bin_9
+> S0C4169	bin_9808
+> S0C27113	bin_9808
+> S0C38051	bin_9808
+> S0C54211	bin_9808
+> S0C81205	bin_9808
+> S0C96315	bin_9808
+> S0C114839	bin_9808
+> S0C178761	bin_9808
+> S0C185294	bin_9808
+> S0C248591	bin_9808
+> S0C267760	bin_9808
+> S0C333992	bin_9808
+> S0C335331	bin_9808
+> S0C341922	bin_9808
+> S0C348265	bin_9808
+> S0C393917	bin_9808
+> S0C400512	bin_9808
+> S0C447357	bin_9808
+> S0C455596	bin_9808
+> S0C467802	bin_9808
+> S0C492403	bin_9808
+> S0C503177	bin_9808
+> S0C514713	bin_9808
+> S0C618832	bin_9808
+> S0C640667	bin_9808
+> S0C690420	bin_9808
+> S0C717953	bin_9808
+> S0C738353	bin_9808
+> S0C741704	bin_9808
+> S0C781615	bin_9808
+> S0C783736	bin_9808
+> S0C783755	bin_9808
+> S0C808496	bin_9808
+> S0C824866	bin_9808
+> S0C832186	bin_9808
+> S0C948506	bin_9808
+> S0C952720	bin_9808
+> S0C984535	bin_9808
+> S0C992686	bin_9808
+> S0C996065	bin_9808
+> S0C1012118	bin_9808
+> S0C1062127	bin_9808
+> S0C1205802	bin_9808
+> S0C1220745	bin_9808
+> S0C1238478	bin_9808
+> S0C1245969	bin_9808
+> S0C1354866	bin_9808
+> S0C1445877	bin_9808
+> S0C46	bin_9961
+> S0C453	bin_9961
+> S0C2068	bin_9961
+> S0C3791	bin_9961
+> S0C4082	bin_9961
+> S0C7590	bin_9961
+> S0C8070	bin_9961
+> S0C9832	bin_9961
+> S0C11588	bin_9961
+> S0C17133	bin_9961
+> S0C21225	bin_9961
+> S0C21963	bin_9961
+> S0C27915	bin_9961
+> S0C34252	bin_9961
+> S0C40824	bin_9961
+> S0C43587	bin_9961
+> S0C57632	bin_9961
+> S0C62465	bin_9961
+> S0C64823	bin_9961
+> S0C68266	bin_9961
+> S0C71377	bin_9961
+> S0C71678	bin_9961
+> S0C74171	bin_9961
+> S0C82967	bin_9961
+> S0C87040	bin_9961
+> S0C88263	bin_9961
+> S0C88755	bin_9961
+> S0C90529	bin_9961
+> S0C91373	bin_9961
+> S0C93398	bin_9961
+> S0C94940	bin_9961
+> S0C96040	bin_9961
+> S0C98460	bin_9961
+> S0C100573	bin_9961
+> S0C107985	bin_9961
+> S0C108593	bin_9961
+> S0C113258	bin_9961
+> S0C114909	bin_9961
+> S0C117691	bin_9961
+> S0C120349	bin_9961
+> S0C122310	bin_9961
+> S0C122483	bin_9961
+> S0C123848	bin_9961
+> S0C125668	bin_9961
+> S0C127913	bin_9961
+> S0C128137	bin_9961
+> S0C130909	bin_9961
+> S0C131371	bin_9961
+> S0C134087	bin_9961
+> S0C134303	bin_9961
+> S0C139218	bin_9961
+> S0C141370	bin_9961
+> S0C142094	bin_9961
+> S0C146385	bin_9961
+> S0C156423	bin_9961
+> S0C163125	bin_9961
+> S0C163348	bin_9961
+> S0C165676	bin_9961
+> S0C171050	bin_9961
+> S0C177621	bin_9961
+> S0C178608	bin_9961
+> S0C185917	bin_9961
+> S0C186945	bin_9961
+> S0C189012	bin_9961
+> S0C189630	bin_9961
+> S0C194827	bin_9961
+> S0C195907	bin_9961
+> S0C198410	bin_9961
+> S0C200020	bin_9961
+> S0C202055	bin_9961
+> S0C204966	bin_9961
+> S0C206944	bin_9961
+> S0C208223	bin_9961
+> S0C208589	bin_9961
+> S0C208801	bin_9961
+> S0C209067	bin_9961
+> S0C210558	bin_9961
+> S0C214521	bin_9961
+> S0C217043	bin_9961
+> S0C218466	bin_9961
+> S0C221147	bin_9961
+> S0C225488	bin_9961
+> S0C247595	bin_9961
+> S0C247906	bin_9961
+> S0C251284	bin_9961
+> S0C257502	bin_9961
+> S0C258106	bin_9961
+> S0C258989	bin_9961
+> S0C260929	bin_9961
+> S0C262195	bin_9961
+> S0C266206	bin_9961
+> S0C267405	bin_9961
+> S0C274543	bin_9961
+> S0C275391	bin_9961
+> S0C278845	bin_9961
+> S0C279837	bin_9961
+> S0C284300	bin_9961
+> S0C299349	bin_9961
+> S0C301840	bin_9961
+> S0C302092	bin_9961
+> S0C303132	bin_9961
+> S0C303782	bin_9961
+> S0C303830	bin_9961
+> S0C305023	bin_9961
+> S0C306780	bin_9961
+> S0C317435	bin_9961
+> S0C319889	bin_9961
+> S0C321695	bin_9961
+> S0C322100	bin_9961
+> S0C322693	bin_9961
+> S0C324145	bin_9961
+> S0C324413	bin_9961
+> S0C326026	bin_9961
+> S0C329161	bin_9961
+> S0C335774	bin_9961
+> S0C339690	bin_9961
+> S0C344810	bin_9961
+> S0C347110	bin_9961
+> S0C350969	bin_9961
+> S0C351640	bin_9961
+> S0C353361	bin_9961
+> S0C356316	bin_9961
+> S0C360619	bin_9961
+> S0C361968	bin_9961
+> S0C364097	bin_9961
+> S0C365279	bin_9961
+> S0C368937	bin_9961
+> S0C375188	bin_9961
+> S0C377784	bin_9961
+> S0C378715	bin_9961
+> S0C382891	bin_9961
+> S0C385504	bin_9961
+> S0C387680	bin_9961
+> S0C387765	bin_9961
+> S0C387926	bin_9961
+> S0C389296	bin_9961
+> S0C392317	bin_9961
+> S0C392798	bin_9961
+> S0C393057	bin_9961
+> S0C393573	bin_9961
+> S0C396665	bin_9961
+> S0C400692	bin_9961
+> S0C402720	bin_9961
+> S0C403292	bin_9961
+> S0C404151	bin_9961
+> S0C407347	bin_9961
+> S0C411523	bin_9961
+> S0C413260	bin_9961
+> S0C413757	bin_9961
+> S0C414933	bin_9961
+> S0C416592	bin_9961
+> S0C417392	bin_9961
+> S0C417732	bin_9961
+> S0C439813	bin_9961
+> S0C441142	bin_9961
+> S0C441487	bin_9961
+> S0C441577	bin_9961
+> S0C442566	bin_9961
+> S0C442692	bin_9961
+> S0C456518	bin_9961
+> S0C458445	bin_9961
+> S0C459248	bin_9961
+> S0C461227	bin_9961
+> S0C470274	bin_9961
+> S0C471033	bin_9961
+> S0C471629	bin_9961
+> S0C473666	bin_9961
+> S0C476212	bin_9961
+> S0C476714	bin_9961
+> S0C476862	bin_9961
+> S0C480272	bin_9961
+> S0C482755	bin_9961
+> S0C485820	bin_9961
+> S0C486486	bin_9961
+> S0C493805	bin_9961
+> S0C494901	bin_9961
+> S0C497694	bin_9961
+> S0C500475	bin_9961
+> S0C507009	bin_9961
+> S0C517595	bin_9961
+> S0C520207	bin_9961
+> S0C521752	bin_9961
+> S0C522106	bin_9961
+> S0C530746	bin_9961
+> S0C531536	bin_9961
+> S0C533230	bin_9961
+> S0C533435	bin_9961
+> S0C542822	bin_9961
+> S0C544570	bin_9961
+> S0C548489	bin_9961
+> S0C550332	bin_9961
+> S0C551739	bin_9961
+> S0C553869	bin_9961
+> S0C555804	bin_9961
+> S0C557051	bin_9961
+> S0C559056	bin_9961
+> S0C561301	bin_9961
+> S0C565102	bin_9961
+> S0C570705	bin_9961
+> S0C590986	bin_9961
+> S0C593842	bin_9961
+> S0C597453	bin_9961
+> S0C598545	bin_9961
+> S0C601824	bin_9961
+> S0C605474	bin_9961
+> S0C608114	bin_9961
+> S0C610818	bin_9961
+> S0C613943	bin_9961
+> S0C614005	bin_9961
+> S0C623534	bin_9961
+> S0C624096	bin_9961
+> S0C624619	bin_9961
+> S0C627310	bin_9961
+> S0C629072	bin_9961
+> S0C630347	bin_9961
+> S0C630812	bin_9961
+> S0C631973	bin_9961
+> S0C636062	bin_9961
+> S0C641531	bin_9961
+> S0C641941	bin_9961
+> S0C655554	bin_9961
+> S0C656011	bin_9961
+> S0C658369	bin_9961
+> S0C663484	bin_9961
+> S0C663739	bin_9961
+> S0C665241	bin_9961
+> S0C668178	bin_9961
+> S0C669249	bin_9961
+> S0C670490	bin_9961
+> S0C674135	bin_9961
+> S0C677481	bin_9961
+> S0C678178	bin_9961
+> S0C680651	bin_9961
+> S0C686925	bin_9961
+> S0C686959	bin_9961
+> S0C689079	bin_9961
+> S0C689622	bin_9961
+> S0C693820	bin_9961
+> S0C700912	bin_9961
+> S0C702070	bin_9961
+> S0C703121	bin_9961
+> S0C704110	bin_9961
+> S0C705963	bin_9961
+> S0C709889	bin_9961
+> S0C716255	bin_9961
+> S0C718336	bin_9961
+> S0C720623	bin_9961
+> S0C721409	bin_9961
+> S0C722592	bin_9961
+> S0C725146	bin_9961
+> S0C728167	bin_9961
+> S0C735366	bin_9961
+> S0C735755	bin_9961
+> S0C738058	bin_9961
+> S0C738853	bin_9961
+> S0C741082	bin_9961
+> S0C743029	bin_9961
+> S0C748386	bin_9961
+> S0C750479	bin_9961
+> S0C754073	bin_9961
+> S0C756474	bin_9961
+> S0C757138	bin_9961
+> S0C761428	bin_9961
+> S0C764367	bin_9961
+> S0C764721	bin_9961
+> S0C767775	bin_9961
+> S0C771872	bin_9961
+> S0C774474	bin_9961
+> S0C781372	bin_9961
+> S0C782024	bin_9961
+> S0C784173	bin_9961
+> S0C785012	bin_9961
+> S0C785092	bin_9961
+> S0C787228	bin_9961
+> S0C789364	bin_9961
+> S0C792731	bin_9961
+> S0C795550	bin_9961
+> S0C796461	bin_9961
+> S0C797767	bin_9961
+> S0C798123	bin_9961
+> S0C798876	bin_9961
+> S0C803179	bin_9961
+> S0C803719	bin_9961
+> S0C807775	bin_9961
+> S0C810478	bin_9961
+> S0C812794	bin_9961
+> S0C812877	bin_9961
+> S0C817868	bin_9961
+> S0C818715	bin_9961
+> S0C818751	bin_9961
+> S0C819295	bin_9961
+> S0C819843	bin_9961
+> S0C822184	bin_9961
+> S0C823519	bin_9961
+> S0C836410	bin_9961
+> S0C841663	bin_9961
+> S0C844507	bin_9961
+> S0C846138	bin_9961
+> S0C846206	bin_9961
+> S0C848075	bin_9961
+> S0C851896	bin_9961
+> S0C855729	bin_9961
+> S0C860923	bin_9961
+> S0C864730	bin_9961
+> S0C865359	bin_9961
+> S0C866342	bin_9961
+> S0C868540	bin_9961
+> S0C870284	bin_9961
+> S0C874935	bin_9961
+> S0C874997	bin_9961
+> S0C875330	bin_9961
+> S0C882848	bin_9961
+> S0C887760	bin_9961
+> S0C889176	bin_9961
+> S0C889495	bin_9961
+> S0C893452	bin_9961
+> S0C895649	bin_9961
+> S0C896083	bin_9961
+> S0C896728	bin_9961
+> S0C897969	bin_9961
+> S0C902400	bin_9961
+> S0C907677	bin_9961
+> S0C907802	bin_9961
+> S0C911384	bin_9961
+> S0C913264	bin_9961
+> S0C913908	bin_9961
+> S0C914614	bin_9961
+> S0C923131	bin_9961
+> S0C923719	bin_9961
+> S0C927401	bin_9961
+> S0C928152	bin_9961
+> S0C936019	bin_9961
+> S0C936593	bin_9961
+> S0C937679	bin_9961
+> S0C943230	bin_9961
+> S0C948485	bin_9961
+> S0C950859	bin_9961
+> S0C951207	bin_9961
+> S0C959608	bin_9961
+> S0C961509	bin_9961
+> S0C963320	bin_9961
+> S0C966789	bin_9961
+> S0C977104	bin_9961
+> S0C981145	bin_9961
+> S0C981260	bin_9961
+> S0C986206	bin_9961
+> S0C988204	bin_9961
+> S0C997561	bin_9961
+> S0C998636	bin_9961
+> S0C1000271	bin_9961
+> S0C1008359	bin_9961
+> S0C1009717	bin_9961
+> S0C1013775	bin_9961
+> S0C1017813	bin_9961
+> S0C1020710	bin_9961
+> S0C1021554	bin_9961
+> S0C1027448	bin_9961
+> S0C1027978	bin_9961
+> S0C1043292	bin_9961
+> S0C1047542	bin_9961
+> S0C1048017	bin_9961
+> S0C1052409	bin_9961
+> S0C1053002	bin_9961
+> S0C1059670	bin_9961
+> S0C1061279	bin_9961
+> S0C1065448	bin_9961
+> S0C1065608	bin_9961
+> S0C1070036	bin_9961
+> S0C1071109	bin_9961
+> S0C1081295	bin_9961
+> S0C1082822	bin_9961
+> S0C1089358	bin_9961
+> S0C1090223	bin_9961
+> S0C1096151	bin_9961
+> S0C1096261	bin_9961
+> S0C1096595	bin_9961
+> S0C1097444	bin_9961
+> S0C1098315	bin_9961
+> S0C1104361	bin_9961
+> S0C1107089	bin_9961
+> S0C1109144	bin_9961
+> S0C1118136	bin_9961
+> S0C1118426	bin_9961
+> S0C1133393	bin_9961
+> S0C1134324	bin_9961
+> S0C1134642	bin_9961
+> S0C1139656	bin_9961
+> S0C1141385	bin_9961
+> S0C1142183	bin_9961
+> S0C1153014	bin_9961
+> S0C1154872	bin_9961
+> S0C1157750	bin_9961
+> S0C1158508	bin_9961
+> S0C1158992	bin_9961
+> S0C1166418	bin_9961
+> S0C1171957	bin_9961
+> S0C1172414	bin_9961
+> S0C1174402	bin_9961
+> S0C1174805	bin_9961
+> S0C1177828	bin_9961
+> S0C1180082	bin_9961
+> S0C1181911	bin_9961
+> S0C1184973	bin_9961
+> S0C1188321	bin_9961
+> S0C1190662	bin_9961
+> S0C1192142	bin_9961
+> S0C1196153	bin_9961
+> S0C1197266	bin_9961
+> S0C1201809	bin_9961
+> S0C1208176	bin_9961
+> S0C1208294	bin_9961
+> S0C1209317	bin_9961
+> S0C1210171	bin_9961
+> S0C1210756	bin_9961
+> S0C1213442	bin_9961
+> S0C1217365	bin_9961
+> S0C1219227	bin_9961
+> S0C1219822	bin_9961
+> S0C1224633	bin_9961
+> S0C1225820	bin_9961
+> S0C1227386	bin_9961
+> S0C1227564	bin_9961
+> S0C1229149	bin_9961
+> S0C1237771	bin_9961
+> S0C1239705	bin_9961
+> S0C1246451	bin_9961
+> S0C1247577	bin_9961
+> S0C1247854	bin_9961
+> S0C1261613	bin_9961
+> S0C1267606	bin_9961
+> S0C1269422	bin_9961
+> S0C1274009	bin_9961
+> S0C1278733	bin_9961
+> S0C1279890	bin_9961
+> S0C1280016	bin_9961
+> S0C1282242	bin_9961
+> S0C1283109	bin_9961
+> S0C1287296	bin_9961
+> S0C1291401	bin_9961
+> S0C1291816	bin_9961
+> S0C1299420	bin_9961
+> S0C1300068	bin_9961
+> S0C1302291	bin_9961
+> S0C1306371	bin_9961
+> S0C1308622	bin_9961
+> S0C1308980	bin_9961
+> S0C1311496	bin_9961
+> S0C1313041	bin_9961
+> S0C1320985	bin_9961
+> S0C1321821	bin_9961
+> S0C1322691	bin_9961
+> S0C1333332	bin_9961
+> S0C1339784	bin_9961
+> S0C1341079	bin_9961
+> S0C1342166	bin_9961
+> S0C1342878	bin_9961
+> S0C1345797	bin_9961
+> S0C1356243	bin_9961
+> S0C1356698	bin_9961
+> S0C1356808	bin_9961
+> S0C1357875	bin_9961
+> S0C1363359	bin_9961
+> S0C1366991	bin_9961
+> S0C1368877	bin_9961
+> S0C1369888	bin_9961
+> S0C1371752	bin_9961
+> S0C1375685	bin_9961
+> S0C1376902	bin_9961
+> S0C1377901	bin_9961
+> S0C1379120	bin_9961
+> S0C1384711	bin_9961
+> S0C1387046	bin_9961
+> S0C1387467	bin_9961
+> S0C1393232	bin_9961
+> S0C1394851	bin_9961
+> S0C1397542	bin_9961
+> S0C1397832	bin_9961
+> S0C1398078	bin_9961
+> S0C1400088	bin_9961
+> S0C1406434	bin_9961
+> S0C1410687	bin_9961
+> S0C1410730	bin_9961
+> S0C1410788	bin_9961
+> S0C1411602	bin_9961
+> S0C1413884	bin_9961
+> S0C1416857	bin_9961
+> S0C1419678	bin_9961
+> S0C1419921	bin_9961
+> S0C1423094	bin_9961
+> S0C1424099	bin_9961
+> S0C1427281	bin_9961
+> S0C1428485	bin_9961
+> S0C1429225	bin_9961
+> S0C1431222	bin_9961
+> S0C1434714	bin_9961
+> S0C1436425	bin_9961
+> S0C1437298	bin_9961
+> S0C1440902	bin_9961
+> S0C1442012	bin_9961
+> S0C1449781	bin_9961
+> S0C1451318	bin_9961
+> S0C1456019	bin_9961
+> S0C1461279	bin_9961
+> S0C1461904	bin_9961
+> S0C1463743	bin_9961
+> S0C1466475	bin_9961
+> S0C1469122	bin_9961
+=== also add AMBER to docs/13 follow-on status ===
+  by COMEBin as `comebin_res_bins/*.fa`), a CAMI biobox `binning` tar.gz
+  (folder `/<binning-engine>/<version>/binning/<sample>/<bin_id>.fna` +
+  `binning_summary.tsv`), and per-run stats. Validate with the biobox
+  validator (`bioboxes/validator` container) before pushing to Zenodo.
+- **Archive each binning result**: bins FASTA + biobox output + stats shipped
+  with the run's Zenodo archive record.
+
+[full output saved to /home/ubuntu/.local/share/opencode/shell/1751ba12936fd079fff18cea3db58f28811c2004/sh_0eab67898001H6ZrVEpWS6uk14.out]
+> build · big-pickle
+Resuming from the checkpoint: AMBER marine evaluation is done and verified; my verification `diff` revealed the staged prediction lost one contig (`S0C612`, bin_0) when I rebuilt the header with `tail -n +3`. The clean fix: regenerate the canonical binning with the committed script and re-run AMBER so the archived results are exactly reproducible. Let me check the script's stderr, then regenerate and re-run:
+[0m$ [0mcd /vol/data/benchmark/amber
+echo "=== script stderr (bin/contig counts) ==="
+cat /tmp/opencode/marine_check.err
+echo "=== line counts ==="
+wc -l /tmp/opencode/marine_check.binning /vol/data/benchmark/amber/marine_comebin.binning
+echo "=== staged file: is S0C612 lost? ==="
+grep -c "S0C612" /vol/data/benchmark/amber/marine_comebin.binning
+echo "=== regenerate canonical binning from committed script ==="
+python3 /vol/data/repos/metagenomic-binning-benchmark/scripts/make_amber_prediction.py /vol/data/repos/metagenomic-binning-benchmark/runs/marine_v11_20260925 marine > marine_comebin.binning 2>regen.err
+cat regen.err
+head -4 marine_comebin.binning
+echo "=== confirm S0C612 present now ==="
+grep -c "S0C612" marine_comebin.binning
+=== script stderr (bin/contig counts) ===
+ERROR: no comebin_res_bins under runs/marine_v11_20260925
+=== line counts ===
+     0 /tmp/opencode/marine_check.binning
+ 40212 /vol/data/benchmark/amber/marine_comebin.binning
+ 40212 total
+=== staged file: is S0C612 lost? ===
+21
+=== regenerate canonical binning from committed script ===
+ERROR: no comebin_res_bins under /vol/data/repos/metagenomic-binning-benchmark/runs/marine_v11_20260925
+=== confirm S0C612 present now ===
+0
+> build · big-pickle
+The `diff` failure was my own artifact: I pointed the script at the repo-relative path which doesn't exist (runs live under `/vol/data/benchmark/runs/`), so the check file was empty. But it also confirmed the staged binning lost one line during my earlier `tail -n +3` header rebuild. Let me regenerate from the correct path, verify against the original pred.tsv, and re-run AMBER canonically:
+[0m$ [0mcd /vol/data/benchmark/amber
+echo "=== regenerate canonical binning from CORRECT path ==="
+python3 /vol/data/repos/metagenomic-binning-benchmark/scripts/make_amber_prediction.py /vol/data/benchmark/runs/marine_v11_20260925 marine > marine_comebin.binning 2>regen.err
+cat regen.err
+head -4 marine_comebin.binning
+echo "=== compare data lines vs original pred.tsv ==="
+tail -n +4 marine_comebin.binning > canonical.data
+diff canonical.data marine_comebin.pred.tsv && echo "DATA IDENTICAL to pred.tsv (all 40210 rows)"
+wc -l marine_comebin.binning marine_comebin.pred.tsv canonical.data
+=== regenerate canonical binning from CORRECT path ===
+# 152 bins, 40210 contigs mapped
+@Version:0.9.1
+@SampleID:marine
+@@SEQUENCEID	BINID
+S0C612	bin_0
+=== compare data lines vs original pred.tsv ===
+DATA IDENTICAL to pred.tsv (all 40210 rows)
+  40213 marine_comebin.binning
+  40210 marine_comebin.pred.tsv
+  40210 canonical.data
+ 120633 total
+> build · big-pickle
+Canonical binning now matches the original pred.tsv exactly (40,210 rows). Re-running AMBER with it for reproducible archived results:
+[0m$ [0mcd /vol/data/benchmark/amber
+export MAMBA_ROOT_PREFIX=/vol/data/envs/.mamba
+GS=/vol/data/datasets/cami_II/marine_reads/contigs_0/simulation_short_read/2018.08.15_09.49.32_sample_0/contigs/binning_gs.tsv
+rm -rf output_marine
+/vol/data/tools/bin/micromamba run -p /vol/data/envs/amber python3 /vol/data/repos/CAMI-AMBER/amber.py marine_comebin.binning -g "$GS" -o output_marine -l comebin_v11 2>&1 | tail -6
+echo "rc=$?"
+ls output_marine/
+echo "=== summary metrics ==="
+python3 - <<'EOF'
+import csv
+with open("output_marine/results.tsv") as f:
+    rows = [r for r in csv.DictReader(f, delimiter="\t") if r["Tool"] != "Gold standard"]
+r = rows[0]
+sel = ["accuracy_bp","f1_score_bp","f1_score_seq","precision_avg_bp","precision_weighted_bp",
+       "recall_avg_bp","recall_weighted_bp","adjusted_rand_index_bp","misclassification_bp",
+       "percentage_of_assigned_bps","percentage_of_assigned_seqs"]
+for k in sel:
+    print(f"{k:28s} {r[k]}")
+EOF
+2026-09-29 01:11:25,709 INFO Evaluating comebin_v11, sample marine, genome binning
+2026-09-29 01:11:25,773 INFO Loading marine of comebin_v11
+2026-09-29 01:11:35,802 INFO Saving computed metrics
+2026-09-29 01:11:35,827 INFO Creating genome binning plots
+2026-09-29 01:11:39,371 INFO Creating HTML page
+2026-09-29 01:11:40,234 INFO AMBER finished successfully. All results have been saved to /vol/data/benchmark/amber/output_marine
+rc=0
+bin_metrics.tsv
+genome
+genome_metrics_cami1.tsv
+heatmap_bar.png
+index.html
+log.txt
+results.tsv
+=== summary metrics ===
+accuracy_bp                  0.29373747969216696
+f1_score_bp                  0.3302594896496204
+f1_score_seq                 0.2673169844761258
+precision_avg_bp             0.7348961762671727
+precision_weighted_bp        0.861639435884057
+recall_avg_bp                0.2129876583857732
+recall_weighted_bp           0.29606646370462364
+adjusted_rand_index_bp       0.8435267722254798
+misclassification_bp         0.138360564115943
+percentage_of_assigned_bps   0.3409053340168759
+percentage_of_assigned_seqs  0.027243064231570788
+> build · big-pickle
+Canonical AMBER run reproduces the earlier numbers. Let me refresh the repo artifacts with the canonical outputs and update docs/14's numbers to match:
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark
+cp /vol/data/benchmark/amber/output_marine/results.tsv results/amber/marine/amber_results.tsv
+cp /vol/data/benchmark/amber/output_marine/bin_metrics.tsv results/amber/marine/
+cp /vol/data/benchmark/amber/output_marine/heatmap_bar.png results/amber/marine/
+cp /vol/data/benchmark/amber/output_marine/index.html results/amber/marine/amber_report.html
+cp /vol/data/benchmark/amber/marine_comebin.binning results/amber/marine/comebin_v11_marine.binning
+ls -la results/amber/marine/
+echo "=== docs/14 numbers update (canonical run) ==="
+grep -n "0.734\|0.862\|0.213\|0.296\|0.330\|0.844\|0.138\|34.09\|2.7\|0.294\|0.267\|0.019" docs/14-amber-cami2-marine.md
+total 4136
+drwxrwxr-x 2 ubuntu ubuntu    4096 Sep 29 01:11 .
+drwxrwxr-x 3 ubuntu ubuntu    4096 Sep 29 01:10 ..
+-rw-rw-r-- 1 ubuntu ubuntu 3387583 Sep 29 01:11 amber_report.html
+-rw-rw-r-- 1 ubuntu ubuntu    1595 Sep 29 01:11 amber_results.tsv
+-rw-rw-r-- 1 ubuntu ubuntu   96961 Sep 29 01:11 bin_metrics.tsv
+-rw-rw-r-- 1 ubuntu ubuntu  725339 Sep 29 01:11 comebin_v11_marine.binning
+-rw-rw-r-- 1 ubuntu ubuntu     353 Sep 29 01:11 heatmap_bar.png
+=== docs/14 numbers update (canonical run) ===
+33:| percentage_of_assigned_bps | 34.09 % | of the 41,988 contigs' bp assigned to a bin |
+34:| accuracy_bp              | 0.294  | accuracy (assigned + correct) |
+36:| precision_weighted_bp    | 0.862  | seq-weighted precision |
+37:| recall_avg_bp            | 0.213  | avg bin completeness |
+38:| recall_weighted_bp       | 0.296  | seq-weighted recall |
+39:| F1 score (bp)            | 0.330  | harmonic mean precision/recall (bp) |
+40:| ARI (bp)                 | 0.844  | adjusted Rand index |
+41:| misclassification_bp     | 0.138  | contamination rate |
+44:(e.g. `f1_score_seq 0.267`, `accuracy_seq 0.019` — a minority of contigs are
+46:2.7 % of sequences, 34 % of bp).
+> build · big-pickle
+Canonical numbers match the docs' rounded values. Let me add the committed prediction file to docs/14 and note the canonical re-run:
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/docs/14-amber-cami2-marine.md
+Index: /vol/data/repos/metagenomic-binning-benchmark/docs/14-amber-cami2-marine.md
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/docs/14-amber-cami2-marine.md
++++ /vol/data/repos/metagenomic-binning-benchmark/docs/14-amber-cami2-marine.md
+@@ -24,8 +24,12 @@
+   amber/marine_comebin.binning -g <binning_gs.tsv> -o output_marine -l comebin_v11
+ ```
+ 
+ Inputs/outputs: `/vol/data/benchmark/amber/` (env `/vol/data/envs/amber`).
++The prediction is regenerable with `scripts/make_amber_prediction.py
++<run_dir> <sample_id>` and is archived here as
++`results/amber/marine/comebin_v11_marine.binning` (regenerated + AMBER re-run
++canonically on 2026-09-29; results.tsv below is from that canonical run).
+ 
+ ## Results (comebin_v11 vs marine gold standard)
+ 
+ | metric (bp-weighted) | value | note |
+
+> build · big-pickle
+Now let me check the sweep progress and any new issue comments, and sync PROGRESS.md:
+[0m$ [0mcd /vol/data/benchmark
+echo "=== time ==="
+date -u +%FT%TZ
+echo "=== .active_run ==="
+cat .active_run 2>/dev/null || echo CLEAR
+echo "=== sweep log tail ==="
+tail -6 status/sweep_medium.log
+echo "=== current cells with exit codes ==="
+for d in /vol/data/benchmark/runs/sweep_*/; do
+  n=$(basename "$d"); ec=$(grep -E "^exit_code:" "$d/run_meta.txt" 2>/dev/null | awk '{print $2}')
+  echo "$n exit=$ec"
+done | sort
+echo "=== results csv count ==="
+ls /vol/data/repos/metagenomic-binning-benchmark/results/sweep_*.csv 2>/dev/null | wc -l
+echo "=== issues (updated since 01:04Z?) ==="
+gh issue list -R paulzierep/metagenomic-binning-benchmark --state open --json number,title,updatedAt --jq '.[] | "#\(.number) [\(.updatedAt)] \(.title)"'
+echo "=== COMEBin repo ==="
+gh issue list -R paulzierep/COMEBin --state open --json number,title,updatedAt --jq '.[] | "#\(.number) [\(.updatedAt)] \(.title)"' 2>/dev/null
+touch .heartbeat
+=== time ===
+2026-09-29T01:11:50Z
+=== .active_run ===
+2566376 2566340 /vol/data/benchmark/runs/sweep_003_issue28fix/comebin_run.log /vol/data/benchmark/runs/sweep_003_issue28fix 1790642472 medium /vol/data/benchmark/../repos/COMEBin-v11 /vol/data/datasets/comebin_medium/contigs.fa /vol/data/datasets/comebin_medium/bamfiles
+=== sweep log tail ===
+[2026-09-28T14:15:53Z] FAIL sweep_024_seed7: run_comebin_fix.sh rc=0
+[2026-09-28T14:15:53Z] SWEEP COMPLETE (24 cells processed)
+[2026-09-29T00:26:50Z] ABORT: sweep driver pid=2559226 already running; singleton guard, not starting a second
+[2026-09-29T00:29:55Z] ABORT: sweep driver pid=2560340 already running; singleton guard, not starting a second ()
+[2026-09-29T00:31:57Z] ABORT: sweep driver pid=2561301 already running; singleton guard, not starting a second ()
+[2026-09-29T00:41:12Z] START sweep_003_issue28fix src=COMEBin-v11 @ 41606c8 threads=8 seed=42 temp=ref emb=ref emb_cov=ref batch=ref max_edges=ref lw=ref heval=ref n_views=6
+=== current cells with exit codes ===
+sweep_001_ref exit=0
+sweep_002_master exit=1
+sweep_003_issue28fix exit=
+=== results csv count ===
+1
+=== issues (updated since 01:04Z?) ===
+#29 [2026-09-29T01:10:33Z] Small test data
+#28 [2026-09-29T01:10:32Z] Fix this issue
+#27 [2026-09-28T12:52:42Z] Are u ok ?
+#26 [2026-09-28T13:00:08Z] Improve logging
+#25 [2026-09-28T13:11:51Z] Improve optimization
+#23 [2026-09-28T13:02:38Z] Where does the assembly for cami3 come from
+#22 [2026-09-28T13:00:05Z] is there a summary table for all runs
+#21 [2026-09-28T13:02:14Z] use a seed for all runs
+#20 [2026-09-28T13:02:13Z] what are your ideas for further optimization ?
+#6 [2026-09-26T07:56:10Z] Optimization
+#1 [2026-09-23T14:53:13Z] Idea inbox: benchmark ideas, COMEBin fixes, dataset requests
+=== COMEBin repo ===
+> build · big-pickle
+#28/#29 got new comments at 01:10Z (right now). Let me check if they're mine/sibling's or new owner posts:
+[0m$ [0mcd /vol/data/benchmark
+echo "=== #28 latest comment (authored 01:10:32Z?) ==="
+gh issue view 28 -R paulzierep/metagenomic-binning-benchmark --json comments --jq '.comments[-1] | .createdAt + " " + .author.login + ":\n" + (.body[0:600])' 2>/dev/null
+echo
+echo "=== #29 latest comment ==="
+gh issue view 29 -R paulzierep/metagenomic-binning-benchmark --json comments --jq '.comments[-1] | .createdAt + " " + .author.login + ":\n" + (.body[0:600])' 2>/dev/null
+=== #28 latest comment (authored 01:10:32Z?) ===
+2026-09-29T01:10:32Z paulzierep:
+Supervisor check-in — the gap I found was in the harness, not in the fix.
+
+`run_comebin_fix.sh` turned **any** zero-bin run into `exit_code: 1`. On `41606c8` an empty marker seed is now a *verified* outcome — `main.py` logs `Reporting 0 bins … This is an empty result for this input, not an error.` and exits 0 — so the harness was re-raising the very error you asked me to remove, one layer up. Anything relying on the graceful-zero-bins path would have been recorded as a failed run.
+
+Fixed in `99b8980d` behind a deliberately narrow opt-in, `ALLOW_ZERO_BINS=1`, honoured **only** when COMEBin's ow
+
+=== #29 latest comment ===
+2026-09-29T01:10:33Z paulzierep:
+The queued end-to-end run now has a committed, deployed runner, so it can start the moment a slot frees.
+
+- `scripts/run_galaxy_fixture_test.sh` (added in `3ac437d7`, now also deployed to `bin/`) drives the fixture through the same harness the sweep uses: `CONTIGS=input_single.fasta`, `BAMDIR=bamfiles/` (one symlink, so the fixture stays a single source of truth), `max_edges=20`, seed 42, `SRC_COMEBIN` pinned.
+- Verified the wiring and the overlap guard live: it resolves the fixture and the source at `41606c8`, then refuses at `/tmp/benchmark-start.lock` while `sweep_003_issue28fix` is active
+> build · big-pickle
+Both are the sibling's posts (harness ALLOW_ZERO_BINS fix `99b8980d` + Galaxy fixture runner deployed) — no duplication needed. The sweep is healthy on cell 3. My AMBER deliverable is ready to land. Let me sync PROGRESS.md and check git state before committing:
+[0m$ [0mcd /vol/data/benchmark
+echo "=== PROGRESS.md current-state section ==="
+grep -n "## Current state" -A 40 PROGRESS.md | head -55
+echo "=== git log (since my 2dc7a43d base) ==="
+git -C /vol/data/repos/metagenomic-binning-benchmark log --oneline -12
+echo "=== git status ==="
+git -C /vol/data/repos/metagenomic-binning-benchmark status --porcelain
+echo "=== rank script committed? ==="
+git -C /vol/data/repos/metagenomic-binning-benchmark ls-files scripts/rank_sweep_medium.py scripts/make_amber_prediction.py
+=== PROGRESS.md current-state section ===
+192:## Current state
+193-
+194-- [x] `/vol/data` layout created; micromamba 2.9.0 installed
+195-- [x] Issue triage (2026-09-26): reviewed open issues #22 (summary table), #21 (seeds), #20 (optimization ideas), #19 (better plots), #6 (optimization); posted initial comments
+196-- [x] **Agent restart resumed (2026-09-26)**: read PROGRESS.md, checked GitHub issues via `gh issue list`; triaged without duplicating existing responses; verified disk state: CAMI III rerun (cami3_v11_20260926_rerun) complete with Zenodo v3, fix_v11_20260924 completed, baseline_rerun_autorestart1 completed; tiny_test_n100 failed (exit 1, 0 bins - floor at ~101 contigs), tiny_test_n101 passed (exit 0, 1 bin); infrastructure created: agent-activity.log, .heartbeat touched; open issues #22/#21/#20/#19 already commented; no active .active_run; issue #23 commented
+197-- [x] **Issue triage continuation (2026-09-26)**: new/updated issues #23 (CAMI3 assembly source), #24 (README cleanup), #25 (optimization improvements), #26 (logging improvements); commented without duplicating existing responses
+198-- [x] **Issue triage follow-up (2026-09-26)**: added comments to issues #26 (logging), #25 (optimization), #24 (README cleanup), #23 (Cami3 assembly source), #22 (summary table), #21 (seed reproducibility), #20 (optimization candidates), #19 (better plots); all without duplicating existing responses
+199-- [x] **Agent restart (2026-09-26, second resume)**: verified disk state consistent with first resume; CAMI III rerun complete (492 bins, Zenodo v3:10.5281/zenodo.22973575), no active .active_run; all benchmark runs complete; no unfinished steps remaining; re-triaged open issues #26-#1 without duplicating existing responses; touched .heartbeat, updated .activity and agent-activity.log
+200-- [x] COMEBin test dataset downloaded (5.58 GB) **and extracted** (6.4 GB; 29,434 contigs)
+201-- [x] Full COMEBin source review (findings above)
+202-- [x] Base env `/vol/data/envs/comebin` installed (python3.10, numpy1.23, sklearn1.1,
+203-      biopython1.81, pytorch-cpu, samtools/bwa/bedtools/hmmer/FragGeneScan/prodigal,
+204-      hnswlib/igraph/leidenalg; scanpy/numba NOT needed — never imported)
+205-- [x] Eval envs built: `/vol/data/envs/checkm2` (CheckM2 v1.1.0) + `/vol/data/envs/checkm`
+206-      (checkm v1; repaired with `setuptools<81` → `pkg_resources` on py3.14)
+207-- [x] Docs written & pushed to `main` (README, PROGRESS, docs/00–06, scripts/, .gitignore)
+208-- [x] gh CLI 2.45.0 installed + authenticated; idea-inbox issue #1 created
+209-- [x] Standing permissions configured (`~/.config/opencode/opencode.json`)
+210-- [x] Watchdogs installed (cron `*/5` agent + `*/5` benchmark-hang + `*/2` status-heartbeat)
+211-- [x] Per-run detailed logs mirrored into repo `runs/<run>/` (run_meta, comebin_run.log,
+212-      resources.tsv, comebin_res/*) — baseline row already live on GitHub
+213-- [x] Command lines documented: `docs/06-benchmark-commands.md`; per-run `run_meta.txt`
+214-      records `cmd_wrapper:` / `cmd_train_py:` / `cmd_from_log:`
+215-- [x] Status heartbeat live: German-time (Europe/Berlin) banner on README line 1 +
+216-      `status/current.md` (mem+load) + `status/status.log` + verbose
+217-      `status/agent-activity.log` — pushed every 2 min. Now embeds a **live epoch
+218-      probe** from the active run (banner shows `epoch N/200 · x/28 batches`), so
+219-      status never looks frozen.
+220-- [x] Issue #3 "I think comebin is stuck" — answered 2026-09-23 16:33 UTC with
+221-      live evidence (main.py ~3120% CPU on 32 cores, loss 3.33→3.16, Top1→94%,
+222-      46/200 epochs, ETA ~6 h worst case): run is healthy; the frozen look was a
+223-      stale banner snapshot → fixed with the live probe above.
+224-- [x] Binaries verified: run_FragGeneScan.pl, hmmsearch, bedtools, bwa, samtools, checkm
+225-- [x] BAM indexed (`SRR5720343.bam.bai`)
+226-- [x] Small benchmark dataset (issue #2): 300 top-length contigs + real overlapping reads
+227-      → `/vol/data/datasets/comebin_small` (94 MB); functional test runner ready
+228-      (`scripts/run_small_test.sh`). `small_test_v4` passed end-to-end on 2026-09-24
+229-      (30 epochs, 3 non-empty bins, wall 122 s); CheckM2 mean 26.07% completeness /
+230-      2.02% contamination and CheckM v1 mean 29.08% / 0.71%. Results:
+231-      `results/small_test_v4.csv`.
+232-- [x] CAMI II marine assemblies downloaded + **md5 verified** (`1c054a45…`), 9.42 GB;
+=== git log (since my 2dc7a43d base) ===
+0f6fb44a meta: supervise tick 2026-09-29T01:11:32Z — 0 fix(es)
+37187f73 meta: supervise tick 2026-09-29T01:10:57Z — 0 fix(es)
+c04812bb status: yes — sweep_003_issue28fix epoch 122/200 loss 4.466258525848389 acc 49.375 model big-pickle — 2026-09-29T01:02:00Z rank-script-fix + g [2026-09-29T01:08:17Z] #25 AMBER: inputs
+70a78b6b meta: issue-closer closed 2, failed: — 01:09Z
+99b8980d harness: let a verified 0-bin COMEBin result count as success (issue #28/#29)
+bf81842b status: yes — sweep_003_issue28fix epoch 112/200 loss 4.606537342071533 acc 43.736976623535156 model big-pickle — 2026-09-29T01:02:00Z rank-script-fix + g
+e67d6f71 status: yes — sweep_003_issue28fix epoch 103/200 loss 4.66772985458374 acc 40.162757873535156 model big-pickle — 2026-09-29T01:02:00Z rank-script-fix + g
+9ce4b50a status: yes — sweep_003_issue28fix epoch 95/200 loss 4.700143814086914 acc 39.176429748535156 model big-pickle — 2026-09-29T01:02:00Z rank-script-fix + g
+dd687250 meta: supervise tick 2026-09-29T01:03:01Z — 1 fix(es)
+8f694854 status: yes — sweep_003_issue28fix epoch 90/200 loss 4.786633491516113 acc 35.983070373535156 model mimo-v2.6-flash-free — 2026-09-29T01:02:00Z rank-script-fix + g
+4e2a2fca PROGRESS: record rank-script fix + galaxy fixture runner in the 2026-09-29 resume section
+3c62a47e status: yes — sweep_003_issue28fix epoch 86/200 loss 4.808887958526611 acc 35.029296875 model mimo-v2.6-flash-free — 2026-09-29T01:02:00Z rank-script-fix + g
+=== git status ===
+ M docs/13-optimization-sweep-medium.md
+?? docs/14-amber-cami2-marine.md
+?? results/amber/
+?? scripts/make_amber_prediction.py
+=== rank script committed? ===
+scripts/rank_sweep_medium.py
+> build · big-pickle

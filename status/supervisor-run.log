@@ -64682,3 +64682,242 @@ drwxrwxr-x 8 ubuntu ubuntu 4096 Sep 29 01:03 ..
 #19: CLOSED @ 2026-09-29T01:09:51Z
 #24: CLOSED @ 2026-09-29T01:09:54Z
 > build · big-pickle
+[0m$ [0mcd /tmp/opencode && for n in 28 29; do echo "--- #$n latest comment (re-check before posting) ---"; timeout 40s gh issue view $n -R paulzierep/metagenomic-binning-benchmark --json comments --jq '.comments[-1] | "\(.createdAt) \(.author.login): \(.body[0:90])"' 2>&1; done
+--- #28 latest comment (re-check before posting) ---
+2026-09-29T00:55:20Z paulzierep: Acknowledged — that's the plan I'm executing, in the order you asked: **medium-dataset fir
+--- #29 latest comment (re-check before posting) ---
+2026-09-29T00:55:19Z paulzierep: ## A small test dataset already exists upstream — Galaxy IUC `tools/comebin/test-data`
+
+So
+> build · big-pickle
+[0m← [0mWrite /tmp/opencode/c28.md
+Created file successfully: /tmp/opencode/c28.md
+> build · big-pickle
+[0m← [0mWrite /tmp/opencode/c29.md
+Created file successfully: /tmp/opencode/c29.md
+> build · big-pickle
+[0m$ [0mcd /tmp/opencode && for n in 28 29; do timeout 60s gh issue comment $n -R paulzierep/metagenomic-binning-benchmark --body-file c$n.md && echo "posted #$n"; done; echo "=== verify ==="; for n in 28 29; do echo -n "#$n comments now: "; timeout 30s gh issue view $n -R paulzierep/metagenomic-binning-benchmark --json comments --jq '.comments | length' 2>&1; done
+https://github.com/paulzierep/metagenomic-binning-benchmark/issues/28#issuecomment-5881709850
+posted #28
+https://github.com/paulzierep/metagenomic-binning-benchmark/issues/29#issuecomment-5881710058
+posted #29
+=== verify ===
+#28 comments now: 4
+#29 comments now: 2
+> build · big-pickle
+Now a full verification pass of the health checks (LLM escalation disabled so it cannot spawn another supervisor):
+[0m$ [0mcd /vol/data/benchmark && META_WATCHDOG_NO_LLM=1 timeout 600s bash bin/meta-watchdog.sh; echo "meta-watchdog rc=$?"; echo; echo "=== checks.tsv ==="; column -t -s $'\t' meta/checks.tsv 2>/dev/null || cat meta/checks.tsv; echo; echo "=== log tail ==="; tail -4 logs/meta-watchdog.log
+meta-watchdog rc=0
+
+=== checks.tsv ===
+C1_cron            ok      4 exact jobs; cron active; installed/source scripts identical + executable
+C1b_deploy         ok      deploy deferred: benchmark run pid 2566376 is live; pending: rank_sweep_medium.py(stale) run_galaxy_fixture_test.sh(missing) run_sweep_medium.sh(stale)
+C1c_unsourced_bin  ok      every installed bin script has source in repo/scripts
+C2_service         ok      pid 5551; service status + /api/info healthy
+C3_agent           ok      run_alive=0 driver=1 hb=18s transcript=10s
+C4_ratelimit       ok      failed-launch markers=1 in 360min window
+C5_github          ok      HEAD=remote after concurrent publisher; worktree edits=0
+C6_benchmark       ok      pid 2566376 mode=medium alive, log -5s fresh
+C7_disk            ok      314 GiB free
+C8_issues          broken  new/updated: #29 (Small test data) updated=2026-09-29T00:55:19Z #28 (Fix this issue) updated=2026-09-29T00:55:20Z #25 (Improve optimization) updated=2026-09-28T13:11:51Z #24 (Main readme needs cleaning) updated=2026-09-28T13:15:15Z #19 (better plots) updated=2026-09-28T13:15:17Z
+C8b_issue_close    ok      no issues marked addressed
+C9_repo_publish    ok      meta artifacts committed and HEAD=remote main
+
+=== log tail ===
+2026-09-29T00:53:06+00:00 [meta] unresolved checks present but escalation budget exhausted (3/3); issue markers left pending
+2026-09-29T00:53:06+00:00 tick done: fixes=0 broken=1 degraded=0 escalated=1
+2026-09-29T01:03:08+00:00 [meta] AUTO-FIX: GitHub/status sync repaired (HEAD=remote 8f6948542968)
+2026-09-29T01:03:21+00:00 [meta] escalating to LLM supervisor (esc #3/3): /vol/data/benchmark/meta/escalate-1790643791.txt
+> build · big-pickle
+The parent meta-watchdog holds the lock, so that run was a no-op. Re-running with a dedicated lock (the script's documented test hook):
+[0m$ [0mcd /vol/data/benchmark && cp meta/checks.tsv /tmp/opencode/checks-at-escalation.tsv && META_WATCHDOG_NO_LLM=1 META_WATCHDOG_LOCK=/tmp/meta-watchdog-supervisor-verify-$$.lock timeout 600s bash bin/meta-watchdog.sh; echo "rc=$?"; echo; echo "=== checks after my fixes ==="; column -t -s $'\t' meta/checks.tsv 2>/dev/null || cat meta/checks.tsv; echo; tail -3 logs/meta-watchdog.log
+rc=0
+
+=== checks after my fixes ===
+C1_cron            ok      4 exact jobs; cron active; installed/source scripts identical + executable
+C1b_deploy         ok      deploy deferred: benchmark run pid 2566376 is live; pending: make_amber_prediction.py(missing) run_comebin_fix.sh(stale)
+C1c_unsourced_bin  ok      every installed bin script has source in repo/scripts
+C2_service         ok      pid 5551; service status + /api/info healthy
+C3_agent           ok      run_alive=1 driver=1 hb=160s transcript=3s
+C4_ratelimit       ok      failed-launch markers=1 in 360min window
+C5_github          ok      HEAD=remote after concurrent publisher; worktree edits=4
+C6_benchmark       ok      pid 2566376 mode=medium alive, log 4s fresh
+C7_disk            ok      313 GiB free
+C8_issues          broken  new/updated: #29 (Small test data) updated=2026-09-29T01:10:33Z #28 (Fix this issue) updated=2026-09-29T01:10:32Z #25 (Improve optimization) updated=2026-09-28T13:11:51Z
+C8b_issue_close    ok      no issues marked addressed
+C9_repo_publish    ok      meta artifacts committed and HEAD=remote main
+
+2026-09-29T01:03:21+00:00 [meta] escalating to LLM supervisor (esc #3/3): /vol/data/benchmark/meta/escalate-1790643791.txt
+2026-09-29T01:11:02+00:00 [meta] verification run: unresolved checks present but LLM escalation disabled
+2026-09-29T01:11:02+00:00 tick done: fixes=0 broken=1 degraded=0 escalated=1
+> build · big-pickle
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark/scripts && ls -la make_amber_prediction.py && head -12 make_amber_prediction.py && python3 -m py_compile make_amber_prediction.py && echo "PY COMPILE OK"
+python3 - <<'PY'
+import os,glob
+t="make_amber_prediction.py"; ancestry=set(); p=os.getpid()
+while p and p>1:
+    ancestry.add(p)
+    try: p=int(open(f"/proc/{p}/stat").read().rsplit(") ",1)[1].split()[1])
+    except Exception: break
+live=[int(f.split("/")[2]) for f in glob.glob("/proc/[0-9]*/fd/*") if (lambda x: x==f"/vol/data/benchmark/bin/{t}")(os.readlink(f) if os.path.islink(f) else "")]
+users=[]
+for cd in glob.glob("/proc/[0-9]*/cmdline"):
+    pid=int(cd.split("/")[2])
+    if pid in ancestry: continue
+    try: argv=[a.decode() for a in open(cd,"rb").read().split(b"\0") if a]
+    except OSError: continue
+    if any(a==f"/vol/data/benchmark/bin/{t}" for a in argv): users.append(pid)
+print("open_fds:",[x for x in live if x not in ancestry],"argv_users:",users,"=>","EXECUTING" if (live or users) else "idle - safe to deploy")
+PY
+-rw-rw-r-- 1 ubuntu ubuntu 2220 Sep 29 01:10 make_amber_prediction.py
+#!/usr/bin/env python3
+"""make_amber_prediction.py — build an AMBER genome-binning prediction TSV.
+
+Issue #25 follow-on: AMBER needs a `@@SEQUENCEID BINID` binning file plus the
+CAMI `@Version` / `@SampleID` metadata header. COMEBin already writes one FASTA
+per final bin, so this script just walks a `comebin_res_bins` directory
+
+  python3 make_amber_prediction.py <run_dir> <sample_id> > out.binning
+
+The mapped contig ids are the FASTA record names (no leading `>`); bin ids are
+`bin_<filename-without-ext>`. Output is written to stdout; the header block is
+`@Version:0.9.1`, `@SampleID:<sample_id>`, `@@SEQUENCEID\tBINID` (matches what
+PY COMPILE OK
+Traceback (most recent call last):
+  File "<stdin>", line 7, in <module>
+PermissionError: [Errno 13] Permission denied: '/proc/2861/fd/0'
+> build · big-pickle
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark/scripts && python3 - <<'PY'
+import os,glob
+t="make_amber_prediction.py"
+ancestry=set(); p=os.getpid()
+while p and p>1:
+    ancestry.add(p)
+    try: p=int(open(f"/proc/{p}/stat").read().rsplit(") ",1)[1].split()[1])
+    except Exception: break
+live=[]
+for f in glob.glob("/proc/[0-9]*/fd/*"):
+    try: tgt=os.readlink(f)
+    except OSError: continue
+    if tgt==f"/vol/data/benchmark/bin/{t}": live.append(int(f.split("/")[2]))
+users=[]
+for cd in glob.glob("/proc/[0-9]*/cmdline"):
+    pid=int(cd.split("/")[2])
+    if pid in ancestry: continue
+    try: argv=[a.decode() for a in open(cd,"rb").read().split(b"\0") if a]
+    except OSError: continue
+    if any(a==f"/vol/data/benchmark/bin/{t}" for a in argv): users.append(pid)
+print("open_fds:",[x for x in live if x not in ancestry],"argv_users:",users,"=>","EXECUTING - DO NOT DEPLOY" if (live or users) else "idle - safe to deploy")
+PY
+open_fds: [] argv_users: [] => idle - safe to deploy
+> build · big-pickle
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark/scripts && cp make_amber_prediction.py /vol/data/benchmark/bin/.make_amber_prediction.py.deploy-new && chmod 644 /vol/data/benchmark/bin/.make_amber_prediction.py.deploy-new && mv /vol/data/benchmark/bin/.make_amber_prediction.py.deploy-new /vol/data/benchmark/bin/make_amber_prediction.py && cmp -s make_amber_prediction.py /vol/data/benchmark/bin/make_amber_prediction.py && echo "deployed+identical: make_amber_prediction.py" && python3 -m py_compile /vol/data/benchmark/bin/make_amber_prediction.py && echo "deployed copy compiles"
+echo "=== final C1b rescan ==="
+for src in /vol/data/repos/metagenomic-binning-benchmark/scripts/*; do [ -f "$src" ] || continue; j=$(basename "$src"); case "$j" in __pycache__|*.pyc|*.pyo) continue;; esac
+  d="/vol/data/benchmark/bin/$j"; if [ ! -f "$d" ]; then echo "  $j(missing)"; elif ! cmp -s "$src" "$d"; then echo "  $j(stale)"; fi; done
+echo "=== final C1c rescan ==="
+for f in /vol/data/benchmark/bin/*; do [ -f "$f" ] || continue; j=$(basename "$f"); case "$j" in .*|__pycache__|*.pyc|*.pyo) continue;; esac
+  [ -f "/vol/data/repos/metagenomic-binning-benchmark/scripts/$j" ] || echo "  ORPHAN $j"; done
+echo "(only run_comebin_fix.sh(stale) expected above — it is the file the live run has open)"
+deployed+identical: make_amber_prediction.py
+deployed copy compiles
+=== final C1b rescan ===
+  run_comebin_fix.sh(stale)
+=== final C1c rescan ===
+(only run_comebin_fix.sh(stale) expected above — it is the file the live run has open)
+> build · big-pickle
+[0m$ [0mecho "=== live run untouched? ==="; cat /vol/data/benchmark/.active_run; echo "--- pid alive / cmdline ---"; ps -o pid=,stat=,etimes= -p 2566376; tr '\0' ' ' < /proc/2566376/cmdline; echo; echo "--- training progress ---"; grep -a "epoch=" /vol/data/benchmark/runs/sweep_003_issue28fix/comebin_run.log | tail -2; echo "--- log freshness ---"; echo "$(( $(date +%s) - $(stat -c %Y /vol/data/benchmark/runs/sweep_003_issue28fix/comebin_run.log) ))s since last write"; echo "=== driver + sweep driver alive ==="; ps -o pid=,etimes=,args= -p 2566340 2583722 2>/dev/null | cut -c1-120
+=== live run untouched? ===
+2566376 2566340 /vol/data/benchmark/runs/sweep_003_issue28fix/comebin_run.log /vol/data/benchmark/runs/sweep_003_issue28fix 1790642472 medium /vol/data/benchmark/../repos/COMEBin-v11 /vol/data/datasets/comebin_medium/contigs.fa /vol/data/datasets/comebin_medium/bamfiles
+--- pid alive / cmdline ---
+2566376 S       1814
+bash /vol/data/benchmark/bin/run_comebin_fix.sh /vol/data/benchmark/runs/sweep_003_issue28fix 
+--- training progress ---
+2026-09-29 01:11:07,073 - NN training: epoch=128/200, batches=2, loss=4.4352059, top1=50.8756, elapsed=13.148s, process_memory={'VmPeak': '6613928 kB', 'VmRSS': '1557492 kB'}, gpu_memory=None.
+2026-09-29 01:11:20,104 - NN training: epoch=129/200, batches=2, loss=4.4732895, top1=48.9746, elapsed=13.031s, process_memory={'VmPeak': '6613928 kB', 'VmRSS': '1590260 kB'}, gpu_memory=None.
+--- log freshness ---
+1s since last write
+=== driver + sweep driver alive ===
+2566340    1814 bash /vol/data/repos/metagenomic-binning-benchmark/scripts/run_sweep_medium.sh --from 3
+2583722     449 opencode run --auto --session ses_f31799c77ffeTq9gcYgqc4hBhg --model opencode/big-pickle --title watchdo
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && echo "=== .gitignore covers pycache? ==="; grep -n "pycache\|\.pyc" .gitignore; echo "=== untracked files anywhere? ==="; git status --porcelain --untracked-files=all | grep '^??' || echo "  none"; echo "=== full worktree status ==="; git status --porcelain; echo "=== HEAD == remote ? ==="; echo "local : $(git rev-parse HEAD)"; echo "remote: $(timeout 30s git ls-remote origin refs/heads/main | awk '{print $1}')"
+=== .gitignore covers pycache? ===
+11:__pycache__/
+=== untracked files anywhere? ===
+?? docs/14-amber-cami2-marine.md
+?? results/amber/marine/amber_report.html
+?? results/amber/marine/amber_results.tsv
+?? results/amber/marine/bin_metrics.tsv
+?? results/amber/marine/heatmap_bar.png
+?? scripts/make_amber_prediction.py
+=== full worktree status ===
+ M docs/13-optimization-sweep-medium.md
+?? docs/14-amber-cami2-marine.md
+?? results/amber/
+?? scripts/make_amber_prediction.py
+=== HEAD == remote ? ===
+local : 37187f7341c14f5052c61df77ad7741556cf7d9a
+remote: 37187f7341c14f5052c61df77ad7741556cf7d9a
+> build · big-pickle
+[0m$ [0mcd /vol/data/benchmark && META_WATCHDOG_NO_LLM=1 META_WATCHDOG_LOCK=/tmp/meta-watchdog-supervisor-verify-final.lock timeout 600s bash bin/meta-watchdog.sh; echo "rc=$?"; echo; column -t -s $'\t' meta/checks.tsv; echo; tail -2 logs/meta-watchdog.log
+rc=0
+
+C1_cron            ok      4 exact jobs; cron active; installed/source scripts identical + executable
+C1b_deploy         ok      deploy deferred: benchmark run pid 2566376 is live; pending: run_comebin_fix.sh(stale)
+C1c_unsourced_bin  ok      every installed bin script has source in repo/scripts
+C2_service         ok      pid 5551; service status + /api/info healthy
+C3_agent           ok      run_alive=1 driver=1 hb=195s transcript=28s
+C4_ratelimit       ok      failed-launch markers=1 in 360min window
+C5_github          ok      HEAD=remote after concurrent publisher; worktree edits=4
+C6_benchmark       ok      pid 2566376 mode=medium alive, log 0s fresh
+C7_disk            ok      313 GiB free
+C8_issues          broken  new/updated: #29 (Small test data) updated=2026-09-29T01:10:33Z #28 (Fix this issue) updated=2026-09-29T01:10:32Z #25 (Improve optimization) updated=2026-09-28T13:11:51Z
+C8b_issue_close    ok      no issues marked addressed
+C9_repo_publish    ok      meta artifacts committed and HEAD=remote main
+
+2026-09-29T01:11:37+00:00 [meta] verification run: unresolved checks present but LLM escalation disabled
+2026-09-29T01:11:37+00:00 tick done: fixes=0 broken=1 degraded=0 escalated=1
+> build · big-pickle
+Clean state. Now the required log line:
+[0m$ [0mcd /vol/data/benchmark && cat >> logs/supervisor-actions.log <<'EOF'
+2026-09-29T01:12:00Z [supervisor] Escalation 01:03Z: only C8 broken (new/updated #29,#28,#25,#24,#19); every other check ok and the escalation budget was at 3/3. Found and fixed one real defect the checks do not cover: run_comebin_fix.sh turned ANY zero-bin run into exit_code=1, so on COMEBin 41606c8 an empty marker seed — which main.py now logs as "Reporting 0 bins ... This is an empty result for this input, not an error." and exits 0 — was re-raised as a harness failure, re-introducing exactly the error issue #28 removed, and the 800 kb Galaxy fixture from #29 could only ever be recorded as a failed run. Added a narrow opt-in ALLOW_ZERO_BINS=1 honoured ONLY when COMEBin's own log carries that empty-result marker (default behaviour unchanged, so the #25 sweep cells and the medium/large gates keep their strictness) and set it in run_galaxy_fixture_test.sh. Verified on a truncated copy with micromamba/launch-lock/.active_run redirected to temp paths: 0-bin+marker+opt-in -> rc=0; 0-bin+marker without opt-in -> rc=1; 0-bin without the marker even with the opt-in -> rc=1; bins present -> rc=0 either way; fixture runner wiring verified live (resolves fixture + source at 41606c8, then correctly refuses at /tmp/benchmark-start.lock while the sweep cell is active, creating no run dir and leaving the registration intact). Committed 99b8980d and pushed under /tmp/bench-repo.lock with an explicit 2-path pathspec; index was empty beforehand and the concurrent driver's in-flight docs/13, docs/14, results/amber/ and scripts/make_amber_prediction.py were left uncommitted and untouched. Deployed 4 pending bin scripts that are provably NOT executing (rank_sweep_medium.py, run_sweep_medium.sh, run_galaxy_fixture_test.sh, make_amber_prediction.py — each checked for open fds and exact argv match against /proc, then byte-compared and syntax/compile-checked), which cleared the C1b drift the blanket run-live deferral had been holding for the whole 20 h sweep; deliberately did NOT deploy run_comebin_fix.sh, which the live sweep_003_issue28fix process (pid 2566376) has open, since bash reads scripts incrementally — C1b's own deferral path will install it once the cell finishes, so C1b stays honestly "ok / deferred" with exactly that one item. Verified #24 and #19 complete against origin/main (not the local tree) rather than trusting the delivery comments: the six README headings are plain with no a.-f. prefixes and the banner/plot/all-runs table are still embedded, and the plot generator carries the compact two-line labels + wider figure + computed left margin with 4 dataset rows confirmed from live run data — then wrote .issues_done/24 and .issues_done/19 and let the deterministic issue-closer close them (verified CLOSED on GitHub at 01:09:51Z/01:09:54Z, markers consumed, empty again); no issue was closed by any other means. Posted one new comment each on #28 and #29 covering only the harness fix and the fixture runner (re-checked comment lists immediately before posting to avoid duplicating the 00:55Z replies), and posted nothing on #25 whose 13:11Z status was already accurate. Did not push COMEBin 41606c8 to origin: the owner set the sequence medium-dataset-first-then-master, cell 3 is still training (epoch 129/200 at 01:11Z, log fresh, pid 2566376 alive and untouched), and publishing an unreleased commit to the public COMEBin remote is the driver's call — the sha is recorded in the pushed benchmark repo (PROGRESS.md, docs/13) so it cannot be lost. No cron reinstall (C1 was ok), no service/driver/watchdog restart, no stale state cleared beyond the 4 verified deploys, live run never touched. Final verification tick: C1/C1b/C1c/C2/C3/C4/C5/C6/C7/C8b/C9 ok, C8 still broken only for #28/#29/#25 whose seen-markers the parent tick advances when this supervisor run returns rc=0; 313 GiB free; HEAD=remote 37187f73.
+EOF
+echo "appended; line count: $(wc -l < logs/supervisor-actions.log)"; tail -c 400 logs/supervisor-actions.log
+appended; line count: 17
+d, docs/13) so it cannot be lost. No cron reinstall (C1 was ok), no service/driver/watchdog restart, no stale state cleared beyond the 4 verified deploys, live run never touched. Final verification tick: C1/C1b/C1c/C2/C3/C4/C5/C6/C7/C8b/C9 ok, C8 still broken only for #28/#29/#25 whose seen-markers the parent tick advances when this supervisor run returns rc=0; 313 GiB free; HEAD=remote 37187f73.
+> build · big-pickle
+[0m✗ [0mcd /vol/data/repos/metagenomic-binning-benchmark && (
+  exec 8>/tmp/bench-repo.lock
+  flock -w 30 8 || { echo "LOCK TIMEOUT"; exit 1; }
+  echo "=== staged before me (must be empty) ==="; git diff --cached --name-only; echo "(end)"
+  echo "=== worktree: only the driver's in-flight files should remain ==="; git status --porcelain
+  echo "=== HEAD vs remote ==="; echo "local : $(git rev-parse HEAD)"; echo "remote: $(timeout 30s git ls-remote origin refs/heads/main | awk '{print $1}')"
+  timeout 90s git push -q && echo "PUSH OK (nothing of mine outstanding)"
+  echo "final local : $(git rev-parse HEAD)"
+  echo "final remote: $(timeout 30s git ls-remote origin refs/heads/main | awk '{print $1}')"
+) 2>&1; echo; echo "=== is supervisor-actions.log tracked? ==="; cd /vol/data/repos/metagenomic-binning-benchmark && git check-ignore -v /vol/data/benchmark/logs/supervisor-actions.log 2>/dev/null || echo "not in repo (bench log, outside the repo tree)" failed
+[91m[1mError: [0mNo tool named "bash" is currently available. Please use a tool from the available tool list.
+> build · big-pickle
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && (
+  exec 8>/tmp/bench-repo.lock
+  flock -w 30 8 || { echo "LOCK TIMEOUT"; exit 1; }
+  echo "=== staged before me (must be empty) ==="; git diff --cached --name-only; echo "(end)"
+  echo "=== worktree: only the driver's in-flight files should remain ==="; git status --porcelain
+  echo "=== HEAD vs remote ==="; echo "local : $(git rev-parse HEAD)"; echo "remote: $(timeout 30s git ls-remote origin refs/heads/main | awk '{print $1}')"
+  timeout 90s git push -q && echo "PUSH OK (nothing of mine outstanding)"
+  echo "final local : $(git rev-parse HEAD)"
+  echo "final remote: $(timeout 30s git ls-remote origin refs/heads/main | awk '{print $1}')"
+) 2>&1
+=== staged before me (must be empty) ===
+(end)
+=== worktree: only the driver's in-flight files should remain ===
+ M docs/13-optimization-sweep-medium.md
+?? docs/14-amber-cami2-marine.md
+?? results/amber/
+?? scripts/make_amber_prediction.py
+=== HEAD vs remote ===
+local : 0f6fb44a1e73fac7df7ea576bc2896a45ef5e755
+remote: 0f6fb44a1e73fac7df7ea576bc2896a45ef5e755
+PUSH OK (nothing of mine outstanding)
+final local : 0f6fb44a1e73fac7df7ea576bc2896a45ef5e755
+final remote: 0f6fb44a1e73fac7df7ea576bc2896a45ef5e755
