@@ -120137,3 +120137,26 @@ Let me check a few of the key open issues that need triage:
 [0m$ [0mgh issue view 21 --repo paulzierep/metagenomic-binning-benchmark --json  "number,title,updatedAt,body,comments" 2>/dev/null | head -30
 {"body":"make sure to use a seed for all runs, so runs re reproducible","comments":[{"id":"IC_kwDOUndL2c8AAAABXF_E3Q","author":{"login":"paulzierep"},"authorAssociation":"OWNER","body":"Good point on seeds for reproducibility. The project already uses seed 42 for COMEBin runs (as seen in run_meta.txt across benchmarks), and the optimization fix batches commit / on the  branch addressed sklearn KMeans compatibility. For full reproducibility, we should also ensure Python/RNG states are seeded at the start of each run (numpy, PyTorch, and the Leiden optimizer). This would complement the existing seed=42 approach and make across-run comparisons more reliable.","createdAt":"2026-09-26T08:51:21Z","includesCreatedEdit":false,"isMinimized":false,"minimizedReason":"","reactionGroups":[],"url":"https://github.com/paulzierep/metagenomic-binning-benchmark/issues/21#issuecomment-5844747485","viewerDidAuthor":true},{"id":"IC_kwDOUndL2c8AAAABXHdNDQ","author":{"login":"paulzierep"},"authorAssociation":"OWNER","body":"Seed 42 is used consistently across COMEBin runs (demo, small, medium, human, marine, CAMI III). For full reproducibility, the project should also seed Python RNG states (numpy, PyTorch) and the Leiden optimizer at the start of each run, complementing the existing seed=42 approach. This would make across-run comparisons more reliable, especially when benchmarking fix batches. The optimization fix batches on branch comebin-optimizations-v11 already address KMeans n_jobs compatibility for sklearn >=1.0.","createdAt":"2026-09-26T12:31:26Z","includesCreatedEdit":false,"isMinimized":false,"minimizedReason":"","reactionGroups":[],"url":"https://github.com/paulzierep/metagenomic-binning-benchmark/issues/21#issuecomment-5846289677","viewerDidAuthor":true},{"id":"IC_kwDOUndL2c8AAAABXecZBw","author":{"login":"paulzierep"},"authorAssociation":"OWNER","body":"## Seed 42 — status\n\n- **Every evaluated run uses seed 42**: baseline, small_test_v4, medium, fix_v11, human, marine, CAMI III rerun (recorded in each `run_meta.txt` `seed:`, and in results/main_runs_table.md). Demo/small were pre-seed; medium onward all seeded.\n- The v1.1.0 fork exposes `-s INT` (added to run_comebin.sh) — the harness passes `-s $SEED` when supported, and refuses silent unseeded runs.\n- **Remaining gap**: COMEBin's Python/PyTorch RNG (numpy, torch, random) is not explicitly seeded in `main.py`; upstream relies on the CLI seed for contig ordering but not for in-process RNG. **Planned** (small fix + regression): seed numpy/torch/random exactly from the same `-s` value in `main.py` train, then re-run `sweep_024_seed7` to confirm deterministic binning (docs/13). This is on the optimization branch, one commit per batch (docs/07), post-#25-sweep.","createdAt":"2026-09-28T13:02:14Z","includesCreatedEdit":false,"isMinimized":false,"minimizedReason":"","reactionGroups":[],"url":"https://github.com/paulzierep/metagenomic-binning-benchmark/issues/21#issuecomment-5870393607","viewerDidAuthor":true}],"number":21,"title":"use a seed for all runs","updatedAt":"2026-09-28T13:02:14Z"}
 > build · nemotron-3.5-lightning-free
+Now let me check if sweep_008_emb4096 has completed, and update the status accordingly:
+[0m$ [0mtail -3 /vol/data/benchmark/runs/sweep_008_emb4096/comebin_run.log
+[2026-09-29 07:55:02] INFO: [CheckM - analyze] Identifying marker genes in bins.
+[2026-09-29 07:55:02] INFO: Identifying marker genes in 8 bins with 8 threads:
+    Finished processing 0 of 8 (0.00%) bins.    Finished processing 1 of 8 (12.50%) bins.    Finished processing 2 of 8 (25.00%) bins.    Finished processing 3 of 8 (37.50%) bins.    Finished processing 4 of 8 (50.00%) bins.
+[0m$ [0mcat /vol/data/benchmark/runs/sweep_008_emb4096/run_meta.txt
+run:        /vol/data/benchmark/runs/sweep_008_emb4096
+source:     /vol/data/benchmark/../repos/COMEBin-v11-sweep (branch )
+date:       2026-09-29T06:46:30+00:00
+commit:     95f5ea820f9a4e76f5c2911c0b5ed507ab67b015
+contigs:    /vol/data/datasets/comebin_medium/contigs.fa
+bamdir:     /vol/data/datasets/comebin_medium/bamfiles
+threads:    8
+n_views:    6
+seed:       42
+allow_zero_bins: 0
+sweep:      temp=ref emb=4096 emb_cov=ref batch=ref max_edges=ref leiden_workers=ref hmm_evalue=ref n_views=6
+host:       32 cores, 62G RAM, gpu=none
+cmd_wrapper: /vol/data/tools/bin/micromamba run -p /vol/data/envs/comebin bash run_comebin.sh -a /vol/data/datasets/comebin_medium/contigs.fa -p /vol/data/datasets/comebin_medium/bamfiles -o /vol/data/benchmark/runs/sweep_008_emb4096/comebin_out -n 6 -t 8 -d cpu -s 42 -e 4096
+[0m$ [0mps aux | grep "run_comebin_fix.sh" | grep -v grep
+ubuntu   3093445  0.0  0.0   7876  3608 ?        S    06:46   0:00 bash /vol/data/benchmark/bin/run_comebin_fix.sh /vol/data/benchmark/runs/sweep_008_emb4096
+ubuntu   3093479  0.0  0.0   8392  3140 ?        S    06:46   0:00 bash /vol/data/benchmark/bin/run_comebin_fix.sh /vol/data/benchmark/runs/sweep_008_emb4096
+> build · nemotron-3.5-lightning-free
