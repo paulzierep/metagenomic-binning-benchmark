@@ -1,6 +1,6 @@
 <!--AGENT-STATUS-->
 
-> 🔴 **Agent status:** `stopped (watchdog will restart)` · ⏱ `2026-09-29T23:34 CEST` · 🏃 train sweep_022_comboB: epoch 9/200 · loss 8.084604263305664 · top1 0.3645833134651184 · 🧠 `nemotron-3.5-lightning-free` · [status.log](status/status.log)
+> 🔴 **Agent status:** `stopped (watchdog will restart)` · ⏱ `2026-09-29T23:36 CEST` · 🏃 train sweep_022_comboB: epoch 14/200 · loss 7.7440714836120605 · top1 0.634765625 · 🧠 `nemotron-3.5-lightning-free` · [status.log](status/status.log)
 
 # Metagenomic binning benchmark
 
