@@ -1,9 +1,27 @@
 # Optimization sweep on the medium dataset (issue #25)
 
-Status: **design / plan — not yet launched**. Launch blocked while
-`/vol/data/benchmark/.active_run` is held (sibling's `small_v11_prepatch_baseline`).
-This doc defines the grid, ranking rule, and follow-on steps so the sweep can be
-run by any session once the run slot is free.
+Status: **LIVE** (2026-09-28 13:09Z – …). Driver `scripts/run_sweep_medium.sh`
+runs the 24 cells **serially, one at a time, never overlapping the registered
+run slot** (`.active_run` gate + wait-active_clear), is resumable (`--from N`
+skips completed cells, RESUME-evals orphaned rc=0 runs), and is a singleton
+(`pgrep` ancestor/child guard + `flock`). Each cell is a full medium run with
+seed 42, THREADS 8, registered via `run_comebin_fix.sh`.
+
+Cell status (2026-09-29 01:10Z):
+- `sweep_001_ref` (v11 `95f5ea8` reference) — ✅ done, eval'd: 2,827 s wall,
+  17 bins, CheckM2 34.22 / 4.11 (HQ 0 / MQ 2), CheckM 32.00 / 5.31 (0 / 3).
+- `sweep_002_master` (stock upstream `904f649`, unseeded) — ❌ documented
+  failure: stock master dies on the medium BAM/assembly mismatch (issue-#2
+  family; `KeyError: 'BATS_…_scaffold_22978'`), exit 1 after 108 s, 0 bins —
+  not retried, root cause in `runs/sweep_002_master/` + #28 thread.
+- `sweep_003_issue28fix` (v11 `41606c8`, issue-#28 fix) — 🟡 training
+  (2026-09-29 00:41Z…).
+- cells 4–24 — pending, in grid order below.
+
+Harness fixes landed while the sweep stalled (see #28 thread, commits
+`fa69730a 55ad99dd 57b9cb5d 20ca7e39`): `${TEMP:-}`-style `set -u` guards +
+`-l/-e/-b/-m/-w/-E` forwarding in `run_comebin_fix.sh`; singleton-guard
+self-match fix (ancestor/child walk, ≥5 s age, double probe).
 
 Owner's requirements (issue #25, verbatim intent):
 

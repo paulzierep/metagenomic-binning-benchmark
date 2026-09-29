@@ -738,6 +738,19 @@ included; fixes land on branch `comebin-optimizations` in this repo.
   `MAX_EDGES=20` (Galaxy's own value; 100 > 40 contigs → `ValueError`),
   `bamfiles/` symlink created, and it inherits the harness's
   no-overlap/no-overwrite guards. Pushed `9d36e82c`, `3ac437d7`.
+- **AMBER marine evaluation delivered (01:11Z, #25 follow-on)**: official
+  CAMI-standard scoring of `marine_v11_20260925` (152 final bins) against the
+  official CAMI II marine gold standard (`binning_gs.tsv` @Version 0.9.1,
+  1,475,976 rows). AMBER cloned to `/vol/data/repos/CAMI-AMBER`, env
+  `/vol/data/envs/amber` (Python 3.11); prediction regenerable via new
+  `scripts/make_amber_prediction.py` and archived as
+  `results/amber/marine/comebin_v11_marine.binning`. **RESULTS (bp-weighted)**:
+  F1 0.330, precision_avg 0.735 (weighted 0.862), recall_avg 0.213 (weighted
+  0.296), ARI 0.844, accuracy 0.294, misclassification 0.138, 34.1 % of bp
+  assigned. Full write-up `docs/14-amber-cami2-marine.md`; artifacts in
+  `results/amber/marine/` (amber_results.tsv, bin_metrics.tsv,
+  amber_report.html, heatmap_bar.png). Human + CAMI III AMBER evals can now be
+  one-liners after the sweep winner is chosen.
 
 ## Watchdog / restart
 
