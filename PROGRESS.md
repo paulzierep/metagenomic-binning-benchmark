@@ -760,8 +760,16 @@ included; fixes land on branch `comebin-optimizations` in this repo.
   assigned. Docs/15 + `results/amber/human/`; docs/01 + docs/13 TODO cleared.
   Side-by-side: marine F1 0.330 (34 % bp assigned) vs human F1 0.681 (99 %).
 - **Biobox exports generated** for `marine_v11_20260925` (152), 
-  `human_v11_20260925` (107) and `cami3_v11_20260926_rerun` (492) via
-  `scripts/export_biobox.sh` → `runs/<run>/biobox/{tree/comebin/v11/binning/<sample>, binning.tar.gz, binning_summary.tsv}`.
+  `human_v11_20260925` (107), `medium_v11_20260924` and
+  `cami3_v11_20260926_rerun` (492) via `scripts/export_biobox.sh` →
+  `runs/<run>/biobox/{<sample>.binning, tree/comebin/v11/binning/<sample>/*.fna,
+  binning.tar.gz, binning_summary.tsv, bins.fasta.gz, stats.csv}`.
+  Exporter hardened: emits the **authoritative CAMI binning v0.9.1
+  `<sample>.binning`** (`@@SEQUENCEID BINID`, the same format AMBER consumes)
+  and computes **numeric** contig lengths (was `NA`). New
+  `scripts/validate_binning.py` structurally validates the format (upstream
+  `bioboxes/validator` is assembler-only and not public). All four validated OK.
+  `runs/*/biobox/` is `.gitignore`d (binaries → Zenodo, not git).
 
 ## Watchdog / restart
 

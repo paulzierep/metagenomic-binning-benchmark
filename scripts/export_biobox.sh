@@ -5,18 +5,22 @@
 # standard, also export each binning result: bins in fasta, biobox output,
 # stats".
 #
-# CAMI biobox binning layout (https://github.com/bioboxes/rfc/blob/master/
-# data-format/binning.rst):
+# CAMI binning output format v0.9.1 (authoritative, bioboxes/rfc data-format/
+# binning.mkd): a single TAB-delimited `<sample>.binning` text file with a
+# header (`@Version:0.9.1`, `@SampleID:<sample>`) and columns
+# `@@SEQUENCEID	BINID`. This is exactly what AMBER consumes.
 #
-#   <input>/binning/<engine>/<version>/binning/<sample>/<bin_id>.fna
-#   <input>/binning/<engine>/<version>/binning_summary.tsv
+# We additionally ship the per-bin FASTA (owner #25: "bins in fasta") and a
+# convenience `binning_summary.tsv` (bin_id, contig_id, contig_len) whose
+# contig_len is computed from the FASTA sequence.
 #
 # Our run layout:
 #   runs/<run>/comebin_out/comebin_res/comebin_res_bins/<id>.fa   (cluster bins)
 #   runs/<run>/per_bin_results.csv                                (stats)
 #
 # Output (written next to the run dir):
-#   runs/<run>/biobox/binning.tar.gz                              (CAMI-compliant)
+#   runs/<run>/biobox/<sample>.binning                            (CAMI v0.9.1)
+#   runs/<run>/biobox/binning.tar.gz                              (tree of bins)
 #   runs/<run>/biobox/bins.fasta.gz                               (all bins, concat)
 #   runs/<run>/biobox/binning_summary.tsv                         (per-bin stats)
 #
@@ -46,26 +50,34 @@ for f in "$BINS_DIR"/*.fa; do
 done
 [ "$bin_count" -gt 0 ] || { echo "ERROR: no bin fastas found"; exit 1; }
 
-# binning_summary.tsv (biobox column layout: bin_id, contig_id, contig_len) —
-# one row per contig membership; contig length parsed from the FASTA defline
-# `length=<bp>` when present, else computed on the fly.
+# binning_summary.tsv (convenience: bin_id, contig_id, contig_len) and the
+# authoritative CAMI v0.9.1 `<sample>.binning` (SEQUENCEID -> BINID), built in
+# one pass. contig_len is computed from the FASTA sequence (COMEBin bin deflines
+# carry no `length=` tag; the sequence is authoritative anyway).
 summary="$OUT/tree/$ENGINE/$VERSION/binning_summary.tsv"
+binning="$OUT/$SAMPLE.binning"
 {
   echo -e "bin_id\tcontig_id\tcontig_len"
   for f in "$TREE"/*.fna; do
     bin_id=$(basename "$f" .fna)
     awk -v bin="$bin_id" '
       /^>/ {
+        if (name != "") print bin "\t" name "\t" len
         name = substr($1, 2)
-        if (match($0, /length=[0-9]+/))
-          len = substr($0, RSTART + 7, RLENGTH - 7)
-        else
-          len = "NA"
-        print bin "\t" name "\t" len
+        len = 0
+        next
       }
+      { len += length($0) }
+      END { if (name != "") print bin "\t" name "\t" len }
     ' "$f"
   done
 } > "$summary"
+
+{
+  printf '@Version:0.9.1\n@SampleID:%s\n' "$SAMPLE"
+  printf '@@SEQUENCEID\tBINID\n'
+  tail -n +2 "$summary" | awk -F'\t' '{print $2 "\t" $1}'
+} > "$binning"
 
 # Concatenated bins (for easy archival + stats consumers).
 cat "$TREE"/*.fna | gzip > "$OUT/bins.fasta.gz"
@@ -82,13 +94,16 @@ sample:  $SAMPLE
 bins:    $bin_count
 
 Contents:
-  binning.tar.gz          CAMI biobox compliant (engine/version/binning_summary.tsv)
+  $SAMPLE.binning        CAMI binning format v0.9.1 (SEQUENCEID -> BINID)
+  binning.tar.gz          per-bin FASTA tree (engine/version/binning/sample/*.fna)
   bins.fasta.gz           all bins concatenated, FASTA
-  binning_summary.tsv     contig membership + length per bin
+  tree/.../binning_summary.tsv  contig membership + computed length per bin
   stats.csv               per-bin CheckM2/CheckM v1 (from per_bin_results.csv)
 
-Validate with the biobox validator (container) before archival:
-  docker run -v $(pwd):/data bioboxes/validator /data/binning.tar.gz binning
+CAMI binning format v0.9.1: https://github.com/bioboxes/rfc (data-format/binning.mkd).
+This is the same file AMBER consumes (scripts/make_amber_prediction.py).
+Validate structurally before archival:
+  python3 scripts/validate_binning.py $OUT/$SAMPLE.binning
 EOF
 
 # Per-bin stats snapshot when available.

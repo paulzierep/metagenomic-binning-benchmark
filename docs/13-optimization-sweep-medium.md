@@ -116,11 +116,19 @@ leiden_workers = threads).
   publish full assemblies); only the demo/medium/small/tiny derivations were
   length-filtered for COMEBin feasibility.
 - **Biobox export (CAMI standard)**:
-  `scripts/export_biobox.sh <run>` → per-run
-  `runs/<run>/biobox/` containing bins in FASTA (`bin_*.fa`; already produced
-  by COMEBin as `comebin_res_bins/*.fa`), a CAMI biobox `binning` tar.gz
-  (folder `/<binning-engine>/<version>/binning/<sample>/<bin_id>.fna` +
-  `binning_summary.tsv`), and per-run stats. Validate with the biobox
-  validator (`bioboxes/validator` container) before pushing to Zenodo.
+  `bash scripts/export_biobox.sh <run>` → per-run
+  `runs/<run>/biobox/` containing:
+  - `<sample>.binning` — the **authoritative CAMI binning format v0.9.1**
+    (`@Version`/`@SampleID` + `@@SEQUENCEID BINID`), the same file AMBER
+    consumes; this is the actual CAMI standard output.
+  - `tree/<engine>/<version>/binning/<sample>/<bin_id>.fna` + a
+    `binning_summary.tsv` with **computed numeric** contig lengths (COMEBin
+    deflines carry no `length=`), plus `bins.fasta.gz` (all bins) and
+    `stats.csv` (per-bin CheckM2/CheckM v1).
+  Validate structurally before Zenodo:
+  `python3 scripts/validate_binning.py runs/<run>/biobox/<sample>.binning`
+  (the upstream `bioboxes/validator` container is only published for the
+  *assembler* task — not the genome-binning task — so it cannot be pulled).
+  ✅ generated for marine (152 bins), human (107), medium and cami3 (492).
 - **Archive each binning result**: bins FASTA + biobox output + stats shipped
   with the run's Zenodo archive record.
