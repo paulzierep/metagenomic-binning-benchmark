@@ -78,6 +78,30 @@ CELL_SPECS=(
 
 log() { echo "[$(date -u +%FT%TZ)] $*" | tee -a "$LOG"; }
 
+# ---- singleton guard: exactly one sweep driver may exist ---------------- #
+# The sweep drives one COMEBin cell at a time against shared state: the run
+# slot (.active_run), /tmp/benchmark-start.lock and one log. A second instance
+# does not queue politely - it walks the same cell list concurrently,
+# clobbers .active_run, and its cells collide with the first instance's.
+# That is how the 13:07 launch ended up with three drivers, and how the live
+# cell was orphaned (its parent driver died, the child kept training under
+# init) instead of being supervised. Same shape as the agent-watchdog and
+# benchmark-watchdog guards: flock for new-vs-new, plus a process scan so an
+# instance started BEFORE this guard existed is still honoured, not raced.
+SWEEP_LOCK=${SWEEP_LOCK:-/tmp/run_sweep_medium.lock}
+exec 9>"$SWEEP_LOCK"
+if ! flock -n 9; then
+  echo "another sweep driver holds $SWEEP_LOCK" >&2
+  exit 0
+fi
+for other in $(pgrep -f 'run_sweep_medium\.sh' 2>/dev/null || true); do
+  [ "$other" = "$$" ] && continue
+  [ "$other" = "$PPID" ] && continue
+  log "ABORT: sweep driver pid=$other already running; singleton guard, not starting a second"
+  exit 0
+done
+
+
 only=""; from=0
 while [ $# -gt 0 ]; do
   case "$1" in
