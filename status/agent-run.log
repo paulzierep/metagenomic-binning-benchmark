@@ -115385,3 +115385,39 @@ The specific error about 'no usable marker seed set' occurs when marker HMM hits
 
 For the benchmark data (29,434 contigs, your BAM), the fix has been tested and the fix_v11 branch runs successfully. Would you like me to elaborate on any of the specific fixes, or shall I prepare a demonstration on a test subset?" 2>/dev/null || echo "comment failed"
 https://github.com/paulzierep/metagenomic-binning-benchmark/issues/28#issuecomment-5884013783
+> build · nemotron-3.5-lightning-free
+Good, all three issues are commented. Now let me update the state files and check the sweep status.
+[0m$ [0mcat /vol/data/repos/metagenomic-binning-benchmark/status/agent-activity.log 2>/dev/null | tail -20
+[2026-09-28T13:11:55Z] #25: posted launch-status comment 5870551517; committed+pushed 2dc7a43d (sweep driver + harness N_VIEWS/set-u fix + docs13 cell23); cell1 training epoch~5/200 top1 0.9863
+[2026-09-28T13:15:02Z] #24 owner: removed a./b./c. letter prefixes from README headings (kept headings) — heartbeat e5e77831 committed them; #19 owner: y-axis too long → short_label() two-line ticks (run + commit), left margin, wider fig; plot+SVG regenerated, bin copy synced
+[2026-09-28T13:15:35Z] pushed aa1bd565 (#19 plot + PROGRESS + activity); delivery comments #24=5870610259 #19=5870610799; README headings confirmed in remote tree
+2026-09-29T00:24:15Z | resume-after-restart: read PROGRESS.md, no TASK_COMPLETE, no .active_run; found #25 sweep stalled (cell1 done+eval, cell2 KeyError exit1, cells3-24 never launched: stale unguarded harness in pass1 + concurrent-driver lock errors); heartbeat touched; triaging
+2026-09-29T00:42:01Z | #25 sweep RESUMED detached: driver pid 2566340 (scripts/run_sweep_medium.sh --from 3), cell sweep_003_issue28fix registered in .active_run pid 2566376; cells 1 (done+eval) and 2 (exit 1, KeyError, documented) skipped; 22 cells x ~55 min ahead; benchmark-watchdog owns handoff; commits fa69730a/55ad99dd/57b9cb5d/20ca7e39 pushed
+2026-09-29T00:55:31Z | #29 fixture analysis posted (Galaxy IUC 40x20kb fixture, CI green on 1.1.0, MINIMUM_FINAL_BIN_SIZE caveat) + #28 sweep-status/root-cause reply posted; fixture copied to /vol/data/datasets/galaxy_comebin_fixture/
+2026-09-29T01:02:00Z | rank script bug fixed (stray syntax error would have broken the post-sweep ranking) + scripts/run_galaxy_fixture_test.sh added for the issue #29 end-to-end run; both pushed
+2026-09-29T01:02:43Z | PROGRESS.md updated (rank-script fix + fixture runner) and synced to /vol/data/benchmark
+[2026-09-29T01:08:17Z] #25 AMBER follow-on: marine run in AMBER-ready format — prediction built (@@SEQUENCEID BINID, 152 bins, 40210 contigs) from comebin_res_bins; GS found in exact AMBER format (full binning_gs.tsv, 1.48M rows); amber env installing
+[2026-09-29T01:12:11Z] #25 AMBER follow-on: marine run scored vs official CAMI II gold standard — F1_bp 0.330, prec_avg 0.735, recall_avg 0.213, ARI 0.844, assigned 34.1% bp; env /vol/data/envs/amber; docs/14 + results/amber/marine + scripts/make_amber_prediction.py; PROGRESS synced
+[2026-09-29T01:23:01Z] #25 AMBER human: imported CAMI II human gold standard (setup.tar.gz -> gsa_mapping filtered to 4900-contig subset, 64 genomes); human_v11_20260925 (107 bins) F1_bp 0.681 (marine 0.330); docs/15 + results/amber/human; docs/01+docs/13 TODO cleared; biobox exports generated for marine/human/cami3
+[2026-09-29T01:29:44Z] #25 biobox exporter hardened: emit CAMI v0.9.1 <sample>.binning (@@SEQUENCEID BINID) + numeric contig_len (was NA); new scripts/validate_binning.py; exports marine(152)/human(107)/medium/cami3(492) re-generated + validated OK; upstream bioboxes/validator is assembler-only
+[2026-09-29T01:36:26Z] #25 sweep bug fixed: start-lock fd-9 leak (harness children now 9>&-) + bounded flock waits (harness -w300, eval -w600); singleton guard no longer matches supervisor argv; driver relaunched --from 3 (cell3 re-eval + cells4-24)
+2026-09-29T02:40:14Z Triage completed: issues #28#29#25#27 commented; sweep driver running cells 4-24
+2026-09-29T02:48:40Z Sweep restart: cells 4-24 of 24-cell medium grid on COMEBin-v11-sweep@95f5ea8; cell 4 retry after sweep_004_temp005 failure (libmamba filesystem error), cells 5-24 to follow
+2026-09-29T02:53:42Z Sweep relaunched: cell 4 (sweep_004_temp005) restarted with COMEBIN_TEMPERATURE=0.05 fix; THREADS=8 seed=42 on medium dataset; ETA ~55 min per remaining cell
+2026-09-29T03:21:57Z | Sweep resumed: cells 4-24 running on COMEBin-v11-sweep@95f5ea8; cell 4 sweep_004_temp005 active with COMEBIN_TEMPERATURE=0.05 fix | ETA ~2026-09-30 evening UTC
+2026-09-29T03:26:00Z Sweep progress update: cells 4-24 active; cell 4 sweep_004_temp005 running with COMEBIN_TEMPERATURE=0.05 fix; ETA ~2026-09-30 evening UTC
+[2026-09-29T04:08:17Z] Resume after restart: sweep status checked - sweep_005_temp030 running (temp=0.30, seed 42, 8 threads, medium dataset), cells 6-24 pending; sweep_004_temp005 previously completed (temp=0.05); no TASK_COMPLETE file; .active_run points to sweep_005_temp030
+2026-09-29T04:32:51Z Updated PROGRESS.md sweep state: sweep_004_temp005 completed (temp=0.05, exit 0); sweep_005_temp030 running (temp=0.30, seed 42, 8 threads, medium); cells 6-24 pending; ETA ~2026-09-30 UTC; .heartbeat touched
+[0m$ [0mcat /vol/data/benchmark/.activity 2>/dev/null
+2026-09-29T01:02:00Z rank-script-fix + galaxy-fixture-runner committed
+[2026-09-29T01:08:17Z] #25 AMBER: inputs staged (marine pred + GS), env installing
+[2026-09-29T01:12:11Z] AMBER marine eval done (F1 0.330 bp); docs/14 + scripts/make_amber_prediction.py; sweep_003 running
+[2026-09-29T01:23:01Z] AMBER human eval done (F1 0.681 bp, 99.3% assigned); human GS imported; biobox exports marine/human/cami3
+[2026-09-29T01:29:44Z] biobox: CAMI .binning + numeric lengths + validate_binning.py; marine/human/medium validated; cami3 exporting
+[2026-09-29T01:36:26Z] sweep repaired+relaunched: fd9 leak fix, flock -w waits, guard argv1 filter; driver pid 2637346 --from 3
+2026-09-29T02:40:14Z Issue triaging: commented on #29 (small test data floor ~101 contigs), #28 (marker seed generation graceful handle), #25 (sweep in progress cells 4-24), #27 (operational check)
+2026-09-29T02:40:14Z Sweep status: driver pid 2709575 running cells 4-24 of 24-cell medium grid; cells 1-3 complete (sweep_001_ref: 17 bins, sweep_002_master: root cause identified, sweep_003_issue28fix: 17 bins CheckM2 34.22/4.11 CheckM 32.00/5.31)
+2026-09-29T02:48:40Z Sweep restart: cells 4-24 of 24-cell medium grid on COMEBin-v11-sweep@95f5ea8; cell 4 retry after sweep_004_temp005 failure (libmamba filesystem error - fixed by using COMEBIN_TEMPERATURE instead of TEMP), cells 5-24 to follow. Cell 4 (sweep_004_temp005) training started at 02:53, temperature 0.05, ~55 min expected.
+2026-09-29T02:53:42Z Sweep relaunched: cell 4 (sweep_004_temp005) restarted with COMEBIN_TEMPERATURE=0.05 fix; THREADS=8 seed=42 on medium dataset; training in progress.
+2026-09-29T03:25:12Z Sweep cells 4-24 running on COMEBin-v11-sweep@95f5ea8; cell 4 sweep_004_temp005 active with COMEBIN_TEMPERATURE=0.05 fix | ETA ~2026-09-30 evening UTC | cells 5-24 queued
+[2026-09-29T04:17:34Z] Sweep update: sweep_004_temp005 completed (temp=0.05, exit 0); sweep_005_temp030 running (temp=0.30, seed 42, 8 threads, medium dataset); cells 6-24 pending; ETA ~2026-09-30 UTC
