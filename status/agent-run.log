@@ -128473,3 +128473,69 @@ drwxrwxr-x  4 ubuntu ubuntu 4096 Sep 29 12:37 sweep_013_edges80
 [2026-09-29T12:36:58Z] DONE sweep_012_batch2048 (eval OK, results CSV + per-bin plots generated)
 [2026-09-29T12:36:58Z] START sweep_013_edges80 src=COMEBin-v11-sweep @ 95f5ea8 threads=8 seed=42 temp=ref emb=ref emb_cov=ref batch=ref max_edges=80 lw=ref heval=ref n_views=6
 > build · nemotron-3.5-lightning-free
+Let me check the current COMEBin repo state and understand what fix branches exist.
+[0m$ [0mcat /vol/data/benchmark/status/status.log 2>/dev/null | tail -20
+{"exit":0,"truncated":false,"output":"","status":"completed"}
+[0m$ [0mgit log --oneline -5 2>/dev/null
+1b476a4 Clarify PyTorch installation options
+fd7ff06 Update Bioconda CUDA installation example
+ad6ceb3 Release v1.1.0
+987db95 Improve thread usage in cluster.py
+236b986 control thread usage better; support the datasets with fewer than 1024 contigs;
+[0m$ [0mls -la /vol/data/repos/
+total 40
+drwxrwxr-x 10 ubuntu ubuntu 4096 Sep 29 01:06 .
+drwxr-xr-x  9 ubuntu ubuntu 4096 Sep 28 13:05 ..
+drwxrwxr-x 10 ubuntu ubuntu 4096 Sep 29 01:06 CAMI-AMBER
+drwxrwxr-x  5 ubuntu ubuntu 4096 Sep 28 12:58 COMEBin
+drwxrwxr-x  5 ubuntu ubuntu 4096 Sep 28 13:06 COMEBin-master904
+drwxrwxr-x  5 ubuntu ubuntu 4096 Sep 23 15:41 COMEBin-opt
+drwxrwxr-x  5 ubuntu ubuntu 4096 Sep 24 00:59 COMEBin-small-fix
+drwxrwxr-x  5 ubuntu ubuntu 4096 Sep 28 12:49 COMEBin-v11
+drwxrwxr-x  4 ubuntu ubuntu 4096 Sep 28 13:05 COMEBin-v11-sweep
+drwxrwxr-x  8 ubuntu ubuntu 4096 Sep 29 13:04 metagenomic-binning-benchmark
+[0m$ [0mgit branch -a 2>/dev/null
+archive/pre-v11-master-20260928
++ comebin-optimizations
++ comebin-optimizations-v11
++ comebin-small-fix
+* master
+  remotes/origin/HEAD -> origin/master
+  remotes/origin/archive/pre-v11-master-20260928
+  remotes/origin/comebin-optimizations
+  remotes/origin/comebin-optimizations-v11
+  remotes/origin/comebin-small-fix
+  remotes/origin/docs/bam-bowtie-input
+  remotes/origin/docs/dependencies-and-resources
+  remotes/origin/fix-small-test-data
+  remotes/origin/master
+> build · nemotron-3.5-lightning-free
+Let me check for TASK_COMPLETE and the agent activity log, and also look at the current sweep status more closely.
+[0m$ [0mls -la /vol/data/benchmark/TASK_COMPLETE 2>/dev/null || echo "No TASK_COMPLETE file"
+No TASK_COMPLETE file
+[0m$ [0mcat /vol/data/repos/metagenomic-binning-benchmark/status/agent-activity.log 2>/dev/null | tail -20 || echo "No agent-activity.log"
+2026-09-29T08:15:00Z: sweep_009_embcov1024 started (emb_cov=1024, temp=ref, seed=42, 8 threads, medium dataset). Run in data augmentation phase. .heartbeat current; PROGRESS.md updated.
+2026-09-29T08:20:00Z: sweep_009_embcov1024 in training phase epoch 4/200 (emb_cov=1024, temp=ref). CheckM2 eval pending after completion. Cells 10-24 pending. .heartbeat current.
+2026-09-29T08:30:00Z Sweep update: sweep_009_embcov1024 running epoch 46/200 (emb_cov=1024, temp=ref, seed=42, 8 threads). Cells 1-8 complete, cells 9-24 pending. ETA ~2026-10-02 UTC. PROGRESS.md and .activity updated. No TASK_COMPLETE.
+2026-09-29T08:45:00Z - Resumed agent: verified sweep state (cell 9 running epoch 46/200 emb_cov=1024 temp=ref seed=42, cells 10-24 pending ETA ~2026-10-02 UTC), touched .heartbeat, updated .activity, triaged GitHub issues #27/#28/#29 without duplicating existing responses; no TASK_COMPLETE; continuing from first unfinished step (sweep cell 9 ongoing).
+2026-09-29T09:05:30Z Sweep continuation: cell 9 (sweep_009_embcov1024) completed successfully with 16 bins, CheckM2 35.80/4.12 (HQ 0 MQ 2), CheckM 34.14/4.93 (HQ 0 MQ 3). Cell 10 (sweep_010_embcov4096) now running, emb_cov=4096. Cells 11-24 pending, ETA ~2026-10-02 UTC. .heartbeat touched, .activity updated.
+2026-09-29T09:10:00Z Sweep progression: sweep_010_embcov4096 training phase ongoing (emb_cov=4096, temp=ref, seed=42). Cells 1-10 complete, cells 11-24 pending. ETA ~2026-10-02 UTC. .heartbeat touched, .activity updated, PROGRESS.md updated.
+2026-09-29T09:38:08Z Agent resumed: sweep_010_embcov4096 training phase ongoing epoch 88/200 top1 ~29% cells 11-24 pending ETA ~2026-10-02 UTC
+2026-09-29T09:45:00Z Agent check: sweep_010_embcov4096 at epoch 88/200 top1~29% 88/200 completed cells 11-24 pending ETA ~2026-10-02 UTC .heartbeat current
+2026-09-29T10:18:35Z sweep_010_embcov4096 running epoch 88/200 temp=ref emb_cov=4096 seed=42 8 threads cells11-24pending ETA~2026-10-02UTC
+2026-09-29T10:26:16Z sweep_010_embcov4096 training+eval completed 17 bins CheckM2/CheckM passed cells11-24pending ETA~2026-10-02UTC
+2026-09-29T10:37:00Z Agent resumed: sweep_010_embcov4096 completed, sweep_011_batch512 now active (8 threads, seed 42, batch=512, medium); issues #27/#28/#29 triaged without duplication; no TASK_COMPLETE; continuing sweep cells 11-24 ETA ~2026-10-02 UTC
+2026-09-29T10:40:00Z Agent: posted comments to issues #27 (check-in), #28 (marker seed graceful degradation), #29 (small test data floor) — all non-duplicating, context-aware status updates re: sweep_011_batch512 active run — no TASK_COMPLETE; continuing sweep cells 11-24 ETA ~2026-10-02 UTC
+2026-09-29T10:45:23Z Triaged GitHub issues #29 (small test data floor ~101 contigs), #28 (marker seed graceful degradation), #27 (check-in) — all non-duplicating, context-aware status updates re: sweep_011_batch512 active run. No new content since last comments. Sweep cells 11-24 pending ETA ~2026-10-02 UTC.
+2026-09-29T11:17:00Z Agent resumed: sweep_012_batch2048 active (8 threads, seed 42, batch=2048, medium dataset); cells 1-11 complete, cells 12-24 pending via run_sweep_medium.sh; ETA ~2026-10-02 UTC; .heartbeat current; .activity updated; PROGRESS.md sweep state updated; no TASK_COMPLETE; continuing from first unfinished step (sweep cell 12 of 24 running)
+2026-09-29T11:35:49Z updated sweep state: sweep_012_batch2048 running at epoch 68/200, cells 1-11 complete, cell 12 running
+ sweep_012_batch2048 at epoch 94/200, cells 1-11 complete, cell 12 running, ETA ~2026-10-02 UTC
+2026-09-29T12:11:21Z sweep: sweep_012_batch2048 cell 12 running (8 threads, seed 42, batch=2048, medium dataset); cells 1-11 complete, cell 12 running; ETA ~2026-10-02 UTC
+2026-09-29T12:33:51Z - Resumed sweep medium grid: started cell 13 (edges80) of 24; cells 1-12 complete; cells 13-24 pending. Active run not registered.
+2026-09-29T12:37:31Z - Sweep medium grid: cell 13 (edges80) started; parent PID 3215944, child COMEBin run PID 3621024; cells 1-12 complete, cells 13-24 pending.
+2026-09-29T12:50:06Z - Sweep medium grid: cell 13 (edges80) active ~15 min into run; CheckM2/CheckM eval pending; cells 14-24 pending after cell 13 completes. .active_run PID 3621024 (parent 3215944).
+[0m$ [0mcat /vol/data/benchmark/.activity 2>/dev/null || echo "No .activity file"
+2026-09-29T11:45Z sweep: sweep_012_batch2048 completed (exit 0, 8 threads, seed 42, batch=2048, medium dataset). Cells 1-12 of 24 complete; cells 13-24 pending. Sweep driver relaunched from cell 13 (edges80) at 2026-09-29 UTC. ETA ~2026-10-02 UTC.
+[0m$ [0mls -la /tmp/bench-repo.lock 2>/dev/null || echo "No bench-repo.lock"
+-rw-rw-r-- 1 ubuntu ubuntu 0 Sep 29 13:04 /tmp/bench-repo.lock
+> build · nemotron-3.5-lightning-free
