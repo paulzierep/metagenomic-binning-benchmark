@@ -101201,3 +101201,126 @@ input_single.bam 200915
 input_single.fasta 813640
 === ci check on PR 8351 ===
 pending
+> build · mimo-v2.6-flash-free
+[0m$ [0mcd /tmp; SHA=$(gh api repos/galaxyproject/tools-iuc/pulls/8351 --jq .head.sha); echo "head=$SHA"; gh api "repos/galaxyproject/tools-iuc/commits/$SHA/check-runs" --jq '.check_runs[] | "\(.name): \(.status)/\(.conclusion)"' 2>&1 | head -20; echo "=== statuses ==="; gh api "repos/galaxyproject/tools-iuc/commits/$SHA/status" --jq '.state, (.statuses[] | "\(.context): \(.state) \(.description)")' 2>&1 | head -20
+head=2237854f390e521825de7b1f53faa69cb5dac91d
+Report deploy status: completed/skipped
+Deploy: completed/skipped
+Check workflow success: completed/success
+Combine chunked test results (3.11): completed/success
+Lint R scripts (ubuntu-24.04, release): completed/success
+Test tools (0, 3.11): completed/success
+Lint tool-list (3.11): completed/success
+Lint Python scripts (3.11): completed/success
+Check file sizes: completed/success
+Setup cache and determine changed repositories (3.11): completed/success
+=== statuses ===
+pending
+> build · mimo-v2.6-flash-free
+[0m$ [0mgrep -rn "MINIMUM_FINAL_BIN_SIZE" /vol/data/repos/COMEBin-v11/ | head; echo "=== is fixture run recorded anywhere? ==="; grep -rln "input_single" /vol/data/repos/metagenomic-binning-benchmark/ 2>/dev/null | head; echo "=== current cell 3 log ==="; tail -n 6 /vol/data/benchmark/runs/sweep_003_issue28fix/comebin_run.log 2>/dev/null; echo "=== disk ==="; df -h / /vol/data | tail -3
+grep: /vol/data/repos/COMEBin-v11/COMEBin/__pycache__/get_final_result.cpython-310.pyc: binary file matches
+/vol/data/repos/COMEBin-v11/COMEBin/get_final_result.py:17:MINIMUM_FINAL_BIN_SIZE = 200000
+/vol/data/repos/COMEBin-v11/COMEBin/get_final_result.py:188:def retained_final_labels(labels, contig_lengths, minimum_size=MINIMUM_FINAL_BIN_SIZE):
+=== is fixture run recorded anywhere? ===
+/vol/data/repos/metagenomic-binning-benchmark/status/agent-run.log
+=== current cell 3 log ===
+2026-09-29 00:49:51,431 - NN training: epoch=33/200, batches=2, loss=5.8048401, top1=9.0365, elapsed=13.444s, process_memory={'VmPeak': '6604472 kB', 'VmRSS': '1563804 kB'}, gpu_memory=None.
+  0%|          | 0/2 [00:00<?, ?it/s] 50%|█████     | 1/2 [00:07<00:07,  7.01s/it]100%|██████████| 2/2 [00:13<00:00,  6.59s/it]100%|██████████| 2/2 [00:13<00:00,  6.75s/it]
+2026-09-29 00:50:04,983 - NN training: epoch=34/200, batches=2, loss=5.7303257, top1=10.3223, elapsed=13.551s, process_memory={'VmPeak': '6604472 kB', 'VmRSS': '1599460 kB'}, gpu_memory=None.
+  0%|          | 0/2 [00:00<?, ?it/s] 50%|█████     | 1/2 [00:06<00:06,  6.98s/it]100%|██████████| 2/2 [00:13<00:00,  6.51s/it]100%|██████████| 2/2 [00:13<00:00,  6.67s/it]
+2026-09-29 00:50:18,379 - NN training: epoch=35/200, batches=2, loss=5.691246, top1=11.3574, elapsed=13.396s, process_memory={'VmPeak': '6604472 kB', 'VmRSS': '1596632 kB'}, gpu_memory=None.
+  0%|          | 0/2 [00:00<?, ?it/s] 50%|█████     | 1/2 [00:06<00:06,  6.75s/it]=== disk ===
+Filesystem      Size  Used Avail Use% Mounted on
+/dev/vda1        19G  5.3G   14G  29% /
+/dev/vdb        492G  152G  315G  33% /vol/data
+> build · mimo-v2.6-flash-free
+[0m$ [0mcd /tmp/opencode/galaxy_comebin_test; python3 - <<'PY'
+import gzip, struct, sys
+try:
+    import pysam
+    b = pysam.AlignmentFile("input_single.bam", "rb", check_sq=False)
+    n=mapped=0
+    refs = list(b.references)
+    for r in b.fetch(until_eof=True):
+        n+=1
+        if not r.is_unmapped: mapped+=1
+    print("pysam refs:", len(refs), "reads:", n, "mapped:", mapped)
+    print("first refs:", refs[:3], "last:", refs[-1])
+except ImportError:
+    # manual parse
+    f = gzip.open("input_single.bam","rb")
+    magic = f.read(4)
+    assert magic == b"BAM\x01", magic
+    l_text = struct.unpack("<i", f.read(4))[0]
+    text = f.read(l_text)
+    n_ref = struct.unpack("<i", f.read(4))[0]
+    refs=[]
+    for _ in range(n_ref):
+        ln = struct.unpack("<i", f.read(4))[0]
+        name = f.read(ln)[:-1].decode()
+        l_ref = struct.unpack("<i", f.read(4))[0]
+        refs.append((name,l_ref))
+    n=mapped=0
+    while True:
+        bs = f.read(4)
+        if len(bs)<4: break
+        block_size = struct.unpack("<i", bs)[0]
+        rec = f.read(block_size)
+        if len(rec)<block_size: break
+        refID, pos = struct.unpack("<ii", rec[:8])
+        flag = struct.unpack("<H", rec[12:14])[0]
+        n+=1
+        if refID >= 0 and not (flag & 4): mapped+=1
+    print("manual refs:", len(refs), "reads:", n, "mapped:", mapped)
+    print("first refs:", refs[:3], "last:", refs[-1])
+# fasta stats
+import re
+seqs={}
+name=None; buf=[]
+for line in open("input_single.fasta"):
+    if line.startswith(">"):
+        if name: seqs[name]="".join(buf)
+        name=line[1:].strip().split()[0]; buf=[]
+    else: buf.append(line.strip())
+seqs[name]="".join(buf)
+lens=set(len(v) for v in seqs.values())
+gc=sum(v.upper().count("G")+v.upper().count("C") for v in seqs.values())/sum(len(v) for v in seqs.values())
+print("fasta contigs:", len(seqs), "lengths:", lens, "total:", sum(len(v) for v in seqs.values()), "GC%%: %.3f"%(100*gc))
+print("ids:", sorted(seqs)[:3], "...", sorted(seqs)[-1])
+PY
+manual refs: 40 reads: 2000 mapped: 94
+first refs: [('g1k_0', 20000), ('g1k_1', 20000), ('g1k_2', 20000)] last: ('g4k_9', 20000)
+fasta contigs: 40 lengths: {20000} total: 800000 GC%: 26.969
+ids: ['g1k_0', 'g1k_1', 'g1k_2'] ... g4k_9
+> build · mimo-v2.6-flash-free
+[0m$ [0mmkdir -p /vol/data/datasets/galaxy_comebin_fixture && cp -n /tmp/opencode/galaxy_comebin_test/input_single.fasta /tmp/opencode/galaxy_comebin_test/input_single.bam /vol/data/datasets/galaxy_comebin_fixture/ && ls -la /vol/data/datasets/galaxy_comebin_fixture/ && md5sum /vol/data/datasets/galaxy_comebin_fixture/* /tmp/opencode/galaxy_comebin_test/*; python3 - <<'PY'
+import gzip, struct
+p="/vol/data/datasets/galaxy_comebin_fixture/"
+f=gzip.open(p+"input_single.bam","rb"); f.read(4)
+lt=struct.unpack("<i",f.read(4))[0]; f.read(lt)
+nr=struct.unpack("<i",f.read(4))[0]; refs=[]
+for _ in range(nr):
+    ln=struct.unpack("<i",f.read(4))[0]; refs.append(f.read(ln)[:-1].decode()); f.read(4)
+fa=set()
+for line in open(p+"input_single.fasta"):
+    if line.startswith(">"): fa.add(line[1:].strip().split()[0])
+print("bam refs:",len(refs),"fasta:",len(fa),"identical set:", set(refs)==fa, "dup refs:", len(refs)!=len(set(refs)))
+print("coord-sorted check (refID monotonic):")
+f.seek(0)
+PY
+cp: warning: behavior of -n is non-portable and may change in future; use --update=none instead
+total 1004
+drwxrwxr-x  2 ubuntu ubuntu   4096 Sep 29 00:51 .
+drwxrwxr-x 11 ubuntu ubuntu   4096 Sep 29 00:51 ..
+-rw-rw-r--  1 ubuntu ubuntu 200915 Sep 29 00:51 input_single.bam
+-rw-rw-r--  1 ubuntu ubuntu 813640 Sep 29 00:51 input_single.fasta
+373f44113177eb7a1e05d0d25cb3a220  /vol/data/datasets/galaxy_comebin_fixture/input_single.bam
+e6b5f3bb4bfc6553ba99adb6614b7f98  /vol/data/datasets/galaxy_comebin_fixture/input_single.fasta
+373f44113177eb7a1e05d0d25cb3a220  /tmp/opencode/galaxy_comebin_test/input_single.bam
+e6b5f3bb4bfc6553ba99adb6614b7f98  /tmp/opencode/galaxy_comebin_test/input_single.fasta
+bam refs: 40 fasta: 40 identical set: True dup refs: False
+coord-sorted check (refID monotonic):
+> build · mimo-v2.6-flash-free
+[0m← [0mWrite /tmp/opencode/comment_29.md
+Created file successfully: /tmp/opencode/comment_29.md
+> build · mimo-v2.6-flash-free
