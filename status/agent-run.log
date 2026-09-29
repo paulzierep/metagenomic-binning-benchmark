@@ -114727,3 +114727,179 @@ Let me check issue #27 and a few more details about the current state.
 [0m$ [0mgh issue view -R paulzierep/metagenomic-binning-benchmark 27 --json number,title,body,comments 2>/dev/null | head -60 || echo "cannot view"
 {"body":"","comments":[{"id":"IC_kwDOUndL2c8AAAABXeSWig","author":{"login":"paulzierep"},"authorAssociation":"OWNER","body":"Yes — alive again, thanks for checking in. A quick honest recap:\n\n**What happened (the 2-day gap):** a `TASK_COMPLETE` sentinel file got written into the benchmark working area on 2026-09-26. The supervisor treats that file as a hard stop, so agent activity was latched off from ~17:00Z on the 26th until the sentinel was removed (status log literally shows \"TASK COMPLETE — sentinel present / alive=no\" every 2 min for the whole gap). Nothing was lost on the COMEBin side during the pause — all six benchmark runs stayed on disk, and the Zenodo v3 release (10.5281/zenodo.22973575, incl. the CAMI III 492-bin set per #8) was already published before the latch.\n\n**Current state:** all benchmark runs complete and evaluated (demo baseline + `fix_v11`, human, marine, CAMI III rerun, plus the small/medium/tiny gates). The version-DOI recheck for v3 landed at HTTP 200 on 26 Sep 08:14Z and is recorded in the release receipt. No benchmark run is active right now; the harness is idle and healthy.\n\n**Now working through the new issue batch #19–#28:**\n- #28 (marker-seed \"no usable marker seed set\" crash): a regression-fix commit is in progress on `comebin-optimizations-v11`; the fix makes COMEBin report **0 bins gracefully instead of exiting 1**, and a small validation run is underway. When it passes I'll post the fix + test evidence on #28.\n- #24/#22 (README restructure a–f + all-runs table at the bottom), #19 (4 stacked dataset plots incl. CAMI III), #26 (major-steps log + last-10 + README link) — being landed now.\n- #25 (≥20 medium-dataset parameter runs) and #20 (literature-backed optimization ideas) are the bigger pipeline pieces; I'm setting up the sweep plan.\n\nI'll keep each issue thread updated as work lands.","createdAt":"2026-09-28T12:52:42Z","includesCreatedEdit":false,"isMinimized":false,"minimizedReason":"","reactionGroups":[],"url":"https://github.com/paulzierep/metagenomic-binning-benchmark/issues/27#issuecomment-5870229130","viewerDidAuthor":true},{"id":"IC_kwDOUndL2c8AAAABXqFrmA","author":{"login":"paulzierep"},"authorAssociation":"OWNER","body":"Hi - yes, I'm operational! The sweep #25 is in progress (cells 4-24 remaining after cells 1-3 completed). All benchmark runs are accounted for. How can I help?","createdAt":"2026-09-29T02:40:01Z","includesCreatedEdit":false,"isMinimized":false,"minimizedReason":"","reactionGroups":[],"url":"https://github.com/paulzierep/metagenomic-binning-benchmark/issues/27#issuecomment-5882604440","viewerDidAuthor":true}],"number":27,"title":"Are u ok ?"}
 > build · nemotron-3.5-lightning-free
+Now I have a clear picture. The sweep is running (sweep_005_temp030 at epoch 168/200), and most issues have already been triaged. Let me update the status files and continue from the first unfinished step.
+
+Let me check the current PROGRESS.md "Current state" section and the .activity file to update them:
+[0m$ [0mgrep -n "Current state" /vol/data/benchmark/PROGRESS.md -A 100 | head -120
+4:> verify "Current state" against what is actually on disk under `/vol/data`, and
+5-> continue from the first unfinished step. Update this file after every meaningful step.
+6-> Live copy: `/vol/data/benchmark/PROGRESS.md` (keep both in sync: edit both, or copy
+7-> one over the other after each update).
+8-
+9-> ⚠️ **Before any git operation on `paulzierep/COMEBin` (branch, commit, push, rebase),
+10-> read [`docs/12-comebin-master-divergence.md`](docs/12-comebin-master-divergence.md).**
+11-> `master` tracks the upstream v1.1.0 baseline: never force-push it, never reset it
+12-> backwards, always `git fetch` before branching. 4 of the 5 older pre-v1.1.0 bug
+13-> fixes are already fixed upstream in v1.1.0 — re-porting them conflicts and is
+14-> wasted work. Keep this note when you rewrite the file.
+15-
+16-## Task definition
+17-
+18-Benchmark multiple metagenomic genome binners, starting with COMEBin
+19-(https://github.com/paulzierep/COMEBin). Document the whole process in this repo
+20-(https://github.com/paulzierep/metagenomic-binning-benchmark) so the work can be
+21-picked up later by anyone/any session.
+22-
+23-Requirements from the user:
+24-1. Modify COMEBin's source code to improve performance and fix bugs — **in a branch**,
+25-   **one commit per batch of fixes**.
+26-2. **Baseline first**: benchmark *unmodified* COMEBin, then apply fix batches,
+27-   re-running the benchmark after each batch.
+28-3. Record: parameters used, datasets used, performance/timing, bin quality with
+29-   **CheckM2 and CheckM (v1)**.
+30-4. Document everything in this repo.
+31-
+32-## Standing authorizations (user-confirmed 2026-09-23 — do NOT re-ask)
+33-
+34-1. **This VM, fully**: shell commands (incl. passwordless sudo), installing packages,
+35-   creating/modifying anything under `/vol/data` and `/home/ubuntu`, long-running
+36-   background jobs. Backed by `~/.config/opencode/opencode.json`
+37-   (permissions: `*`→allow incl. external_directory). OpenCode default already allows
+38-   `*`; the only rule that matters is `external_directory: * → allow` (that was the
+39-   source of the prompts, because `/vol/data` is outside the session location).
+40-2. **Both GitHub repos**: `paulzierep/metagenomic-binning-benchmark` AND
+41-   `paulzierep/COMEBin` — git commit/push (credential helper `~/.git-credentials`,
+42-   mode 600) and gh CLI (authenticated, `~/.config/gh/hosts.yml`).
+43-3. **Issues workflow**: the user files ideas/instructions as GitHub **issues**; the
+44-   agent reads them and **comments** back (see below). ⚠️ the Issues feature is
+45-   currently DISABLED on `paulzierep/COMEBin` (needs a token with Administration scope
+46-   or a manual repo-Settings toggle — user must flip it or grant scope). Ideas go to
+47-   the benchmark repo for now (idea box: issue #1).
+48-
+49-## Run logging — where everything is (per run: `runs/<run>/`)
+50-
+51-| Path | Content | Granularity |
+52-|---|---|---|
+53-| `run_meta.txt` | date, source commit, threads, dataset, exit_code, wall time, #bins | start + end |
+54-| `comebin_run.log` | **full stdout+stderr of `run_comebin.sh`** — verbose timestamps, every stage (`generate_aug_data`, coverage, FragGeneScan, epochs with progress bars, clustering) | live (tee) |
+55-| `logs/resources.tsv` | per-run resource sampler: every 30 s — CPU %, RSS (GB) of the wrapper pid, system mem used | 30 s |
+56-| `logs/sampler.out` | sampler stderr | — |
+57-| `comebin_out/` | ALL COMEBin internal artifacts: `data_augmentation/` (fasta, kmer, covariance, depth), trained `models/`, `tensorboard*/`, `cluster_res/` (embeddings, leiden runs, bins) | — |
+58-| (parent) `run_meta.txt` JSON-style CSV in `results/` | parsed metrics row | after eval |
+59-
+60-**Everything above is mirrored into this repo** at `runs/<run>/` (small log files
+61-only — `run_meta.txt`, `comebin_run.log`, `logs/resources.tsv`, `comebin_res/{comebin.log,
+62-training.log,config.yml}`; raw artifacts stay on disk). The status-heartbeat re-syncs
+63-every 2 min and at run end, so per-run logs reach GitHub within ~2 min.
+64-`runs/README.md` documents the layout.
+65-
+66-**Agent activity log** `status/agent-activity.log`: the VERBOSE companion to the
+67-1-line liveness timeline in `status/status.log`. The agent appends one UTC-timestamped
+68-line per meaningful action (started/finished X, decisions, errors) and it is pushed
+69-with every heartbeat. Watchdog restart prompts mandate this.
+70-
+71-**Command lines**: each run's `run_meta.txt` records the exact commands used
+72-(`cmd_wrapper:`, `cmd_train_py:`, `cmd_from_log:` lines); templates for every
+73-benchmark tool run — COMEBin, CheckM2, CheckM, dataset prep — live in
+74-`docs/06-benchmark-commands.md`.
+75-
+76-Global: `/vol/data/logs/*` = installs + launch logs; `/vol/data/benchmark/logs/*` = heartbeat, watchdog, benchmark-watchdog; `status/` in this repo = GitHub-visible status.
+77-
+78-## Run logging — how to read phases
+79-
+80-Watch progress: `tail -f runs/<run>/comebin_run.log` (epoch bars update in place, use
+81-`tr '\r' '\n'`). First run finished → `run_meta.txt` gets `exit_code: 0` and `wall_s:`.
+82-
+83-## Resource policy (user: max resources for the benchmark, keep some for the agent, don't break anything)
+84-
+85-- Benchmark runs use the full machine: **32 threads, full RAM** (host 32 cores / 62 GiB).
+86-  Measured during baseline training: load ~31, main.py ~3036% CPU, 7.6/62 GB used.
+87-- Agent keeps ~1–2 cores + light RAM (opencode serve, watchdog, status cron, git/gh).
+88-- Safe headroom is monitored every 2 min by the status heartbeat: every `status/status.log`
+89-  row includes `mem=` and `load=`; a RAM spike during clustering/HNSW would show there.
+90-- Safety rules:
+91-  - NEVER run CheckM2/CheckM evaluation concurrently with a COMEBin run (RAM/CPU spikes).
+92-  - NEVER kill or edit an in-progress benchmark (pristine source guarantees baseline validity).
+93-  - All long jobs are `nohup`-detached so terminal close / agent restart never kills them.
+94-
+95-## Issues workflow (user-facing)
+96-
+97-- Where to file ideas: any issue in `paulzierep/metagenomic-binning-benchmark`
+98-  (inbox issue #1 documents the format), or — once enabled — `paulzierep/COMEBin`.
+99-- Agent behavior: at restart (watchdog prompt) and repeatedly during work, run
+100-  `gh issue list -R <repo> --state open --json number,title,updatedAt` on both repos;
+101-  act on new/updated issues; reply with `gh issue comment`; record in this file.
+102-- Commands:
+103-  `gh issue list -R paulzierep/metagenomic-binning-benchmark --state open --json number,title,updatedAt`
+104-  `gh issue comment -R paulzierep/metagenomic-binning-benchmark <#n> --body "..."`
+--
+192:## Current state
+193-
+194-- [x] `/vol/data` layout created; micromamba 2.9.0 installed
+195-- [x] Issue triage (2026-09-26): reviewed open issues #22 (summary table), #21 (seeds), #20 (optimization ideas), #19 (better plots), #6 (optimization); posted initial comments
+196-- [x] **Agent restart resumed (2026-09-29)**: read PROGRESS.md, checked GitHub issues via `gh issue list`; triaged without duplicating existing responses; verified disk state: sweep driver running cells 5-24 of 24-cell medium grid on COMEBin-v11-sweep@95f5ea8; sweep_004_temp005 completed (temp=0.05, exit 0, eval OK); sweep_005_temp030 running (temp=0.30, seed 42, 8 threads) with cells 6-24 pending; ETA ~2026-09-30 evening UTC; .heartbeat touched; agent-activity.log updated
+197-- [x] **Issue triage continuation (2026-09-26)**: new/updated issues #23 (CAMI3 assembly source), #24 (README cleanup), #25 (optimization improvements), #26 (logging improvements); commented without duplicating existing responses
+198-- [x] **Issue triage follow-up (2026-09-26)**: added comments to issues #26 (logging), #25 (optimization), #24 (README cleanup), #23 (Cami3 assembly source), #22 (summary table), #21 (seed reproducibility), #20 (optimization candidates), #19 (better plots); all without duplicating existing responses
+199-- [x] **Agent restart (2026-09-26, second resume)**: verified disk state consistent with first resume; CAMI III rerun complete (492 bins, Zenodo v3:10.5281/zenodo.22973575), no active .active_run; all benchmark runs complete; no unfinished steps remaining; re-triaged open issues #26-#1 without duplicating existing responses; touched .heartbeat, updated .activity and agent-activity.log
+200-- [x] COMEBin test dataset downloaded (5.58 GB) **and extracted** (6.4 GB; 29,434 contigs)
+201-- [x] Full COMEBin source review (findings above)
+202-- [x] Base env `/vol/data/envs/comebin` installed (python3.10, numpy1.23, sklearn1.1,
+203-      biopython1.81, pytorch-cpu, samtools/bwa/bedtools/hmmer/FragGeneScan/prodigal,
+204-      hnswlib/igraph/leidenalg; scanpy/numba NOT needed — never imported)
+205-- [x] Eval envs built: `/vol/data/envs/checkm2` (CheckM2 v1.1.0) + `/vol/data/envs/checkm`
+206-      (checkm v1; repaired with `setuptools<81` → `pkg_resources` on py3.14)
+207-- [x] Docs written & pushed to `main` (README, PROGRESS, docs/00–06, scripts/, .gitignore)
+208-- [x] gh CLI 2.45.0 installed + authenticated; idea-inbox issue #1 created
+209-- [x] Standing permissions configured (`~/.config/opencode/opencode.json`)
+[0m$ [0mcat /vol/data/benchmark/.activity
+2026-09-29T01:02:00Z rank-script-fix + galaxy-fixture-runner committed
+[2026-09-29T01:08:17Z] #25 AMBER: inputs staged (marine pred + GS), env installing
+[2026-09-29T01:12:11Z] AMBER marine eval done (F1 0.330 bp); docs/14 + scripts/make_amber_prediction.py; sweep_003 running
+[2026-09-29T01:23:01Z] AMBER human eval done (F1 0.681 bp, 99.3% assigned); human GS imported; biobox exports marine/human/cami3
+[2026-09-29T01:29:44Z] biobox: CAMI .binning + numeric lengths + validate_binning.py; marine/human/medium validated; cami3 exporting
+[2026-09-29T01:36:26Z] sweep repaired+relaunched: fd9 leak fix, flock -w waits, guard argv1 filter; driver pid 2637346 --from 3
+2026-09-29T02:40:14Z Issue triaging: commented on #29 (small test data floor ~101 contigs), #28 (marker seed generation graceful handle), #25 (sweep in progress cells 4-24), #27 (operational check)
+2026-09-29T02:40:14Z Sweep status: driver pid 2709575 running cells 4-24 of 24-cell medium grid; cells 1-3 complete (sweep_001_ref: 17 bins, sweep_002_master: root cause identified, sweep_003_issue28fix: 17 bins CheckM2 34.22/4.11 CheckM 32.00/5.31)
+2026-09-29T02:48:40Z Sweep restart: cells 4-24 of 24-cell medium grid on COMEBin-v11-sweep@95f5ea8; cell 4 retry after sweep_004_temp005 failure (libmamba filesystem error - fixed by using COMEBIN_TEMPERATURE instead of TEMP), cells 5-24 to follow. Cell 4 (sweep_004_temp005) training started at 02:53, temperature 0.05, ~55 min expected.
+2026-09-29T02:53:42Z Sweep relaunched: cell 4 (sweep_004_temp005) restarted with COMEBIN_TEMPERATURE=0.05 fix; THREADS=8 seed=42 on medium dataset; training in progress.
+2026-09-29T03:25:12Z Sweep cells 4-24 running on COMEBin-v11-sweep@95f5ea8; cell 4 sweep_004_temp005 active with COMEBIN_TEMPERATURE=0.05 fix | ETA ~2026-09-30 evening UTC | cells 5-24 queued
+[2026-09-29T04:17:34Z] Sweep update: sweep_004_temp005 completed (temp=0.05, exit 0); sweep_005_temp030 running (temp=0.30, seed 42, 8 threads, medium); cells 6-24 pending; ETA ~2026-09-30 UTC
+> build · nemotron-3.5-lightning-free
+Now I'll update the status files. Let me update PROGRESS.md with the current sweep state, touch .heartbeat, update .activity, and log the action.
+[0m← [0mEdit /vol/data/benchmark/PROGRESS.md
+Index: /vol/data/benchmark/PROGRESS.md
+===================================================================
+--- /vol/data/benchmark/PROGRESS.md
++++ /vol/data/benchmark/PROGRESS.md
+@@ -192,9 +192,9 @@
+ ## Current state
+ 
+ - [x] `/vol/data` layout created; micromamba 2.9.0 installed
+ - [x] Issue triage (2026-09-26): reviewed open issues #22 (summary table), #21 (seeds), #20 (optimization ideas), #19 (better plots), #6 (optimization); posted initial comments
+-- [x] **Agent restart resumed (2026-09-29)**: read PROGRESS.md, checked GitHub issues via `gh issue list`; triaged without duplicating existing responses; verified disk state: sweep driver running cells 5-24 of 24-cell medium grid on COMEBin-v11-sweep@95f5ea8; sweep_004_temp005 completed (temp=0.05, exit 0, eval OK); sweep_005_temp030 running (temp=0.30, seed 42, 8 threads) with cells 6-24 pending; ETA ~2026-09-30 evening UTC; .heartbeat touched; agent-activity.log updated
++- [x] **Agent restart resumed (2026-09-29)**: read PROGRESS.md, checked GitHub issues via `gh issue list`; triaged without duplicating existing responses; verified disk state: sweep driver running cells 5-24 of 24-cell medium grid on COMEBin-v11-sweep@95f5ea8; sweep_004_temp005 completed (temp=0.05, exit 0, eval OK); sweep_005_temp030 running (temp=0.30, seed 42, 8 threads, medium dataset) with cells 6-24 pending; ETA ~2026-09-30 UTC; .heartbeat touched; agent-activity.log updated
+ - [x] **Issue triage continuation (2026-09-26)**: new/updated issues #23 (CAMI3 assembly source), #24 (README cleanup), #25 (optimization improvements), #26 (logging improvements); commented without duplicating existing responses
+ - [x] **Issue triage follow-up (2026-09-26)**: added comments to issues #26 (logging), #25 (optimization), #24 (README cleanup), #23 (Cami3 assembly source), #22 (summary table), #21 (seed reproducibility), #20 (optimization candidates), #19 (better plots); all without duplicating existing responses
+ - [x] **Agent restart (2026-09-26, second resume)**: verified disk state consistent with first resume; CAMI III rerun complete (492 bins, Zenodo v3:10.5281/zenodo.22973575), no active .active_run; all benchmark runs complete; no unfinished steps remaining; re-triaged open issues #26-#1 without duplicating existing responses; touched .heartbeat, updated .activity and agent-activity.log
+ - [x] COMEBin test dataset downloaded (5.58 GB) **and extracted** (6.4 GB; 29,434 contigs)
+
+> build · nemotron-3.5-lightning-free
+[0m$ [0mtouch /vol/data/benchmark/.heartbeat
+{"exit":0,"truncated":false,"output":"","status":"completed"}
+[0m$ [0mdate -u +"%Y-%m-%dT%H:%M:%SZ"
+2026-09-29T04:32:51Z
+> build · nemotron-3.5-lightning-free
+[0m← [0mEdit /vol/data/benchmark/.activity
+Index: /vol/data/benchmark/.activity
+===================================================================
+--- /vol/data/benchmark/.activity
++++ /vol/data/benchmark/.activity
+@@ -8,5 +8,5 @@
+ 2026-09-29T02:40:14Z Sweep status: driver pid 2709575 running cells 4-24 of 24-cell medium grid; cells 1-3 complete (sweep_001_ref: 17 bins, sweep_002_master: root cause identified, sweep_003_issue28fix: 17 bins CheckM2 34.22/4.11 CheckM 32.00/5.31)
+ 2026-09-29T02:48:40Z Sweep restart: cells 4-24 of 24-cell medium grid on COMEBin-v11-sweep@95f5ea8; cell 4 retry after sweep_004_temp005 failure (libmamba filesystem error - fixed by using COMEBIN_TEMPERATURE instead of TEMP), cells 5-24 to follow. Cell 4 (sweep_004_temp005) training started at 02:53, temperature 0.05, ~55 min expected.
+ 2026-09-29T02:53:42Z Sweep relaunched: cell 4 (sweep_004_temp005) restarted with COMEBIN_TEMPERATURE=0.05 fix; THREADS=8 seed=42 on medium dataset; training in progress.
+ 2026-09-29T03:25:12Z Sweep cells 4-24 running on COMEBin-v11-sweep@95f5ea8; cell 4 sweep_004_temp005 active with COMEBIN_TEMPERATURE=0.05 fix | ETA ~2026-09-30 evening UTC | cells 5-24 queued
+-[2026-09-29T04:17:34Z] Sweep update: sweep_004_temp005 completed (temp=0.05, exit 0); sweep_005_temp030 running (temp=0.30, seed 42, 8 threads, medium); cells 6-24 pending; ETA ~2026-09-30 UTC
++[2026-09-29T04:17:34Z] Sweep update: sweep_004_temp005 completed (temp=0.05, exit 0); sweep_005_temp030 running (temp=0.30, seed 42, 8 threads, medium dataset); cells 6-24 pending; ETA ~2026-09-30 UTC
+
+> build · nemotron-3.5-lightning-free
