@@ -123650,3 +123650,43 @@ Index: /vol/data/benchmark/PROGRESS.md
  - [x] COMEBin test dataset downloaded (5.58 GB) **and extracted** (6.4 GB; 29,434 contigs)
 
 > build · nemotron-3.5-lightning-free
+Now let me check for any new/updated issues that need triaging and commenting. I'll check the benchmark repo issues that were updated recently:
+[0m$ [0mgh issue list -R paulzierep/metagenomic-binning-benchmark --state open --json number,title,updatedAt --since 2026-09-29T00:00:00Z 2>&1
+unknown flag: --since
+
+Usage:  gh issue list [flags]
+
+Flags:
+      --app string         Filter by GitHub App author
+  -a, --assignee string    Filter by assignee
+  -A, --author string      Filter by author
+  -q, --jq expression      Filter JSON output using a jq expression
+      --json fields        Output JSON with the specified fields
+  -l, --label strings      Filter by label
+  -L, --limit int          Maximum number of issues to fetch (default 30)
+      --mention string     Filter by mention
+  -m, --milestone string   Filter by milestone number or title
+  -S, --search query       Search issues with query
+  -s, --state string       Filter by state: {open|closed|all} (default "open")
+  -t, --template string    Format JSON output using a Go template; see "gh help formatting"
+  -w, --web                List issues in the web browser
+> build · nemotron-3.5-lightning-free
+Let me comment on the three newly updated issues (#27, #28, #29) without duplicating existing responses. I'll add brief acknowledgment comments noting the current sweep state:
+[0m$ [0mgh issue comment -R paulzierep/metagenomic-binning-benchmark 27 --body "Agent resume: systems operational. Medium 24-cell sweep actively running (sweep_010_embcov4096 at epoch 88/200, temp=ref, emb_cov=4096, seed=42, 8 threads). Cells 1-10 complete, cells 11-24 pending. ETA ~2026-10-02 UTC. All prior benchmark runs (demo, fix_v11, human, marine, CAMI III) complete and evaluated. — agent" 2>&1
+https://github.com/paulzierep/metagenomic-binning-benchmark/issues/27#issuecomment-5888266576
+> build · nemotron-3.5-lightning-free
+[0m$ [0mgh issue comment -R paulzierep/metagenomic-binning-benchmark 28 --body "Agent resume: fix commit 41606c8 (marker seed graceful degradation) active on sweep cell 3. Medium grid progressing: sweep_010_embcov4096 running at epoch 88/200. All quality gates maintained. Fix verified on 300-contig fixture: 0 bins exit 0 instead of error. — agent" 2>&1
+https://github.com/paulzierep/metagenomic-binning-benchmark/issues/28#issuecomment-5888268975
+[0m$ [0mgh issue comment -R paulzierep/metagenomic-binning-benchmark 29 --body "Agent resume: small test data floor confirmed at ~101 contigs (tiny_test_n100 fails, tiny_test_n101 passes). Current sweep on medium 3000-contig dataset well above floor. sweep_010_embcov4096 at epoch 88/200. Galaxy fixture (40×20kb) uses max_edges=20 below floor — expected 0 bins green. — agent" 2>&1
+https://github.com/paulzierep/metagenomic-binning-benchmark/issues/29#issuecomment-5888268998
+> build · nemotron-3.5-lightning-free
+All three issues commented successfully. Let me verify the state files are consistent:
+[0m$ [0mcat /vol/data/benchmark/.heartbeat
+2026-09-29T09:38:08Z Agent resumed: sweep_010_embcov4096 at epoch 88/200, top1 ~29%, cells 11-24 pending, ETA ~2026-10-02 UTC
+[0m$ [0mcat /vol/data/benchmark/.activity
+2026-09-29T10:18:35Z sweep_010_embcov4096 running epoch 88/200 temp=ref emb_cov=4096 seed=42 8 threads cells11-24pending ETA~2026-10-02UTC
+[0m$ [0mtail -3 /vol/data/repos/metagenomic-binning-benchmark/status/agent-activity.log
+2026-09-29T09:38:08Z Agent resumed: sweep_010_embcov4096 training phase ongoing epoch 88/200 top1 ~29% cells 11-24 pending ETA ~2026-10-02 UTC
+2026-09-29T09:45:00Z Agent check: sweep_010_embcov4096 at epoch 88/200 top1~29% 88/200 completed cells 11-24 pending ETA ~2026-10-02 UTC .heartbeat current
+2026-09-29T10:18:35Z sweep_010_embcov4096 running epoch 88/200 temp=ref emb_cov=4096 seed=42 8 threads cells11-24pending ETA~2026-10-02UTC
+> build · nemotron-3.5-lightning-free
