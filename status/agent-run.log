@@ -99919,3 +99919,114 @@ drwxrwxr-x 4 ubuntu ubuntu  4096 Sep 28 14:03 ..
 -rwxr-xr-x 1 ubuntu ubuntu  2499 Sep 24 08:51 make_small_dataset.sh
 -rwxr-xr-x 1 ubuntu ubuntu 27373 Sep 26 02:08 meta-watchdog.sh
 > build · mimo-v2.6-flash-free
+[0m$ [0mTS=$(date -u +%Y-%m-%dT%H:%M:%SZ); touch /vol/data/benchmark/.heartbeat; printf '%s | resume-after-restart: read PROGRESS.md, no TASK_COMPLETE, no .active_run; found #25 sweep stalled (cell1 done+eval, cell2 KeyError exit1, cells3-24 never launched: stale unguarded harness in pass1 + concurrent-driver lock errors); heartbeat touched; triaging\n' "$TS" | tee -a /vol/data/benchmark/.activity >> /vol/data/repos/metagenomic-binning-benchmark/status/agent-activity.log; tail -2 /vol/data/repos/metagenomic-binning-benchmark/status/agent-activity.log
+[2026-09-28T13:15:35Z] pushed aa1bd565 (#19 plot + PROGRESS + activity); delivery comments #24=5870610259 #19=5870610799; README headings confirmed in remote tree
+2026-09-29T00:24:15Z | resume-after-restart: read PROGRESS.md, no TASK_COMPLETE, no .active_run; found #25 sweep stalled (cell1 done+eval, cell2 KeyError exit1, cells3-24 never launched: stale unguarded harness in pass1 + concurrent-driver lock errors); heartbeat touched; triaging
+[0m$ [0mecho "== contigs:"; grep -c '^>' /vol/data/datasets/comebin_medium/contigs.fa; echo "== bam header SQ:"; samtools view -H /vol/data/datasets/comebin_medium/bamfiles/reads.bam 2>/dev/null | grep -c '^@SQ' || /vol/data/envs/comebin/bin/samtools view -H /vol/data/datasets/comebin_medium/bamfiles/reads.bam | grep -c '^@SQ'; echo "== train_CLmodel 35-55 (master904):"; sed -n '30,55p' /vol/data/repos/COMEBin-master904/COMEBin/train_CLmodel.py; echo "== v11-sweep gen_cov samtools usage:"; grep -n 'samtools\|\-L \|bed' /vol/data/repos/COMEBin-v11-sweep/COMEBin/data_aug/gen_cov.py | head -20; echo "== master904 gen_cov samtools usage:"; grep -n 'samtools\|\-L \|bed' /vol/data/repos/COMEBin-master904/COMEBin/data_aug/gen_cov.py | head -20
+== contigs:
+3000
+== bam header SQ:
+0
+29434
+== train_CLmodel 35-55 (master904):
+        torch.set_num_threads(args.num_threads)
+
+    logger.info("Generate features for the data.")
+
+    if os.path.exists(args.output_path+'/embeddings.tsv'):
+        logger.info("The embeddings file has been generated before, please check the output commands.")
+        sys.exit()
+
+    dataset, namelist = get_ContrastiveLearningDataset(args.data, args.n_views,
+                                                       args.kmer_model_path, args.device, args.nokmer, args.cov_meannormalize,
+                                                       args.cov_minmaxnormalize, args.cov_standardization,args.addvars,args.vars_sqrt, args.kmer_l2_normalize, args.kmerMetric_notl2normalize)
+
+    contig_file = args.data + '/aug0/sequences_aug0.fasta'
+    lengths = get_length(contig_file)
+    length_weight = []
+    for seq_id in namelist:
+        length_weight.append(lengths[seq_id])
+
+
+    if args.notuseaug0:
+        args.n_views = args.n_views - 1
+        train_dataset = torch.utils.data.TensorDataset(*[dataset[i+1][np.array(length_weight) >= args.contig_len]
+                                                         for i in range(args.n_views)])
+    else:
+        # train_dataset = torch.utils.data.TensorDataset(*dataset)
+        train_dataset = torch.utils.data.TensorDataset(*[dataset[i][np.array(length_weight) >= args.contig_len]
+== v11-sweep gen_cov samtools usage:
+51:def _parse_bedgraph_line(contig_name, line):
+55:            f'Malformed bedGraph row for {contig_name}: {line.rstrip()}')
+62:            f'Malformed bedGraph values for {contig_name}: {line.rstrip()}') from error
+66:            f'Invalid bedGraph interval for {contig_name}: {line.rstrip()}')
+78:        depth_start, depth_end, depth = _parse_bedgraph_line(contig_name, line)
+81:                f'Non-contiguous bedGraph coverage for {contig_name}: '
+93:            f'Incomplete bedGraph span for {contig_name}: '
+106:        depth_start, depth_end, _ = _parse_bedgraph_line(contig_name, line)
+109:                f'Non-contiguous bedGraph coverage for ignored contig '
+115:    command = ['bedtools', 'genomecov', '-bga', '-ibam', str(bam_path)]
+147:                    f'bedtools genomecov failed for {bam_path} with status '
+== master904 gen_cov samtools usage:
+41:def gen_bedtools_out(bam_file: str, bam_index: int, out: str, logger):
+43:    Call bedtools and generate coverage file.
+55:    with open(bam_depth, 'wb') as bedtools_out:
+57:            ['bedtools', 'genomecov',
+60:            stdout=bedtools_out)
+66:def run_gen_bedtools_out(bam_file_path: str, out: str, logger, num_process: int = 10):
+68:    Run the `gen_bedtools_out` function for multiple BAM files in parallel using multiprocessing.
+92:            gen_bedtools_out,
+106:    :param depth_file: Input position depth file generated from bedtools genomecov (str).
+154:    Calculate coverage based on a position depth file generated from mosdepth or bedtools genomecov.
+200:def gen_cov_from_bedout(logger, out_path: str, depth_file_path: str,
+203:    Generate coverage data from bedtools output for original and augmented sequences.
+303:    run_gen_bedtools_out(bam_file_path, out, logger,num_process=args.num_threads)
+304:    gen_cov_from_bedout(logger, args.out_augdata_path, out, num_aug=args.n_views-1, contig_len=args.contig_len,num_process=args.num_threads)
+> build · mimo-v2.6-flash-free
+[0m$ [0mmkdir -p /tmp/opencode && head -96 /vol/data/benchmark/bin/run_comebin_fix.sh > /tmp/opencode/harness_guard_test.sh && printf '\necho "REACHED_ARGS_BUILD: ${COMEBIN_ARGS[*]}"\nexit 0\n' >> /tmp/opencode/harness_guard_test.sh && echo "--- run A (no sweep env):" && env SRC_COMEBIN=/vol/data/repos/COMEBin-v11-sweep DATA=/vol/data/datasets/comebin_medium CONTIGS=/vol/data/datasets/comebin_medium/contigs.fa BAMDIR=/vol/data/datasets/comebin_medium/bamfiles MODE=medium THREADS=8 SEED=42 bash /tmp/opencode/harness_guard_test.sh /tmp/opencode/h_test_a; echo "rcA=$?"; echo "--- run B (sweep env set):"; env SRC_COMEBIN=/vol/data/repos/COMEBin-v11-sweep DATA=/vol/data/datasets/comebin_medium CONTIGS=/vol/data/datasets/comebin_medium/contigs.fa BAMDIR=/vol/data/datasets/comebin_medium/bamfiles MODE=medium THREADS=8 SEED=42 TEMP=0.30 EMB=1024 BATCH=512 N_VIEWS=6 bash /tmp/opencode/harness_guard_test.sh /tmp/opencode/h_test_b; echo "rcB=$?"
+--- run A (no sweep env):
+preflight_free_gb: run_fs=13 tmp_fs=13 floor=2
+source: /vol/data/repos/COMEBin-v11-sweep (branch ) commit: 95f5ea820f9a4e76f5c2911c0b5ed507ab67b015 (dirty files: 0)
+REACHED_ARGS_BUILD: -a /vol/data/datasets/comebin_medium/contigs.fa -p /vol/data/datasets/comebin_medium/bamfiles -o /tmp/opencode/h_test_a/comebin_out -n 6 -t 8 -d cpu -s 42
+rcA=0
+--- run B (sweep env set):
+preflight_free_gb: run_fs=13 tmp_fs=13 floor=2
+source: /vol/data/repos/COMEBin-v11-sweep (branch ) commit: 95f5ea820f9a4e76f5c2911c0b5ed507ab67b015 (dirty files: 0)
+REACHED_ARGS_BUILD: -a /vol/data/datasets/comebin_medium/contigs.fa -p /vol/data/datasets/comebin_medium/bamfiles -o /tmp/opencode/h_test_b/comebin_out -n 6 -t 8 -d cpu -s 42 -l 0.30 -e 1024 -b 512
+rcB=0
+> build · mimo-v2.6-flash-free
+[0m$ [0mrm -rf /tmp/opencode/h_test_a /tmp/opencode/h_test_b /tmp/opencode/harness_guard_test.sh; cd /vol/data/repos/metagenomic-binning-benchmark && git status --short; echo "=== repo runs/sweep_001_ref:"; ls -la runs/sweep_001_ref/ 2>/dev/null; echo "=== rankings?"; ls -la results/ | grep -E 'rank|sweep'
+M results/figures/comp_vs_cont_all-runs.png
+ M results/figures/comp_vs_cont_by_dataset.png
+ M scripts/run_sweep_medium.sh
+ M status/agent-activity.log
+?? results/sweep_001_ref.csv
+?? scripts/rank_sweep_medium.py
+=== repo runs/sweep_001_ref:
+total 204
+drwxrwxr-x  4 ubuntu ubuntu   4096 Sep 28 14:02 .
+drwxrwxr-x 20 ubuntu ubuntu   4096 Sep 28 14:16 ..
+drwxrwxr-x  2 ubuntu ubuntu   4096 Sep 28 13:12 comebin_res
+-rw-rw-r--  1 ubuntu ubuntu 151721 Sep 29 00:24 comebin_run.log
+drwxrwxr-x  2 ubuntu ubuntu   4096 Sep 28 13:10 logs
+-rw-rw-r--  1 ubuntu ubuntu   1132 Sep 28 14:02 per_bin_results.csv
+-rw-rw-r--  1 ubuntu ubuntu  25929 Sep 28 14:02 per_bins.png
+-rw-rw-r--  1 ubuntu ubuntu   1895 Sep 29 00:24 run_meta.txt
+=== rankings?
+-rw-rw-r-- 1 ubuntu ubuntu  328 Sep 28 14:02 sweep_001_ref.csv
+> build · mimo-v2.6-flash-free
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && git ls-files runs/sweep_001_ref | head; echo "--- ignored?"; git check-ignore -v runs/sweep_001_ref/comebin_run.log results/sweep_001_ref.csv 2>&1 | head; echo "--- bash -n driver:"; bash -n scripts/run_sweep_medium.sh && echo SYNTAX_OK; bash -n scripts/run_comebin_fix.sh && echo HARNESS_OK
+runs/sweep_001_ref/comebin_res/comebin.log
+runs/sweep_001_ref/comebin_res/config.yml
+runs/sweep_001_ref/comebin_res/training.log
+runs/sweep_001_ref/comebin_run.log
+runs/sweep_001_ref/logs/resources.tsv
+runs/sweep_001_ref/logs/sampler.out
+runs/sweep_001_ref/per_bin_results.csv
+runs/sweep_001_ref/per_bins.png
+runs/sweep_001_ref/run_meta.txt
+--- ignored?
+--- bash -n driver:
+SYNTAX_OK
+HARNESS_OK
+> build · mimo-v2.6-flash-free
