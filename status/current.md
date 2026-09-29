@@ -2,14 +2,14 @@
 
 | | |
 |---|---|
-| Status | 🟢 `running` |
-| ⏱ Updated (Europe/Berlin) | `2026-09-29T09:10 CEST` |
-| 🏃 Live benchmark | `sweep_008_emb4096` — **epoch 65/200** · loss `5.379210472106934` · top1 acc `18.21940040588379` (log 12s fresh) |
+| Status | 🔴 `stopped (watchdog will restart)` |
+| ⏱ Updated (Europe/Berlin) | `2026-09-29T09:12 CEST` |
+| 🏃 Live benchmark | `sweep_008_emb4096` — **epoch 71/200** · loss `5.266171455383301` · top1 acc `21.11002540588379` (log 7s fresh) |
 | 🧠 Model (last turn) | `nemotron-3.5-lightning-free` (watchdog rotates to free models on quota) |
-| 📌 Agent note · **57 min old** | agent driver alive; transcript fresh (23s) while heartbeat is stale (2128s) |
-| ⚙️ Load · uptime | `7.99 7.94 6.98` · 5 days, 17 hours, 34 minutes — 32 cores, 62 GiB, no GPU |
-| 💾 RAM used/total | `7010/64295 MB` |
+| 📌 Agent note · **59 min old** | heartbeat stale 2248s — agent dead/idle, watchdog should restart within ~5 min |
+| ⚙️ Load · uptime | `7.56 7.84 7.06` · 5 days, 17 hours, 36 minutes — 32 cores, 62 GiB, no GPU |
+| 💾 RAM used/total | `6527/64295 MB` |
 | 🔗 Session | `ses_f31799c77ffeTq9gcYgqc4hBhg` |
-| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `51d65ef4 status: yes — sweep_008_emb4096 epoch 59/200 loss 5.436944007873535 a` |
-| 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `11960646 B` — every run, command & tool result |
+| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `5a65e60c status: yes — sweep_008_emb4096 epoch 65/200 loss 5.379210472106934 a` |
+| 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `11961428 B` — every run, command & tool result |
 | 📈 Timeline | [status/status.log](status/status.log) |
