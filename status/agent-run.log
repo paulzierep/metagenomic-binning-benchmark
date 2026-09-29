@@ -102529,3 +102529,31 @@ M  PROGRESS.md
 epoch=90/200
 2566340       21:31
 > build · mimo-v2.6-flash-free
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && git log --oneline -4 && touch /vol/data/benchmark/.heartbeat && ls /vol/data/benchmark/TASK_COMPLETE 2>&1 | tail -1
+4e2a2fca PROGRESS: record rank-script fix + galaxy fixture runner in the 2026-09-29 resume section
+3c62a47e status: yes — sweep_003_issue28fix epoch 86/200 loss 4.808887958526611 acc 35.029296875 model mimo-v2.6-flash-free — 2026-09-29T01:02:00Z rank-script-fix + g
+3ac437d7 scripts: add run_galaxy_fixture_test.sh (Galaxy IUC 40-contig fixture, issue #29) — smoke test, not a quality gate
+72bac89b status: yes — sweep_003_issue28fix epoch 77/200 loss 4.905470848083496 acc 30.813800811767578 model mimo-v2.6-flash-free — 2026-09-29T00:55:31Z issue-triage: comme
+ls: cannot access '/vol/data/benchmark/TASK_COMPLETE': No such file or directory
+> build · mimo-v2.6-flash-free
+Done with this pass — everything from the resume plan's items 1–4 is landed, plus two bugs found while waiting on the sweep.
+
+## Sweep (running, healthy)
+- **`sweep_003_issue28fix`** (`COMEBin-v11 @ 41606c8`, i.e. the #28 fix on the medium dataset) is training: epoch **90/200** at 01:04Z, ~14 s/epoch ⇒ train done ≈01:28Z, +eval ≈**cell done ~01:35Z**. Driver pid 2566340 alive, `.active_run` correct, 22 cells → ETA ~2026-09-30 evening.
+- Verified only `sweep_001/002/003` run dirs exist, so the resume logic won't wrongly skip cells 3–24 (the earlier `FAIL … rc=0` lines created no dirs).
+
+## Issues (nothing newer than 14:18Z existed; both replied to, no duplicates)
+- **#29** → [comment](https://github.com/paulzierep/metagenomic-binning-benchmark/issues/29#issuecomment-5881561084): Galaxy IUC fixture measured from the downloaded files — 40 contigs × exactly 20,000 bp (800 kb, `g1k_0…g4k_9`, GC 26.97 %), BAM coordinate-sorted with 40 `@SQ` refs **identical** to the FASTA ids, 2,000 reads / 94 mapped, no `.bai`; wrapper pins `comebin 1.1.0`, test `max_edges=20` + `batch=1024`; PR #8351 merged 2026-08-25 with `Test tools (0, 3.11): success`. Caveats posted: `MINIMUM_FINAL_BIN_SIZE = 200000` vs 800 kb → smoke test only, and a pre-#28-fix checkout crashes on the empty marker seed. Real run queued behind the sweep.
+- **#28** → [comment](https://github.com/paulzierep/metagenomic-binning-benchmark/issues/28#issuecomment-5881561298): acknowledged the "medium first → master asap" directive, cell-1 numbers (17 bins, CheckM2 34.22/4.11), and the cell-2 root cause **pinned to the line and to the artifacts**: `train_CLmodel.py:46` `lengths[seq_id]` KeyError because `aug0_datacoverage_mean.tsv` has **29,435 lines** (full BAM `@SQ`) vs `sequences_aug0.fasta` **3,000** contigs; v11 is structurally immune (`gen_cov.py` allocates over assembly contigs, ignores extra `@SQ`). Plan stated: push `41606c8` → PR into `master` → confirmation medium run → bioconda.
+
+## Bugs fixed while waiting (both would have bitten later)
+1. `scripts/rank_sweep_medium.py` shipped with a **stray syntax error** (`del par for par in []`) — it could not even parse, i.e. the post-sweep ranking would have died on day one. Removed, hardened (`as_int`/`as_float`/`fmt_f1` no longer raise on `-`/empty CSV cells), and normalised `n_views=6` → `ref` so the reference cell reads "reference (defaults)". Verified out-of-tree against a synthetic malformed row. → `9d36e82c`
+2. `scripts/run_galaxy_fixture_test.sh` (new) wraps the #29 run: fixture `CONTIGS`/`BAMDIR`/`MODE=galaxy_fixture`, `MAX_EDGES=20` (Galaxy's value; 100 > 40 contigs would make clustering raise), `bamfiles/` symlink created, inherits the harness's no-overlap/no-overwrite guards. Syntax-checked only — **not launched**. → `3ac437d7`
+
+## Logging / bookkeeping
+- `PROGRESS.md` new **"2026-09-29 resume"** section (stall root cause, guard fixes, relaunch, cell-1/2 evidence, #28/#29, tooling), byte-identical copy synced to `/vol/data/benchmark/PROGRESS.md`.
+- Commits pushed under `/tmp/bench-repo.lock`: `6f4cfe46`, `9d36e82c`, `3ac437d7`, `4e2a2fca`; `.activity`, `.heartbeat`, `status/agent-activity.log` all updated; `TASK_COMPLETE` absent.
+
+Next: monitor cell 3 → when the grid closes, `python3 scripts/rank_sweep_medium.py`, post the table to #25/#28, then `scripts/run_galaxy_fixture_test.sh` for the #29 end-to-end result.
+[0m
+> build · big-pickle
