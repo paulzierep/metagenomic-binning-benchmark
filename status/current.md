@@ -3,10 +3,10 @@
 | | |
 |---|---|
 | Status | 🟢 `running` |
-| ⏱ Updated (Europe/Berlin) | `2026-09-29T06:34 CEST` |
-| 🏃 Live benchmark | `sweep_005_temp030` — **epoch 176/200** · loss `6.188796043395996` · top1 acc `27.600910186767578` (log 10s fresh) |
+| ⏱ Updated (Europe/Berlin) | `2026-09-29T06:36 CEST` |
+| 🏃 Live benchmark | `sweep_005_temp030` — **epoch 185/200** · loss `6.191667079925537` · top1 acc `28.284503936767578` (log 11s fresh) |
 | 🧠 Model (last turn) | `nemotron-3.5-lightning-free` (watchdog rotates to free models on quota) |
-| 📌 Agent note · **1 min old** | 2026-09-29T01:02:00Z rank-script-fix + galaxy-fixture-runner committed
+| 📌 Agent note · **3 min old** | 2026-09-29T01:02:00Z rank-script-fix + galaxy-fixture-runner committed
 [2026-09-29T01:08:17Z] #25 AMBER: inputs staged (marine pred + GS), env installing
 [2026-09-29T01:12:11Z] AMBER marine eval done (F1 0.330 bp); docs/14 + scripts/make_amber_prediction.py; sweep_003 running
 [2026-09-29T01:23:01Z] AMBER human eval done (F1 0.681 bp, 99.3% assigned); human GS imported; biobox exports marine/human/cami3
@@ -18,9 +18,9 @@
 2026-09-29T02:53:42Z Sweep relaunched: cell 4 (sweep_004_temp005) restarted with COMEBIN_TEMPERATURE=0.05 fix; THREADS=8 seed=42 on medium dataset; training in progress.
 2026-09-29T03:25:12Z Sweep cells 4-24 running on COMEBin-v11-sweep@95f5ea8; cell 4 sweep_004_temp005 active with COMEBIN_TEMPERATURE=0.05 fix | ETA ~2026-09-30 evening UTC | cells 5-24 queued
 [2026-09-29T04:17:34Z] Sweep update: sweep_004_temp005 completed (temp=0.05, exit 0); sweep_005_temp030 running (temp=0.30, seed 42, 8 threads, medium dataset); cells 6-24 pending; ETA ~2026-09-30 UTC |
-| ⚙️ Load · uptime | `7.47 7.55 7.39` · 5 days, 14 hours, 58 minutes — 32 cores, 62 GiB, no GPU |
-| 💾 RAM used/total | `6998/64295 MB` |
+| ⚙️ Load · uptime | `7.60 7.48 7.38` · 5 days, 15 hours, 0 minutes — 32 cores, 62 GiB, no GPU |
+| 💾 RAM used/total | `6887/64295 MB` |
 | 🔗 Session | `ses_f31799c77ffeTq9gcYgqc4hBhg` |
-| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `ace10c57 meta: supervise tick 2026-09-29T04:33:01Z — 0 fix(es)` |
-| 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `11261069 B` — every run, command & tool result |
+| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `a7c45dee status: yes — sweep_005_temp030 epoch 176/200 loss 6.188796043395996 ` |
+| 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `11271827 B` — every run, command & tool result |
 | 📈 Timeline | [status/status.log](status/status.log) |

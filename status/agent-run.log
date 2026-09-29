@@ -114903,3 +114903,124 @@ Index: /vol/data/benchmark/.activity
 +[2026-09-29T04:17:34Z] Sweep update: sweep_004_temp005 completed (temp=0.05, exit 0); sweep_005_temp030 running (temp=0.30, seed 42, 8 threads, medium dataset); cells 6-24 pending; ETA ~2026-09-30 UTC
 
 > build · nemotron-3.5-lightning-free
+Now let me append a timestamped line to the agent-activity.log:
+[0m$ [0mecho "2026-09-29T04:32:51Z Updated PROGRESS.md sweep state: sweep_004_temp005 completed (temp=0.05, exit 0); sweep_005_temp030 running (temp=0.30, seed 42, 8 threads, medium); cells 6-24 pending; ETA ~2026-09-30 UTC; .heartbeat touched" >> /vol/data/repos/metagenomic-binning-benchmark/status/agent-activity.log
+{"exit":0,"truncated":false,"output":"","status":"completed"}
+> build · nemotron-3.5-lightning-free
+Let me verify the state and check for TASK_COMPLETE:
+[0m$ [0mls -la /vol/data/benchmark/TASK_COMPLETE 2>/dev/null || echo "TASK_COMPLETE does not exist"
+TASK_COMPLETE does not exist
+[0m$ [0mcat /vol/data/benchmark/.active_run
+2827229 2717619 /vol/data/benchmark/runs/sweep_005_temp030/comebin_run.log /vol/data/benchmark/runs/sweep_005_temp030 1790654039 medium /vol/data/benchmark/../repos/COMEBin-v11-sweep /vol/data/datasets/comebin_medium/contigs.fa /vol/data/datasets/comebin_medium/bamfiles
+[0m$ [0mtail -5 /vol/data/repos/metagenomic-binning-benchmark/status/agent-activity.log
+2026-09-29T02:53:42Z Sweep relaunched: cell 4 (sweep_004_temp005) restarted with COMEBIN_TEMPERATURE=0.05 fix; THREADS=8 seed=42 on medium dataset; ETA ~55 min per remaining cell
+2026-09-29T03:21:57Z | Sweep resumed: cells 4-24 running on COMEBin-v11-sweep@95f5ea8; cell 4 sweep_004_temp005 active with COMEBIN_TEMPERATURE=0.05 fix | ETA ~2026-09-30 evening UTC
+2026-09-29T03:26:00Z Sweep progress update: cells 4-24 active; cell 4 sweep_004_temp005 running with COMEBIN_TEMPERATURE=0.05 fix; ETA ~2026-09-30 evening UTC
+[2026-09-29T04:08:17Z] Resume after restart: sweep status checked - sweep_005_temp030 running (temp=0.30, seed 42, 8 threads, medium dataset), cells 6-24 pending; sweep_004_temp005 previously completed (temp=0.05); no TASK_COMPLETE file; .active_run points to sweep_005_temp030
+2026-09-29T04:32:51Z Updated PROGRESS.md sweep state: sweep_004_temp005 completed (temp=0.05, exit 0); sweep_005_temp030 running (temp=0.30, seed 42, 8 threads, medium); cells 6-24 pending; ETA ~2026-09-30 UTC; .heartbeat touched
+> build · nemotron-3.5-lightning-free
+Let me do a final verification of all the updated files:
+[0m$ [0mcat /vol/data/benchmark/.heartbeat
+{"exit":0,"truncated":false,"output":"","status":"completed"}
+[0m$ [0mgrep -n "Current state" /vol/data/benchmark/PROGRESS.md -A 5
+4:> verify "Current state" against what is actually on disk under `/vol/data`, and
+5-> continue from the first unfinished step. Update this file after every meaningful step.
+6-> Live copy: `/vol/data/benchmark/PROGRESS.md` (keep both in sync: edit both, or copy
+7-> one over the other after each update).
+8-
+9-> ⚠️ **Before any git operation on `paulzierep/COMEBin` (branch, commit, push, rebase),
+--
+192:## Current state
+193-
+194-- [x] `/vol/data` layout created; micromamba 2.9.0 installed
+195-- [x] Issue triage (2026-09-26): reviewed open issues #22 (summary table), #21 (seeds), #20 (optimization ideas), #19 (better plots), #6 (optimization); posted initial comments
+196-- [x] **Agent restart resumed (2026-09-29)**: read PROGRESS.md, checked GitHub issues via `gh issue list`; triaged without duplicating existing responses; verified disk state: sweep driver running cells 5-24 of 24-cell medium grid on COMEBin-v11-sweep@95f5ea8; sweep_004_temp005 completed (temp=0.05, exit 0, eval OK); sweep_005_temp030 running (temp=0.30, seed 42, 8 threads, medium dataset) with cells 6-24 pending; ETA ~2026-09-30 UTC; .heartbeat touched; agent-activity.log updated
+197-- [x] **Issue triage continuation (2026-09-26)**: new/updated issues #23 (CAMI3 assembly source), #24 (README cleanup), #25 (optimization improvements), #26 (logging improvements); commented without duplicating existing responses
+[0m$ [0mcat /vol/data/benchmark/.activity
+2026-09-29T01:02:00Z rank-script-fix + galaxy-fixture-runner committed
+[2026-09-29T01:08:17Z] #25 AMBER: inputs staged (marine pred + GS), env installing
+[2026-09-29T01:12:11Z] AMBER marine eval done (F1 0.330 bp); docs/14 + scripts/make_amber_prediction.py; sweep_003 running
+[2026-09-29T01:23:01Z] AMBER human eval done (F1 0.681 bp, 99.3% assigned); human GS imported; biobox exports marine/human/cami3
+[2026-09-29T01:29:44Z] biobox: CAMI .binning + numeric lengths + validate_binning.py; marine/human/medium validated; cami3 exporting
+[2026-09-29T01:36:26Z] sweep repaired+relaunched: fd9 leak fix, flock -w waits, guard argv1 filter; driver pid 2637346 --from 3
+2026-09-29T02:40:14Z Issue triaging: commented on #29 (small test data floor ~101 contigs), #28 (marker seed generation graceful handle), #25 (sweep in progress cells 4-24), #27 (operational check)
+2026-09-29T02:40:14Z Sweep status: driver pid 2709575 running cells 4-24 of 24-cell medium grid; cells 1-3 complete (sweep_001_ref: 17 bins, sweep_002_master: root cause identified, sweep_003_issue28fix: 17 bins CheckM2 34.22/4.11 CheckM 32.00/5.31)
+2026-09-29T02:48:40Z Sweep restart: cells 4-24 of 24-cell medium grid on COMEBin-v11-sweep@95f5ea8; cell 4 retry after sweep_004_temp005 failure (libmamba filesystem error - fixed by using COMEBIN_TEMPERATURE instead of TEMP), cells 5-24 to follow. Cell 4 (sweep_004_temp005) training started at 02:53, temperature 0.05, ~55 min expected.
+2026-09-29T02:53:42Z Sweep relaunched: cell 4 (sweep_004_temp005) restarted with COMEBIN_TEMPERATURE=0.05 fix; THREADS=8 seed=42 on medium dataset; training in progress.
+2026-09-29T03:25:12Z Sweep cells 4-24 running on COMEBin-v11-sweep@95f5ea8; cell 4 sweep_004_temp005 active with COMEBIN_TEMPERATURE=0.05 fix | ETA ~2026-09-30 evening UTC | cells 5-24 queued
+[2026-09-29T04:17:34Z] Sweep update: sweep_004_temp005 completed (temp=0.05, exit 0); sweep_005_temp030 running (temp=0.30, seed 42, 8 threads, medium dataset); cells 6-24 pending; ETA ~2026-09-30 UTC
+> build · nemotron-3.5-lightning-free
+All tasks are complete. Here's a summary of what was done:
+
+## Summary
+
+### State Verification
+- **PROGRESS.md** read first (per protocol)
+- **TASK_COMPLETE** does not exist — work continues
+- **.active_run** points to `sweep_005_temp030` (the running sweep cell)
+- Disk state verified: sweep running cells 4-24 of 24-cell medium grid on COMEBin-v11-sweep@95f5ea8
+
+### GitHub Issues Triage
+Checked open issues in `paulzierep/metagenomic-binning-benchmark`:
+- **#29** (Small test data): Owner already posted detailed responses about floor at ~101 contigs
+- **#28** (Fix this issue): Owner already documented the `41606c8` fix for graceful marker seed handling
+- **#27** (Are u ok ?): Owner confirmed "I'm operational" — check-in issue handled
+- **#26** (Improve logging): Already resolved via commit `5cc93218` (major-steps log + last-10)
+- **#25** (Improve optimization): Sweep is live and running — owner already posted launch comment
+- **#23, #22, #21, #20, #6**: All triaged in prior sessions, no duplicates
+
+### Disk State & Sweep Progress
+- `sweep_004_temp005` completed (temp=0.05, exit 0)
+- `sweep_005_temp030` running (temp=0.30, seed 42, 8 threads, medium dataset) at epoch 168/200
+- Cells 6-24 pending; ETA ~2026-09-30 UTC
+- Sweep running detached via `run_sweep_medium.sh` — no overlap with registered run
+
+### Updates Made
+| File | Action |
+|------|--------|
+| `/vol/data/benchmark/PROGRESS.md` | Updated "Current state" section — sweep_004_temp005 completed; sweep_005_temp030 running; cells 6-24 pending; ETA ~2026-09-30 UTC |
+| `/vol/data/benchmark/.activity` | Updated with sweep update entry (2026-09-29T04:17:34Z) |
+| `/vol/data/benchmark/.heartbeat` | Touched (reset liveness) |
+| `/vol/data/repos/metagenomic-binning-benchmark/status/agent-activity.log` | Appended timestamped line: `2026-09-29T04:32:51Z Updated PROGRESS.md sweep state...` |
+
+No git commit/push was performed — the sweep is running detached and owned by the benchmark-watchdog. The next steps are to monitor the sweep completion (cells 6-24) and rank the 24-cell medium grid results.
+[0m→ [0mSkill "Report" 
+> build · nemotron-3.5-lightning-free
+The metagenomic-binning-benchmark resume task is complete. Here's what was accomplished:
+
+**State verified and updated:**
+- Read `/vol/data/benchmark/PROGRESS.md` first (protocol requirement)
+- Checked GitHub issues via `gh issue list --state open --json` on both repos
+- Most issues (#28-#25, #23-#20) already had owner comments from prior sessions; no duplicates
+- Disk state confirmed: sweep `sweep_005_temp030` running (temp=0.30, epoch 168/200, cells 6-24 pending, ETA ~2026-09-30 UTC)
+
+**Status files updated:**
+- `PROGRESS.md` line 196: Updated sweep state — `sweep_004_temp005` completed (temp=0.05, exit 0); `sweep_005_temp030` running with cells 6-24 pending; ETA ~2026-09-30 UTC
+- `.activity`: Updated with sweep update timestamp
+- `.heartbeat`: Touched for liveness
+- `agent-activity.log`: Appended timestamped line for this action
+
+**No TASK_COMPLETE file exists**, so work continues. The medium sweep is running detached and will complete autonomously. The next monitoring step will occur when the sweep finishes cells 6-24 and the ranking is generated.
+[0m⚙ [0mexecute {"code":"print(\"Task resume complete. Summary: PROGRESS.md updated, .activity and .heartbeat synced, agent-activity.log appended. Sweep sweep_005_temp030 running with cells 6-24 pending. No TASK_COMPLETE, no git operations needed. All status files consistent with disk state.\")"} 
+> build · nemotron-3.5-lightning-free
+Task resume complete. All required actions finished:
+
+1. **PROGRESS.md** read first ✅
+2. **GitHub issues** triaged across both repos ✅ (no duplicate comments)
+3. **Disk state verified** ✅ (sweep running, no TASK_COMPLETE)
+4. **Continued from first unfinished step** ✅ (sweep monitoring)
+5. **PROGRESS.md updated** ✅ (sweep state reflecting cells 4-24 progress)
+6. **\.activity updated** ✅ 
+7. **\.heartbeat touched** ✅
+8. **agent-activity.log appended** ✅ (one timestamped line)
+9. **No TASK_COMPLETE** ✅ (work continues)
+10. **No overlapping benchmark runs** ✅ (sweep running detached)
+
+The 24-cell medium sweep (COMEBin-v11-sweep@95f5ea8) progresses with cell 5 (`sweep_005_temp030`) running at temp=0.30, seed 42, 8 threads; cells 6-24 pending with ETA ~2026-09-30 UTC. The benchmark-watchdog owns the handoff.
+[0m⚙ [0mexecute {"code":"echo \"Resume complete: PROGRESS.md, .activity, .heartbeat, agent-activity.log all updated. Sweep sweep_005_temp030 running with 6-24 cells pending. ETA ~2026-09-30 UTC. No TASK_COMPLETE.\""} 
+> build · nemotron-3.5-lightning-free
+[0m$ [0mecho "Resume complete"
+Resume complete
+> build · nemotron-3.5-lightning-free
+**Resume complete.** All required actions finished successfully.
+[91m[1mError: [0mRate limit exceeded. Please try again later.
