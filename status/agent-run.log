@@ -100286,3 +100286,119 @@ PROBEEND
 === sampler of transient matches (5s):
 DONE_SAMPLING
 > build · mimo-v2.6-flash-free
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/scripts/run_sweep_medium.sh
+Index: /vol/data/repos/metagenomic-binning-benchmark/scripts/run_sweep_medium.sh
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/scripts/run_sweep_medium.sh
++++ /vol/data/repos/metagenomic-binning-benchmark/scripts/run_sweep_medium.sh
+@@ -123,8 +123,13 @@
+ for _attempt in 1 2; do
+   _found=""
+   for other in $(pgrep -f 'run_sweep_medium\.sh' 2>/dev/null || true); do
+     related_to_us "$other" && continue
++    # Transients die within milliseconds of the scan (the launch chain, our own
++    # pgrep subshell, another agent's poll); a real foreign driver has been up
++    # for seconds. Require >=5 s of age before treating a match as foreign.
++    _age=$(ps -o etimes= -p "$other" 2>/dev/null | tr -d ' ')
++    [ -n "${_age:-}" ] && [ "$_age" -ge 5 ] 2>/dev/null || continue
+     _found="$other"
+   done
+   [ -z "$_found" ] && break
+   if [ "$_attempt" = 2 ]; then
+
+> build · mimo-v2.6-flash-free
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && bash -n scripts/run_sweep_medium.sh && echo SYNTAX_OK; sed 's|^LOG="$BENCH/status/sweep_medium.log"$|LOG=/tmp/opencode/guard.log|' scripts/run_sweep_medium.sh > /tmp/opencode/run_sweep_medium.sh; rm -f /tmp/opencode/guard.log /tmp/opencode/guard.out; nohup bash /tmp/opencode/launch_guardtest.sh >/dev/null 2>&1 & sleep 10; echo "=== guard.log:"; cat /tmp/opencode/guard.log 2>/dev/null || echo NOLOG; echo "=== guard.out:"; cat /tmp/opencode/guard.out 2>/dev/null || echo NOOUT; echo "=== live drivers:"; pgrep -af 'run_sweep_medium\.sh' | cut -c1-100 || echo NONE
+SYNTAX_OK
+=== guard.log:
+NOLOG
+=== guard.out:
+NOOUT
+=== live drivers:
+2564372 /bin/bash -c cd /vol/data/repos/metagenomic-binning-benchmark && bash -n scripts/run_sweep_m
+> build · mimo-v2.6-flash-free
+[0m$ [0mls -la /tmp/opencode/; echo "=== launcher content:"; cat /tmp/opencode/launch_guardtest.sh; echo "=== running in fg with timeout:"; timeout 40 bash /tmp/opencode/launch_guardtest.sh; echo "rc=$?"; echo "=== guard.log:"; cat /tmp/opencode/guard.log 2>/dev/null || echo NOLOG; echo "=== guard.out:"; cat /tmp/opencode/guard.out 2>/dev/null || echo NOOUT
+total 1112
+drwxrwxr-x 11 ubuntu ubuntu   4096 Sep 29 00:36 .
+drwxrwxrwt 24 root   root    16384 Sep 29 00:34 ..
+drwxrwxr-x  2 ubuntu ubuntu   4096 Sep 24 09:24 __pycache__
+-rwxrwxr-x  1 ubuntu ubuntu  10359 Sep 23 18:50 agent-watchdog.new
+drwx------  2 ubuntu ubuntu   4096 Sep 24 01:01 bed-test.qwhg7D
+-rw-rw-r--  1 ubuntu ubuntu  11696 Sep 23 21:40 benchmark-watchdog.sh.new
+drwx------  5 ubuntu ubuntu   4096 Sep 24 00:56 bm-watchdog-test.Qpqyh6
+drwxrwxr-x  4 ubuntu ubuntu   4096 Sep 26 02:08 c1b_test
+-rw-rw-r--  1 ubuntu ubuntu    851 Sep 28 12:51 c1c_test.sh
+-rw-rw-r--  1 ubuntu ubuntu    177 Sep 29 00:35 dbg.log
+-rw-rw-r--  1 ubuntu ubuntu      0 Sep 29 00:34 dbg.out
+-rw-rw-r--  1 ubuntu ubuntu     70 Sep 23 19:18 eval-guard.out
+-rw-rw-r--  1 ubuntu ubuntu   5101 Sep 24 09:30 final_zenodo_record.json
+-rw-rw-r--  1 ubuntu ubuntu   2099 Sep 24 09:22 finalize_release_metadata.py
+-rw-rw-r--  1 ubuntu ubuntu     39 Sep 23 19:14 gt.tsv
+-rw-rw-r--  1 ubuntu ubuntu   2150 Sep 23 16:51 hybrid.html
+-rw-rw-r--  1 ubuntu ubuntu    405 Sep 24 09:30 issue12_reply.md
+-rw-rw-r--  1 ubuntu ubuntu    428 Sep 24 09:30 issue13_reply.md
+-rw-rw-r--  1 ubuntu ubuntu    769 Sep 24 10:20 issue15_update.md
+-rw-rw-r--  1 ubuntu ubuntu   3346 Sep 28 13:03 issue28_comment.md
+-rw-rw-r--  1 ubuntu ubuntu   1267 Sep 24 09:28 issue8_zenodo_update.md
+-rw-rw-r--  1 ubuntu ubuntu    113 Sep 29 00:34 launch_guardtest.sh
+-rw-rw-r--  1 ubuntu ubuntu    460 Sep 29 00:26 launch_sweep2.sh
+-rw-rw-r--  1 ubuntu ubuntu   5210 Sep 23 16:51 long_read.html
+-rw-rw-r--  1 ubuntu ubuntu    936 Sep 23 16:51 marine.html
+-rwxrwxr-x  1 ubuntu ubuntu  23502 Sep 23 21:41 meta-watchdog.sh.new
+-rw-rw-r--  1 ubuntu ubuntu     70 Sep 23 19:14 mini.fa
+-rw-rw-r--  1 ubuntu ubuntu 497189 Sep 28 13:14 plot_ylabel_strip.png
+-rw-rw-r--  1 ubuntu ubuntu    133 Sep 26 02:07 pre_gen.md5
+-rw-rw-r--  1 ubuntu ubuntu 139789 Sep 28 13:02 prepatch_baseline.log
+drwxrwxr-x  4 ubuntu ubuntu   4096 Sep 28 12:50 realdata
+drwxrwxr-x  3 ubuntu ubuntu   4096 Sep 28 13:01 realdata_prepatch
+drwx------  2 ubuntu ubuntu   4096 Sep 24 00:57 reheader-test.4xjEEQ
+drwx------  2 ubuntu ubuntu   4096 Sep 24 00:58 reheader-test2.oBUXMi
+-rw-rw-r--  1 ubuntu ubuntu   6476 Sep 23 21:43 run_comebin_baseline.sh.new
+-rw-rw-r--  1 ubuntu ubuntu   9818 Sep 28 13:16 run_sweep_medium.new
+-rw-rw-r--  1 ubuntu ubuntu  11416 Sep 29 00:36 run_sweep_medium.sh
+-rw-rw-r--  1 ubuntu ubuntu    134 Sep 23 18:55 sample0.md5
+drwxrwxr-x  2 ubuntu ubuntu   4096 Sep 24 09:16 script-patches
+-rwxrwxr-x  1 ubuntu ubuntu   8068 Sep 23 18:52 sh.new
+-rw-rw-r--  1 ubuntu ubuntu   5212 Sep 23 16:51 short_read.html
+-rw-rw-r--  1 ubuntu ubuntu    261 Sep 24 05:00 small-epochs-args.current
+-rw-rw-r--  1 ubuntu ubuntu 141460 Sep 28 12:55 small_regression.log
+-rw-rw-r--  1 ubuntu ubuntu   4972 Sep 24 09:20 source-fixes.patch
+-rwxrwxr-x  1 ubuntu ubuntu   7010 Sep 23 18:49 status-heartbeat.new
+-rw-rw-r--  1 ubuntu ubuntu      0 Sep 23 19:07 tar_reads.log
+-rw-rw-r--  1 ubuntu ubuntu   9888 Sep 28 12:48 test_issue28_marker_seed.py
+-rw-rw-r--  1 ubuntu ubuntu      0 Sep 23 19:02 wget_reads.log
+-rw-rw-r--  1 ubuntu ubuntu   6441 Sep 25 07:53 zenodo-22935025.json
+-rw-rw-r--  1 ubuntu ubuntu   1397 Sep 24 09:23 zenodo_curl_probe.sh
+-rw-rw-r--  1 ubuntu ubuntu   1395 Sep 24 09:25 zenodo_curl_upload.sh
+-rw-rw-r--  1 ubuntu ubuntu  17448 Sep 24 09:11 zenodo_deposit_comebin_small.py
+-rw-rw-r--  1 ubuntu ubuntu   3437 Sep 24 09:26 zenodo_finalize_published.py
+-rw-rw-r--  1 ubuntu ubuntu  10882 Sep 24 09:16 zenodo_parts_upload.py
+-rw-rw-r--  1 ubuntu ubuntu   5682 Sep 24 09:26 zenodo_publish_verify.py
+-rw-rw-r--  1 ubuntu ubuntu   5101 Sep 24 09:26 zenodo_record.json
+=== launcher content:
+#!/usr/bin/env bash
+exec setsid bash /tmp/opencode/run_sweep_medium.sh < /dev/null >> /tmp/opencode/dbg.out 2>&1
+=== running in fg with timeout:
+rc=1
+=== guard.log:
+NOLOG
+=== guard.out:
+NOOUT
+> build · mimo-v2.6-flash-free
+[0m$ [0mecho "=== dbg.out:"; cat /tmp/opencode/dbg.out; echo "=== real sweep log tail:"; tail -3 /vol/data/benchmark/status/sweep_medium.log; echo "=== active:"; cat /vol/data/benchmark/.active_run 2>/dev/null || echo NONE; echo "=== run dirs:"; ls -1 /vol/data/benchmark/runs/ | grep sweep; echo "=== procs:"; pgrep -af 'run_sweep_medium|run_comebin' | cut -c1-120 || echo NONE; echo "=== bash -n the sed copy:"; bash -n /tmp/opencode/run_sweep_medium.sh && echo OK; echo "=== LOG line:"; grep -n '^LOG=' /tmp/opencode/run_sweep_medium.sh
+=== dbg.out:
+=== real sweep log tail:
+[2026-09-29T00:26:50Z] ABORT: sweep driver pid=2559226 already running; singleton guard, not starting a second
+[2026-09-29T00:29:55Z] ABORT: sweep driver pid=2560340 already running; singleton guard, not starting a second ()
+[2026-09-29T00:31:57Z] ABORT: sweep driver pid=2561301 already running; singleton guard, not starting a second ()
+=== active:
+NONE
+=== run dirs:
+sweep_001_ref
+sweep_002_master
+=== procs:
+2564621 /bin/bash -c echo "=== dbg.out:"; cat /tmp/opencode/dbg.out; echo "=== real sweep log tail:"; tail -3 /vol/data/
+=== bash -n the sed copy:
+OK
+=== LOG line:
+33:LOG=/tmp/opencode/guard.log
+> build · mimo-v2.6-flash-free
