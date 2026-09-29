@@ -104217,3 +104217,194 @@ runs/marine_v11_20260925/comebin_out/comebin_res/comebin_res_bins/0.fa
 >S0C1538
 >S0C3070
 > build · big-pickle
+The marine run (152 final bins) + gold standard on disk = a runnable AMBER evaluation (documented #25 follow-on). Let me set up a dedicated AMBER env in the background and build the inputs meanwhile:
+[0m$ [0mcd /vol/data/repos/CAMI-AMBER
+export MAMBA_ROOT_PREFIX=/vol/data/envs/.mamba
+/vol/data/tools/bin/micromamba create -y -p /vol/data/envs/amber python=3.11 2>&1 | tail -2
+/vol/data/tools/bin/micromamba run -p /vol/data/envs/amber pip install -q -r requirements.txt 2>&1 | tail -3
+echo "AMBER_ENV_DONE rc=$?"
+Command moved to the background (shell ID: sh_0eab461b2001kEQasOThuXxXYn).
+Output is streaming to: /home/ubuntu/.local/share/opencode/shell/1751ba12936fd079fff18cea3db58f28811c2004/sh_0eab461b2001kEQasOThuXxXYn.out
+> build · big-pickle
+While AMBER installs, let me confirm how queries are passed (biobox vs TSV) and build the marine prediction input:
+[0m$ [0mcd /vol/data/repos/CAMI-AMBER
+echo "=== argparse_parents: -g -b flags ==="
+grep -n "add_argument\|binning\|gold" cami_amber/utils/argparse_parents.py | head -30
+echo "=== does GenomeQuery accept dir of bins? read_metadata of a .fa dir ==="
+grep -n "def \|is_biobox\|detect" cami_amber/utils/load_data.py | head -25
+=== argparse_parents: -g -b flags ===
+22:HELP_FASTA_FILE = "FASTA or FASTQ file with sequences of gold standard (required if gold standard file misses column _LENGTH)"
+26:HELP_LABELS = "Comma-separated binning names"
+33:PARSER_GS.add_argument("bin_file", help=HELP_QUERY_FILE)
+34:PARSER_GS.add_argument("-g", "--gold_standard_file", help=HELP_GOLD_STANDARD_FILE, required=True)
+35:PARSER_GS.add_argument("-f", "--fasta_file", help=HELP_FASTA_FILE)
+38:PARSER_MULTI.add_argument('file', nargs='?', type=argparse.FileType('r'), help=HELP_FILE)
+39:PARSER_MULTI.add_argument('-p', '--filter', help=HELP_FILTER)
+40:PARSER_MULTI.add_argument('-l', '--label', help=HELP_LABEL, required=False)
+43:PARSER_MULTI2.add_argument("bin_files", nargs='+', help=HELP_QUERY_FILES)
+44:PARSER_MULTI2.add_argument("-g", "--gold_standard_file", help=HELP_GOLD_STANDARD_FILE, required=True)
+45:PARSER_MULTI2.add_argument('-l', '--labels', help=HELP_LABELS, required=False)
+=== does GenomeQuery accept dir of bins? read_metadata of a .fa dir ===
+42:def open_generic(file):
+64:def open_coverages(file_path):
+83:def load_unique_common(unique_common_file_path, args_keyword):
+105:def load_ncbi_info(ncbi_dir):
+121:def read_metadata(path_label_tuple):
+169:def load_sample(metadata):
+197:def load_binnings(samples_metadata, file_path_query):
+211:def get_sample_id_to_num_genomes(sample_id_to_queries_list):
+222:def get_rank_to_df(query_df, taxonomy_df, label, is_gs=False):
+250:def load_queries(gold_standard_file, bin_files, labels, options=None, options_gs=None):
+> build · big-pickle
+AMBER query = one `binning` file in CAMI format (`@@SEQUENCEID BINID` header + rows). The marine run has 152 final bins; lengths come from the GS on the SEQUENCEID merge, so the prediction only needs contig→bin. Let me build it now:
+[0m$ [0mcd /vol/data/benchmark/runs/marine_v11_20260925
+BINS=comebin_out/comebin_res/comebin_res_bins
+echo "=== bin fasta files ==="
+ls $BINS/*.fa | wc -l
+echo "=== total binned contigs across bins (all == 152 bins) ==="
+for f in $BINS/*.fa; do b=$(basename "$f" .fa); awk -v b="$b" '/^>/{print substr($1,2) "\tbin_" b}' "$f"; done > /vol/data/benchmark/amber/marine_comebin.pred.tsv 2>/dev/null || { mkdir -p /vol/data/benchmark/amber; for f in $BINS/*.fa; do b=$(basename "$f" .fa); awk -v b="$b" '/^>/{print substr($1,2) "\tbin_" b}' "$f"; done > /vol/data/benchmark/amber/marine_comebin.pred.tsv; }
+wc -l /vol/data/benchmark/amber/marine_comebin.pred.tsv
+head -3 /vol/data/benchmark/amber/marine_comebin.pred.tsv
+echo "=== prepend AMBER header ==="
+{ echo "@@SEQUENCEID\tBINID"; cat /vol/data/benchmark/amber/marine_comebin.pred.tsv; } > /vol/data/benchmark/amber/marine_comebin.binning
+head -4 /vol/data/benchmark/amber/marine_comebin.binning
+echo "=== GS needs header too (subset has none) — check ==="
+head -2 /vol/data/datasets/cami_II/marine_sample0_input/binning_gs_subset.tsv
+=== bin fasta files ===
+152
+=== total binned contigs across bins (all == 152 bins) ===
+/bin/bash: line 6: /vol/data/benchmark/amber/marine_comebin.pred.tsv: No such file or directory
+40210 /vol/data/benchmark/amber/marine_comebin.pred.tsv
+S0C612	bin_0
+S0C1538	bin_0
+S0C3070	bin_0
+=== prepend AMBER header ===
+@@SEQUENCEID\tBINID
+S0C612	bin_0
+S0C1538	bin_0
+S0C3070	bin_0
+=== GS needs header too (subset has none) — check ===
+S0C1468008	Otu523	39960	2056
+S0C437807	Otu833	1229909	4838
+> build · big-pickle
+The prediction is built (40,210 binned contigs → 152 bins). The full marine GS already has AMBER's `@`/`@@` headers — let me verify and construct the run in a standalone `amber` directory:
+[0m$ [0mcd /vol/data/benchmark
+echo "=== full marine GS header lines ==="
+grep -m3 "^@" /vol/data/datasets/cami_II/marine_reads/contigs_0/simulation_short_read/2018.08.15_09.49.32_sample_0/contigs/binning_gs.tsv
+echo "=== GS total lines (incl header) ==="
+wc -l /vol/data/datasets/cami_II/marine_reads/contigs_0/simulation_short_read/2018.08.15_09.49.32_sample_0/contigs/binning_gs.tsv
+echo "=== amber dir ==="
+ls -la amber/
+echo "=== .activity + activity log entry ==="
+echo "[$(date -u +%FT%TZ)] #25 AMBER follow-on: marine run in AMBER-ready format — prediction built (@@SEQUENCEID BINID, 152 bins, 40210 contigs) from comebin_res_bins; GS found in exact AMBER format (full binning_gs.tsv, 1.48M rows); amber env installing" >> /vol/data/repos/metagenomic-binning-benchmark/status/agent-activity.log
+tail -1 /vol/data/repos/metagenomic-binning-benchmark/status/agent-activity.log
+echo "[$(date -u +%FT%TZ)] #25 AMBER: inputs staged (marine pred + GS), env installing" >> .activity
+touch .heartbeat
+=== full marine GS header lines ===
+@Version:0.9.1
+@SampleID:marine
+@@SEQUENCEID	BINID	TAXID	_LENGTH
+=== GS total lines (incl header) ===
+1475977 /vol/data/datasets/cami_II/marine_reads/contigs_0/simulation_short_read/2018.08.15_09.49.32_sample_0/contigs/binning_gs.tsv
+=== amber dir ===
+total 1432
+drwxrwxr-x  2 ubuntu ubuntu   4096 Sep 29 01:08 .
+drwxrwxr-x 13 ubuntu ubuntu   4096 Sep 29 01:08 ..
+-rw-rw-r--  1 ubuntu ubuntu 725308 Sep 29 01:08 marine_comebin.binning
+-rw-rw-r--  1 ubuntu ubuntu 725288 Sep 29 01:08 marine_comebin.pred.tsv
+=== .activity + activity log entry ===
+[2026-09-29T01:08:17Z] #25 AMBER follow-on: marine run in AMBER-ready format — prediction built (@@SEQUENCEID BINID, 152 bins, 40210 contigs) from comebin_res_bins; GS found in exact AMBER format (full binning_gs.tsv, 1.48M rows); amber env installing
+> build · big-pickle
+While AMBER installs, let me refresh docs/13's stale status header (sweep is live now) and check the results:
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark
+echo "=== sweep_001_ref.csv ==="
+cat results/sweep_001_ref.csv 2>/dev/null
+echo "=== docs/13 first 10 lines ==="
+sed -n '1,10p' docs/13-optimization-sweep-medium.md
+echo "=== git log docs/13 ==="
+git log --oneline -3 -- docs/13-optimization-sweep-medium.md
+=== sweep_001_ref.csv ===
+run,source_commit,dataset,threads,total_time_s,n_bins,checkm2_mean_completeness,checkm2_mean_contamination,checkm2_HQ,checkm2_MQ,checkm_mean_completeness,checkm_mean_contamination,checkm_HQ,checkm_MQ
+sweep_001_ref,95f5ea820f9a4e76f5c2911c0b5ed507ab67b015,"comebin_medium (3,000 contigs)",8,2827,17,34.22,4.11,0,2,32.00,5.31,0,3
+=== docs/13 first 10 lines ===
+# Optimization sweep on the medium dataset (issue #25)
+
+Status: **design / plan — not yet launched**. Launch blocked while
+`/vol/data/benchmark/.active_run` is held (sibling's `small_v11_prepatch_baseline`).
+This doc defines the grid, ranking rule, and follow-on steps so the sweep can be
+run by any session once the run slot is free.
+
+Owner's requirements (issue #25, verbatim intent):
+
+> Run at least 20 runs with different params or commits on the medium dataset
+=== git log docs/13 ===
+2dc7a43d issue #25: launch 24-cell medium optimization sweep
+596a5536 docs+scripts: #25 medium optimization sweep design + biobox exporter
+> build · big-pickle
+The sweep is genuinely live but docs/13 still claims "not yet launched" — a stale status that would mislead any session. Let me bring it current:
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/docs/13-optimization-sweep-medium.md
+Index: /vol/data/repos/metagenomic-binning-benchmark/docs/13-optimization-sweep-medium.md
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/docs/13-optimization-sweep-medium.md
++++ /vol/data/repos/metagenomic-binning-benchmark/docs/13-optimization-sweep-medium.md
+@@ -1,11 +1,29 @@
+ # Optimization sweep on the medium dataset (issue #25)
+ 
+-Status: **design / plan — not yet launched**. Launch blocked while
+-`/vol/data/benchmark/.active_run` is held (sibling's `small_v11_prepatch_baseline`).
+-This doc defines the grid, ranking rule, and follow-on steps so the sweep can be
+-run by any session once the run slot is free.
++Status: **LIVE** (2026-09-28 13:09Z – …). Driver `scripts/run_sweep_medium.sh`
++runs the 24 cells **serially, one at a time, never overlapping the registered
++run slot** (`.active_run` gate + wait-active_clear), is resumable (`--from N`
++skips completed cells, RESUME-evals orphaned rc=0 runs), and is a singleton
++(`pgrep` ancestor/child guard + `flock`). Each cell is a full medium run with
++seed 42, THREADS 8, registered via `run_comebin_fix.sh`.
+ 
++Cell status (2026-09-29 01:10Z):
++- `sweep_001_ref` (v11 `95f5ea8` reference) — ✅ done, eval'd: 2,827 s wall,
++  17 bins, CheckM2 34.22 / 4.11 (HQ 0 / MQ 2), CheckM 32.00 / 5.31 (0 / 3).
++- `sweep_002_master` (stock upstream `904f649`, unseeded) — ❌ documented
++  failure: stock master dies on the medium BAM/assembly mismatch (issue-#2
++  family; `KeyError: 'BATS_…_scaffold_22978'`), exit 1 after 108 s, 0 bins —
++  not retried, root cause in `runs/sweep_002_master/` + #28 thread.
++- `sweep_003_issue28fix` (v11 `41606c8`, issue-#28 fix) — 🟡 training
++  (2026-09-29 00:41Z…).
++- cells 4–24 — pending, in grid order below.
++
++Harness fixes landed while the sweep stalled (see #28 thread, commits
++`fa69730a 55ad99dd 57b9cb5d 20ca7e39`): `${TEMP:-}`-style `set -u` guards +
++`-l/-e/-b/-m/-w/-E` forwarding in `run_comebin_fix.sh`; singleton-guard
++self-match fix (ancestor/child walk, ≥5 s age, double probe).
++
+ Owner's requirements (issue #25, verbatim intent):
+ 
+ > Run at least 20 runs with different params or commits on the medium dataset
+ > and take the best based on bin stats and if similar based on runtime before
+
+> build · big-pickle
+AMBER env is ready. Let me run the marine evaluation:
+[0m$ [0mcd /vol/data/benchmark/amber
+export MAMBA_ROOT_PREFIX=/vol/data/envs/.mamba
+GS=/vol/data/datasets/cami_II/marine_reads/contigs_0/simulation_short_read/2018.08.15_09.49.32_sample_0/contigs/binning_gs.tsv
+/vol/data/tools/bin/micromamba run -p /vol/data/envs/amber python3 /vol/data/repos/CAMI-AMBER/amber.py marine_comebin.binning -g "$GS" -o output_marine -l comebin_v11 2>&1 | tail -25
+echo "rc=$?"
+echo "=== results ==="
+ls output_marine/ 2>/dev/null
+2026-09-29 01:09:24,488 INFO Found @Version:0.9.1 in Gold standard
+2026-09-29 01:09:24,488 INFO Found @SampleID:marine in Gold standard
+Traceback (most recent call last):
+  File "/vol/data/repos/CAMI-AMBER/amber.py", line 195, in <module>
+    main()
+  File "/vol/data/repos/CAMI-AMBER/amber.py", line 165, in main
+    sample_id_to_g_queries_list, sample_id_to_t_queries_list, sample_ids_list = load_data.load_queries(
+                                                                                ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/vol/data/repos/CAMI-AMBER/cami_amber/utils/load_data.py", line 292, in load_queries
+    sample_id = metadata[2]['SAMPLEID']
+                ~~~~~~~~~~~^^^^^^^^^^^^
+KeyError: 'SAMPLEID'
+rc=0
+=== results ===
+log.txt
+> build · big-pickle
+The query file needs a `@SampleID` metadata line matching the gold standard. Let me fix the prediction header:
