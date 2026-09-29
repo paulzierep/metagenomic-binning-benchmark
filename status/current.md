@@ -3,13 +3,13 @@
 | | |
 |---|---|
 | Status | 🟢 `running` |
-| ⏱ Updated (Europe/Berlin) | `2026-09-29T13:44 CEST` |
-| 🏃 Live benchmark | `sweep_012_batch2048` — **epoch 94/200** · loss `6.103852272033691` · top1 acc `11.2548828125` (log 14s fresh) |
+| ⏱ Updated (Europe/Berlin) | `2026-09-29T13:46 CEST` |
+| 🏃 Live benchmark | `sweep_012_batch2048` — **epoch 100/200** · loss `6.059206008911133` · top1 acc `11.490884780883789` (log 20s fresh) |
 | 🧠 Model (last turn) | `nemotron-3.5-lightning-free` (watchdog rotates to free models on quota) |
-| 📌 Agent note · **7 min old** | 2026-09-29T11:36:48Z sweep_012_batch2048 active (8 threads, seed 42, batch=2048, medium dataset); cells 1-11 of 24-grid complete, cells 12-24 pending via run_sweep_medium.sh; ETA ~2026-10-02 UTC |
-| ⚙️ Load · uptime | `6.34 6.61 6.18` · 5 days, 22 hours, 8 minutes — 32 cores, 62 GiB, no GPU |
-| 💾 RAM used/total | `11649/64295 MB` |
+| 📌 Agent note · **0 min old** | 2026-09-29T11:45:09Z |
+| ⚙️ Load · uptime | `6.96 6.82 6.31` · 5 days, 22 hours, 10 minutes — 32 cores, 62 GiB, no GPU |
+| 💾 RAM used/total | `6031/64295 MB` |
 | 🔗 Session | `ses_f31799c77ffeTq9gcYgqc4hBhg` |
-| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `972c3e60 meta: supervise tick 2026-09-29T11:43:01Z — 0 fix(es)` |
-| 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `13141365 B` — every run, command & tool result |
+| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `3dc5a868 status: yes — sweep_012_batch2048 epoch 94/200 loss 6.103852272033691` |
+| 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `13154462 B` — every run, command & tool result |
 | 📈 Timeline | [status/status.log](status/status.log) |
