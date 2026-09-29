@@ -3,10 +3,10 @@
 | | |
 |---|---|
 | Status | 🟢 `running` |
-| ⏱ Updated (Europe/Berlin) | `2026-09-29T06:10 CEST` |
-| 🏃 Live benchmark | `sweep_005_temp030` — **epoch 66/200** · loss `6.393395900726318` · top1 acc `13.564453125` (log 6s fresh) |
+| ⏱ Updated (Europe/Berlin) | `2026-09-29T06:12 CEST` |
+| 🏃 Live benchmark | `sweep_005_temp030` — **epoch 75/200** · loss `6.376296520233154` · top1 acc `16.321613311767578` (log 8s fresh) |
 | 🧠 Model (last turn) | `nemotron-3.5-lightning-free` (watchdog rotates to free models on quota) |
-| 📌 Agent note · **30 min old** | 2026-09-29T01:02:00Z rank-script-fix + galaxy-fixture-runner committed
+| 📌 Agent note · **32 min old** | 2026-09-29T01:02:00Z rank-script-fix + galaxy-fixture-runner committed
 [2026-09-29T01:08:17Z] #25 AMBER: inputs staged (marine pred + GS), env installing
 [2026-09-29T01:12:11Z] AMBER marine eval done (F1 0.330 bp); docs/14 + scripts/make_amber_prediction.py; sweep_003 running
 [2026-09-29T01:23:01Z] AMBER human eval done (F1 0.681 bp, 99.3% assigned); human GS imported; biobox exports marine/human/cami3
@@ -17,9 +17,9 @@
 2026-09-29T02:48:40Z Sweep restart: cells 4-24 of 24-cell medium grid on COMEBin-v11-sweep@95f5ea8; cell 4 retry after sweep_004_temp005 failure (libmamba filesystem error - fixed by using COMEBIN_TEMPERATURE instead of TEMP), cells 5-24 to follow. Cell 4 (sweep_004_temp005) training started at 02:53, temperature 0.05, ~55 min expected.
 2026-09-29T02:53:42Z Sweep relaunched: cell 4 (sweep_004_temp005) restarted with COMEBIN_TEMPERATURE=0.05 fix; THREADS=8 seed=42 on medium dataset; training in progress.
 2026-09-29T03:25:12Z Sweep cells 4-24 running on COMEBin-v11-sweep@95f5ea8; cell 4 sweep_004_temp005 active with COMEBIN_TEMPERATURE=0.05 fix | ETA ~2026-09-30 evening UTC | cells 5-24 queued |
-| ⚙️ Load · uptime | `8.12 7.62 6.43` · 5 days, 14 hours, 34 minutes — 32 cores, 62 GiB, no GPU |
-| 💾 RAM used/total | `4833/64295 MB` |
+| ⚙️ Load · uptime | `7.86 7.66 6.59` · 5 days, 14 hours, 36 minutes — 32 cores, 62 GiB, no GPU |
+| 💾 RAM used/total | `5701/64295 MB` |
 | 🔗 Session | `ses_f31799c77ffeTq9gcYgqc4hBhg` |
-| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `d2226b84 status: yes — sweep_005_temp030 epoch 57/200 loss 6.446156024932861 a` |
-| 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `11080452 B` — every run, command & tool result |
+| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `e481b283 status: yes — sweep_005_temp030 epoch 66/200 loss 6.393395900726318 a` |
+| 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `11080536 B` — every run, command & tool result |
 | 📈 Timeline | [status/status.log](status/status.log) |
