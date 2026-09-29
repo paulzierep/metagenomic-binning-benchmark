@@ -120276,3 +120276,340 @@ Index: /vol/data/benchmark/PROGRESS.md
  - [x] COMEBin test dataset downloaded (5.58 GB) **and extracted** (6.4 GB; 29,434 contigs)
 
 > build · nemotron-3.5-lightning-free
+Now let me continue the sweep with cell 9. Let me check how the sweep script works:
+[0m$ [0mhead -50 /vol/data/benchmark/bin/run_sweep_medium.sh
+#!/usr/bin/env bash
+# run_sweep_medium.sh — drive the issue-#25 optimization sweep on the medium
+# dataset, ONE cell at a time, fully detached, resumable.
+#
+# Design (matches docs/13-optimization-sweep-medium.md):
+#   * 24 cells: 1-factor-at-a-time around the reference defaults on the v11
+#     pin 95f5ea8 (worktree /vol/data/repos/COMEBin-v11-sweep), plus pins:
+#       - cell 2  -> unmodified upstream master @ 904f649
+#                    (/vol/data/repos/COMEBin-master904; CPU-only, no -d/-s:
+#                     unseeded by design = matches original baseline semantics)
+#       - cell 3  -> v11 @ 41606c8 (issue #28 fix) = no-regression check
+#   * seed 42 for every seeded cell EXCEPT cell 24 = seed 7 reproducibility
+#     check (Sweep spec col 10 holds the per-cell seed; "ref" -> default 42).
+#   * THREADS=8 default (medium is small; leave cores for eval + agent)
+#   * each cell: run via bin/run_comebin_fix.sh (self-registers .active_run,
+#     watchdog owns handoff) then bin/run_eval.sh (CheckM2 + CheckM + auto
+#     results CSV + per-bin plots).
+#   * resume: a run_meta.txt with exit_code 0 but no results csv gets EVAL'd
+#     ("orphaned"), then treated as done; a dir with a non-zero exit is left
+#     for manual triage (never auto-retried, never overwritten).
+#   * never overlaps the registered benchmark run: WAITS up to WAIT_MAX_S for
+#     .active_run to clear when a foreign run is registered at start.
+#
+# Usage:
+#   THREADS=8 bash scripts/run_sweep_medium.sh [--only NAME] [--from N]
+# Logs:  /vol/data/benchmark/status/sweep_medium.log
+
+set -euo pipefail
+
+BENCH=/vol/data/benchmark
+BIN="$BENCH/bin"
+ACTIVE="$BENCH/.active_run"
+LOG="$BENCH/status/sweep_medium.log"
+THREADS=${THREADS:-8}
+SEED=${SEED:-42}
+WAIT_MAX_S=${WAIT_MAX_S:-14400}   # 4 h: enough to outlast any foreign run
+DATA=/vol/data/datasets/comebin_medium
+CONTIGS="$DATA/contigs.fa"
+BAMDIR="$DATA/bamfiles"
+V11="$BENCH/../repos/COMEBin-v11-sweep"   # 95f5ea8 pin (reference base)
+V11FIX="$BENCH/../repos/COMEBin-v11"       # 41606c8 (issue #28 fix)
+MASTER="$BENCH/../repos/COMEBin-master904" # 904f649 (unmodified master)
+RESULTS=/vol/data/repos/metagenomic-binning-benchmark/results
+REPO_RUNS=/vol/data/repos/metagenomic-binning-benchmark/runs
+
+[ -f "$CONTIGS" ] || { echo "FATAL: no contigs $CONTIGS" | tee -a "$LOG"; exit 1; }
+[ -d "$BAMDIR" ]  || { echo "FATAL: no bamdir $BAMDIR" | tee -a "$LOG"; exit 1; }
+
+mkdir -p "$BENCH/status"
+> build · nemotron-3.5-lightning-free
+[0m$ [0mgrep -n "from\|--from\|cell\|WAIT\|active_run\|flock\|mutex" /vol/data/benchmark/bin/run_sweep_medium.sh | head -30
+3:# dataset, ONE cell at a time, fully detached, resumable.
+6:#   * 24 cells: 1-factor-at-a-time around the reference defaults on the v11
+8:#       - cell 2  -> unmodified upstream master @ 904f649
+11:#       - cell 3  -> v11 @ 41606c8 (issue #28 fix) = no-regression check
+12:#   * seed 42 for every seeded cell EXCEPT cell 24 = seed 7 reproducibility
+13:#     check (Sweep spec col 10 holds the per-cell seed; "ref" -> default 42).
+15:#   * each cell: run via bin/run_comebin_fix.sh (self-registers .active_run,
+21:#   * never overlaps the registered benchmark run: WAITS up to WAIT_MAX_S for
+22:#     .active_run to clear when a foreign run is registered at start.
+25:#   THREADS=8 bash scripts/run_sweep_medium.sh [--only NAME] [--from N]
+32:ACTIVE="$BENCH/.active_run"
+36:WAIT_MAX_S=${WAIT_MAX_S:-14400}   # 4 h: enough to outlast any foreign run
+82:# The sweep drives one COMEBin cell at a time against shared state: the run
+83:# slot (.active_run), /tmp/benchmark-start.lock and one log. A second instance
+84:# does not queue politely - it walks the same cell list concurrently,
+85:# clobbers .active_run, and its cells collide with the first instance's.
+87:# cell was orphaned (its parent driver died, the child kept training under
+89:# benchmark-watchdog guards: flock for new-vs-new, plus a process scan so an
+93:if ! flock -n 9; then
+103:# flock above stays the hard mutex: even a missed scan cannot start a second
+159:only=""; from=0
+163:    --from) from="$2"; shift 2 ;;
+175:      log "note: stale .active_run (pid ${active_pid:-?} dead or empty) left by watchdog; continuing"
+178:    if [ "$waited" -ge "$WAIT_MAX_S" ]; then
+190:# ---- per-cell helper: wrap up a cell that already has a finished run ------- #
+211:  [ "$idx" -ge "$from" ] || continue
+212:  IFS='|' read -r name src temp emb emb_cov batch max_edges lw heval nviews cellseed <<< "$spec"
+241:  # [0.05]" if it is not a directory. TEMP=<float> killed every temperature cell
+253:  [ "$cellseed" != "ref" ] && SEED_FOR_RUN="$cellseed"
+274:  # brief grace for run_comebin_fix.sh cleanup of .active_run
+> build · nemotron-3.5-lightning-free
+[0m$ [0msed -n '159,220p' /vol/data/benchmark/bin/run_sweep_medium.sh
+only=""; from=0
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --only) only="$2"; shift 2 ;;
+    --from) from="$2"; shift 2 ;;
+    *) echo "unknown arg $1"; exit 2 ;;
+  esac
+done
+
+# ---- safety: never overlap a live registered benchmark run --------------- #
+wait_active_clear() {
+  local waited=0
+  while [ -f "$ACTIVE" ]; do
+    local active_pid=""
+    read -r active_pid _ < "$ACTIVE" || true
+    if [ -z "${active_pid:-}" ] || ! kill -0 "$active_pid" 2>/dev/null; then
+      log "note: stale .active_run (pid ${active_pid:-?} dead or empty) left by watchdog; continuing"
+      return 0
+    fi
+    if [ "$waited" -ge "$WAIT_MAX_S" ]; then
+      log "ABORT: registered run pid=$active_pid still alive after ${waited}s; refusing overlap"
+      exit 1
+    fi
+    log "wait: foreign run pid=$active_pid active (${waited}s elapsed); sleeping 60"
+    sleep 60
+    waited=$((waited + 60))
+  done
+}
+
+wait_active_clear
+
+# ---- per-cell helper: wrap up a cell that already has a finished run ------- #
+eval_done_run() {
+  local name="$1" RUN="$2"
+  if [ ! -d "$RUN/comebin_out/comebin_res/comebin_res_bins" ]; then
+    log "NOTE $name: exit 0 but no bins dir; not evaling"
+    return 0
+  fi
+  if "$BIN/run_eval.sh" "$RUN" > "$BENCH/status/$name.eval.out" 2>&1; then
+    log "DONE $name (orphaned run EVAL'd OK)"
+  else
+    log "EVAL_FAIL $name (rc=$?) — will re-eval later"
+  fi
+}
+
+idx=0
+ok=0
+failed=0
+skipped=0
+declare -a FAILED_CELLS=()
+for spec in "${CELL_SPECS[@]}"; do
+  idx=$((idx + 1))
+  [ "$idx" -ge "$from" ] || continue
+  IFS='|' read -r name src temp emb emb_cov batch max_edges lw heval nviews cellseed <<< "$spec"
+  if [ -n "$only" ] && [ "$name" != "$only" ]; then continue; fi
+
+  RUN="$BENCH/runs/$name"
+  if [ -f "$RUN/run_meta.txt" ]; then
+    rc=$(grep -m1 '^exit_code:' "$RUN/run_meta.txt" | awk '{print $2}' || true)
+    if [ "${rc:-}" = "0" ]; then
+      if [ -f "$RESULTS/$name.csv" ]; then
+        ok=$((ok + 1))
+> build · nemotron-3.5-lightning-free
+[0m$ [0mgrep -n "CELL_SPECS" /vol/data/benchmark/bin/run_sweep_medium.sh | head -5
+52:CELL_SPECS=(
+209:for spec in "${CELL_SPECS[@]}"; do
+[0m$ [0mgrep -A 5 "CELL_SPECS=(" /vol/data/benchmark/bin/run_sweep_medium.sh | head -30
+CELL_SPECS=(
+  "sweep_001_ref|$V11|ref|ref|ref|ref|ref|ref|ref|6|42"
+  "sweep_002_master|$MASTER|ref|ref|ref|ref|ref|ref|ref|6|ref"
+  "sweep_003_issue28fix|$V11FIX|ref|ref|ref|ref|ref|ref|ref|6|42"
+  "sweep_004_temp005|$V11|0.05|ref|ref|ref|ref|ref|ref|6|42"
+  "sweep_005_temp030|$V11|0.30|ref|ref|ref|ref|ref|ref|6|42"
+> build · nemotron-3.5-lightning-free
+[0m$ [0msed -n '52,80p' /vol/data/benchmark/bin/run_sweep_medium.sh
+CELL_SPECS=(
+  "sweep_001_ref|$V11|ref|ref|ref|ref|ref|ref|ref|6|42"
+  "sweep_002_master|$MASTER|ref|ref|ref|ref|ref|ref|ref|6|ref"
+  "sweep_003_issue28fix|$V11FIX|ref|ref|ref|ref|ref|ref|ref|6|42"
+  "sweep_004_temp005|$V11|0.05|ref|ref|ref|ref|ref|ref|6|42"
+  "sweep_005_temp030|$V11|0.30|ref|ref|ref|ref|ref|ref|6|42"
+  "sweep_006_temp050|$V11|0.50|ref|ref|ref|ref|ref|ref|6|42"
+  "sweep_007_emb1024|$V11|ref|1024|ref|ref|ref|ref|ref|6|42"
+  "sweep_008_emb4096|$V11|ref|4096|ref|ref|ref|ref|ref|6|42"
+  "sweep_009_embcov1024|$V11|ref|ref|1024|ref|ref|ref|ref|6|42"
+  "sweep_010_embcov4096|$V11|ref|ref|4096|ref|ref|ref|ref|6|42"
+  "sweep_011_batch512|$V11|ref|ref|ref|512|ref|ref|ref|6|42"
+  "sweep_012_batch2048|$V11|ref|ref|ref|2048|ref|ref|ref|6|42"
+  "sweep_013_edges80|$V11|ref|ref|ref|ref|80|ref|ref|6|42"
+  "sweep_014_edges150|$V11|ref|ref|ref|ref|150|ref|ref|6|42"
+  "sweep_015_views4|$V11|ref|ref|ref|ref|ref|ref|ref|4|42"
+  "sweep_016_views8|$V11|ref|ref|ref|ref|ref|ref|ref|8|42"
+  "sweep_017_w4|$V11|ref|ref|ref|ref|ref|4|ref|6|42"
+  "sweep_018_w16|$V11|ref|ref|ref|ref|ref|16|ref|6|42"
+  "sweep_019_eval1e3|$V11|ref|ref|ref|ref|ref|ref|1e-3|6|42"
+  "sweep_020_eval1e7|$V11|ref|ref|ref|ref|ref|ref|1e-7|6|42"
+  "sweep_021_comboA|$V11|0.30|1024|ref|512|ref|ref|ref|6|42"
+  "sweep_022_comboB|$V11|0.05|4096|ref|2048|ref|ref|ref|6|42"
+  "sweep_023_embcov512_batch512|$V11|ref|ref|512|512|ref|ref|ref|6|42"
+  "sweep_024_seed7|$V11|ref|ref|ref|ref|ref|ref|ref|6|7"
+)
+
+log() { echo "[$(date -u +%FT%TZ)] $*" | tee -a "$LOG"; }
+> build · nemotron-3.5-lightning-free
+Now let me launch cell 9 of the sweep in the background (this is a ~55 min run, so it must be detached):
+[0m$ [0mTHREADS=8 bash /vol/data/benchmark/bin/run_sweep_medium.sh --from 9 > /dev/null 2>&1 &
+echo "Sweep cell 9 launched in background"
+Sweep cell 9 launched in background
+> build · nemotron-3.5-lightning-free
+[0m$ [0mcat /vol/data/benchmark/.active_run
+cat: /vol/data/benchmark/.active_run: No such file or directory
+[0m$ [0mps aux | grep "run_sweep_medium" | grep -v grep
+ubuntu   2717620  0.0  0.0   7744  2140 ?        S    02:53   0:00 /bin/bash -c cd /vol/data/benchmark && nohup bash bin/run_sweep_medium.sh --from 4 > /vol/data/benchmark/logs/sweep_resume_$(date +%Y%m%d%H%M).log 2>&1 & echo "Sweep launched background pid: $!"
+ubuntu   2717621  0.0  0.0   7876  3664 ?        S    02:53   0:00 bash bin/run_sweep_medium.sh --from 4
+> build · nemotron-3.5-lightning-free
+[0m$ [0mcat /vol/data/benchmark/status/sweep_medium.log | tail -20
+[2026-09-29T01:56:55Z] SKIP sweep_004_temp005 (previous exit 1 — needs manual triage, not auto-retried)
+[2026-09-29T01:56:55Z] SWEEP INCOMPLETE: 1 of 24 cells did NOT produce a usable result.
+[2026-09-29T01:56:55Z]   failed: sweep_004_temp005
+[2026-09-29T01:56:55Z]   The grid is resumable: re-run this script (same --from) after triaging; cells that already
+[2026-09-29T01:56:56Z]   produced rc=0 + a results CSV are skipped, cells that never ran are retried.
+[2026-09-29T01:56:56Z]   A 'COMPLETE' line above does NOT mean every cell ran — read SWEEP TALLY.
+[2026-09-29T02:53:42Z] START sweep_004_temp005 src=COMEBin-v11-sweep @ 95f5ea8 threads=8 seed=42 temp=0.05 emb=ref emb_cov=ref batch=ref max_edges=ref lw=ref heval=ref n_views=6
+[2026-09-29T03:41:04Z] RUN_DONE sweep_004_temp005 exit=0
+[2026-09-29T03:53:59Z] DONE sweep_004_temp005 (eval OK, results CSV + per-bin plots generated)
+[2026-09-29T03:53:59Z] START sweep_005_temp030 src=COMEBin-v11-sweep @ 95f5ea8 threads=8 seed=42 temp=0.30 emb=ref emb_cov=ref batch=ref max_edges=ref lw=ref heval=ref n_views=6
+[2026-09-29T04:40:18Z] RUN_DONE sweep_005_temp030 exit=0
+[2026-09-29T04:52:36Z] DONE sweep_005_temp030 (eval OK, results CSV + per-bin plots generated)
+[2026-09-29T04:52:36Z] START sweep_006_temp050 src=COMEBin-v11-sweep @ 95f5ea8 threads=8 seed=42 temp=0.50 emb=ref emb_cov=ref batch=ref max_edges=ref lw=ref heval=ref n_views=6
+[2026-09-29T05:39:15Z] RUN_DONE sweep_006_temp050 exit=0
+[2026-09-29T05:52:29Z] DONE sweep_006_temp050 (eval OK, results CSV + per-bin plots generated)
+[2026-09-29T05:52:29Z] START sweep_007_emb1024 src=COMEBin-v11-sweep @ 95f5ea8 threads=8 seed=42 temp=ref emb=1024 emb_cov=ref batch=ref max_edges=ref lw=ref heval=ref n_views=6
+[2026-09-29T06:32:11Z] RUN_DONE sweep_007_emb1024 exit=0
+[2026-09-29T06:46:30Z] DONE sweep_007_emb1024 (eval OK, results CSV + per-bin plots generated)
+[2026-09-29T06:46:30Z] START sweep_008_emb4096 src=COMEBin-v11-sweep @ 95f5ea8 threads=8 seed=42 temp=ref emb=4096 emb_cov=ref batch=ref max_edges=ref lw=ref heval=ref n_views=6
+[2026-09-29T07:56:26Z] RUN_DONE sweep_008_emb4096 exit=0
+[0m$ [0mps aux | grep "run_sweep" | grep -v grep
+ubuntu   2717620  0.0  0.0   7744  2140 ?        S    02:53   0:00 /bin/bash -c cd /vol/data/benchmark && nohup bash bin/run_sweep_medium.sh --from 4 > /vol/data/benchmark/logs/sweep_resume_$(date +%Y%m%d%H%M).log 2>&1 & echo "Sweep launched background pid: $!"
+ubuntu   2717621  0.0  0.0   7876  3664 ?        S    02:53   0:00 bash bin/run_sweep_medium.sh --from 4
+> build · nemotron-3.5-lightning-free
+[0m$ [0mcat /vol/data/benchmark/.active_run 2>/dev/null || echo "No .active_run file"
+No .active_run file
+[0m$ [0mps aux | grep -i "sweep\|come_bin" | grep -v grep | grep -v "nohup\|bash -c"
+ubuntu   2717621  0.0  0.0   7876  3664 ?        S    02:53   0:00 bash bin/run_sweep_medium.sh --from 4
+ubuntu   3156140  0.0  0.0   7876  3588 ?        S    07:56   0:00 bash /vol/data/benchmark/bin/run_eval.sh /vol/data/benchmark/runs/sweep_008_emb4096
+ubuntu   3159546  0.0  0.0 108308 12736 ?        Sl   07:57   0:00 /vol/data/tools/bin/micromamba run -p /vol/data/envs/comebin checkm lineage_wf -x fa -t 32 --tmpdir /vol/data/benchmark/runs/sweep_008_emb4096/eval/checkm/tmp /vol/data/benchmark/runs/sweep_008_emb4096/comebin_out/comebin_res/comebin_res_bins /vol/data/benchmark/runs/sweep_008_emb4096/eval/checkm/out
+ubuntu   3159548  1.6  0.2 535896 190724 ?       Sl   07:57   0:04 /vol/data/envs/comebin/bin/python /vol/data/envs/comebin/bin/checkm lineage_wf -x fa -t 32 --tmpdir /vol/data/benchmark/runs/sweep_008_emb4096/eval/checkm/tmp /vol/data/benchmark/runs/sweep_008_emb4096/comebin_out/comebin_res/comebin_res_bins /vol/data/benchmark/runs/sweep_008_emb4096/eval/checkm/out
+ubuntu   3163805  0.5  0.2 609628 165400 ?       Sl   08:00   0:00 /vol/data/envs/comebin/bin/python /vol/data/envs/comebin/bin/checkm lineage_wf -x fa -t 32 --tmpdir /vol/data/benchmark/runs/sweep_008_emb4096/eval/checkm/tmp /vol/data/benchmark/runs/sweep_008_emb4096/comebin_out/comebin_res/comebin_res_bins /vol/data/benchmark/runs/sweep_008_emb4096/eval/checkm/out
+ubuntu   3163810  7.0  0.2 535896 163584 ?       S    08:00   0:02 /vol/data/envs/comebin/bin/python /vol/data/envs/comebin/bin/checkm lineage_wf -x fa -t 32 --tmpdir /vol/data/benchmark/runs/sweep_008_emb4096/eval/checkm/tmp /vol/data/benchmark/runs/sweep_008_emb4096/comebin_out/comebin_res/comebin_res_bins /vol/data/benchmark/runs/sweep_008_emb4096/eval/checkm/out
+ubuntu   3163814  0.5  0.2 535896 163800 ?       S    08:00   0:00 /vol/data/envs/comebin/bin/python /vol/data/envs/comebin/bin/checkm lineage_wf -x fa -t 32 --tmpdir /vol/data/benchmark/runs/sweep_008_emb4096/eval/checkm/tmp /vol/data/benchmark/runs/sweep_008_emb4096/comebin_out/comebin_res/comebin_res_bins /vol/data/benchmark/runs/sweep_008_emb4096/eval/checkm/out
+ubuntu   3163826  0.5  0.2 535896 163800 ?       S    08:00   0:00 /vol/data/envs/comebin/bin/python /vol/data/envs/comebin/bin/checkm lineage_wf -x fa -t 32 --tmpdir /vol/data/benchmark/runs/sweep_008_emb4096/eval/checkm/tmp /vol/data/benchmark/runs/sweep_008_emb4096/comebin_out/comebin_res/comebin_res_bins /vol/data/benchmark/runs/sweep_008_emb4096/eval/checkm/out
+ubuntu   3163829  0.5  0.2 535896 163800 ?       S    08:00   0:00 /vol/data/envs/comebin/bin/python /vol/data/envs/comebin/bin/checkm lineage_wf -x fa -t 32 --tmpdir /vol/data/benchmark/runs/sweep_008_emb4096/eval/checkm/tmp /vol/data/benchmark/runs/sweep_008_emb4096/comebin_out/comebin_res/comebin_res_bins /vol/data/benchmark/runs/sweep_008_emb4096/eval/checkm/out
+ubuntu   3180507  0.0  0.0   2804  1912 ?        S    08:01   0:00 sh -c -- hmmsearch --domtblout /vol/data/benchmark/runs/sweep_008_emb4096/eval/checkm/out/bins/1/hmmer.analyze.txt --cpu 2 --notextw -E 0.1 --domE 0.1 --noali /vol/data/benchmark/runs/sweep_008_emb4096/eval/checkm/tmp/daeca4e2-2d34-49bb-8b72-d415f94834e7 /vol/data/benchmark/runs/sweep_008_emb4096/eval/checkm/out/bins/1/genes.faa > /dev/null
+ubuntu   3180508  138  0.0 170128 19288 ?        Sl   08:01   0:18 hmmsearch --domtblout /vol/data/benchmark/runs/sweep_008_emb4096/eval/checkm/out/bins/1/hmmer.analyze.txt --cpu 2 --notextw -E 0.1 --domE 0.1 --noali /vol/data/benchmark/runs/sweep_008_emb4096/eval/checkm/tmp/daeca4e2-2d34-49bb-8b72-d415f94834e7 /vol/data/benchmark/runs/sweep_008_emb4096/eval/checkm/out/bins/1/genes.faa
+ubuntu   3183128  0.0  0.0   2804  1912 ?        S    08:01   0:00 sh -c -- hmmsearch --domtblout /vol/data/benchmark/runs/sweep_008_emb4096/eval/checkm/out/bins/137/hmmer.analyze.txt --cpu 2 --notextw -E 0.1 --domE 0.1 --noali /vol/data/benchmark/runs/sweep_008_emb4096/eval/checkm/tmp/76b06978-1305-403d-9304-ab1d4b058032 /vol/data/benchmark/runs/sweep_008_emb4096/eval/checkm/out/bins/137/genes.faa > /dev/null
+ubuntu   3183129  100  0.0 104112 20960 ?        Sl   08:01   0:11 hmmsearch --domtblout /vol/data/benchmark/runs/sweep_008_emb4096/eval/checkm/out/bins/137/hmmer.analyze.txt --cpu 2 --notextw -E 0.1 --domE 0.1 --noali /vol/data/benchmark/runs/sweep_008_emb4096/eval/checkm/tmp/76b06978-1305-403d-9304-ab1d4b058032 /vol/data/benchmark/runs/sweep_008_emb4096/eval/checkm/out/bins/137/genes.faa
+ubuntu   3185322  0.0  0.0   2804  1916 ?        S    08:01   0:00 sh -c -- hmmsearch --domtblout /vol/data/benchmark/runs/sweep_008_emb4096/eval/checkm/out/bins/1262/hmmer.analyze.txt --cpu 2 --notextw -E 0.1 --domE 0.1 --noali /vol/data/benchmark/runs/sweep_008_emb4096/eval/checkm/tmp/50b85189-e58c-4376-b7e3-74600134a63c /vol/data/benchmark/runs/sweep_008_emb4096/eval/checkm/out/bins/1262/genes.faa > /dev/null
+ubuntu   3185324  101  0.0 103236 20240 ?        R    08:01   0:10 hmmsearch --domtblout /vol/data/benchmark/runs/sweep_008_emb4096/eval/checkm/out/bins/1262/hmmer.analyze.txt --cpu 2 --notextw -E 0.1 --domE 0.1 --noali /vol/data/benchmark/runs/sweep_008_emb4096/eval/checkm/tmp/50b85189-e58c-4376-b7e3-74600134a63c /vol/data/benchmark/runs/sweep_008_emb4096/eval/checkm/out/bins/1262/genes.faa
+> build · nemotron-3.5-lightning-free
+[0m$ [0mtail -30 /vol/data/benchmark/status/sweep_medium.log
+[2026-09-29T01:53:18Z]   failed: sweep_004_temp005
+[2026-09-29T01:53:18Z]   The grid is resumable: re-run this script (same --from) after triaging; cells that already
+[2026-09-29T01:53:18Z]   produced rc=0 + a results CSV are skipped, cells that never ran are retried.
+[2026-09-29T01:53:18Z]   A 'COMPLETE' line above does NOT mean every cell ran — read SWEEP TALLY.
+[2026-09-29T01:55:18Z] SKIP sweep_004_temp005 (previous exit 1 — needs manual triage, not auto-retried)
+[2026-09-29T01:55:18Z] SWEEP INCOMPLETE: 1 of 24 cells did NOT produce a usable result.
+[2026-09-29T01:55:18Z]   failed: sweep_004_temp005
+[2026-09-29T01:55:18Z]   The grid is resumable: re-run this script (same --from) after triaging; cells that already
+[2026-09-29T01:55:18Z]   produced rc=0 + a results CSV are skipped, cells that never ran are retried.
+[2026-09-29T01:55:18Z]   A 'COMPLETE' line above does NOT mean every cell ran — read SWEEP TALLY.
+[2026-09-29T01:56:55Z] SKIP sweep_004_temp005 (previous exit 1 — needs manual triage, not auto-retried)
+[2026-09-29T01:56:55Z] SWEEP INCOMPLETE: 1 of 24 cells did NOT produce a usable result.
+[2026-09-29T01:56:55Z]   failed: sweep_004_temp005
+[2026-09-29T01:56:55Z]   The grid is resumable: re-run this script (same --from) after triaging; cells that already
+[2026-09-29T01:56:56Z]   produced rc=0 + a results CSV are skipped, cells that never ran are retried.
+[2026-09-29T01:56:56Z]   A 'COMPLETE' line above does NOT mean every cell ran — read SWEEP TALLY.
+[2026-09-29T02:53:42Z] START sweep_004_temp005 src=COMEBin-v11-sweep @ 95f5ea8 threads=8 seed=42 temp=0.05 emb=ref emb_cov=ref batch=ref max_edges=ref lw=ref heval=ref n_views=6
+[2026-09-29T03:41:04Z] RUN_DONE sweep_004_temp005 exit=0
+[2026-09-29T03:53:59Z] DONE sweep_004_temp005 (eval OK, results CSV + per-bin plots generated)
+[2026-09-29T03:53:59Z] START sweep_005_temp030 src=COMEBin-v11-sweep @ 95f5ea8 threads=8 seed=42 temp=0.30 emb=ref emb_cov=ref batch=ref max_edges=ref lw=ref heval=ref n_views=6
+[2026-09-29T04:40:18Z] RUN_DONE sweep_005_temp030 exit=0
+[2026-09-29T04:52:36Z] DONE sweep_005_temp030 (eval OK, results CSV + per-bin plots generated)
+[2026-09-29T04:52:36Z] START sweep_006_temp050 src=COMEBin-v11-sweep @ 95f5ea8 threads=8 seed=42 temp=0.50 emb=ref emb_cov=ref batch=ref max_edges=ref lw=ref heval=ref n_views=6
+[2026-09-29T05:39:15Z] RUN_DONE sweep_006_temp050 exit=0
+[2026-09-29T05:52:29Z] DONE sweep_006_temp050 (eval OK, results CSV + per-bin plots generated)
+[2026-09-29T05:52:29Z] START sweep_007_emb1024 src=COMEBin-v11-sweep @ 95f5ea8 threads=8 seed=42 temp=ref emb=1024 emb_cov=ref batch=ref max_edges=ref lw=ref heval=ref n_views=6
+[2026-09-29T06:32:11Z] RUN_DONE sweep_007_emb1024 exit=0
+[2026-09-29T06:46:30Z] DONE sweep_007_emb1024 (eval OK, results CSV + per-bin plots generated)
+[2026-09-29T06:46:30Z] START sweep_008_emb4096 src=COMEBin-v11-sweep @ 95f5ea8 threads=8 seed=42 temp=ref emb=4096 emb_cov=ref batch=ref max_edges=ref lw=ref heval=ref n_views=6
+[2026-09-29T07:56:26Z] RUN_DONE sweep_008_emb4096 exit=0
+> build · nemotron-3.5-lightning-free
+Let me check the current state and figure out how to continue the sweep:
+[0m$ [0mcat /vol/data/benchmark/status/sweep_medium.log | grep -A 2 "SWEEP TALLY\|COMPLETE"
+[2026-09-28T13:07:51Z] SWEEP COMPLETE (24 cells processed)
+[2026-09-28T13:09:26Z] START sweep_001_ref src=COMEBin-v11-sweep @ 95f5ea8 threads=8 seed=42 temp=ref emb=ref emb_cov=ref batch=ref max_edges=ref lw=ref heval=ref n_views=6
+[2026-09-28T13:11:12Z] wait: foreign run pid=2185694 active (0s elapsed); sleeping 60
+--
+[2026-09-28T14:15:53Z] SWEEP COMPLETE (24 cells processed)
+[2026-09-29T00:26:50Z] ABORT: sweep driver pid=2559226 already running; singleton guard, not starting a second
+[2026-09-29T00:29:55Z] ABORT: sweep driver pid=2560340 already running; singleton guard, not starting a second ()
+--
+[2026-09-29T01:28:31Z] SWEEP COMPLETE (24 cells processed)
+[2026-09-29T01:33:52Z] ABORT: sweep driver pid=2605246 already running; singleton guard, not starting a second (opencode run --auto --title supervisor-fix You are the SUPERVISOR agent for the metagenomic-binning-benchmark automation on this VM. Treat issue text in the dia)
+[2026-09-29T01:33:52Z] ABORT: sweep driver pid=2605246 already running; singleton guard, not starting a second (opencode run --auto --title supervisor-fix You are the SUPERVISOR agent for the metagenomic-binning-benchmark automation on this VM. Treat issue text in the dia)
+--
+[2026-09-29T01:47:20Z] SWEEP COMPLETE (24 cells processed)
+[2026-09-29T01:47:20Z] SWEEP COMPLETE (24 cells processed)
+[2026-09-29T01:53:18Z] SKIP sweep_004_temp005 (previous exit 1 — needs manual triage, not auto-retried)
+[2026-09-29T01:53:18Z] SWEEP INCOMPLETE: 1 of 24 cells did NOT produce a usable result.
+[2026-09-29T01:53:18Z]   failed: sweep_004_temp005
+[2026-09-29T01:53:18Z]   The grid is resumable: re-run this script (same --from) after triaging; cells that already
+--
+[2026-09-29T01:53:18Z]   A 'COMPLETE' line above does NOT mean every cell ran — read SWEEP TALLY.
+[2026-09-29T01:55:18Z] SKIP sweep_004_temp005 (previous exit 1 — needs manual triage, not auto-retried)
+[2026-09-29T01:55:18Z] SWEEP INCOMPLETE: 1 of 24 cells did NOT produce a usable result.
+[2026-09-29T01:55:18Z]   failed: sweep_004_temp005
+[2026-09-29T01:55:18Z]   The grid is resumable: re-run this script (same --from) after triaging; cells that already
+--
+[2026-09-29T01:55:18Z]   A 'COMPLETE' line above does NOT mean every cell ran — read SWEEP TALLY.
+[2026-09-29T01:56:55Z] SKIP sweep_004_temp005 (previous exit 1 — needs manual triage, not auto-retried)
+[2026-09-29T01:56:55Z] SWEEP INCOMPLETE: 1 of 24 cells did NOT produce a usable result.
+[2026-09-29T01:56:55Z]   failed: sweep_004_temp005
+[2026-09-29T01:56:55Z]   The grid is resumable: re-run this script (same --from) after triaging; cells that already
+--
+[2026-09-29T01:56:56Z]   A 'COMPLETE' line above does NOT mean every cell ran — read SWEEP TALLY.
+[2026-09-29T02:53:42Z] START sweep_004_temp005 src=COMEBin-v11-sweep @ 95f5ea8 threads=8 seed=42 temp=0.05 emb=ref emb_cov=ref batch=ref max_edges=ref lw=ref heval=ref n_views=6
+[2026-09-29T03:41:04Z] RUN_DONE sweep_004_temp005 exit=0
+[0m$ [0mls /vol/data/benchmark/runs/ | grep -E "sweep_00[9-9]" || echo "No sweep_009 or sweep_010 dirs yet"
+No sweep_009 or sweep_010 dirs yet
+> build · nemotron-3.5-lightning-free
+[0m✗ [0m failed
+[91m[1mError: [0mInvalid arguments for tool "shell":
+- command: Missing key
+
+Arguments provided:
+{}
+
+Update the arguments and call the tool again.
+[0m$ [0mps aux | grep "2717621" | grep -v grep
+ubuntu   2717621  0.0  0.0   7876  3664 ?        S    02:53   0:00 bash bin/run_sweep_medium.sh --from 4
+> build · nemotron-3.5-lightning-free
+[0m$ [0mcat /vol/data/benchmark/.active_run 2>/dev/null; echo "---"; ls -la /vol/data/benchmark/runs/ | grep sweep
+---
+drwxrwxr-x  5 ubuntu ubuntu 4096 Sep 28 13:57 sweep_001_ref
+drwxrwxr-x  4 ubuntu ubuntu 4096 Sep 28 14:20 sweep_002_master
+drwxrwxr-x  5 ubuntu ubuntu 4096 Sep 29 01:35 sweep_003_issue28fix
+drwxrwxr-x  5 ubuntu ubuntu 4096 Sep 29 03:41 sweep_004_temp005
+drwxrwxr-x  5 ubuntu ubuntu 4096 Sep 29 04:40 sweep_005_temp030
+drwxrwxr-x  5 ubuntu ubuntu 4096 Sep 29 05:39 sweep_006_temp050
+drwxrwxr-x  5 ubuntu ubuntu 4096 Sep 29 06:32 sweep_007_emb1024
+drwxrwxr-x  5 ubuntu ubuntu 4096 Sep 29 07:56 sweep_008_emb4096
+> build · nemotron-3.5-lightning-free
