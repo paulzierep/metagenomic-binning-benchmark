@@ -102466,3 +102466,66 @@ A  scripts/run_galaxy_fixture_test.sh
 ## main...origin/main
 3ac437d7 scripts: add run_galaxy_fixture_test.sh (Galaxy IUC 40-contig fixture, issue #29) — smoke test, not a quality gate
 2026-09-29T01:02:00Z | rank script bug fixed (stray syntax error would have broken the post-sweep ranking) + scripts/run_galaxy_fixture_test.sh added for the issue #29 end-to-end run; both pushed
+> build · mimo-v2.6-flash-free
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md
+Index: /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md
++++ /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md
+@@ -726,8 +726,19 @@
+   and a pre-#28-fix checkout crashes on the empty marker seed. Fixture stored
+   at `/vol/data/datasets/galaxy_comebin_fixture/` (md5 `e6b5f3bb…` fasta,
+   `373f4411…` bam); end-to-end run on `41606c8` is queued behind the sweep
+   (overlap rule).
++- **Post-sweep tooling hardened while waiting**: `scripts/rank_sweep_medium.py`
++  shipped with a **stray syntax error** (`del par for par in []` in the format
++  call) that would have killed the ranking the moment the grid finished —
++  removed, plus defensive `as_int`/`as_float`/`fmt_f1` guards (a `-`/empty CSV
++  cell no longer raises `ValueError`) and `n_views=6` normalised to `ref` so
++  the reference cell shows "reference (defaults)". Verified out-of-tree against
++  a synthetic malformed row. `scripts/run_galaxy_fixture_test.sh` (NEW) wraps
++  the issue-#29 fixture run: `CONTIGS`/`BAMDIR`/`MODE=galaxy_fixture`,
++  `MAX_EDGES=20` (Galaxy's own value; 100 > 40 contigs → `ValueError`),
++  `bamfiles/` symlink created, and it inherits the harness's
++  no-overlap/no-overwrite guards. Pushed `9d36e82c`, `3ac437d7`.
+ 
+ ## Watchdog / restart
+ 
+ `scripts/agent-watchdog.sh` (installed at `/vol/data/benchmark/bin/`, cron `*/5 * * * *`):
+
+> build · mimo-v2.6-flash-free
+[0m$ [0mset -e
+cp /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md /vol/data/benchmark/PROGRESS.md
+cd /vol/data/repos/metagenomic-binning-benchmark
+exec 9>/tmp/bench-repo.lock; flock -w 120 9; echo "lock acquired"
+git add PROGRESS.md
+git status --porcelain
+git -c user.name="agent" -c user.email="agent@localhost" commit -q -m "PROGRESS: record rank-script fix + galaxy fixture runner in the 2026-09-29 resume section"
+git pull --rebase -q origin main
+git push -q origin main
+git status -sb | head -1
+touch /vol/data/benchmark/.heartbeat
+echo "$(date -u +%Y-%m-%dT%H:%M:%SZ) | PROGRESS.md updated (rank-script fix + fixture runner) and synced to /vol/data/benchmark" >> status/agent-activity.log
+echo "=== issues ==="; gh issue list -R paulzierep/metagenomic-binning-benchmark --state open --json number,title,updatedAt --jq '.[] | "#\(.number) \(.title) | \(.updatedAt)"'
+echo "=== sweep ==="; grep -o "epoch=[0-9]*/200" /vol/data/benchmark/runs/sweep_003_issue28fix/comebin_run.log | tail -1; ps -o pid,etime -p 2566340 | tail -1
+lock acquired
+M  PROGRESS.md
+## main...origin/main
+=== issues ===
+#29 Small test data | 2026-09-29T00:55:19Z
+#28 Fix this issue | 2026-09-29T00:55:20Z
+#27 Are u ok ? | 2026-09-28T12:52:42Z
+#26 Improve logging | 2026-09-28T13:00:08Z
+#25 Improve optimization | 2026-09-28T13:11:51Z
+#24 Main readme needs cleaning | 2026-09-28T13:15:15Z
+#23 Where does the assembly for cami3 come from | 2026-09-28T13:02:38Z
+#22 is there a summary table for all runs | 2026-09-28T13:00:05Z
+#21 use a seed for all runs | 2026-09-28T13:02:14Z
+#20 what are your ideas for further optimization ? | 2026-09-28T13:02:13Z
+#19 better plots | 2026-09-28T13:15:17Z
+#6 Optimization | 2026-09-26T07:56:10Z
+#1 Idea inbox: benchmark ideas, COMEBin fixes, dataset requests | 2026-09-23T14:53:13Z
+=== sweep ===
+epoch=90/200
+2566340       21:31
+> build · mimo-v2.6-flash-free
