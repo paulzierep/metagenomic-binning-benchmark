@@ -100849,3 +100849,77 @@ distinct refs in alignments: 29
     </xml>
 </macros>
 > build · mimo-v2.6-flash-free
+[0m$ [0mecho "=== min bin size / clustering constants:"; grep -rn 'MINIMUM_FINAL_BIN_SIZE\|minimum_final_bin\|200000\|min_bin' /vol/data/repos/COMEBin-master904/COMEBin/*.py /vol/data/repos/COMEBin-v11/COMEBin/*.py 2>/dev/null | head -12; echo; echo "=== marker seed exit handling (master904 vs v11):"; grep -n 'MARKER_NO_SEED\|Marker seed generation failed\|allowed_returncodes' /vol/data/repos/COMEBin-master904/COMEBin/utils.py /vol/data/repos/COMEBin-v11/COMEBin/utils.py 2>/dev/null | head; echo; echo "=== batch cap in v11 run_comebin.sh:"; grep -n 'sequence_count\|batch_size=' /vol/data/repos/COMEBin-v11-sweep/COMEBin/run_comebin.sh | head; echo; echo "=== max_edges check:"; grep -rn 'max_edges must be\|max_edges+1\|k = ' /vol/data/repos/COMEBin-master904/COMEBin/*.py 2>/dev/null | head -6
+=== min bin size / clustering constants:
+/vol/data/repos/COMEBin-master904/COMEBin/filter_small_bins.py:72:def filter_small_bins(logger, fastafile: str, resultfile: str, args, minbinsize: int = 200000) -> None:
+/vol/data/repos/COMEBin-v11/COMEBin/filter_small_bins.py:78:def filter_small_bins(logger, fastafile: str, resultfile: str, args, minbinsize: int = 200000) -> None:
+/vol/data/repos/COMEBin-v11/COMEBin/get_final_result.py:17:MINIMUM_FINAL_BIN_SIZE = 200000
+/vol/data/repos/COMEBin-v11/COMEBin/get_final_result.py:188:def retained_final_labels(labels, contig_lengths, minimum_size=MINIMUM_FINAL_BIN_SIZE):
+
+=== marker seed exit handling (master904 vs v11):
+/vol/data/repos/COMEBin-v11/COMEBin/utils.py:32:MARKER_NO_SEED_EXIT_CODES = frozenset({2, 3, 4})
+/vol/data/repos/COMEBin-v11/COMEBin/utils.py:186:def _run_external_command(logger, label, command, stdout_path, stderr_path, allowed_returncodes=frozenset()):
+/vol/data/repos/COMEBin-v11/COMEBin/utils.py:189:    ``allowed_returncodes`` names exit statuses that carry a meaningful, expected
+/vol/data/repos/COMEBin-v11/COMEBin/utils.py:203:        if completed.returncode in allowed_returncodes:
+/vol/data/repos/COMEBin-v11/COMEBin/utils.py:256:        usable marker seed set (see MARKER_NO_SEED_EXIT_CODES). A return of 0 is a
+/vol/data/repos/COMEBin-v11/COMEBin/utils.py:336:            allowed_returncodes=MARKER_NO_SEED_EXIT_CODES)
+
+=== batch cap in v11 run_comebin.sh:
+56:batch_size=1024
+97:  b) batch_size=${OPTARG}
+
+=== max_edges check:
+/vol/data/repos/COMEBin-master904/COMEBin/cluster.py:402:        ann_neighbor_indices, ann_distances = p.knn_query(norm_embeddings, max_edges+1, num_threads=num_workers)
+/vol/data/repos/COMEBin-master904/COMEBin/simclr.py:50:        mask = torch.eye(labels.shape[0], dtype=torch.bool).to(self.args.device)
+/vol/data/repos/COMEBin-master904/COMEBin/simclr.py:83:        mask = torch.eye(labels.shape[0], dtype=torch.bool).to(self.args.device)
+/vol/data/repos/COMEBin-master904/COMEBin/simclr.py:116:        mask = torch.eye(labels.shape[0], dtype=torch.bool).to(self.args.device)
+/vol/data/repos/COMEBin-master904/COMEBin/train_CLmodel.py:27:        cudnn.benchmark = True
+/vol/data/repos/COMEBin-master904/COMEBin/utils.py:29:        maxk = max(topk)
+[0m$ [0mgh search issues --repo galaxyproject/tools-iuc comebin --limit 10 --json number,title,state,updatedAt --jq '.[] | "\(.number)\t\(.state)\t\(.updatedAt)\t\(.title)"' 2>&1 | head; echo "=== recent commits touching comebin:"; gh api 'repos/galaxyproject/tools-iuc/commits?path=tools/comebin&per_page=5' --jq '.[] | "\(.sha[0:8]) \(.commit.author.date) \(.commit.message | split("\n")[0])"' 2>&1 | head
+7675	open	2026-03-24T17:34:55Z	Failing weekly tests
+=== recent commits touching comebin:
+103ca964 2026-08-25T15:13:13Z Update tools/comebin to 1.1.0 (#8351)
+9ebed28f 2025-10-15T13:51:06Z fix repository URLs (#5016)
+f33c09bd 2025-08-21T08:38:34Z Fix COMEBin (#7236)
+905ce19e 2025-08-04T11:13:37Z Updating tools/comebin from version 1.0.3 to 1.0.4 (#7191)
+a298275e 2025-07-30T11:37:17Z Fix COMEBin wrapper (#7178)
+> build · mimo-v2.6-flash-free
+[0m$ [0mecho "=== batch cap in v11 (=v1.1.0 base) run_comebin.sh:"; grep -n 'grep -c\|sequence_count\|batch_size=\${' /vol/data/repos/COMEBin-v11/COMEBin/run_comebin.sh | head; echo "=== upstream test data in COMEBin repo?"; grep -rln 'g1k_0' /vol/data/repos/COMEBin 2>/dev/null | head -3; ls /vol/data/repos/COMEBin/ | head -20; echo "=== GC + composition of galaxy fasta:"; python3 - <<'PY'
+from collections import Counter
+seqs={}
+name=None
+for line in open('/tmp/opencode/galaxy_comebin_test/input_single.fasta'):
+    line=line.strip()
+    if line.startswith('>'):
+        name=line[1:]; seqs[name]=[]
+    else: seqs[name].append(line)
+seqs={k:''.join(v) for k,v in seqs.items()}
+allseq=''.join(seqs.values())
+c=Counter(allseq.upper())
+tot=sum(c.values())
+print("n_contigs",len(seqs),"total_bp",tot)
+print("composition:", {k: round(v/tot*100,2) for k,v in sorted(c.items())})
+# homopolymer/entropy-ish check
+import math
+print("uniq 12-mers:", len({allseq[i:i+12] for i in range(0,tot-12,3)}), "of", len(range(0,tot-12,3)))
+PY
+echo "=== sweep cell3 status:"; tr '\r' '\n' < /vol/data/benchmark/runs/sweep_003_issue28fix/comebin_run.log | grep -aE 'epoch|Batch size|N50' | tail -3; date -u; touch /vol/data/benchmark/.heartbeat
+=== batch cap in v11 (=v1.1.0 base) run_comebin.sh:
+97:  b) batch_size=${OPTARG}
+=== upstream test data in COMEBin repo?
+COMEBin
+LICENSE.txt
+README.md
+auxiliary
+comebin_env.yaml
+overview.png
+=== GC + composition of galaxy fasta:
+n_contigs 40 total_bp 800000
+composition: {'A': 36.04, 'C': 12.66, 'G': 14.31, 'T': 36.99}
+uniq 12-mers: 58178 of 266663
+=== sweep cell3 status:
+2026-09-29 00:44:50,755 - NN training: epoch=11/200, batches=2, loss=6.5853543, top1=1.7122, elapsed=13.655s, process_memory={'VmPeak': '6594488 kB', 'VmRSS': '1560464 kB'}, gpu_memory=None.
+2026-09-29 00:45:04,636 - NN training: epoch=12/200, batches=2, loss=6.5560818, top1=1.6374, elapsed=13.880s, process_memory={'VmPeak': '6594488 kB', 'VmRSS': '1560524 kB'}, gpu_memory=None.
+2026-09-29 00:45:18,687 - NN training: epoch=13/200, batches=2, loss=6.5243306, top1=1.7578, elapsed=14.050s, process_memory={'VmPeak': '6594488 kB', 'VmRSS': '1573836 kB'}, gpu_memory=None.
+Tue Sep 29 00:45:28 UTC 2026
+> build · mimo-v2.6-flash-free
