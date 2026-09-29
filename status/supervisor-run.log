@@ -66679,3 +66679,53 @@ cami3_v11_20260926_rerun     tar=31981568   readme=none   bins=351504274 gzip_ok
 2629782 /bin/bash -c cd /vol/data/benchmark rm -rf runs/cami3_v11_20260926_rerun/biobox ENGINE=comebin VERSION=v11 SAMPLE=cami3 bash /vol/data/repos/metagenomic-binning-benchmark/scripts/export_biobox.sh /vol/data/benchmark/runs/cami3_v11_20260926_rerun > /tmp/opencode/cami3_biobox2.log 2>&1 && echo "CAMI3_BIOBOX_DONE" && ls -la runs/cami3_v11_20260926_rerun/biobox/
 > build · big-pickle
 My gate correctly rejects the in-flight cami3 export (gzip -t = NO). Final end-to-end verification:
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && timeout 900 bash scripts/zenodo_update.sh --dry-run 2>&1 | tail -6
+[zenodo_update] staging benchmark data -> /vol/data/benchmark/releases/stage.jLTfCH
+[zenodo_update] runs in package: baseline_rerun_autorestart1 (60 bins) cami3_v11_20260926_rerun (492 bins) fix_v11_20260924 (71 bins) human_v11_20260925 (107 bins) marine_v11_20260925 (152 bins) medium_v11_20260924 (16 bins) small_test_v4 (3 bins) sweep_001_ref (17 bins) sweep_003_issue28fix (17 bins) tiny_test_n101 (1 bins)
+[zenodo_update] manifest: 1109 files, 1903544993 bytes
+[zenodo_update] package: /vol/data/benchmark/releases/comebin_benchmark_release_dryrun_20260929.tar.gz (678088841 bytes, md5 8a5e079aa38ac4c224d63d2473d0b1b0)
+[zenodo_update] dry-run: stopping before any network call
+> build · big-pickle
+[0m$ [0mcd /vol/data/benchmark/releases && m=$(ls -t manifest.*.json | head -1); echo "manifest: $m"; python3 -c "
+import json
+d=json.load(open('$m'))
+bio=sorted([f for f in d['files'] if '/biobox/' in f['path']],key=lambda x:x['path'])
+for f in bio: print(f\"{f['bytes']:>11}  {f['path']}\")
+print('biobox files:',len(bio),' bytes:',sum(f['bytes'] for f in bio))
+print()
+# integrity: every shipped tarball must pass gzip -t and list .fna entries
+import tarfile,io,gzip,os
+root='$m'
+" ; echo "=== verify each shipped tarball is a valid, complete archive ==="; for t in $(python3 -c "
+import json
+d=json.load(open('$m'))
+print(' '.join(f['path'] for f in d['files'] if f['path'].endswith('biobox/binning.tar.gz')))"); do
+  src=/vol/data/benchmark/releases/stage_check 2>/dev/null
+  echo "  $t"; done
+echo "=== cami3 correctly excluded? ==="; python3 -c "
+import json
+d=json.load(open('$m'))
+print('cami3 biobox entries:', [f['path'] for f in d['files'] if 'cami3_v11_20260926_rerun/biobox' in f['path']] or 'NONE (correct: export still in flight)')"
+manifest: manifest.20260929T013339Z.json
+        804  runs/human_v11_20260925/biobox/README.txt
+   49809086  runs/human_v11_20260925/biobox/binning.tar.gz
+      87220  runs/human_v11_20260925/biobox/binning_summary.tsv
+      60992  runs/human_v11_20260925/biobox/human.binning
+        809  runs/marine_v11_20260925/biobox/README.txt
+   89512331  runs/marine_v11_20260925/biobox/binning.tar.gz
+     770170  runs/marine_v11_20260925/biobox/binning_summary.tsv
+     564499  runs/marine_v11_20260925/biobox/marine.binning
+        808  runs/medium_v11_20260924/biobox/README.txt
+    8238004  runs/medium_v11_20260924/biobox/binning.tar.gz
+     126113  runs/medium_v11_20260924/biobox/binning_summary.tsv
+     112018  runs/medium_v11_20260924/biobox/medium.binning
+biobox files: 12  bytes: 149282854
+
+=== verify each shipped tarball is a valid, complete archive ===
+  runs/human_v11_20260925/biobox/binning.tar.gz
+  runs/marine_v11_20260925/biobox/binning.tar.gz
+  runs/medium_v11_20260924/biobox/binning.tar.gz
+=== cami3 correctly excluded? ===
+cami3 biobox entries: NONE (correct: export still in flight)
+> build · big-pickle
+Let me validate the actual dry-run package end-to-end (what would really be published):
