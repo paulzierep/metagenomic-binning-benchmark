@@ -67315,3 +67315,314 @@ Index: /vol/data/repos/metagenomic-binning-benchmark/scripts/run_comebin_fix.sh
  # Fields: pid pgid logfile rundir start_epoch mode source_repo contigs bamdir.
  printf '%s %s %s %s %s %s %s %s %s\n' "$$" "$(ps -o pgid= -p $$ | tr -d ' ')" \
 
+> build · big-pickle
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/scripts/run_sweep_medium.sh
+Index: /vol/data/repos/metagenomic-binning-benchmark/scripts/run_sweep_medium.sh
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/scripts/run_sweep_medium.sh
++++ /vol/data/repos/metagenomic-binning-benchmark/scripts/run_sweep_medium.sh
+@@ -222,10 +222,14 @@
+     continue
+   fi
+ 
+   # Build env overrides, dropping "ref".
++  # COMEBIN_TEMPERATURE, not TEMP: libmamba reads TEMP as a temp-directory path
++  # and aborts micromamba with "temp_directory_path: No such file or directory
++  # [0.05]" if it is not a directory. TEMP=<float> killed every temperature cell
++  # of the 2026-09-29 sweep instantly; run_comebin_fix.sh also clears TEMP.
+   declare -a SWEEP_ENV=()
+-  [ "$temp"     != "ref" ] && SWEEP_ENV+=(TEMP="$temp")
++  [ "$temp"     != "ref" ] && SWEEP_ENV+=(COMEBIN_TEMPERATURE="$temp")
+   [ "$emb"      != "ref" ] && SWEEP_ENV+=(EMB="$emb")
+   [ "$emb_cov"  != "ref" ] && SWEEP_ENV+=(EMB_COV="$emb_cov")
+   [ "$batch"    != "ref" ] && SWEEP_ENV+=(BATCH="$batch")
+   [ "$max_edges" != "ref" ] && SWEEP_ENV+=(MAX_EDGES="$max_edges")
+
+> build · big-pickle
+Now the second defect — the driver reporting "SWEEP COMPLETE" after a total loss:
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && grep -n "COMPLETE\|cells processed\|^log \"" scripts/run_sweep_medium.sh | tail -12; echo "=== context ==="; sed -n '262,290p' scripts/run_sweep_medium.sh
+279:log "SWEEP COMPLETE ($idx cells processed)"
+=== context ===
+  if ! "$BIN/run_eval.sh" "$RUN" > "$BENCH/status/$name.eval.out" 2>&1; then
+    log "EVAL_FAIL $name (rc=$?) — results CSV may be missing; will re-eval later"
+    continue
+  fi
+  log "DONE $name (eval OK, results CSV + per-bin plots generated)"
+
+  # sync per-bin artifacts back into the repo run dir
+  mkdir -p "$REPO_RUNS/$name"
+  cp "$RUN/run_meta.txt" "$REPO_RUNS/$name/run_meta.txt" 2>/dev/null || true
+  if [ -f "$RESULTS/$name.csv" ]; then
+    cp "$RESULTS/$name.csv" "$REPO_RUNS/$name/" 2>/dev/null || true
+  fi
+  if [ -f "$RUN/per_bin_results.csv" ]; then
+    cp "$RUN/per_bin_results.csv" "$REPO_RUNS/$name/per_bin_results.csv" 2>/dev/null || true
+  fi
+done
+
+log "SWEEP COMPLETE ($idx cells processed)"
+> build · big-pickle
+[0m→ [0mRead /vol/data/repos/metagenomic-binning-benchmark/scripts/run_sweep_medium.sh [90m[limit=18, offset=186][0m
+> build · big-pickle
+Now let me add failure accounting so a total loss can never again be reported as success.
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/scripts/run_sweep_medium.sh
+Index: /vol/data/repos/metagenomic-binning-benchmark/scripts/run_sweep_medium.sh
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/scripts/run_sweep_medium.sh
++++ /vol/data/repos/metagenomic-binning-benchmark/scripts/run_sweep_medium.sh
+@@ -195,8 +195,12 @@
+   fi
+ }
+ 
+ idx=0
++ok=0
++failed=0
++skipped=0
++declare -a FAILED_CELLS=()
+ for spec in "${CELL_SPECS[@]}"; do
+   idx=$((idx + 1))
+   [ "$idx" -ge "$from" ] || continue
+   IFS='|' read -r name src temp emb emb_cov batch max_edges lw heval nviews cellseed <<< "$spec"
+
+> build · big-pickle
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/scripts/run_sweep_medium.sh
+Index: /vol/data/repos/metagenomic-binning-benchmark/scripts/run_sweep_medium.sh
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/scripts/run_sweep_medium.sh
++++ /vol/data/repos/metagenomic-binning-benchmark/scripts/run_sweep_medium.sh
+@@ -210,8 +210,9 @@
+   if [ -f "$RUN/run_meta.txt" ]; then
+     rc=$(grep -m1 '^exit_code:' "$RUN/run_meta.txt" | awk '{print $2}' || true)
+     if [ "${rc:-}" = "0" ]; then
+       if [ -f "$RESULTS/$name.csv" ]; then
++        ok=$((ok + 1))
+         log "SKIP $name (already done rc=0 + results csv)"
+       else
+         log "RESUME $name (rc=0 but no results csv — evaling orphaned run)"
+         eval_done_run "$name" "$RUN"
+
+> build · big-pickle
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/scripts/run_sweep_medium.sh
+Index: /vol/data/repos/metagenomic-binning-benchmark/scripts/run_sweep_medium.sh
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/scripts/run_sweep_medium.sh
++++ /vol/data/repos/metagenomic-binning-benchmark/scripts/run_sweep_medium.sh
+@@ -219,11 +219,13 @@
+       fi
+       continue
+     fi
+     if [ -n "$rc" ] && [ "$rc" != "0" ]; then
++      failed=$((failed + 1)); FAILED_CELLS+=("$name")
+       log "SKIP $name (previous exit $rc — needs manual triage, not auto-retried)"
+       continue
+     fi
++    failed=$((failed + 1)); FAILED_CELLS+=("$name")
+     log "SKIP $name (run dir exists without terminal exit — not overwriting)"
+     continue
+   fi
+ 
+
+> build · big-pickle
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/scripts/run_sweep_medium.sh
+Index: /vol/data/repos/metagenomic-binning-benchmark/scripts/run_sweep_medium.sh
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/scripts/run_sweep_medium.sh
++++ /vol/data/repos/metagenomic-binning-benchmark/scripts/run_sweep_medium.sh
+@@ -251,9 +251,10 @@
+   if ! env SRC_COMEBIN="$src" DATA="$DATA" CONTIGS="$CONTIGS" BAMDIR="$BAMDIR" \
+       MODE=medium THREADS="$THREADS" SEED="$SEED_FOR_RUN" \
+       "${SWEEP_ENV[@]}" \
+       "$BIN/run_comebin_fix.sh" "$RUN" >> "$BENCH/status/$name.comebin.out" 2>&1; then
+-    log "FAIL $name: run_comebin_fix.sh rc=$?"
++    failed=$((failed + 1)); FAILED_CELLS+=("$name")
++    log "FAIL $name: run_comebin_fix.sh (launch failed — see status/$name.comebin.out)"
+     continue
+   fi
+ 
+   rc=$(grep -m1 '^exit_code:' "$RUN/run_meta.txt" | awk '{print $2}' || true)
+
+> build · big-pickle
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/scripts/run_sweep_medium.sh
+Index: /vol/data/repos/metagenomic-binning-benchmark/scripts/run_sweep_medium.sh
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/scripts/run_sweep_medium.sh
++++ /vol/data/repos/metagenomic-binning-benchmark/scripts/run_sweep_medium.sh
+@@ -267,11 +267,13 @@
+ 
+   # brief grace for run_comebin_fix.sh cleanup of .active_run
+   sleep 5
+   if ! "$BIN/run_eval.sh" "$RUN" > "$BENCH/status/$name.eval.out" 2>&1; then
+-    log "EVAL_FAIL $name (rc=$?) — results CSV may be missing; will re-eval later"
++    failed=$((failed + 1)); FAILED_CELLS+=("$name")
++    log "EVAL_FAIL $name — results CSV may be missing; will re-eval later"
+     continue
+   fi
++  ok=$((ok + 1))
+   log "DONE $name (eval OK, results CSV + per-bin plots generated)"
+ 
+   # sync per-bin artifacts back into the repo run dir
+   mkdir -p "$REPO_RUNS/$name"
+
+> build · big-pickle
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/scripts/run_sweep_medium.sh
+Index: /vol/data/repos/metagenomic-binning-benchmark/scripts/run_sweep_medium.sh
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/scripts/run_sweep_medium.sh
++++ /vol/data/repos/metagenomic-binning-benchmark/scripts/run_sweep_medium.sh
+@@ -286,4 +286,5 @@
+   fi
+ done
+ 
+ log "SWEEP COMPLETE ($idx cells processed)"
++log "SWEEP TALLY: ok=$ok failed=$failed skipped=$skipped"
+
+> build · big-pickle
+[0m→ [0mRead /vol/data/repos/metagenomic-binning-benchmark/scripts/run_sweep_medium.sh [90m[limit=12, offset=288][0m
+> build · big-pickle
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/scripts/run_sweep_medium.sh
+Index: /vol/data/repos/metagenomic-binning-benchmark/scripts/run_sweep_medium.sh
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/scripts/run_sweep_medium.sh
++++ /vol/data/repos/metagenomic-binning-benchmark/scripts/run_sweep_medium.sh
+@@ -285,6 +285,14 @@
+     cp "$RUN/per_bin_results.csv" "$REPO_RUNS/$name/per_bin_results.csv" 2>/dev/null || true
+   fi
+ done
+ 
+-log "SWEEP COMPLETE ($idx cells processed)"
++if [ "$failed" -gt 0 ]; then
++  log "SWEEP INCOMPLETE: $failed of $idx cells did NOT produce a usable result."
++  log "  failed: ${FAILED_CELLS[*]}"
++  log "  The grid is resumable: re-run this script (same --from) after triaging; cells that already"
++  log "  produced rc=0 + a results CSV are skipped, cells that never ran are retried."
++  log "  A 'COMPLETE' line above does NOT mean every cell ran — read SWEEP TALLY."
++  exit 1
++fi
++log "SWEEP COMPLETE ($idx cells processed) — all cells ok"
+ log "SWEEP TALLY: ok=$ok failed=$failed skipped=$skipped"
+
+> build · big-pickle
+Now let me verify both fixes with a real reproduction, not just a syntax check.
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && bash -n scripts/run_sweep_medium.sh && bash -n scripts/run_comebin_fix.sh && echo "SYNTAX OK both"
+echo "=== the real fix: does micromamba start with COMEBIN_TEMPERATURE + inherited TEMP? ==="
+TEMP=0.05 COMEBIN_TEMPERATURE=0.05 bash -c 'unset TEMP TEMPDIR; export TMPDIR="${TMPDIR:-/tmp}"; /vol/data/tools/bin/micromamba run -p /vol/data/envs/comebin bash -c "echo FIX_WORKS_micromamba_started"' 2>&1 | tail -2
+echo "=== control: without the unset (old behaviour) ==="
+TEMP=0.05 bash -c '/vol/data/tools/bin/micromamba run -p /vol/data/envs/comebin bash -c "echo NOPE"' 2>&1 | tail -1
+echo "=== param still forwarded as -l? ==="
+grep -n 'COMEBIN_TEMPERATURE' scripts/run_comebin_fix.sh scripts/run_sweep_medium.sh
+SYNTAX OK both
+=== the real fix: does micromamba start with COMEBIN_TEMPERATURE + inherited TEMP? ===
+FIX_WORKS_micromamba_started
+=== control: without the unset (old behaviour) ===
+critical libmamba filesystem error: temp_directory_path: No such file or directory [0.05]
+=== param still forwarded as -l? ===
+scripts/run_comebin_fix.sh:79:if [ -n "${COMEBIN_TEMPERATURE:-${TEMP:-}}" ]; then
+scripts/run_comebin_fix.sh:81:    COMEBIN_ARGS+=(-l "${COMEBIN_TEMPERATURE:-${TEMP:-}}")
+scripts/run_comebin_fix.sh:127:# travels as COMEBIN_TEMPERATURE, and any inherited TEMP is cleared so no
+scripts/run_sweep_medium.sh:233:  # COMEBIN_TEMPERATURE, not TEMP: libmamba reads TEMP as a temp-directory path
+scripts/run_sweep_medium.sh:238:  [ "$temp"     != "ref" ] && SWEEP_ENV+=(COMEBIN_TEMPERATURE="$temp")
+> build · big-pickle
+Both fixes verified against a real reproduction. Now let me safely resolve the stale state — first checking what `benchmark-watchdog.sh` does before running it.
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && grep -n "run_comebin_fix\|launch\|restart\|rm -f \"\$ACTIVE\"\|no automatic retry\|run_sweep" scripts/benchmark-watchdog.sh | head -20
+4:# still restarts it.
+9:#   - HUNG     = process alive but log silent for > $HANG_S -> kill + restart
+10:#   - CRASHED  = process gone with no terminal evidence       -> restart
+15:#   - rate limit: max $MAX_PER_RUN restarts per run per rolling 24 h
+38:root_name=${name%%_autorestart*}
+79:# Accept both the live source launcher and the immutable snapshot launcher.  A
+80:# watchdog restart intentionally executes a committed snapshot, whose argv does
+89:    *run_comebin_baseline.sh*|*run_comebin_fix.sh*|*run_small_test.sh*) return 0 ;;
+104:    rm -f "$ACTIVE"
+127:      find "$BENCH" -maxdepth 1 -name ".hang_restarts.$root_name.*" -mmin -1440 -delete 2>/dev/null || true
+129:    log "$name terminal failure: $reason — active-run cleared; no automatic retry"
+143:    log "cannot read committed runner $RUNNER_REF:$rel; refusing launch"
+146:  [ -s "$tmp" ] || { rm -f "$tmp"; log "committed runner $RUNNER_REF:$rel is empty; refusing launch"; return 1; }
+179:      log "pid $pid is alive but is not a registered COMEBin runner; refusing kill/restart: $pid_cmd"
+190:        *"$rundir"*|*run_comebin_baseline.sh*|*run_comebin_fix.sh*|*run_small_test.sh*|*micromamba*) ;;
+199:      log "process group $pgid has unrelated members; refusing orphan kill/restart"
+214:    candidates=("$logfile" "$BENCH/logs/${name}.launch.log")
+215:    # The original pre-watchdog baseline used this shared launch log.  Consult
+217:    if [ "$name" = "baseline_unmodified" ] && [ -f "/vol/data/logs/baseline_launch.log" ]; then
+218:      candidates+=("/vol/data/logs/baseline_launch.log")
+> build · big-pickle
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && sed -n '100,132p' scripts/benchmark-watchdog.sh
+}
+
+clear_active() {
+  if active_matches; then
+    rm -f "$ACTIVE"
+    return 0
+  fi
+  log "$name registration changed while watchdog was inspecting it; leaving current state untouched"
+  return 1
+}
+
+# A terminal failure is deliberately not treated as a transient crash.  This is
+# important for deterministic COMEBin/data/dependency errors: retrying them
+# wastes hours and can overwrite the only useful diagnostics.
+record_terminal_failure() {
+  local reason=$1 stamp
+  stamp=$(date -Is)
+  reason=$(printf '%s' "$reason" | tr '\r\n\t' '   ' | cut -c1-400)
+  if [ -f "$rundir/run_meta.txt" ]; then
+    printf 'watchdog_terminal: %s\n' "$stamp $reason" >> "$rundir/run_meta.txt" 2>/dev/null || true
+  fi
+  printf '%s\n' "$stamp $reason" > "$rundir/.watchdog_terminal" 2>/dev/null || true
+  printf '%s\t%s\t%s\n' "$stamp" "$rundir" "$reason" > "$BENCH/.last_benchmark_failure" 2>/dev/null || true
+  if clear_active; then
+    # A terminal failure consumes no retry budget.  Remove only markers for
+    # this stable run family, and only after the registered process is gone.
+    if [[ "$root_name" =~ ^[A-Za-z0-9._-]+$ ]]; then
+      find "$BENCH" -maxdepth 1 -name ".hang_restarts.$root_name.*" -mmin -1440 -delete 2>/dev/null || true
+    fi
+    log "$name terminal failure: $reason — active-run cleared; no automatic retry"
+  else
+    log "$name terminal failure: $reason — registration changed; not clearing a replacement"
+  fi
+> build · big-pickle
+The watchdog's terminal-failure path clears `.active_run` and never auto-retries — that's the designed path. Let me run it and prove no run is launched.
+[0m$ [0mbefore=$(pgrep -c -f "run_comebin|COMEBin/main.py" 2>/dev/null || echo 0); echo "comebin procs before: $before"; echo "=== run benchmark-watchdog.sh ==="; timeout 240 bash /vol/data/benchmark/bin/benchmark-watchdog.sh 2>&1 | tail -10; echo "rc=$?"; after=$(pgrep -c -f "run_comebin|COMEBin/main.py" 2>/dev/null || echo 0); echo "comebin procs after: $after"; echo "=== .active_run now ==="; cat /vol/data/benchmark/.active_run 2>&1 || echo "(cleared)"
+comebin procs before: 4
+=== run benchmark-watchdog.sh ===
+rc=0
+comebin procs after: 4
+=== .active_run now ===
+cat: /vol/data/benchmark/.active_run: No such file or directory
+(cleared)
+> build · big-pickle
+[0m$ [0mtail -3 /vol/data/benchmark/logs/benchmark-watchdog.log; echo "=== real COMEBin/train procs ==="; ps -ef | grep -E "COMEBin/main.py|run_comebin_fix" | grep -v grep | wc -l; echo "=== start lock holders ==="; for p in $(ls /proc | grep -E '^[0-9]+$'); do for f in /proc/$p/fd/*; do t=$(readlink "$f" 2>/dev/null); case "$t" in *benchmark-start.lock*) echo "  pid $p";; esac; done; done 2>/dev/null | sort -u; echo "(none above = lock free)"
+2026-09-28T13:00:01+00:00 [bm-watchdog] active-run directory is outside /vol/data/benchmark/runs: /tmp/opencode/small_v11_prepatch_baseline; refusing state change
+2026-09-28T14:20:02+00:00 [bm-watchdog] sweep_002_master terminal failure: run_meta exit_code=1 — active-run cleared; no automatic retry
+2026-09-29T01:50:01+00:00 [bm-watchdog] sweep_004_temp005 terminal failure: run_meta exit_code=1 — active-run cleared; no automatic retry
+=== real COMEBin/train procs ===
+2
+=== start lock holders ===
+(none above = lock free)
+> build · big-pickle
+[0m$ [0mps -ef | grep -E "COMEBin/main.py|run_comebin_fix" | grep -v grep | awk '{print $2, $3, $8, $9, $10, $11}' | head
+2605245 2604243 timeout --foreground --kill-after=30s 1800s
+2605246 2605245 opencode run --auto --title
+> build · big-pickle
+No live run (those 2 are my own process matching the grep). Let me verify the tally fix with a safe dry test that launches nothing.
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && sed -n '/^while \[\[ \$#/,/^done/p' scripts/run_sweep_medium.sh | head -20; echo "=== usage header ==="; sed -n '1,13p' scripts/run_sweep_medium.sh
+=== usage header ===
+#!/usr/bin/env bash
+# run_sweep_medium.sh — drive the issue-#25 optimization sweep on the medium
+# dataset, ONE cell at a time, fully detached, resumable.
+#
+# Design (matches docs/13-optimization-sweep-medium.md):
+#   * 24 cells: 1-factor-at-a-time around the reference defaults on the v11
+#     pin 95f5ea8 (worktree /vol/data/repos/COMEBin-v11-sweep), plus pins:
+#       - cell 2  -> unmodified upstream master @ 904f649
+#                    (/vol/data/repos/COMEBin-master904; CPU-only, no -d/-s:
+#                     unseeded by design = matches original baseline semantics)
+#       - cell 3  -> v11 @ 41606c8 (issue #28 fix) = no-regression check
+#   * seed 42 for every seeded cell EXCEPT cell 24 = seed 7 reproducibility
+#     check (Sweep spec col 10 holds the per-cell seed; "ref" -> default 42).
+> build · big-pickle
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && grep -n '\-\-only\|--from\|case "\$1"\|shift' scripts/run_sweep_medium.sh | head -12
+25:#   THREADS=8 bash scripts/run_sweep_medium.sh [--only NAME] [--from N]
+155:  case "$1" in
+156:    --only) only="$2"; shift 2 ;;
+157:    --from) from="$2"; shift 2 ;;
+292:  log "  The grid is resumable: re-run this script (same --from) after triaging; cells that already"
