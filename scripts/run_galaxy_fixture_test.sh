@@ -41,6 +41,11 @@ mkdir -p "$FIXTURE/bamfiles"
   ln -s "$FIXTURE/input_single.bam" "$FIXTURE/bamfiles/input_single.bam"
 
 echo "galaxy fixture: src=$SRC @ $SHORT -> $RUNDIR"
+# ALLOW_ZERO_BINS=1: on this 800 kb assembly no Leiden cluster can reach
+# MINIMUM_FINAL_BIN_SIZE (200 kb), so 0 bins is the EXPECTED, correct outcome
+# (issue #28: report no bins, do not error out).  run_comebin_fix.sh only honours
+# the opt-in when COMEBin's log carries its own explicit empty-result marker, so
+# a crashed run is still recorded as a failure.
 exec env SRC_COMEBIN="$SRC" \
          CONTIGS="$FIXTURE/input_single.fasta" \
          BAMDIR="$FIXTURE/bamfiles" \
@@ -48,4 +53,5 @@ exec env SRC_COMEBIN="$SRC" \
          THREADS="${THREADS:-4}" \
          SEED="${SEED:-42}" \
          MAX_EDGES=20 \
+         ALLOW_ZERO_BINS=1 \
          "$BIN" "$RUNDIR"

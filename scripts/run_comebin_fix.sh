@@ -105,6 +105,7 @@ CMD_TEXT=$(printf '%q ' "$MM" run -p "$ENV" bash run_comebin.sh "${COMEBIN_ARGS[
   echo "threads:    $THREADS"
   echo "n_views:    ${N_VIEWS:-6}"
   echo "seed:       ${SEED:-unset}"
+  echo "allow_zero_bins: ${ALLOW_ZERO_BINS:-0}"
   echo "sweep:      temp=${TEMP:-ref} emb=${EMB:-ref} emb_cov=${EMB_COV:-ref} batch=${BATCH:-ref} max_edges=${MAX_EDGES:-ref} leiden_workers=${LEIDEN_WORKERS:-ref} hmm_evalue=${HMM_EVALUE:-ref} n_views=${N_VIEWS:-6}"
   echo "host:       $(nproc) cores, $(free -g | awk '/Mem:/{print $2}')G RAM, gpu=$(nvidia-smi -L 2>/dev/null || echo none)"
   echo "cmd_wrapper: $CMD_TEXT"
@@ -174,9 +175,27 @@ if [ -d "$BINS" ]; then
   BIN_COUNT=$(find -L "$BINS" -maxdepth 1 -type f -size +0c | wc -l)
 fi
 if [ "$RC" -eq 0 ] && [ "$BIN_COUNT" -eq 0 ]; then
-  echo "ERROR: COMEBin returned 0 but no non-empty bins were produced at $BINS; recording failure" \
-    | tee -a "$RUNDIR/run_meta.txt"
-  RC=1
+  # Issue #28/#29: a 0-bin result can be a legitimate, verified outcome.  On
+  # COMEBin 41606c8 an empty marker-seed set (test_getmarker_2quarter.pl exit
+  # 2/3/4) makes main.py log "Reporting 0 bins ... This is an empty result for
+  # this input, not an error." and exit 0.  Turning *that* back into a harness
+  # failure would re-introduce the exact error issue #28 removed, so a caller
+  # may opt in with ALLOW_ZERO_BINS=1.
+  #
+  # The opt-in is deliberately narrow: it is honoured ONLY when COMEBin's own
+  # log carries that explicit empty-result marker.  Any other 0-bin run (lost
+  # artifacts, crashed clustering, a real regression) is still a failure, so the
+  # medium/large quality gates and the #25 sweep cells keep their strictness.
+  if [ "${ALLOW_ZERO_BINS:-0}" = "1" ] \
+     && grep -aq 'Reporting 0 bins' "$RUNDIR/comebin_run.log" 2>/dev/null \
+     && grep -aq 'not an error' "$RUNDIR/comebin_run.log" 2>/dev/null; then
+    echo "NOTE: 0 bins with COMEBin's explicit empty-result marker; ALLOW_ZERO_BINS=1" \
+         "-> recording success" | tee -a "$RUNDIR/run_meta.txt"
+  else
+    echo "ERROR: COMEBin returned 0 but no non-empty bins were produced at $BINS; recording failure" \
+      | tee -a "$RUNDIR/run_meta.txt"
+    RC=1
+  fi
 fi
 {
   echo "exit_code:  $RC"
