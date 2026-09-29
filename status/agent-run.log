@@ -123693,3 +123693,66 @@ All three issues commented successfully. Let me verify the state files are consi
 [0m$ [0mcat /vol/data/benchmark/.active_run
 cat: /vol/data/benchmark/.active_run: No such file or directory
 > build · nemotron-3.5-lightning-free
+[91m[1mError: [0mStreaming response failed: [504] Upstream idle timeout exceeded
+> build · nemotron-3.5-lightning-free
+[0m$ [0mls -la /vol/data/benchmark/.active_run 2>&1; echo "---"; ls -la /vol/data/benchmark/.watchdog_* 2>&1; echo "---"; ps aux | grep -E "sweep|run_comebin" | grep -v grep 2>&1 | head -20
+ls: cannot access '/vol/data/benchmark/.active_run': No such file or directory
+---
+-rw-rw-r-- 1 ubuntu ubuntu    0 Sep 29 10:00 /vol/data/benchmark/.watchdog_force_model
+-rw-rw-r-- 1 ubuntu ubuntu    2 Sep 29 09:56 /vol/data/benchmark/.watchdog_last_status
+-rw-rw-r-- 1 ubuntu ubuntu    2 Sep 29 10:00 /vol/data/benchmark/.watchdog_model_ix
+
+/vol/data/benchmark/.watchdog_attempts:
+total 8
+drwxrwxr-x  2 ubuntu ubuntu 4096 Sep 29 10:00 .
+drwxrwxr-x 13 ubuntu ubuntu 4096 Sep 29 10:14 ..
+-rw-rw-r--  1 ubuntu ubuntu    0 Sep 29 09:50 1790675402
+-rw-rw-r--  1 ubuntu ubuntu    0 Sep 29 10:00 1790676001
+---
+ubuntu   3215945  0.0  0.0   7876  3684 ?        S    08:07   0:00 bash /vol/data/benchmark/bin/run_sweep_medium.sh --from 9
+ubuntu   3388932  0.0  0.0   7872  3600 ?        S    10:14   0:00 bash /vol/data/benchmark/bin/run_eval.sh /vol/data/benchmark/runs/sweep_010_embcov4096
+> build · nemotron-3.5-lightning-free
+[0m$ [0mls -la /vol/data/benchmark/runs/sweep_010_embcov4096/ 2>&1
+total 180
+drwxrwxr-x  5 ubuntu ubuntu   4096 Sep 29 10:14 .
+drwxrwxr-x 28 ubuntu ubuntu   4096 Sep 29 09:05 ..
+drwxrwxr-x  4 ubuntu ubuntu   4096 Sep 29 09:06 comebin_out
+-rw-rw-r--  1 ubuntu ubuntu 152691 Sep 29 10:14 comebin_run.log
+drwxrwxr-x  4 ubuntu ubuntu   4096 Sep 29 10:14 eval
+drwxrwxr-x  2 ubuntu ubuntu   4096 Sep 29 09:05 logs
+-rw-rw-r--  1 ubuntu ubuntu   1979 Sep 29 10:20 run_meta.txt
+[0m$ [0mcat /vol/data/benchmark/runs/sweep_010_embcov4096/run_meta.txt 2>&1
+run:        /vol/data/benchmark/runs/sweep_010_embcov4096
+source:     /vol/data/benchmark/../repos/COMEBin-v11-sweep (branch )
+date:       2026-09-29T09:05:07+00:00
+commit:     95f5ea820f9a4e76f5c2911c0b5ed507ab67b015
+contigs:    /vol/data/datasets/comebin_medium/contigs.fa
+bamdir:     /vol/data/datasets/comebin_medium/bamfiles
+threads:    8
+n_views:    6
+seed:       42
+allow_zero_bins: 0
+sweep:      temp=ref emb=ref emb_cov=4096 batch=ref max_edges=ref leiden_workers=ref hmm_evalue=ref n_views=6
+host:       32 cores, 62G RAM, gpu=none
+cmd_wrapper: /vol/data/tools/bin/micromamba run -p /vol/data/envs/comebin bash run_comebin.sh -a /vol/data/datasets/comebin_medium/contigs.fa -p /vol/data/datasets/comebin_medium/bamfiles -o /vol/data/benchmark/runs/sweep_010_embcov4096/comebin_out -n 6 -t 8 -d cpu -s 42 -c 4096 
+exit_code:  0
+wall_s:     4181
+finished:   2026-09-29T10:14:48+00:00
+bins:       17  -> /vol/data/benchmark/runs/sweep_010_embcov4096/comebin_out/comebin_res/comebin_res_bins
+cmd_checkm2: /vol/data/tools/bin/micromamba run -p /vol/data/envs/checkm2 checkm2 predict --threads 32 --database_path /vol/data/benchmark/checkm2db/CheckM2_database/uniref100.KO.1.dmnd --input /vol/data/benchmark/runs/sweep_010_embcov4096/comebin_out/comebin_res/comebin_res_bins --output-directory /vol/data/benchmark/runs/sweep_010_embcov4096/eval/checkm2 -x fa --force
+checkm2_rc: 0 checkm2_wall_s: 46 checkm2_threads: 32
+cmd_checkm: LD_LIBRARY_PATH=/vol/data/envs/checkm/lib:/vol/data/envs/comebin/lib /vol/data/tools/bin/micromamba run -p /vol/data/envs/comebin checkm lineage_wf -x fa -t 32 --tmpdir /vol/data/benchmark/runs/sweep_010_embcov4096/eval/checkm/tmp /vol/data/benchmark/runs/sweep_010_embcov4096/comebin_out/comebin_res/comebin_res_bins /vol/data/benchmark/runs/sweep_010_embcov4096/eval/checkm/out
+checkm_rc: 0 checkm_wall_s: 268
+checkm2_bins: 17 checkm2_compl_mean: 34.10 checkm2_cont_mean: 4.50
+checkm_bins: 17 checkm_compl_mean: 30.52 checkm_cont_mean: 4.24
+> build · nemotron-3.5-lightning-free
+The sweep run has actually completed! Let me verify the current state:
+[0m$ [0mls -la /vol/data/benchmark/runs/sweep_010_embcov4096/eval/ 2>&1
+total 16
+drwxrwxr-x 4 ubuntu ubuntu 4096 Sep 29 10:14 .
+drwxrwxr-x 5 ubuntu ubuntu 4096 Sep 29 10:14 ..
+drwxrwxr-x 4 ubuntu ubuntu 4096 Sep 29 10:15 checkm
+drwxrwxr-x 4 ubuntu ubuntu 4096 Sep 29 10:15 checkm2
+[0m$ [0mps aux | grep -E "sweep|eval|comebin" | grep -v grep 2>&1
+ubuntu   3215945  0.0  0.0   7876  3684 ?        S    08:07   0:00 bash /vol/data/benchmark/bin/run_sweep_medium.sh --from 9
+ubuntu   3388932  0.0  0.0   7872  3600 ?        S    10:14   0:00 bash /vol/data/benchmark/bin/run_eval.sh /vol/data/benchmark/runs/sweep_010_embcov4096
