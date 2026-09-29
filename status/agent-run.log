@@ -100216,3 +100216,42 @@ Index: /vol/data/repos/metagenomic-binning-benchmark/scripts/run_sweep_medium.sh
    if [ "$_attempt" = 2 ]; then
 
 > build · mimo-v2.6-flash-free
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && bash -n scripts/run_sweep_medium.sh && echo SYNTAX_OK && ( flock -w 300 200 && git add scripts/run_sweep_medium.sh && git commit -q -m "sweep #25: singleton scan must not match its own \$(pgrep) subshell
+
+The command substitution forks a child that inherits the driver argv, so the
+scan found itself, failed twice (2 s apart) and aborted the launch at 00:26Z
+and 00:29Z. The scan now walks each candidate's parent chain and skips any pid
+related to us (self, ancestors, children); only a genuinely foreign driver
+trips the abort." && git push -q origin main && git log --oneline -1 ) 200>/tmp/bench-repo.lock; nohup bash /tmp/opencode/launch_sweep2.sh >/dev/null 2>&1 & sleep 25; echo "=== log tail:"; tail -5 /vol/data/benchmark/status/sweep_medium.log; echo "=== pgrep:"; pgrep -af 'run_sweep_medium\.sh' || echo NONE; echo "=== active:"; cat /vol/data/benchmark/.active_run 2>/dev/null || echo NONE; echo "=== new run dir:"; ls -1d /vol/data/benchmark/runs/sweep_003* 2>/dev/null || echo none-yet; echo "=== out:"; tail -5 /vol/data/benchmark/status/sweep_003_issue28fix.comebin.out 2>/dev/null
+SYNTAX_OK
+57b9cb5d sweep #25: singleton scan must not match its own $(pgrep) subshell
+=== log tail:
+[2026-09-28T14:15:53Z] FAIL sweep_024_seed7: run_comebin_fix.sh rc=0
+[2026-09-28T14:15:53Z] SWEEP COMPLETE (24 cells processed)
+[2026-09-29T00:26:50Z] ABORT: sweep driver pid=2559226 already running; singleton guard, not starting a second
+[2026-09-29T00:29:55Z] ABORT: sweep driver pid=2560340 already running; singleton guard, not starting a second ()
+[2026-09-29T00:31:57Z] ABORT: sweep driver pid=2561301 already running; singleton guard, not starting a second ()
+=== pgrep:
+2561239 /bin/bash -c cd /vol/data/repos/metagenomic-binning-benchmark && bash -n scripts/run_sweep_medium.sh && echo SYNTAX_OK && ( flock -w 300 200 && git add scripts/run_sweep_medium.sh && git commit -q -m "sweep #25: singleton scan must not match its own \$(pgrep) subshell  The command substitution forks a child that inherits the driver argv, so the scan found itself, failed twice (2 s apart) and aborted the launch at 00:26Z and 00:29Z. The scan now walks each candidate's parent chain and skips any pid related to us (self, ancestors, children); only a genuinely foreign driver trips the abort." && git push -q origin main && git log --oneline -1 ) 200>/tmp/bench-repo.lock; nohup bash /tmp/opencode/launch_sweep2.sh >/dev/null 2>&1 & sleep 25; echo "=== log tail:"; tail -5 /vol/data/benchmark/status/sweep_medium.log; echo "=== pgrep:"; pgrep -af 'run_sweep_medium\.sh' || echo NONE; echo "=== active:"; cat /vol/data/benchmark/.active_run 2>/dev/null || echo NONE; echo "=== new run dir:"; ls -1d /vol/data/benchmark/runs/sweep_003* 2>/dev/null || echo none-yet; echo "=== out:"; tail -5 /vol/data/benchmark/status/sweep_003_issue28fix.comebin.out 2>/dev/null
+=== active:
+NONE
+=== new run dir:
+none-yet
+=== out:
+preflight_free_gb: run_fs=314 tmp_fs=13 floor=2
+source: /vol/data/benchmark/../repos/COMEBin-v11 (branch comebin-optimizations-v11) commit: 41606c8e154aa62c01d361361d04b74f18f225ab (dirty files: 0)
+/vol/data/benchmark/bin/run_comebin_fix.sh: line 76: TEMP: unbound variable
+ERROR: another benchmark launch holds /tmp/benchmark-start.lock
+> build · mimo-v2.6-flash-free
+[0m$ [0mmkdir -p /tmp/opencode; sed 's|^LOG="$BENCH/status/sweep_medium.log"$|LOG=/tmp/opencode/guard.log|' /vol/data/repos/metagenomic-binning-benchmark/scripts/run_sweep_medium.sh > /tmp/opencode/run_sweep_medium.sh; grep -n '^LOG=' /tmp/opencode/run_sweep_medium.sh; printf '#!/usr/bin/env bash\nexec setsid bash /tmp/opencode/run_sweep_medium.sh --only __none__ >> /tmp/opencode/guard.out 2>&1 < /dev/null\n' > /tmp/opencode/launch_guardtest.sh; rm -f /tmp/opencode/guard.log /tmp/opencode/guard.out; nohup bash /tmp/opencode/launch_guardtest.sh >/dev/null 2>&1 & sleep 10; echo "=== guard.log:"; cat /tmp/opencode/guard.log 2>/dev/null || echo NOLOG; echo "=== guard.out:"; cat /tmp/opencode/guard.out 2>/dev/null || echo NOOUT; echo "=== live:"; pgrep -af 'run_sweep_medium\.sh' | cut -c1-120 || echo NONE
+33:LOG=/tmp/opencode/guard.log
+=== guard.log:
+[2026-09-29T00:33:27Z] ABORT: sweep driver pid=2562595 already running; singleton guard, not starting a second ()
+=== guard.out:
+[2026-09-29T00:33:27Z] ABORT: sweep driver pid=2562595 already running; singleton guard, not starting a second ()
+=== live:
+2562574 /bin/bash -c mkdir -p /tmp/opencode; sed 's|^LOG="$BENCH/status/sweep_medium.log"$|LOG=/tmp/opencode/guard.log|'
+> build · mimo-v2.6-flash-free
+[0m← [0mWrite /tmp/opencode/run_sweep_medium.sh
+Wrote file successfully: /tmp/opencode/run_sweep_medium.sh
+> build · mimo-v2.6-flash-free
