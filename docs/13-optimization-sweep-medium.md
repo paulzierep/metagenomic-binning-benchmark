@@ -106,9 +106,12 @@ leiden_workers = threads).
   toy human (5,000) only; **archive** demo / marine / medium / small / tiny in
   Zenodo (already v2/v3 for main runs) and delete local copies to free disk.
 - **AMBER**: use [AMBER](https://github.com/CAMI-challenge/AMBER) against the
-  CAMI II gold standard (`binning_gs.tsv`) for official precision/recall/F1 on
-  the human set once imported (docs/01: gold-standard binning lives in
-  `setup.tar.gz` — not yet pulled in).
+  CAMI II gold standard (`binning_gs.tsv`) for official precision/recall/F1.
+  ✅ **done**: [docs/14](14-amber-cami2-marine.md) marine (F1_bp 0.330) and
+  [docs/15](15-amber-cami2-human.md) human (F1_bp 0.681). The human gold
+  standard was imported 2026-09-29 (`setup.tar.gz` → `gsa_mapping.tsv.gz`
+  filtered to the 4,900-contig subset, 64 genomes) and the winner run can be
+  scored with one command via `scripts/make_amber_prediction.py`.
 - **No trimming**: use the full assembly/contigs when present (CAMI II/III
   publish full assemblies); only the demo/medium/small/tiny derivations were
   length-filtered for COMEBin feasibility.

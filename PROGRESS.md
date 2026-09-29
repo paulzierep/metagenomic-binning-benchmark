@@ -751,6 +751,17 @@ included; fixes land on branch `comebin-optimizations` in this repo.
   `results/amber/marine/` (amber_results.tsv, bin_metrics.tsv,
   amber_report.html, heatmap_bar.png). Human + CAMI III AMBER evals can now be
   one-liners after the sweep winner is chosen.
+- **AMBER human evaluation delivered (01:22Z)**: imported the CAMI II human
+  gold standard (`setup.tar.gz` 1.9 GB → `gsa_mapping.tsv.gz` filtered to the
+  4,900-contig subset, 4,900/4,900 mapped to 64 genomes, AMBER format at
+  `/vol/data/datasets/cami_II_human/gold_standard/human_binning_gs.tsv`), scored
+  `human_v11_20260925` (107 bins): **F1_bp 0.681**, precision_avg 0.626
+  (weighted 0.819), recall_avg 0.747 (weighted 0.722), ARI 0.769, 99.3 % of bp
+  assigned. Docs/15 + `results/amber/human/`; docs/01 + docs/13 TODO cleared.
+  Side-by-side: marine F1 0.330 (34 % bp assigned) vs human F1 0.681 (99 %).
+- **Biobox exports generated** for `marine_v11_20260925` (152), 
+  `human_v11_20260925` (107) and `cami3_v11_20260926_rerun` (492) via
+  `scripts/export_biobox.sh` → `runs/<run>/biobox/{tree/comebin/v11/binning/<sample>, binning.tar.gz, binning_summary.tsv}`.
 
 ## Watchdog / restart
 

@@ -163,7 +163,7 @@ contig sets are far too large for COMEBin training (gsa 1.48 M contigs, pooled M
 | Extracted (contigs + reads only, `bam/` skipped) | `/vol/data/datasets/cami_II_human/extract/2017.12.04_18.45.54_sample_0/` |
 | Input decision (issue #18: "1/6 the size of the big one") | 29,434 demo contigs / 6 ≈ 4,900 → **top 4,900 GSA contigs by length** (166.0 Mbp; the 4,900th is 4,733 bp; ≥5,000 bp would give 4,462) + **all** reads mapped `bwa mem -p -t 32` → `human_sample0_input/{contigs.fa,bamfiles/human.bam}` |
 | Prep script | [`scripts/prep_cami2_human.sh`](../scripts/prep_cami2_human.sh) (refuses to overwrite an existing build; writes `logs/input_meta.txt` with md5s) |
-| Ground truth | ⚠️ `binning_gs.tsv` is **not** inside `sample_0.tar.gz` (only the gsa name maps) → bin quality is scored with CheckM2 + CheckM v1 like every other run; the gold-standard binning lives in `setup.tar.gz` (1.8 GB) / the CAMI goldstandard bundle → **TODO** if a recall/ARI evaluation is wanted |
+| Ground truth | ✅ **imported 2026-09-29**: `setup.tar.gz` (1,906,532,721 B) pulled from <https://frl.publisso.de/data/frl:6425518/gastrooral/setup.tar.gz>; the correct per-sample mapping is `extract/…/contigs/gsa_mapping.tsv.gz` (`S0C*`→`OTU`), filtered to our 4,900 contigs → `gold_standard/human_binning_gs.tsv` (4,900/4,900 mapped, 64 genomes, AMBER format). AMBER eval in [`docs/15-amber-cami2-human.md`](15-amber-cami2-human.md) (F1_bp 0.681). Note the pooled `gsa_pooled_mapping.tsv.gz` uses `PC…` ids from a *different* (pooled) assembly and is not used. |
 | Expected wall time | ≈ 1/6 of the 6.9 h demo run → **≈ 1 h** for 200 epochs (verified by the run once launched) |
 
 ## 3. CAMI III challenge data (planned)
