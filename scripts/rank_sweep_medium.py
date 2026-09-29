@@ -58,19 +58,31 @@ def coord_str(meta):
     """'temp=ref emb=ref ...' but only the axes — matches docs/13 grid."""
     parts = []
     for ax in AXES:
-        parts.append(f"{ax}={meta.get(ax, 'ref')}")
+        value = meta.get(ax, "ref")
+        # run_meta records the *actual* n_views (reference grid value is 6),
+        # while every other axis records the literal token "ref".
+        if ax == "n_views" and value == "6":
+            value = "ref"
+        parts.append(f"{ax}={value}")
     return " ".join(parts)
 
 
 def f1(comp, cont):
+    """Harmonic mean of completeness and purity, or None when not computable."""
     try:
         comp = float(comp)
         p = 100.0 - float(cont)
     except (TypeError, ValueError):
-        return float("nan")
+        return None
+    if comp != comp or p != p:  # NaN inputs
+        return None
     if comp + p <= 0:
         return 0.0
     return 2 * comp * p / (comp + p)
+
+
+def fmt_f1(value):
+    return "-" if value is None else f"{value:.2f}"
 
 
 def main():
@@ -109,12 +121,25 @@ def main():
         except (TypeError, ValueError):
             return float("inf")
 
+    def as_int(v):
+        try:
+            return int(float(v))
+        except (TypeError, ValueError):
+            return 0
+
+    def as_float(v, default):
+        try:
+            x = float(v)
+            return x if x == x else default  # NaN -> default
+        except (TypeError, ValueError):
+            return default
+
     # Rank: CheckM2 comp (desc), cont (asc), HQ+MQ (desc), F1 (desc), wall (asc).
     cells.sort(key=lambda c: (
-        -float(c["c2c"] if c["c2c"] not in ("-", "") else -1),
-        float(c["c2n"] if c["c2n"] not in ("-", "") else 1e9),
-        -(int(c["hq2"] or 0) + int(c["mq2"] or 0)),
-        -c["f1"],
+        -as_float(c["c2c"], -1.0),
+        as_float(c["c2n"], 1e9),
+        -(as_int(c["hq2"]) + as_int(c["mq2"])),
+        -as_float(c["f1"], float("-inf")),
         wall_s(c["wall"]),
         c["cell"],
     ))
@@ -130,11 +155,12 @@ def main():
             if not p.endswith("=ref")) or "reference (defaults)"
         lines.append(
             "| {rank} | `{cell}` | `{commit}` | {seed} | {params} | {wall} "
-            "| {bins} | {c2c} | {c2n} | {hq} / {mq} | {f1:.2f} "
+            "| {bins} | {c2c} | {c2n} | {hq} / {mq} | {f1} "
             "| {c1c} / {c1n} |".format(
-                rank=i, **c, params=nonref,
-                hq=c["hq2"], mq=c["mq2"],
-                del par for par in []  # keep formatting simple
+                rank=i, cell=c["cell"], commit=c["commit"], seed=c["seed"],
+                params=nonref, wall=c["wall"], bins=c["n_bins"],
+                c2c=c["c2c"], c2n=c["c2n"], hq=c["hq2"], mq=c["mq2"],
+                f1=fmt_f1(c["f1"]), c1c=c["c1c"], c1n=c["c1n"],
             )
         )
 
