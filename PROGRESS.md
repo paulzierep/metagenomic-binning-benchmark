@@ -676,6 +676,58 @@ included; fixes land on branch `comebin-optimizations` in this repo.
   bin copy synced so the next eval auto-regeneration uses it. Delivery comment
   posted.
 
+### 2026-09-29 resume (00:24–01:00Z): sweep relaunched, guard fixes, #28 + #29 answered
+
+- **State on resume**: `TASK_COMPLETE` absent, no live sweep/benchmark process,
+  heartbeat had gone cold. PROGRESS.md read first, per protocol.
+- **#25 stall root-caused instead of blindly relaunched**: pass 1 (13:07:50Z)
+  aborted *every* cell because `/vol/data/benchmark/bin/run_comebin_fix.sh`
+  still carried the unguarded `[ -n "$TEMP" ]` (line 76) → `set -u` death before
+  launch; pass 2 completed cell 1, then cells 3–24 died instantly on the
+  concurrent-driver `/tmp/benchmark-start.lock` race (all logged `FAIL … rc=0`
+  with **no run dir created**, so nothing was falsely marked done).
+- **Singleton guard fixed (two bugs)**: `$(pgrep …)` forks a subshell that
+  inherits the driver argv → self-match; and a `ps` on a dead transient pid
+  makes the assignment return 1, which under `pipefail` + `set -e` killed the
+  driver **silently** after one cell. Fix = ancestor/child relatedness walk +
+  ≥5 s process age + double probe + `|| true` on every `ps`-based probe.
+  `flock` remains the hard mutex; the guards are only the fast path.
+  Pushed: `fa69730a`, `55ad99dd`, `57b9cb5d`, `20ca7e39`.
+- **Sweep relaunched detached 00:41:12Z**: `run_sweep_medium.sh --from 3`,
+  driver pid 2566340, `.active_run` pid 2566376 → `runs/sweep_003_issue28fix`
+  (src `COMEBin-v11` @ `41606c8`). Cells 1/2 skipped by design; 22 cells ×
+  ~55 min ≈ 20 h, ETA ~2026-09-30 evening UTC. Verified only `sweep_001/002/003`
+  run dirs exist → no cell will be wrongly skipped as done. Watchdog owns the
+  handoff; agent keeps `.heartbeat` fresh.
+- **Cell 1 recorded** — `sweep_001_ref`: rc 0, 2,827 s, **17 bins**, CheckM2
+  34.22/4.11 (HQ 0, MQ 2), CheckM 32.00/5.31 → `results/sweep_001_ref.csv`.
+- **Cell 2 root cause pinned** — `sweep_002_master` (stock `904f649`, exit 1 @
+  108 s): `train_CLmodel.py:46 length_weight.append(lengths[seq_id])` →
+  `KeyError: 'BATS_SAMN07137077_METAG-scaffold_22978'`. Measured on its own
+  artifacts: `aug0_datacoverage_mean.tsv` = **29,435 lines** (header + the full
+  BAM `@SQ` list, incl. scaffold_22978) vs `aug0/sequences_aug0.fasta` =
+  **3,000** contigs (scaffold_22978 absent). Upstream enumerates coverage rows
+  from the BAM, lengths from the assembly → the issue-#2 producer/consumer
+  mismatch on our medium fixture. v11 is structurally immune (`gen_cov.py`
+  allocates over the retained assembly contigs and ignores extra `@SQ`), which
+  cell 1 confirms empirically. Evidence kept in `runs/sweep_002_master/`.
+- **#28 answered** — acknowledged the owner's directive (medium first → merge
+  fix + optimization into `master` asap), reported grid state, cell-1 numbers,
+  cell-2 root cause and the plan: push `41606c8` → PR into `master` →
+  confirmation medium run on merged master → bioconda prep. `41606c8` is still
+  **local only** (origin `comebin-optimizations-v11` = `95f5ea8`).
+- **#29 answered** — Galaxy IUC fixture measured: 40 contigs × exactly 20,000 bp
+  (800 kb, ids `g1k_0…g4k_9`, GC 26.97 %), coordinate-sorted BAM with 40 `@SQ`
+  refs **identical** to the FASTA ids, 2,000 reads / 94 mapped, no `.bai`;
+  wrapper pins `comebin 1.1.0`, test uses `max_edges=20` (XML help: must be
+  < contig count) and `batch=1024`; PR #8351 merged 2026-08-25 with
+  `Test tools (0, 3.11): success`. Caveats posted: `MINIMUM_FINAL_BIN_SIZE =
+  200000` vs an 800 kb assembly → smoke test only (a 0-bin run is still green),
+  and a pre-#28-fix checkout crashes on the empty marker seed. Fixture stored
+  at `/vol/data/datasets/galaxy_comebin_fixture/` (md5 `e6b5f3bb…` fasta,
+  `373f4411…` bam); end-to-end run on `41606c8` is queued behind the sweep
+  (overlap rule).
+
 ## Watchdog / restart
 
 `scripts/agent-watchdog.sh` (installed at `/vol/data/benchmark/bin/`, cron `*/5 * * * *`):
