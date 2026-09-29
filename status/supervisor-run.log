@@ -66207,3 +66207,310 @@ OUT="$RUN_DIR/biobox"
 24:#   runs/<run>/biobox/bins.fasta.gz                               (all bins, concat)
 25:#   runs/<run>/biobox/binning_summary.tsv                         (per-bin stats)
 > build · big-pickle
+Confirmed a real gap: `export_biobox.sh` writes CAMI biobox output, but **nothing in the Zenodo release path picks it up** — so the owner's explicit #25 request ("biobox output … to zenodo") silently cannot be satisfied. Let me verify the exact artifact names before fixing.
+[0m$ [0mecho "=== cami3 export done? ==="; ls -la /vol/data/benchmark/runs/cami3_v11_20260926_rerun/biobox/ 2>&1; tail -3 /tmp/opencode/cami3_biobox.log 2>&1; echo "=== driver still alive? ==="; ps -o pid,etime -p 2594773 2>&1 | tail -1
+=== cami3 export done? ===
+total 209936
+drwxrwxr-x 3 ubuntu ubuntu      4096 Sep 29 01:17 .
+drwxrwxr-x 6 ubuntu ubuntu      4096 Sep 29 01:17 ..
+-rw-rw-r-- 1 ubuntu ubuntu 214958080 Sep 29 01:26 bins.fasta.gz
+drwxrwxr-x 3 ubuntu ubuntu      4096 Sep 29 01:17 tree
+=== driver still alive? ===
+2594773       12:17
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && echo "=== actual biobox outputs (marine) ==="; find /vol/data/benchmark/runs/marine_v11_20260925/biobox -maxdepth 1 -type f -printf '%f %s\n' | sort; echo "=== medium (older, from docs) ==="; find /vol/data/benchmark/runs/medium_v11_20260924/biobox -maxdepth 1 -type f -printf '%f %s\n' 2>/dev/null | sort; echo "=== is zenodo_update.sh open by any proc? ==="; for p in $(ls /proc | grep -E '^[0-9]+$'); do for f in /proc/$p/fd/*; do t=$(readlink "$f" 2>/dev/null); case "$t" in *zenodo_update.sh*|*export_biobox.sh*) echo "pid $p -> $t";; esac; done; done 2>/dev/null | sort -u
+=== actual biobox outputs (marine) ===
+README.txt 573
+binning.tar.gz 89413609
+bins.fasta.gz 16777216
+marine.binning 564499
+=== medium (older, from docs) ===
+README.txt 606
+binning.tar.gz 4129265
+bins.fasta.gz 4105985
+=== is zenodo_update.sh open by any proc? ===
+pid 2605602 -> /vol/data/repos/metagenomic-binning-benchmark/scripts/export_biobox.sh
+pid 2609207 -> /vol/data/repos/metagenomic-binning-benchmark/scripts/export_biobox.sh
+> build · big-pickle
+The driver is actively re-running exports — I'll avoid those files and the export script. Let me read the release packager to make a minimal consumer-side fix.
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && sed -n '1,40p' scripts/zenodo_update.sh
+#!/usr/bin/env bash
+# zenodo_update.sh [--dry-run] — issue #8:
+# "store all benchmark data in the same record, update continously when new
+# benchmark data is made" (owner 2026-09-25; scope clarified 09:04: only data
+# that is newly generated and not publicly available otherwise).
+#
+# Packages the newly generated benchmark data
+#   - results/            aggregate CSVs + figures (all runs)
+#   - runs/               per-run mirrors (run_meta.txt, comebin_run.log,
+#                         per_bin_results.csv, per_bins.png)
+#   - runs/<r>/comebin_res/comebin_res_bins/   bin FASTAs produced by COMEBin
+#   - runs/<r>/eval/...   CheckM2 quality_report.tsv + CheckM v1
+#                         bin_stats_ext.tsv/checkm.log (key eval reports)
+#   - docs/ README.md PROGRESS.md status/agent-activity.log
+# into a deterministic release tarball with a SHA-256 manifest, then publishes
+# it as a NEW VERSION of the existing record (concept DOI
+# 10.5281/zenodo.22935024; v1 = 10.5281/zenodo.22935025). Versions accumulate
+# under the same concept record, so the concept DOI always resolves to the
+# newest package.
+#
+# Behaviour:
+#   - skips silently (exit 0) when content is unchanged since the last upload
+#   - skips silently (exit 0) when no token file is present, so it is safe
+#     inside run_eval.sh's best-effort auto-reporting chain
+#   - exits 1 on packaging/API errors (callers in run_eval.sh treat as warning)
+#   --dry-run: package + manifest + change detection, no network calls
+#
+# Env: ZENODO_TOKEN_FILE (default: ~/.zenodo_token), ZENODO_RECORD (default
+# 22935025), ZENODO_UPDATE=0 disables the script entirely.
+set -euo pipefail
+
+REPO=${BENCH_REPO:-}
+if [ -z "$REPO" ] || [ ! -f "$REPO/README.md" ]; then
+  # Also installed as a standalone copy in $BENCH/bin/, where
+  # `dirname $0/..` is the benchmark data dir rather than the repo, so the
+  # package would be built from the wrong tree (no docs/, status/, README.md).
+  # Validate candidates instead of assuming.
+  _here=$(cd "$(dirname "$0")" && pwd)
+  for _cand in "$_here/.." /vol/data/repos/metagenomic-binning-benchmark; do
+    if [ -f "$_cand/README.md" ] && [ -d "$_cand/results" ]; then REPO=$(cd "$_cand" && pwd); break; fi
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && sed -n '106,135p' scripts/zenodo_update.sh; echo "=== description block ==="; sed -n '235,255p' scripts/zenodo_update.sh
+rm -rf "$STAGE/runs/$name"
+  fi
+done
+[ "${#RUNS_INCLUDED[@]}" -gt 0 ] || die "no evaluated runs found under $RUNS_ROOT"
+log "runs in package: ${RUNS_INCLUDED[*]}"
+
+# --- Manifest + change detection ---------------------------------------------
+# make_release_manifest.py refuses an output inside the dataset dir, so hash
+# outside, then copy the manifest into the stage so it ships in the tarball.
+MANIFEST="$RELEASES/manifest.$STAMP.json"
+python3 "$REPO/scripts/make_release_manifest.py" "$STAGE" "$MANIFEST" \
+  --omit-local-path \
+  --metadata source_repo="https://github.com/paulzierep/metagenomic-binning-benchmark" \
+  --metadata source_commit="$(git -C "$REPO" rev-parse HEAD 2>/dev/null || echo unknown)" \
+  --metadata kind="benchmark-results" \
+  --metadata runs="$(IFS=,; echo "${RUNS_INCLUDED[*]}")" \
+  --metadata created_utc="$STAMP" >/dev/null
+log "manifest: $(python3 -c "import json,sys;d=json.load(open('$MANIFEST'));print(len(d['files']),'files,',sum(f['bytes'] for f in d['files']),'bytes')")"
+cp "$MANIFEST" "$STAGE/manifest.json"
+
+CONTENT_SHA=$(python3 - "$MANIFEST" <<'PY'
+import hashlib, json, sys
+m = json.load(open(sys.argv[1]))
+h = hashlib.sha256()
+for f in m["files"]:
+    # Activity/status logs are appended to constantly and are provenance, not
+    # benchmark data — they must not trigger a new version on their own.
+    if f["path"].startswith("status/"):
+        continue
+    h.update(f"{f['sha256']}  {f['path']}\n".encode())
+=== description block ===
+    "Benchmark of metagenomic genome binners (starting with COMEBin v1.1.0) with a "
+    "repeatable harness: per-run parameters, datasets, wall time, and bin quality "
+    "scored with CheckM2 and CheckM (v1). Repository: "
+    "https://github.com/paulzierep/metagenomic-binning-benchmark (setup, datasets, "
+    "evaluation and run docs under docs/; resume state in PROGRESS.md).\n\n"
+    "This record accumulates ALL newly generated benchmark data that is not "
+    "publicly available otherwise, as continuous versions under the concept DOI "
+    "10.5281/zenodo.22935024 (each new evaluated run publishes a new version).\n\n"
+    f"Version {version}.0 (this version) contains the benchmark results of every "
+    f"evaluated run: {runs}. Each run contributes its bin FASTAs "
+    "(runs/<run>/comebin_res/comebin_res_bins/), per-bin and aggregate CheckM2 + "
+    "CheckM v1 metrics (results/<run>.csv, runs/<run>/per_bin_results.csv), the "
+    "evaluation reports (runs/<run>/eval/), run parameters and logs "
+    "(run_meta.txt, comebin_run.log), all comparison figures "
+    "(results/figures/, incl. the combined completeness bar plot), plus dataset, "
+    "environment, fix, evaluation and preservation documentation (docs/). "
+    "manifest.json inside the archive lists every file with size and SHA-256.\n\n"
+    "Version 1.0 additionally contains the small functional-test dataset "
+    "(comebin_small_release_v1.tar.gz, 300 contigs + overlapping reads).\n\n"
+    "How to run: clone the repository, follow docs/02/06 to build the "
+    "environment, run a dataset with scripts/run_comebin_fix.sh and evaluate "
+> build · big-pickle
+Let me check the export script's write order so I only ever package complete artifacts.
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && sed -n '40,110p' scripts/export_biobox.sh
+OUT="$RUN_DIR/biobox"
+TREE="$OUT/tree/$ENGINE/$VERSION/binning/$SAMPLE"
+mkdir -p "$TREE"
+
+bin_count=0
+for f in "$BINS_DIR"/*.fa; do
+  [ -e "$f" ] || continue
+  id=$(basename "$f" .fa)
+  cp "$f" "$TREE/$id.fna"
+  bin_count=$((bin_count + 1))
+done
+[ "$bin_count" -gt 0 ] || { echo "ERROR: no bin fastas found"; exit 1; }
+
+# binning_summary.tsv (convenience: bin_id, contig_id, contig_len) and the
+# authoritative CAMI v0.9.1 `<sample>.binning` (SEQUENCEID -> BINID), built in
+# one pass. contig_len is computed from the FASTA sequence (COMEBin bin deflines
+# carry no `length=` tag; the sequence is authoritative anyway).
+summary="$OUT/tree/$ENGINE/$VERSION/binning_summary.tsv"
+binning="$OUT/$SAMPLE.binning"
+{
+  echo -e "bin_id\tcontig_id\tcontig_len"
+  for f in "$TREE"/*.fna; do
+    bin_id=$(basename "$f" .fna)
+    awk -v bin="$bin_id" '
+      /^>/ {
+        if (name != "") print bin "\t" name "\t" len
+        name = substr($1, 2)
+        len = 0
+        next
+      }
+      { len += length($0) }
+      END { if (name != "") print bin "\t" name "\t" len }
+    ' "$f"
+  done
+} > "$summary"
+
+{
+  printf '@Version:0.9.1\n@SampleID:%s\n' "$SAMPLE"
+  printf '@@SEQUENCEID\tBINID\n'
+  tail -n +2 "$summary" | awk -F'\t' '{print $2 "\t" $1}'
+} > "$binning"
+
+# Concatenated bins (for easy archival + stats consumers).
+cat "$TREE"/*.fna | gzip > "$OUT/bins.fasta.gz"
+
+# tarball rooted at <engine>/... so the biobox validator accepts it directly.
+tar -C "$OUT/tree" -czf "$OUT/binning.tar.gz" "$ENGINE"
+
+cat > "$OUT/README.txt" <<EOF
+CAMI biobox export of $RUN_DIR
+
+engine:  $ENGINE
+version: $VERSION
+sample:  $SAMPLE
+bins:    $bin_count
+
+Contents:
+  $SAMPLE.binning        CAMI binning format v0.9.1 (SEQUENCEID -> BINID)
+  binning.tar.gz          per-bin FASTA tree (engine/version/binning/sample/*.fna)
+  bins.fasta.gz           all bins concatenated, FASTA
+  tree/.../binning_summary.tsv  contig membership + computed length per bin
+  stats.csv               per-bin CheckM2/CheckM v1 (from per_bin_results.csv)
+
+CAMI binning format v0.9.1: https://github.com/bioboxes/rfc (data-format/binning.mkd).
+This is the same file AMBER consumes (scripts/make_amber_prediction.py).
+Validate structurally before archival:
+  python3 scripts/validate_binning.py $OUT/$SAMPLE.binning
+EOF
+
+# Per-bin stats snapshot when available.
+if [ -f "$RUN_DIR/per_bin_results.csv" ]; then
+> build · big-pickle
+Now I have the completion semantics (`binning.tar.gz` + `README.txt` are written last). Making the fix:
+[0m→ [0mRead /vol/data/repos/metagenomic-binning-benchmark/scripts/zenodo_update.sh [90m[offset=92, limit=18][0m
+> build · big-pickle
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/scripts/zenodo_update.sh
+Index: /vol/data/repos/metagenomic-binning-benchmark/scripts/zenodo_update.sh
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/scripts/zenodo_update.sh
++++ /vol/data/repos/metagenomic-binning-benchmark/scripts/zenodo_update.sh
+@@ -97,8 +97,37 @@
+       mkdir -p "$STAGE/runs/$name/$(dirname "$rel")"
+       cp -a "$rd$rel" "$STAGE/runs/$name/$rel"
+     fi
+   done
++  # Issue #25 (owner): "export each binning result, bins in fasta, biobox
++  # output, stats as csv to zenodo". The CAMI-standard biobox output produced
++  # by scripts/export_biobox.sh used to be dropped on the floor here: nothing
++  # in the release path read runs/<r>/biobox/, so the export existed only in
++  # the local run dir and could never reach the record.
++  #
++  # export_biobox.sh writes bins.fasta.gz, then binning.tar.gz, then README.txt
++  # and the stats snapshot. Requiring binning.tar.gz *and* README.txt therefore
++  # proves the export ran to completion, so a release can never capture a
++  # half-written tarball if an export happens to be in flight.
++  if [ -s "$rd/biobox/binning.tar.gz" ] && [ -s "$rd/biobox/README.txt" ]; then
++    mkdir -p "$STAGE/runs/$name/biobox"
++    cp -L "$rd/biobox/binning.tar.gz" "$rd/biobox/README.txt" \
++         "$STAGE/runs/$name/biobox/"
++    for bf in "$rd"/biobox/*.binning; do
++      [ -s "$bf" ] && cp -L "$bf" "$STAGE/runs/$name/biobox/$(basename "$bf")"
++    done
++    # binning_summary.tsv lives under the versioned tree inside the run dir.
++    for sf in "$rd"/biobox/tree/*/*/binning_summary.tsv; do
++      [ -s "$sf" ] && cp -L "$sf" "$STAGE/runs/$name/biobox/binning_summary.tsv"
++    done
++    # The bin FASTAs already ship uncompressed under
++    # comebin_res/comebin_res_bins/, so bins.fasta.gz is a byte-level duplicate
++    # of sequences that are in the archive twice. Opt in with
++    # INCLUDE_BINS_FASTA=1 to carry the concatenated FASTA as well.
++    if [ "${INCLUDE_BINS_FASTA:-0}" = "1" ] && [ -s "$rd/biobox/bins.fasta.gz" ]; then
++      cp -L "$rd/biobox/bins.fasta.gz" "$STAGE/runs/$name/biobox/bins.fasta.gz"
++    fi
++  fi
+   # Only evaluated/completed runs with real content belong in the release.
+   if [ -f "$STAGE/runs/$name/run_meta.txt" ] && \
+      { [ "$n_bins" -gt 0 ] || [ -f "$STAGE/runs/$name/per_bin_results.csv" ]; }; then
+     RUNS_INCLUDED+=("$name ($n_bins bins)")
+
+> build · big-pickle
+[0m→ [0mRead /vol/data/repos/metagenomic-binning-benchmark/scripts/zenodo_update.sh [90m[limit=12, offset=268][0m
+> build · big-pickle
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/scripts/zenodo_update.sh
+Index: /vol/data/repos/metagenomic-binning-benchmark/scripts/zenodo_update.sh
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/scripts/zenodo_update.sh
++++ /vol/data/repos/metagenomic-binning-benchmark/scripts/zenodo_update.sh
+@@ -273,9 +273,11 @@
+     f"evaluated run: {runs}. Each run contributes its bin FASTAs "
+     "(runs/<run>/comebin_res/comebin_res_bins/), per-bin and aggregate CheckM2 + "
+     "CheckM v1 metrics (results/<run>.csv, runs/<run>/per_bin_results.csv), the "
+     "evaluation reports (runs/<run>/eval/), run parameters and logs "
+-    "(run_meta.txt, comebin_run.log), all comparison figures "
++    "(run_meta.txt, comebin_run.log), the CAMI-standard binning export "
++    "(runs/<run>/biobox/: binning.tar.gz, <sample>.binning in CAMI binning "
++    "format v0.9.1, binning_summary.tsv), all comparison figures "
+     "(results/figures/, incl. the combined completeness bar plot), plus dataset, "
+     "environment, fix, evaluation and preservation documentation (docs/). "
+     "manifest.json inside the archive lists every file with size and SHA-256.\n\n"
+     "Version 1.0 additionally contains the small functional-test dataset "
+
+> build · big-pickle
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/scripts/zenodo_update.sh
+Index: /vol/data/repos/metagenomic-binning-benchmark/scripts/zenodo_update.sh
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/scripts/zenodo_update.sh
++++ /vol/data/repos/metagenomic-binning-benchmark/scripts/zenodo_update.sh
+@@ -10,8 +10,11 @@
+ #                         per_bin_results.csv, per_bins.png)
+ #   - runs/<r>/comebin_res/comebin_res_bins/   bin FASTAs produced by COMEBin
+ #   - runs/<r>/eval/...   CheckM2 quality_report.tsv + CheckM v1
+ #                         bin_stats_ext.tsv/checkm.log (key eval reports)
++#   - runs/<r>/biobox/... CAMI-standard binning output from export_biobox.sh
++#                         (binning.tar.gz, <sample>.binning, binning_summary.tsv;
++#                         bins.fasta.gz only with INCLUDE_BINS_FASTA=1)
+ #   - docs/ README.md PROGRESS.md status/agent-activity.log
+ # into a deterministic release tarball with a SHA-256 manifest, then publishes
+ # it as a NEW VERSION of the existing record (concept DOI
+ # 10.5281/zenodo.22935024; v1 = 10.5281/zenodo.22935025). Versions accumulate
+
+> build · big-pickle
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/scripts/zenodo_update.sh
+Index: /vol/data/repos/metagenomic-binning-benchmark/scripts/zenodo_update.sh
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/scripts/zenodo_update.sh
++++ /vol/data/repos/metagenomic-binning-benchmark/scripts/zenodo_update.sh
+@@ -28,9 +28,10 @@
+ #   - exits 1 on packaging/API errors (callers in run_eval.sh treat as warning)
+ #   --dry-run: package + manifest + change detection, no network calls
+ #
+ # Env: ZENODO_TOKEN_FILE (default: ~/.zenodo_token), ZENODO_RECORD (default
+-# 22935025), ZENODO_UPDATE=0 disables the script entirely.
++# 22935025), ZENODO_UPDATE=0 disables the script entirely,
++# INCLUDE_BINS_FASTA=1 also ships the concatenated biobox bins.fasta.gz.
+ set -euo pipefail
+ 
+ REPO=${BENCH_REPO:-}
+ if [ -z "$REPO" ] || [ ! -f "$REPO/README.md" ]; then
+
+> build · big-pickle
+Now let me verify the fix with a real dry-run (no network, no publish).
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && bash -n scripts/zenodo_update.sh && echo "SYNTAX OK"; command -v shellcheck >/dev/null && shellcheck -S warning scripts/zenodo_update.sh 2>&1 | head -20 || echo "(no shellcheck)"
+SYNTAX OK
+(no shellcheck)
+> build · big-pickle
