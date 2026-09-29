@@ -3,10 +3,10 @@
 | | |
 |---|---|
 | Status | 🟢 `running` |
-| ⏱ Updated (Europe/Berlin) | `2026-09-29T05:44 CEST` |
-| 🏃 Last benchmark (not active) | `sweep_004_temp005` — last observed **epoch 199/200** (log 263s old) |
+| ⏱ Updated (Europe/Berlin) | `2026-09-29T05:46 CEST` |
+| 🏃 Last benchmark (not active) | `sweep_004_temp005` — last observed **epoch 199/200** (log 382s old) |
 | 🧠 Model (last turn) | `nemotron-3.5-lightning-free` (watchdog rotates to free models on quota) |
-| 📌 Agent note · **4 min old** | 2026-09-29T01:02:00Z rank-script-fix + galaxy-fixture-runner committed
+| 📌 Agent note · **6 min old** | 2026-09-29T01:02:00Z rank-script-fix + galaxy-fixture-runner committed
 [2026-09-29T01:08:17Z] #25 AMBER: inputs staged (marine pred + GS), env installing
 [2026-09-29T01:12:11Z] AMBER marine eval done (F1 0.330 bp); docs/14 + scripts/make_amber_prediction.py; sweep_003 running
 [2026-09-29T01:23:01Z] AMBER human eval done (F1 0.681 bp, 99.3% assigned); human GS imported; biobox exports marine/human/cami3
@@ -17,9 +17,9 @@
 2026-09-29T02:48:40Z Sweep restart: cells 4-24 of 24-cell medium grid on COMEBin-v11-sweep@95f5ea8; cell 4 retry after sweep_004_temp005 failure (libmamba filesystem error - fixed by using COMEBIN_TEMPERATURE instead of TEMP), cells 5-24 to follow. Cell 4 (sweep_004_temp005) training started at 02:53, temperature 0.05, ~55 min expected.
 2026-09-29T02:53:42Z Sweep relaunched: cell 4 (sweep_004_temp005) restarted with COMEBIN_TEMPERATURE=0.05 fix; THREADS=8 seed=42 on medium dataset; training in progress.
 2026-09-29T03:25:12Z Sweep cells 4-24 running on COMEBin-v11-sweep@95f5ea8; cell 4 sweep_004_temp005 active with COMEBIN_TEMPERATURE=0.05 fix | ETA ~2026-09-30 evening UTC | cells 5-24 queued |
-| ⚙️ Load · uptime | `2.45 5.76 6.69` · 5 days, 14 hours, 8 minutes — 32 cores, 62 GiB, no GPU |
-| 💾 RAM used/total | `37857/64295 MB` |
+| ⚙️ Load · uptime | `4.49 4.98 6.26` · 5 days, 14 hours, 10 minutes — 32 cores, 62 GiB, no GPU |
+| 💾 RAM used/total | `2833/64295 MB` |
 | 🔗 Session | `ses_f31799c77ffeTq9gcYgqc4hBhg` |
-| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `a4659fb3 meta: supervise tick 2026-09-29T03:43:01Z — 1 fix(es)` |
-| 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `11001724 B` — every run, command & tool result |
+| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `4d674524 status: yes — sweep_004_temp005 epoch 199/200 loss 0.5626903176307678` |
+| 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `11001763 B` — every run, command & tool result |
 | 📈 Timeline | [status/status.log](status/status.log) |
