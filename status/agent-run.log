@@ -102058,3 +102058,234 @@ Index: /vol/data/repos/metagenomic-binning-benchmark/scripts/rank_sweep_medium.p
      ))
  
 
+> build · mimo-v2.6-flash-free
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/scripts/rank_sweep_medium.py
+Index: /vol/data/repos/metagenomic-binning-benchmark/scripts/rank_sweep_medium.py
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/scripts/rank_sweep_medium.py
++++ /vol/data/repos/metagenomic-binning-benchmark/scripts/rank_sweep_medium.py
+@@ -144,11 +144,12 @@
+         lines.append(
+             "| {rank} | `{cell}` | `{commit}` | {seed} | {params} | {wall} "
+             "| {bins} | {c2c} | {c2n} | {hq} / {mq} | {f1:.2f} "
+             "| {c1c} / {c1n} |".format(
+-                rank=i, **c, params=nonref,
+-                hq=c["hq2"], mq=c["mq2"],
+-                del par for par in []  # keep formatting simple
++                rank=i, cell=c["cell"], commit=c["commit"], seed=c["seed"],
++                params=nonref, wall=c["wall"], bins=c["n_bins"],
++                c2c=c["c2c"], c2n=c["c2n"], hq=c["hq2"], mq=c["mq2"],
++                f1=c["f1"], c1c=c["c1c"], c1n=c["c1n"],
+             )
+         )
+ 
+     table = "\n".join(lines) + "\n"
+
+> build · mimo-v2.6-flash-free
+[0m$ [0mset -e; R=/vol/data/repos/metagenomic-binning-benchmark; python3 -m py_compile $R/scripts/rank_sweep_medium.py && echo "py_compile OK"
+T=/tmp/opencode/ranktest; rm -rf $T; mkdir -p $T/results $T/runs/sweep_001_ref $T/scripts
+cp $R/scripts/rank_sweep_medium.py $T/scripts/
+cp $R/results/sweep_001_ref.csv $T/results/
+cp $R/runs/sweep_001_ref/run_meta.txt $T/runs/sweep_001_ref/
+# a second synthetic cell with odd/missing fields to exercise the guards
+printf 'run,source_commit,dataset,threads,total_time_s,n_bins,checkm2_mean_completeness,checkm2_mean_contamination,checkm2_HQ,checkm2_MQ,checkm_mean_completeness,checkm_mean_contamination,checkm_HQ,checkm_MQ\nsweep_999_bad,deadbeef,"comebin_medium (3,000 contigs)",8,,,-, -,0,0,-,-,0,0\n' > $T/results/sweep_999_bad.csv
+mkdir -p $T/runs/sweep_999_bad && printf 'seed: 7\n' > $T/runs/sweep_999_bad/run_meta.txt
+BENCH_REPO=$T python3 $T/scripts/rank_sweep_medium.py; echo "exit=$?"; ls -l $T/results/
+py_compile OK
+| Rank | Cell | Commit | Seed | Params (non-ref) | Wall | Bins | CheckM2 comp | CheckM2 cont | HQ / MQ | F1 | CheckM1 comp / cont |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| 1 | `sweep_001_ref` | `95f5ea8` | 42 | n_views=6 | 2827 | 17 | 34.22 | 4.11 | 0 / 2 | 50.44 | 32.00 / 5.31 |
+| 2 | `sweep_999_bad` | `deadbee` | 7 | reference (defaults) | - |  | - |  - | 0 / 0 | nan | - / - |
+
+wrote /tmp/opencode/ranktest/results/sweep_rankings.md
+exit=0
+total 12
+-rw-rw-r-- 1 ubuntu ubuntu 328 Sep 29 00:58 sweep_001_ref.csv
+-rw-rw-r-- 1 ubuntu ubuntu 277 Sep 29 00:58 sweep_999_bad.csv
+-rw-rw-r-- 1 ubuntu ubuntu 616 Sep 29 00:58 sweep_rankings.md
+> build · mimo-v2.6-flash-free
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/scripts/rank_sweep_medium.py
+Index: /vol/data/repos/metagenomic-binning-benchmark/scripts/rank_sweep_medium.py
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/scripts/rank_sweep_medium.py
++++ /vol/data/repos/metagenomic-binning-benchmark/scripts/rank_sweep_medium.py
+@@ -57,23 +57,35 @@
+ def coord_str(meta):
+     """'temp=ref emb=ref ...' but only the axes — matches docs/13 grid."""
+     parts = []
+     for ax in AXES:
+-        parts.append(f"{ax}={meta.get(ax, 'ref')}")
++        value = meta.get(ax, "ref")
++        # run_meta records the *actual* n_views (reference grid value is 6),
++        # while every other axis records the literal token "ref".
++        if ax == "n_views" and value == "6":
++            value = "ref"
++        parts.append(f"{ax}={value}")
+     return " ".join(parts)
+ 
+ 
+ def f1(comp, cont):
++    """Harmonic mean of completeness and purity, or None when not computable."""
+     try:
+         comp = float(comp)
+         p = 100.0 - float(cont)
+     except (TypeError, ValueError):
+-        return float("nan")
++        return None
++    if comp != comp or p != p:  # NaN inputs
++        return None
+     if comp + p <= 0:
+         return 0.0
+     return 2 * comp * p / (comp + p)
+ 
+ 
++def fmt_f1(value):
++    return "-" if value is None else f"{value:.2f}"
++
++
+ def main():
+     cells = []
+     if os.path.isdir(RESULTS):
+         for fn in sorted(os.listdir(RESULTS)):
+
+> build · mimo-v2.6-flash-free
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/scripts/rank_sweep_medium.py
+Index: /vol/data/repos/metagenomic-binning-benchmark/scripts/rank_sweep_medium.py
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/scripts/rank_sweep_medium.py
++++ /vol/data/repos/metagenomic-binning-benchmark/scripts/rank_sweep_medium.py
+@@ -159,9 +159,9 @@
+             "| {c1c} / {c1n} |".format(
+                 rank=i, cell=c["cell"], commit=c["commit"], seed=c["seed"],
+                 params=nonref, wall=c["wall"], bins=c["n_bins"],
+                 c2c=c["c2c"], c2n=c["c2n"], hq=c["hq2"], mq=c["mq2"],
+-                f1=c["f1"], c1c=c["c1c"], c1n=c["c1n"],
++                f1=fmt_f1(c["f1"]), c1c=c["c1c"], c1n=c["c1n"],
+             )
+         )
+ 
+     table = "\n".join(lines) + "\n"
+
+> build · mimo-v2.6-flash-free
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/scripts/rank_sweep_medium.py
+Index: /vol/data/repos/metagenomic-binning-benchmark/scripts/rank_sweep_medium.py
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/scripts/rank_sweep_medium.py
++++ /vol/data/repos/metagenomic-binning-benchmark/scripts/rank_sweep_medium.py
+@@ -154,9 +154,9 @@
+             p for p in c["params"].split()
+             if not p.endswith("=ref")) or "reference (defaults)"
+         lines.append(
+             "| {rank} | `{cell}` | `{commit}` | {seed} | {params} | {wall} "
+-            "| {bins} | {c2c} | {c2n} | {hq} / {mq} | {f1:.2f} "
++            "| {bins} | {c2c} | {c2n} | {hq} / {mq} | {f1} "
+             "| {c1c} / {c1n} |".format(
+                 rank=i, cell=c["cell"], commit=c["commit"], seed=c["seed"],
+                 params=nonref, wall=c["wall"], bins=c["n_bins"],
+                 c2c=c["c2c"], c2n=c["c2n"], hq=c["hq2"], mq=c["mq2"],
+
+> build · mimo-v2.6-flash-free
+[0m$ [0mset -e; R=/vol/data/repos/metagenomic-binning-benchmark; python3 -m py_compile $R/scripts/rank_sweep_medium.py && echo "py_compile OK"
+T=/tmp/opencode/ranktest; cp $R/scripts/rank_sweep_medium.py $T/scripts/
+BENCH_REPO=$T python3 $T/scripts/rank_sweep_medium.py; echo "exit=$?"
+py_compile OK
+| Rank | Cell | Commit | Seed | Params (non-ref) | Wall | Bins | CheckM2 comp | CheckM2 cont | HQ / MQ | F1 | CheckM1 comp / cont |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| 1 | `sweep_001_ref` | `95f5ea8` | 42 | reference (defaults) | 2827 | 17 | 34.22 | 4.11 | 0 / 2 | 50.44 | 32.00 / 5.31 |
+| 2 | `sweep_999_bad` | `deadbee` | 7 | reference (defaults) | - |  | - |  - | 0 / 0 | - | - / - |
+
+wrote /tmp/opencode/ranktest/results/sweep_rankings.md
+exit=0
+> build · mimo-v2.6-flash-free
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && exec 9>/tmp/bench-repo.lock && flock -w 120 9 && echo "lock acquired" && git add scripts/rank_sweep_medium.py && git status --porcelain && git -c user.name="agent" -c user.email="agent@localhost" commit -q -m "fix(rank): remove stray syntax error in rank_sweep_medium.py, harden sort/format, treat n_views=6 as the reference grid value" && git pull --rebase -q origin main && git push -q origin main && git status -sb | head -2 && git log --oneline -1
+lock acquired
+M  scripts/rank_sweep_medium.py
+## main...origin/main
+9d36e82c fix(rank): remove stray syntax error in rank_sweep_medium.py, harden sort/format, treat n_views=6 as the reference grid value
+> build · mimo-v2.6-flash-free
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark; grep -n "MODE" scripts/run_comebin_fix.sh | head -30; echo "=== tail of harness ==="; sed -n 60,140p scripts/run_comebin_fix.sh
+13:MODE=${MODE:-fix}
+118:  "$RUNDIR/comebin_run.log" "$RUNDIR" "$(date +%s)" "$MODE" "$SRC" "$CONTIGS" "$BAMDIR" > "$ACTIVE.tmp.$$"
+=== tail of harness ===
+COMMIT=$(git -C "$SRC" rev-parse HEAD)
+DIRTY=$(git -C "$SRC" status --porcelain --untracked-files=no | wc -l)
+BRANCH=$(git -C "$SRC" branch --show-current)
+echo "source: $SRC (branch $BRANCH) commit: $COMMIT (dirty files: $DIRTY)"
+[ "$DIRTY" -eq 0 ] || { echo "REFUSING: source tree has uncommitted changes; commit them first"; exit 1; }
+COMEBIN_ARGS=(-a "$CONTIGS" -p "$BAMDIR" -o "$RUNDIR/comebin_out" -n "${N_VIEWS:-6}" -t "$THREADS")
+if grep -q -- '-d STR.*device' "$SRC/COMEBin/run_comebin.sh"; then
+  COMEBIN_ARGS+=(-d cpu)
+fi
+if [ -n "$SEED" ] && grep -q -- '-s INT.*seed' "$SRC/COMEBin/run_comebin.sh"; then
+  COMEBIN_ARGS+=(-s "$SEED")
+fi
+# ---- issue #25 sweep: forward optional training/compute params ------------ #
+# Map env vars -> run_comebin.sh flags ONLY if the invoked copy supports them
+# (avoids "illegal option" on older/mismatched sources). Defaults = upstream
+# reference values (current medium_v11_20260924 run). `${X:-}` guards set -u.
+if [ -n "${TEMP:-}" ]; then
+  grep -q -- '-l FLOAT' "$SRC/COMEBin/run_comebin.sh" && COMEBIN_ARGS+=(-l "$TEMP")
+fi
+if [ -n "${EMB:-}" ]; then
+  grep -q -- '-e INT' "$SRC/COMEBin/run_comebin.sh" && COMEBIN_ARGS+=(-e "$EMB")
+fi
+if [ -n "${EMB_COV:-}" ]; then
+  grep -q -- '-c INT' "$SRC/COMEBin/run_comebin.sh" && COMEBIN_ARGS+=(-c "$EMB_COV")
+fi
+if [ -n "${BATCH:-}" ]; then
+  grep -q -- '-b INT' "$SRC/COMEBin/run_comebin.sh" && COMEBIN_ARGS+=(-b "$BATCH")
+fi
+if [ -n "${MAX_EDGES:-}" ]; then
+  grep -q -- '-m INT' "$SRC/COMEBin/run_comebin.sh" && COMEBIN_ARGS+=(-m "$MAX_EDGES")
+fi
+if [ -n "${LEIDEN_WORKERS:-}" ]; then
+  grep -q -- '-w INT' "$SRC/COMEBin/run_comebin.sh" && COMEBIN_ARGS+=(-w "$LEIDEN_WORKERS")
+fi
+if [ -n "${HMM_EVALUE:-}" ]; then
+  grep -q -- '-E FLOAT' "$SRC/COMEBin/run_comebin.sh" && COMEBIN_ARGS+=(-E "$HMM_EVALUE")
+fi
+CMD_TEXT=$(printf '%q ' "$MM" run -p "$ENV" bash run_comebin.sh "${COMEBIN_ARGS[@]}")
+{
+  echo "run:        $RUNDIR"
+  echo "source:     $SRC (branch $BRANCH)"
+  echo "date:       $(date -Is)"
+  echo "commit:     $COMMIT"
+  echo "contigs:    $CONTIGS"
+  echo "bamdir:     $BAMDIR"
+  echo "threads:    $THREADS"
+  echo "n_views:    ${N_VIEWS:-6}"
+  echo "seed:       ${SEED:-unset}"
+  echo "sweep:      temp=${TEMP:-ref} emb=${EMB:-ref} emb_cov=${EMB_COV:-ref} batch=${BATCH:-ref} max_edges=${MAX_EDGES:-ref} leiden_workers=${LEIDEN_WORKERS:-ref} hmm_evalue=${HMM_EVALUE:-ref} n_views=${N_VIEWS:-6}"
+  echo "host:       $(nproc) cores, $(free -g | awk '/Mem:/{print $2}')G RAM, gpu=$(nvidia-smi -L 2>/dev/null || echo none)"
+  echo "cmd_wrapper: $CMD_TEXT"
+} | tee "$RUNDIR/run_meta.txt"
+
+export MAMBA_ROOT_PREFIX=/vol/data/envs/.mamba
+cd "$SRC/COMEBin"   # upstream resolves ../auxiliary relative to CWD
+
+# Fields: pid pgid logfile rundir start_epoch mode source_repo contigs bamdir.
+printf '%s %s %s %s %s %s %s %s %s\n' "$$" "$(ps -o pgid= -p $$ | tr -d ' ')" \
+  "$RUNDIR/comebin_run.log" "$RUNDIR" "$(date +%s)" "$MODE" "$SRC" "$CONTIGS" "$BAMDIR" > "$ACTIVE.tmp.$$"
+mv "$ACTIVE.tmp.$$" "$ACTIVE"
+
+SAMPLER_PID=""
+cleanup() {
+  rc=$?
+  trap - EXIT
+  if [ -n "$SAMPLER_PID" ] && kill -0 "$SAMPLER_PID" 2>/dev/null; then
+    kill "$SAMPLER_PID" 2>/dev/null || true
+    wait "$SAMPLER_PID" 2>/dev/null || true
+  fi
+  if [ "$rc" -eq 0 ] && [ -f "$ACTIVE" ]; then
+    read -r current_pid _ < "$ACTIVE" || true
+    [ "${current_pid:-}" = "$$" ] && rm -f "$ACTIVE"
+  fi
+  exit "$rc"
+}
+trap cleanup EXIT
+trap 'exit 130' INT TERM
+
+sample_resources() {
+  printf 'timestamp\tpids\tcpu_pct\trss_gb\tsystem_mem_mb\n'
+  while :; do
+> build · mimo-v2.6-flash-free
