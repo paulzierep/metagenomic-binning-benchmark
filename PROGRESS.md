@@ -727,6 +727,17 @@ included; fixes land on branch `comebin-optimizations` in this repo.
   at `/vol/data/datasets/galaxy_comebin_fixture/` (md5 `e6b5f3bb…` fasta,
   `373f4411…` bam); end-to-end run on `41606c8` is queued behind the sweep
   (overlap rule).
+- **Post-sweep tooling hardened while waiting**: `scripts/rank_sweep_medium.py`
+  shipped with a **stray syntax error** (`del par for par in []` in the format
+  call) that would have killed the ranking the moment the grid finished —
+  removed, plus defensive `as_int`/`as_float`/`fmt_f1` guards (a `-`/empty CSV
+  cell no longer raises `ValueError`) and `n_views=6` normalised to `ref` so
+  the reference cell shows "reference (defaults)". Verified out-of-tree against
+  a synthetic malformed row. `scripts/run_galaxy_fixture_test.sh` (NEW) wraps
+  the issue-#29 fixture run: `CONTIGS`/`BAMDIR`/`MODE=galaxy_fixture`,
+  `MAX_EDGES=20` (Galaxy's own value; 100 > 40 contigs → `ValueError`),
+  `bamfiles/` symlink created, and it inherits the harness's
+  no-overlap/no-overwrite guards. Pushed `9d36e82c`, `3ac437d7`.
 
 ## Watchdog / restart
 
