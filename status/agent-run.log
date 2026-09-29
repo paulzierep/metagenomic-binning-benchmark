@@ -100255,3 +100255,34 @@ ERROR: another benchmark launch holds /tmp/benchmark-start.lock
 [0m← [0mWrite /tmp/opencode/run_sweep_medium.sh
 Wrote file successfully: /tmp/opencode/run_sweep_medium.sh
 > build · mimo-v2.6-flash-free
+[0m$ [0mrm -f /tmp/opencode/dbg.log; printf '#!/usr/bin/env bash\nexec setsid bash /tmp/opencode/run_sweep_medium.sh < /dev/null >> /tmp/opencode/dbg.out 2>&1\n' > /tmp/opencode/launch_guardtest.sh; nohup bash /tmp/opencode/launch_guardtest.sh >/dev/null 2>&1 & sleep 9; echo "=== dbg.log:"; cat /tmp/opencode/dbg.log 2>/dev/null || echo NONE; echo "=== live matches:"; for p in $(pgrep -f 'run_sweep_medium\.sh'); do echo "pid=$p ppid=$(ps -o ppid= -p $p|tr -d ' ') args=$(ps -o args= -p $p | cut -c1-140)"; done
+=== dbg.log:
+PROBE 1 me=2562698 ppid=2562696 anc= 2562698 2562696 5551 1 pgid=2562698
+  match=2562696 mppid=5551 margs=[/bin/bash -c rm -f /tmp/opencode/dbg.log; printf '#!/usr/bin/env bash\nexec setsid bash /tmp/opencode/run_sweep_medium.sh < /dev/null >> /tm] related=Y
+  match=2562698 mppid=2562696 margs=[bash /tmp/opencode/run_sweep_medium.sh] related=Y
+  match=2562710 mppid= margs=[] related=N
+PROBE 2 me=2562698 ppid=2562696 anc= 2562698 2562696 5551 1 pgid=2562698
+  match=2562696 mppid=5551 margs=[/bin/bash -c rm -f /tmp/opencode/dbg.log; printf '#!/usr/bin/env bash\nexec setsid bash /tmp/opencode/run_sweep_medium.sh < /dev/null >> /tm] related=Y
+  match=2562698 mppid=2562696 margs=[bash /tmp/opencode/run_sweep_medium.sh] related=Y
+  match=2563320 mppid= margs=[] related=N
+TESTDONE
+=== live matches:
+pid=2562696 ppid=5551 args=/bin/bash -c rm -f /tmp/opencode/dbg.log; printf '#!/usr/bin/env bash\nexec setsid bash /tmp/opencode/run_sweep_medium.sh < /dev/null >> /tm
+> build · mimo-v2.6-flash-free
+[0m← [0mWrite /tmp/opencode/run_sweep_medium.sh
+Wrote file successfully: /tmp/opencode/run_sweep_medium.sh
+> build · mimo-v2.6-flash-free
+[0m$ [0mrm -f /tmp/opencode/dbg.log; nohup bash /tmp/opencode/launch_guardtest.sh >/dev/null 2>&1 & sleep 6; cat /tmp/opencode/dbg.log 2>/dev/null || echo NONE
+PROBE me=2563577 ppid=2563575 anc= 2563577 2563575 5551 1
+  seen: 2563577 bash /tmp/opencode/run_sweep_medium.sh
+  seen: 2563586 bash /tmp/opencode/run_sweep_medium.sh
+PROBEEND
+> build · mimo-v2.6-flash-free
+[0m$ [0mgrep -rn "run_sweep_medium" /vol/data/benchmark/bin/*.sh /etc/crontab /etc/cron.d/ 2>/dev/null | grep -v '^Binary' | head -20; echo "=== sampler of transient matches (5s):"; for i in 1 2 3 4 5 6 7 8 9 10; do for p in $(pgrep -f 'run_sweep_medium\.sh'); do echo "$(date +%H:%M:%S.%N) pid=$p ppid=$(ps -o ppid= -p $p 2>/dev/null|tr -d ' ') args=[$(ps -o args= -p $p 2>/dev/null|cut -c1-100)]"; done; sleep 0.5; done; echo DONE_SAMPLING
+/vol/data/benchmark/bin/run_sweep_medium.sh:2:# run_sweep_medium.sh — drive the issue-#25 optimization sweep on the medium
+/vol/data/benchmark/bin/run_sweep_medium.sh:25:#   THREADS=8 bash scripts/run_sweep_medium.sh [--only NAME] [--from N]
+/vol/data/benchmark/bin/run_sweep_medium.sh:91:SWEEP_LOCK=${SWEEP_LOCK:-/tmp/run_sweep_medium.lock}
+/vol/data/benchmark/bin/run_sweep_medium.sh:125:  for other in $(pgrep -f 'run_sweep_medium\.sh' 2>/dev/null || true); do
+=== sampler of transient matches (5s):
+DONE_SAMPLING
+> build · mimo-v2.6-flash-free
