@@ -1041,3 +1041,18 @@ Python script.
   `cami3_v11_20260926_rerun` (492 bins, CheckM2 35.97/11.42, F1_bp 0.743).
 - Tables/docs refreshed: `scripts/make_all_runs_table.py` → README "All runs" +
   `results/all_runs_table.md` now carry the winner row (F1 73.8).
+
+### 2026-09-30T04:05Z — CAMI III winner run ep200/200 complete, CheckM eval complete, eval chain pending
+
+- `cami3_v11_winner_20260930` training completed 200/200 epochs with temp=0.05, seed=42.
+- CheckM v1 evaluation completed successfully (247 bins assessed).
+- `run_meta.txt` exit_code: 0; `.active_run` released.
+- Eval chain `run_eval_chain.sh ... cami3` launched detached (pid 1665145) at 2026-09-30T04:22:10Z → running CheckM2 + CheckM v1 + results CSV + per-bin plots + AMBER + biobox.
+- Reference: `cami3_v11_20260926_rerun` (492 bins, CheckM2 35.97/11.42, AMBER F1_bp 0.743).
+
+### 2026-09-30T04:22Z — Eval chain launched
+
+- `bash /vol/data/benchmark/bin/run_eval_chain.sh /vol/data/benchmark/runs/cami3_v11_winner_20260930 cami3 28800 32` started (pid 1665145)
+- Waits for `.active_run` release, then runs `run_eval.sh` (CheckM2 with thread cap at 16 for 416 bins, CheckM v1, results CSV, per-bin CSV/plots, Zenodo version, AMBER vs cami_III gold standard, biobox export + validation via `validate_binning.py`).
+- DEDUP guard: `pgrep -f run_eval_chain.sh` prevents duplicate launches.
+- Next: monitor chain progress; once CHAIN COMPLETE, next steps include CAMI II human winner generalization check and/or CAMI III toy-gut winner run.

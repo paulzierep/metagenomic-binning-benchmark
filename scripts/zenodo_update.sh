@@ -251,19 +251,21 @@ rm -rf "$WORK"; WORK=$(mktemp -d "$RELEASES/api.XXXXXX")
 FNAME=$(basename "$OUT")
 # Stream the tarball with curl -T instead of --data-binary, which buffers the
 # whole file in memory and OOM'd on the ~1.25 GB release package (2026-09-30).
+# The reused draft may still hold stale files from an older version (e.g. the
+# v6 tarball) — clear them all so the draft publishes exactly one tarball.
 rm -rf "$WORK"; WORK=$(mktemp -d "$RELEASES/api.XXXXXX")
 req GET "https://zenodo.org/api/deposit/depositions/$DRAFT_ID/files"
-if [ "$CODE" = "200" ]; then
-  EXISTING_ID=$(python3 -c "
+[ "$CODE" = "200" ] || die "reading draft files failed (HTTP $CODE)"
+STALE_IDS=$(python3 -c "
 import json,sys
 d=json.load(open('$WORK/resp.json'))
-print(next((f['id'] for f in (d.get('files') or []) if f.get('key')=='$FNAME'), ''))")
-  if [ -n "$EXISTING_ID" ]; then
-    rm -rf "$WORK"; WORK=$(mktemp -d "$RELEASES/api.XXXXXX")
-    req DELETE "https://zenodo.org/api/deposit/depositions/$DRAFT_ID/files/$EXISTING_ID"
-    [ "$CODE" = "204" ] || log "WARNING: stale file entry delete returned HTTP $CODE"
-  fi
-fi
+files = d if isinstance(d, list) else (d.get('files') or [])
+print(' '.join(f['id'] for f in files))")
+for stale in $STALE_IDS; do
+  rm -rf "$WORK"; WORK=$(mktemp -d "$RELEASES/api.XXXXXX")
+  req DELETE "https://zenodo.org/api/deposit/depositions/$DRAFT_ID/files/$stale"
+  [ "$CODE" = "204" ] || log "WARNING: stale file delete returned HTTP $CODE"
+done
 rm -rf "$WORK"; WORK=$(mktemp -d "$RELEASES/api.XXXXXX")
 req PUT "$BUCKET/$FNAME" -H "Content-Type: application/octet-stream" -T "$OUT"
 [ "$CODE" = "201" ] || die "file upload failed (HTTP $CODE): $(head -c 300 "$WORK/resp.json")"
