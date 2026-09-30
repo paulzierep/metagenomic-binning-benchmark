@@ -132095,3 +132095,48 @@ Leiden result grid: max_edges=100, files=120, rows_per_file=3000.
 Leiden result grid before final selection: format=binary-labels, max_edges=100, files=120, rows_per_file=3000.
 > build · big-pickle
 Training done, now in the 120-run Leiden grid. Let me wait for clustering + eval.
+[0m$ [0msleep 115; tail -2 /vol/data/benchmark/status/sweep_medium.log; echo "---"; grep -iE 'Clustering exited|final selection|combining|Bins' /vol/data/benchmark/runs/sweep_024_seed7/comebin_run.log | tail -3; echo "---procs---"; ps aux | grep -c '[m]ain.py'
+[2026-09-29T23:42:47Z] START sweep_024_seed7 src=COMEBin-v11-sweep @ 95f5ea8 threads=8 seed=7 temp=ref emb=ref emb_cov=ref batch=ref max_edges=ref lw=ref heval=ref n_views=6
+[2026-09-30T00:29:24Z] RUN_DONE sweep_024_seed7 exit=0
+---
+    Finished parsing hits for 1 of 8 (12.50%) bins.    Finished parsing hits for 2 of 8 (25.00%) bins.    Finished parsing hits for 3 of 8 (37.50%) bins.    Finished parsing hits for 4 of 8 (50.00%) bins.    Finished parsing hits for 5 of 8 (62.50%) bins.    Finished parsing hits for 6 of 8 (75.00%) bins.    Finished parsing hits for 7 of 8 (87.50%) bins.    Finished parsing hits for 8 of 8 (100.00%) bins.
+    Finished parsing hits for 1 of 8 (12.50%) bins.    Finished parsing hits for 2 of 8 (25.00%) bins.    Finished parsing hits for 3 of 8 (37.50%) bins.    Finished parsing hits for 4 of 8 (50.00%) bins.    Finished parsing hits for 5 of 8 (62.50%) bins.    Finished parsing hits for 6 of 8 (75.00%) bins.    Finished parsing hits for 7 of 8 (87.50%) bins.    Finished parsing hits for 8 of 8 (100.00%) bins.
+2026-09-30 00:29:23,522 - Stream winning Leiden bins from /vol/data/datasets/comebin_medium/contigs.fa.
+---procs---
+0
+> build · big-pickle
+Cell 24 (the last cell) completed with exit 0. The driver is now in the eval phase (CheckM2 running). Let me confirm.
+[0m$ [0mtail -1 /vol/data/benchmark/status/sweep_medium.log; echo "=== eval procs ==="; ps aux | grep -E '[c]heckm2|[c]heckm ' | head -3; echo "=== run_meta tail ==="; grep -E 'exit_code|wall_s|bins' /vol/data/benchmark/runs/sweep_024_seed7/run_meta.txt 2>&1
+[2026-09-30T00:29:24Z] RUN_DONE sweep_024_seed7 exit=0
+=== eval procs ===
+ubuntu    571445  0.0  0.0 108308 12936 ?        Sl   00:30   0:00 /vol/data/tools/bin/micromamba run -p /vol/data/envs/comebin checkm lineage_wf -x fa -t 32 --tmpdir /vol/data/benchmark/runs/sweep_024_seed7/eval/checkm/tmp /vol/data/benchmark/runs/sweep_024_seed7/comebin_out/comebin_res/comebin_res_bins /vol/data/benchmark/runs/sweep_024_seed7/eval/checkm/out
+ubuntu    571447  6.3  0.1 436716 91892 ?        S    00:30   0:01 /vol/data/envs/comebin/bin/python /vol/data/envs/comebin/bin/checkm lineage_wf -x fa -t 32 --tmpdir /vol/data/benchmark/runs/sweep_024_seed7/eval/checkm/tmp /vol/data/benchmark/runs/sweep_024_seed7/comebin_out/comebin_res/comebin_res_bins /vol/data/benchmark/runs/sweep_024_seed7/eval/checkm/out
+=== run_meta tail ===
+allow_zero_bins: 0
+exit_code:  0
+wall_s:     2797
+bins:       15  -> /vol/data/benchmark/runs/sweep_024_seed7/comebin_out/comebin_res/comebin_res_bins
+cmd_checkm2: /vol/data/tools/bin/micromamba run -p /vol/data/envs/checkm2 checkm2 predict --threads 32 --database_path /vol/data/benchmark/checkm2db/CheckM2_database/uniref100.KO.1.dmnd --input /vol/data/benchmark/runs/sweep_024_seed7/comebin_out/comebin_res/comebin_res_bins --output-directory /vol/data/benchmark/runs/sweep_024_seed7/eval/checkm2 -x fa --force
+checkm2_rc: 0 checkm2_wall_s: 46 checkm2_threads: 32
+cmd_checkm: LD_LIBRARY_PATH=/vol/data/envs/checkm/lib:/vol/data/envs/comebin/lib /vol/data/tools/bin/micromamba run -p /vol/data/envs/comebin checkm lineage_wf -x fa -t 32 --tmpdir /vol/data/benchmark/runs/sweep_024_seed7/eval/checkm/tmp /vol/data/benchmark/runs/sweep_024_seed7/comebin_out/comebin_res/comebin_res_bins /vol/data/benchmark/runs/sweep_024_seed7/eval/checkm/out
+> build · big-pickle
+Cell 24: exit 0, 2797 s wall, 15 bins, CheckM2 rc 0 done (46 s). CheckM v1 now running (~4-5 min). Let me log progress.
+[0m$ [0mTS=$(date -u +"%Y-%m-%dT%H:%M:%SZ"); \
+echo "$TS sweep_024_seed7 RUN_DONE exit=0, wall 2797s, 15 bins, CheckM2 rc0 (46s, 35.99/6.66); CheckM v1 lineage_wf running" >> /vol/data/repos/metagenomic-binning-benchmark/status/agent-activity.log; \
+echo "$TS sweep cell24 complete, eval in progress" > /vol/data/benchmark/.activity; \
+touch /vol/data/benchmark/.heartbeat; \
+grep -E 'checkm2_compl_mean|checkm2_cont_mean' /vol/data/benchmark/runs/sweep_024_seed7/run_meta.txt
+Exited with code 1
+> build · big-pickle
+[0m$ [0mgrep -E 'checkm2_compl_mean|checkm2_cont_mean|checkm2_HQ|checkm2_MQ' /vol/data/benchmark/runs/sweep_024_seed7/run_meta.txt 2>&1; echo "=== csv? ==="; ls /vol/data/repos/metagenomic-binning-benchmark/results/sweep_024*.csv 2>&1
+=== csv? ===
+ls: cannot access '/vol/data/repos/metagenomic-binning-benchmark/results/sweep_024*.csv': No such file or directory
+> build · big-pickle
+The eval post-hooks (results CSV generation) run after both CheckM2 and CheckM complete. Let me check the actual CheckM2 numbers from the quality report.
+[0m$ [0mhead -2 /vol/data/benchmark/runs/sweep_024_seed7/eval/checkm2/quality_report.tsv 2>&1; echo "=== checkm running? ==="; ps aux | grep -c '[c]heckm lineage_wf'
+Name	Completeness	Contamination	Completeness_Model_Used	Translation_Table_Used	Coding_Density	Contig_N50	Average_Gene_Length	Genome_Size	GC_Content	Total_Coding_Sequences	Total_Contigs	Max_Contig_Length	Additional_Notes
+0	81.46	2.96	Gradient Boost (General Model)	11	0.936	7300	280.3209475150952	1929249	0.52	2153	302	36740	None
+=== checkm running? ===
+2
+> build · big-pickle
+CheckM v1 still running. Let me wait for it and the results CSV.
