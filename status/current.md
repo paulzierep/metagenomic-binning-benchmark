@@ -3,13 +3,13 @@
 | | |
 |---|---|
 | Status | 🟢 `running` |
-| ⏱ Updated (Europe/Berlin) | `2026-09-30T10:26 CEST` |
-| 🏃 Last benchmark (not active) | `cami3_v11_winner_20260930` — last observed **epoch 199/200** (log 16867s old) |
+| ⏱ Updated (Europe/Berlin) | `2026-09-30T10:28 CEST` |
+| 🏃 Last benchmark (not active) | `cami3_v11_winner_20260930` — last observed **epoch 199/200** (log 16988s old) |
 | 🧠 Model (last turn) | `nemotron-3.5-lightning-free` (watchdog rotates to free models on quota) |
-| 📌 Agent note · **19 min old** | agent driver alive; transcript fresh (36s) while heartbeat is stale (1221s) |
-| ⚙️ Load · uptime | `0.00 0.02 0.00` · 6 days, 18 hours, 50 minutes — 32 cores, 62 GiB, no GPU |
-| 💾 RAM used/total | `2365/64295 MB` |
+| 📌 Agent note · **21 min old** | agent driver alive; transcript fresh (156s) while heartbeat is stale (1341s) |
+| ⚙️ Load · uptime | `0.00 0.01 0.00` · 6 days, 18 hours, 52 minutes — 32 cores, 62 GiB, no GPU |
+| 💾 RAM used/total | `2336/64295 MB` |
 | 🔗 Session | `ses_f31799c77ffeTq9gcYgqc4hBhg` |
-| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `51763099 status: yes — cami3_v11_winner_20260930 epoch 199/200 loss 0.93939232` |
+| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `7a1a8587 status: yes — cami3_v11_winner_20260930 epoch 199/200 loss 0.93939232` |
 | 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `15696220 B` — every run, command & tool result |
 | 📈 Timeline | [status/status.log](status/status.log) |
