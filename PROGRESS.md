@@ -1080,3 +1080,19 @@ Python script.
 - Biobox export: 416 bins, v0.9.1 validated OK
 - Artifacts: `results/cami3_v11_winner_20260930.csv`, `runs/cami3_v11_winner_20260930/per_bin_results.csv`, `results/figures/...`
 - Zenodo update: best-effort, content unchanged (v15 retained)
+
+### 2026-09-30T05:21Z — Agent resume after restart
+
+- Verified TASK_COMPLETE absent, no active `.active_run`, all benchmark runs evaluated
+- Sweep 24/24 complete (winner: `sweep_004_temp005`, temp=0.05, 13 bins, CheckM2 43.55/6.77)
+- Human winner `human_v11_winner_20260930` complete (54 bins, CheckM2 61.70/8.25, CheckM v1 61.26/14.71)
+- CAMI III winner `cami3_v11_winner_20260930` complete (416 bins, CheckM2 40.22/12.68, CheckM v1 38.26/17.01)
+- Both eval chains completed successfully; all artifacts on disk
+- `.heartbeat` touched; `.activity` updated; `agent-activity.log` updated; PROGRESS.md current
+- **First unfinished steps**: 
+  1. Issue #25 follow-up comment (sweep complete, winner temp=0.05, follow-on chain launched)
+  2. CAMI II human generalization documentation (winner vs baseline comparison already done at 02:30Z)
+  3. Documentation updates: docs/15 (AMBER summary), docs/11 (run results row), README (current/next bullets)
+  4. Final Zenodo v15 review and disk space audit (already archived 12.7G, 299G free)
+- Open issues triaged: #27/#28/#29 are agent check-ins (2026-09-30T01:41Z), no duplicate comments needed
+- #25 result comment already posted (issuecomment-5902189327, 2026-09-30T01:21:06Z)
