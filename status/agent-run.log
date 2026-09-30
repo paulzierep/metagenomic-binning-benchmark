@@ -142736,3 +142736,353 @@ no changes added to commit (use "git add" and/or "git commit -a")
 
 [full output saved to /home/ubuntu/.local/share/opencode/shell/1751ba12936fd079fff18cea3db58f28811c2004/sh_0f0cfd206001kn55vzD8GLd7TT.out]
 > build · nemotron-3.5-lightning-free
+Let me check the current state of the documentation files that need updating.
+[0m$ [0mcat /vol/data/benchmark/docs/15-amber-cami2-human.md
+cat: /vol/data/benchmark/docs/15-amber-cami2-human.md: No such file or directory
+[0m$ [0mcat /vol/data/benchmark/docs/11-run-results.md
+cat: /vol/data/benchmark/docs/11-run-results.md: No such file or directory
+> build · nemotron-3.5-lightning-free
+[0m$ [0mcat /vol/data/repos/metagenomic-binning-benchmark/docs/15-amber-cami2-human.md
+# AMBER evaluation — CAMI II human (issue #25 follow-on)
+
+Status: ✅ **done** (2026-09-29). Official CAMI-standard evaluation of the
+`human_v11_20260925` benchmark run against the CAMI II *Toy Human Microbiome
+Project* gold standard (gastrointestinal + oral block).
+
+## What was evaluated
+
+- **Run**: `human_v11_20260925` (COMEBin v11 `95f5ea8`, seed 42, 4,900
+  top-length GSA contigs, all reads mapped) → 107 final bins.
+- **Prediction**: `@@SEQUENCEID BINID` derived from the run's
+  `comebin_res_bins/*.fa` (4,861 contigs assigned across 107 bins); archived as
+  `comebin_v11_human.binning`. Regenerate with
+  `python3 scripts/make_amber_prediction.py <run_dir> human`.
+- **Gold standard** (NEW, imported 2026-09-29): CAMI II human
+  `gsa_mapping.tsv.gz` (from the sample's `contigs/`) filtered to the 4,900
+  contigs of our subset → `@@SEQUENCEID BINID TAXID _LENGTH`
+  (`@Version:0.9.1`, `@SampleID:human`, **4,900/4,900 contigs mapped to 64
+  genomes**). Built at
+  `/vol/data/datasets/cami_II_human/gold_standard/human_binning_gs.tsv`.
+  Source archive `setup.tar.gz` (1,906,532,721 B) pulled from
+  `https://frl.publisso.de/data/frl:6425518/gastrooral/setup.tar.gz`.
+
+## Command
+
+```
+micromamba run -p /vol/data/envs/amber python3 CAMI-AMBER/amber.py \
+  amber/human_comebin.binning \
+  -g /vol/data/datasets/cami_II_human/gold_standard/human_binning_gs.tsv \
+  -o output_human -l comebin_v11
+```
+
+Inputs/outputs: `/vol/data/benchmark/amber/` (env `/vol/data/envs/amber`).
+
+## Results (comebin_v11 vs human gold standard)
+
+| metric (bp-weighted) | value | note |
+|---|---|---|
+| percentage_of_assigned_bps | 99.3 % | nearly every contig landed in a bin |
+| accuracy_bp              | 0.814  | |
+| precision_avg_bp         | 0.626  | avg bin purity |
+| precision_weighted_bp    | 0.819  | bp-weighted precision |
+| recall_avg_bp            | 0.747  | avg bin completeness |
+| recall_weighted_bp       | 0.722  | bp-weighted recall |
+| F1 score (bp)            | 0.681  | harmonic mean precision/recall (bp) |
+| ARI (bp)                 | 0.769  | adjusted Rand index |
+| misclassification_bp     | 0.181  | contamination rate |
+
+Sequence-level: `f1_score_seq 0.637`, `accuracy_seq` — see
+`results/amber/human/amber_results.tsv`. Unlike the marine set, the human
+subset is a length-selected 4,900-contig assembly with full read coverage, so
+99 % of both bp *and* sequences are binned.
+
+### Side-by-side (official CAMI AMBER, bp-weighted)
+
+| dataset | assigned bp | F1_bp | prec_avg | recall_avg | ARI_bp | missclass. |
+|---|---|---|---|---|---|---|
+| CAMI II marine | 34.1 % | 0.330 | 0.735 | 0.213 | 0.844 | 0.138 |
+| CAMI II human  | 99.3 % | 0.681 | 0.626 | 0.747 | 0.769 | 0.181 |
+| CAMI III toy gut | 99.6 % | 0.743 | 0.719 | 0.769 | 0.351 | 0.308 | ([docs/16](16-amber-cami3-toy.md)) |
+
+The marine assembly is a 41,988-contig full simulation where COMEBin only
+bins the large contigs (34 % of bp), so recall is structurally low; the human
+subset is a 4,900-contig selection that COMEBin bins almost completely.
+
+## Files in this repo
+
+- `results/amber/human/amber_results.tsv` — summary row (all metrics).
+- `results/amber/human/bin_metrics.tsv` — per-bin AMBER metrics.
+- `results/amber/human/amber_report.html` — full interactive AMBER report.
+- `results/amber/human/heatmap_bar.png` — per-bin precision/recall heatmap.
+- `results/amber/human/comebin_v11_human.binning` — the exact prediction.
+
+## Notes / provenance
+
+- AMBER = `CAMI-challenge/AMBER` master `f8b3a60`; env `/vol/data/envs/amber`
+  (Python 3.11, requirements.txt pinned).
+- Gold standard IDs `S0C*` match the assembly; all 4,900 subset contigs have a
+  genome assignment (0 missing), 64 unique genomes.
+- The pooled mapping (`gsa_pooled_mapping.tsv.gz`, `PC*` ids) is a *different*
+  assembly and is **not** used here — the sample-level `gsa_mapping.tsv.gz`
+  (`S0C*`) is the correct ground truth for this subset.
+
+## 2026-09-30 — winner (temp 0.05) rescored against the same gold standard
+
+`human_v11_winner_20260930` (54 bins, seed 42, THREADS 32) scored with the
+identical gold standard via the generic chain (`make_amber_prediction.py` +
+`amber.py -l comebin`):
+
+| | ref `human_v11_20260925` (107 bins) | winner `human_v11_winner_20260930` (54 bins) |
+|---|---|---|
+| accuracy_bp | 0.814 | 0.781 |
+| precision_weighted_bp | 0.819 | 0.888 |
+| recall_weighted_bp | 0.722 | 0.875 |
+| **F1_bp** | **0.681** | **0.881** |
+| ARI_bp | 0.769 | 0.623 |
+| misclassification_bp | 0.181 | 0.111 |
+
+The low-temperature winner trades strict per-sequence assignment (accuracy and
+ARI drop) for **purer, more complete bins** (precision 0.819→0.888, recall
+0.722→0.875, F1_bp +0.20, misclassification halved). Files:
+`results/amber/human/amber_{results,bin_metrics}_human_v11_winner_20260930.tsv`,
+`amber_report_human_v11_winner_20260930.html`, `heatmap_human_v11_winner_20260930.png`.
+[0m$ [0mcat /vol/data/repos/metagenomic-binning-benchmark/docs/11-run-results.md
+# Run results — full table
+
+One row per benchmark run, updated by the agent after each run (timings from `runs/<run>/run_meta.txt` + stage timings in the run log; quality from the CheckM2/CheckM evaluation — see `docs/04-evaluation.md`). Raw per-run outputs stay in `/vol/data/benchmark/runs/`, parsed CSVs in `results/`.
+
+| Run | Date | Source commit | Dataset | Threads | Wall time | Peak RAM | Bins | CheckM2 comp/cont % | CheckM comp/cont % | Status |
+|---|---|---|---|---|---|---|---|---|---|---|
+| `baseline_rerun_autorestart1` | 2026-09-24 | [904f649](https://github.com/paulzierep/COMEBin/commit/904f649ef5cbb4582a6f0e5ec8b0b1f45778d85b) | COMEBin demo (29,434 contigs) | 32 | 24,327 s | 5.42 GB | 60 | 25.01 / 2.98 | 21.23 / 3.40 | ✅ complete; 200/200 epochs |
+| `small_test_v4` | 2026-09-24 | [c8f22e4](https://github.com/paulzierep/COMEBin/commit/c8f22e4935a66a0fd58b794489a9021671b15437) | `comebin_small` (300 contigs) | 8 | 122 s | 0.75 GB | 3 | 26.07 / 2.02 | 29.08 / 0.71 | ✅ functional gate passed |
+| `medium_v11_20260924` | 2026-09-24 | [95f5ea8](https://github.com/paulzierep/COMEBin/commit/95f5ea820f9a4e76f5c2911c0b5ed507ab67b015) | `comebin_medium` (3,000 contigs) | 32 | 2,326 s | 10.69 GB | 16 | 35.93 / 4.67 | 33.83 / 6.03 | ✅ complete; 200/200 epochs, 61.23% Top1; [CSV](../results/medium_v11_20260924.csv) |
+| `fix_v11_20260924` | 2026-09-24 | [95f5ea8](https://github.com/paulzierep/COMEBin/commit/95f5ea820f9a4e76f5c2911c0b5ed507ab67b015) | COMEBin demo (29,434 contigs) | 32 | 24,741 s | 9.4 GB | 71 | 24.38 / 3.78 | 21.62 / 5.18 | ✅ complete; stopped early at epoch 184/200 (`--earlystop`, Top-1 ≥ 99% × 3); [CSV](../results/fix_v11_20260924.csv) |
+| `tiny_test_n100` | 2026-09-25 | [c8f22e4](https://github.com/paulzierep/COMEBin/commit/c8f22e4935a66a0fd58b794489a9021671b15437) | `comebin_tiny` (100 contigs) | 8 | 85 s | – | – | – | – | ❌ exit 1 — HNSW `k = max_edges+1 = 101` > N=100; empirical floor is 101 contigs (issue #18) |
+| `tiny_test_n101` | 2026-09-25 | [c8f22e4](https://github.com/paulzierep/COMEBin/commit/c8f22e4935a66a0fd58b794489a9021671b15437) | `comebin_tiny_101` (101 contigs) | 8 | 85 s | – | 1 | 63.89 / 9.05 | 46.58 / 6.35 | ✅ complete, smallest passing dataset (30 epochs); [CSV](../results/tiny_test_n101.csv) |
+| `human_v11_20260925` | 2026-09-25 | [95f5ea8](https://github.com/paulzierep/COMEBin/commit/95f5ea820f9a4e76f5c2911c0b5ed507ab67b015) | CAMI II human host-associated (4,900 contigs / 166 Mbp, ~1/6 demo) | 32 | 4,912 s (82 min) | 10.40 GB | 107 | 35.31 / 5.13 (HQ 20, MQ 29) | 32.64 / 4.65 (HQ 21, MQ 29) | ✅ complete; 200/200 epochs, final Top-1 ≈ 96 %; first dataset with substantial HQ recovery; [CSV](../results/human_v11_20260925.csv) |
+| `marine_v11_20260925` | 2026-09-25 | [95f5ea8](https://github.com/paulzierep/COMEBin/commit/95f5ea820f9a4e76f5c2911c0b5ed507ab67b015) | CAMI II marine (41,988 contigs ≥ 2000 bp, sample 0) | 32 | 31,406 s (8 h 43 min) | 8.32 GB | 152 | 50.60 / 4.10 (HQ 35, MQ 60) | 46.36 / 5.09 (HQ 37, MQ 60) | ✅ complete; 159/200 epochs, early stop (Top-1 99.58 % × 3), Leiden 120/120; strongest quality of all datasets so far; [CSV](../results/marine_v11_20260925.csv) |
+| `cami3_v11_20260926_rerun` | 2026-09-26 | [95f5ea8](https://github.com/paulzierep/COMEBin/commit/95f5ea820f9a4e76f5c2911c0b5ed507ab67b015) | CAMI III toy human gut (5,000 pooled-GSA contigs / 1.1 Gbp, 2 samples) | 32 | 5,392 s (90 min) | 10.37 GB | 492 | 35.97 / 11.42 (HQ 53, MQ 112) | 32.46 / 13.38 (HQ 54, MQ 100) | ✅ complete; 200/200 epochs (final Top-1 74.95 %, no early stop), Leiden 120/120; first attempt `cami3_v11_20260926` failed on a full `/` (see history); [CSV](../results/cami3_v11_20260926_rerun.csv) |
+| `human_v11_winner_20260930` | 2026-09-30 | [95f5ea8](https://github.com/paulzierep/COMEBin/commit/95f5ea820f9a4e76f5c2911c0b5ed507ab67b015) | CAMI II human (4,900 contigs), **sweep winner temp 0.05** | 32 | 4,955 s (82 min) | 10.25 GB | 54 | 61.70 / 8.25 (HQ 22, MQ 26) | 61.26 / 14.71 (HQ 21, MQ 27) | ✅ complete; 200/200 epochs, Leiden 120/120; **AMBER F1_bp 0.881** vs ref 0.681 (+26.4 pp CheckM2 comp); [CSV](../results/human_v11_winner_20260930.csv) |
+| `baseline_unmodified` | 2026-09-23 | [987db95](https://github.com/paulzierep/COMEBin/commit/987db95d8d399f30b7c82a5f5f40ed6bfdc906c7) (upstream) | COMEBin demo (29,434 contigs) | 32 | – | – | – | – | – | ⏹ failed at epoch 175/200 — see [Run history](#run-history--what-happened-and-whats-next) |
+
+Column contract: **Wall time** = total seconds (plus per-stage breakdown in `docs/02-comebin-baseline.md`), **Bins** = bins exported (≥200 kb filter noted), **comp/cont** = mean completeness / mean contamination, **HQ/MQ counts** live in `results/<run>.csv`. **Source commit** is always a clickable link to that exact commit on GitHub. Per-bin CheckM2 values for the completed medium gate are in [`medium_v11_20260924_checkm2_stats.csv`](../medium_v11_20260924_checkm2_stats.csv).
+
+## Run history — what happened and what's next
+
+Seventeen COMEBin-executing attempts were recorded before the sweep; the
+24-cell medium sweep (issue #25) added 24 more attempts, and the sweep-winner
+validation runs continue below — all sweep cells are documented in
+[`docs/13-optimization-sweep-medium.md`](13-optimization-sweep-medium.md).
+The baseline rerun, small functional gate, medium derivative, large fix run, the 101-contig tiny floor run, the CAMI II human ~1/6 run, the CAMI II marine ~1/6 run, the CAMI III toy human gut run, and the **sweep-winner CAMI II human run** now have verified bin artifacts and CheckM2/CheckM outputs. Run links point to tracked evidence mirrors; the status banner at the top is authoritative for any active run.
+
+### COMEBin-executing attempts
+
+| Run / time (UTC) | Source | Result and cause | Next step |
+|---|---|---|---|
+| [`baseline_unmodified`](runs/baseline_unmodified/comebin_run.log) — 2026-09-23 14:36:06 → 21:30:28; watchdog classified 21:42:31 | [987db95](https://github.com/paulzierep/COMEBin/commit/987db95d8d399f30b7c82a5f5f40ed6bfdc906c7) upstream | **Failed after epoch 175/200; no bins or evaluation.** `test_getmarker_2quarter.pl` produced no `.seed`, then `cluster.py:368` unconditionally read it and raised `FileNotFoundError`; `get_result` then hit `ModuleNotFoundError: biolib`. | `biolib` import is now verified. [`586c7f7`](https://github.com/paulzierep/COMEBin/commit/586c7f72226171870615138687404767662c1225) hardens the later `gen_seed_idx` call but does not fix the observed line-368 read; fix and verify that read on a future clean run before claiming clustering success. |
+| [`small_test` — attempt 1](status/agent-run.log) — 2026-09-23 22:39:28 → 22:39:45 (17 s) | [586c7f7](https://github.com/paulzierep/COMEBin/commit/586c7f72226171870615138687404767662c1225) | **Failed during augmentation, exit 1.** `gen_cov.py` raised `KeyError: scaffold_22978`, a BAM-header reference absent from the 300-contig assembly. It failed before clustering, so it did not validate the seed change. | Commit the contig filter in [`47c1449`](https://github.com/paulzierep/COMEBin/commit/47c1449e874c366defe4470f1d43abf91fb8117c), then rerun under a fresh name. |
+| [`small_test` — attempt 2](status/agent-run.log) — ~2026-09-23 23:08:34 → 23:09:05 (31 s) | [47c1449](https://github.com/paulzierep/COMEBin/commit/47c1449e874c366defe4470f1d43abf91fb8117c) | **Failed during augmentation, exit 1.** The mean-coverage filter worked, but `gen_var.py` raised the equivalent `KeyError` for the same extra scaffold and its expected variance CSV was absent. | Apply the matching `gen_var.py` filter in [`ee2e507`](https://github.com/paulzierep/COMEBin/commit/ee2e5079ae8fd04caa381486a4bba8c2d2a34a14), then rerun under a fresh name. |
+| [`small_test` — attempt 3](runs/small_test/comebin_run.log) — 2026-09-23 23:09:40 → 23:10:21 (41 s) | [ee2e507](https://github.com/paulzierep/COMEBin/commit/ee2e5079ae8fd04caa381486a4bba8c2d2a34a14) | **Failed, exit 1.** `get_kmer_coverage` indexed the 300-contig matrix with uninitialized values because `np.empty` left missing contig-to-k-mer positions unset, causing an out-of-bounds `IndexError`. | Replace `np.empty` with zero-initialized state in [`904f649`](https://github.com/paulzierep/COMEBin/commit/904f649ef5cbb4582a6f0e5ec8b0b1f45778d85b); rerun as `small_test_v2`. |
+| [`small_test_v2`](runs/small_test_v2/comebin_run.log) — 2026-09-23 23:37:13 → 23:37:56 (43 s) | [904f649](https://github.com/paulzierep/COMEBin/commit/904f649ef5cbb4582a6f0e5ec8b0b1f45778d85b) | **Failed before completing epoch 0, exit 1.** `lengths[seq_id]` raised `KeyError`: `aug0_datacoverage_mean.tsv` contained all 29,434 BAM-header references instead of only the 300 input contigs. | Producer filtering and defensive alignment are committed on `comebin-small-fix` as [`5c77bc8`](https://github.com/paulzierep/COMEBin/commit/5c77bc87ce2c8a83be20016c8f62eb2d6b3feb88); the offline six-view test passes. After the baseline, run the end-to-end small gate and CheckM2/CheckM before building the medium set. |
+| [`baseline_rerun` — attempt 1](runs/baseline_rerun/comebin_run.log) — 2026-09-24 00:15:46 → 00:25:46 (600 s) | [904f649](https://github.com/paulzierep/COMEBin/commit/904f649ef5cbb4582a6f0e5ec8b0b1f45778d85b) | **Failed, exit 143.** This was not a COMEBin exception: a foreground agent tool call imposed a 600 s timeout and sent `SIGTERM` after epoch 0 was logged and the next epoch started. | Never launch a multi-hour baseline in a foreground tool call. Start it detached in a fresh directory, verify `.active_run`, and let `benchmark-watchdog.sh` own the handoff. |
+| [`small_test_v3`](runs/small_test_v3/comebin_run.log) — 2026-09-24 08:45:18 → 08:46:40 | [a0be243](https://github.com/paulzierep/COMEBin/commit/a0be243187c674b4e62b980ef100f8f2e8b83f54) | **Failed functional gate.** Training completed, but the small branch still had the pre-`358ddd8` KMeans call; `KMeans(n_jobs=-1)` raised `TypeError`, and the wrapper masked it as exit 0 with zero bins. | Apply the sklearn compatibility fix to `comebin-small-fix`; the runner now rejects zero-bin success. |
+| [`baseline_rerun_autorestart1`](runs/baseline_rerun_autorestart1/comebin_run.log) — 2026-09-24 00:30:01 → 07:15:28 | [904f649](https://github.com/paulzierep/COMEBin/commit/904f649ef5cbb4582a6f0e5ec8b0b1f45778d85b) | **✅ Complete.** 200/200 epochs, 99.19% Top1. Clustering fixed (hmmer 3.1b2 + sklearn KMeans). CheckM2: 60 bins, 25.01% comp, 2.98% cont. CheckM v1: 60 bins, 21.23% comp, 3.40% cont. | Evaluation done via `scripts/run_eval.sh`. See `eval/checkm2/quality_report.tsv` and `eval/checkm/out/storage/bin_stats_ext.tsv`. |
+| [`small_test_v4`](runs/small_test_v4/comebin_run.log) — 2026-09-24 08:48:33 → 08:50:35 | [c8f22e4](https://github.com/paulzierep/COMEBin/commit/c8f22e4935a66a0fd58b794489a9021671b15437) | **✅ Functional gate passed.** 30/30 epochs, 3 non-empty bins in 122 s. CheckM2: 26.07% mean completeness / 2.02% contamination. CheckM v1 (Python 3.10 + `pplacer` library path): 29.08% / 0.71%. | Small gate is complete; medium 3,000-contig derivative is next. See [`results/small_test_v4.csv`](results/small_test_v4.csv). |
+| [`medium_v11_20260924`](../runs/medium_v11_20260924/comebin_run.log) — 2026-09-24 09:25:50 → 10:04:36 | [95f5ea8](https://github.com/paulzierep/COMEBin/commit/95f5ea820f9a4e76f5c2911c0b5ed507ab67b015) | **✅ Complete.** 200/200 epochs, 61.23% Top1, 16 non-empty bins in 2,326 s. CheckM2: 35.93% mean completeness / 4.67% contamination (MQ=2). CheckM v1: 33.83% / 6.03% (MQ=3). | Evaluation completed with `scripts/run_eval.sh`; see the [aggregate CSV](../results/medium_v11_20260924.csv) and the [per-bin tables](../runs/medium_v11_20260924/per_bin_results.csv) / [CheckM2 per-bin](../runs/medium_v11_20260924/checkm2_per_bin.csv). |
+| [`fix_v11_20260924`](../runs/fix_v11_20260924/comebin_run.log) — 2026-09-24 10:37:15 → 17:29:36 | [95f5ea8](https://github.com/paulzierep/COMEBin/commit/95f5ea820f9a4e76f5c2911c0b5ed507ab67b015) | **✅ Complete** (exit 0, wall 24,741 s). Stopped early at **epoch 184/200** because upstream v1.1.0 `run_comebin.sh` passes `--earlystop` (Top-1 > 99% for 3 epochs: 99.10 → 99.22 → 99.04%), then clustering completed normally (120/120 Leiden) → **71 non-empty bins**. CheckM2: 24.38% / 3.78% (HQ 1, MQ 6). CheckM v1: 21.62% / 5.18% (HQ 0, MQ 8). Versus the baseline on the same data: +1.7% wall time, +11 bins, −0.63 pp completeness, +0.80 pp contamination. | Evaluation done with `scripts/run_eval.sh` (CheckM2 71 s, CheckM v1 398 s); see the [aggregate CSV](../results/fix_v11_20260924.csv) and [per-bin table](../runs/fix_v11_20260924/per_bin_results.csv). Next: issue #18 datasets (tiny + CAMI human ~1/6). |
+| [`tiny_test_n100`](../runs/tiny_test_n100/comebin_run.log) — 2026-09-25 01:44 → 01:46 | [c8f22e4](https://github.com/paulzierep/COMEBin/commit/c8f22e4935a66a0fd58b794489a9021671b15437) | **Failed, exit 1 (85 s).** Smallest-possible-dataset probe for issue #18: `cluster.py` builds an HNSW index and queries `k = max_edges + 1 = 101` neighbours with N = 100 contigs → `RuntimeError: Cannot return the results in a contiguous 2D array` → empty `get_bin_quality` → `ValueError: max() arg is an empty sequence`. | The empirical floor is **101 contigs**; see `tiny_test_n101`. A defensive clamp in `cluster.py` is proposed as a future fix batch (not applied — the benchmark runs upstream). |
+| [`tiny_test_n101`](../runs/tiny_test_n101/comebin_run.log) — 2026-09-25 01:46:33 → 01:47:58 (85 s) | [c8f22e4](https://github.com/paulzierep/COMEBin/commit/c8f22e4935a66a0fd58b794489a9021671b15437) | **✅ Complete.** 101 contigs (issue #18 tiny floor), 30/30 epochs, exit 0, **1 non-empty bin**. CheckM2: 63.89% / 9.05% (MQ 1). CheckM v1: 46.58% / 6.35%. | Smallest passing dataset verified; see [`results/tiny_test_n101.csv`](../results/tiny_test_n101.csv). CAMI-II human ~1/6 set is next (issue #18). |
+| [`human_v11_20260925`](../runs/human_v11_20260925/comebin_run.log) — 2026-09-25 02:17:20 → 03:39:12 (4,912 s = 82 min, 5× faster than the 6.9 h demo run) | [95f5ea8](https://github.com/paulzierep/COMEBin/commit/95f5ea820f9a4e76f5c2911c0b5ed507ab67b015) | **✅ Complete** (exit 0). Issue #18b human host-associated set: top-4,900-longest contigs of CAMI II Toy Human Microbiome `gastrooral/sample_0` (166 Mbp, ~1/6 demo), all 10.6 GB reads re-mapped `bwa mem -p` → `bamfiles/human.bam` (`scripts/prep_cami2_human.sh 4900`). 200/200 epochs (final Top-1 95.94%, no early stop), 120/120 Leiden → **107 non-empty bins**. CheckM2: 35.31% / 5.13% (HQ 20, MQ 29). CheckM v1: 32.64% / 4.65% (HQ 21, MQ 29). First dataset in the benchmark with substantial HQ recovery (top bins ≈ 100% / ≤ 0.45% under both tools). | Evaluation via `scripts/run_eval.sh` (CheckM2 rc 0 / 193 s, CheckM v1 rc 0 / 686 s); [aggregate CSV](../results/human_v11_20260925.csv), [per-bin table](../runs/human_v11_20260925/per_bin_results.csv). Coverage used 1 worker (single BAM) — same setup for the marine set. Next: CAMI II marine sample_0 (~1/6) run, then CAMI III. |
+| [`marine_v11_20260925`](../runs/marine_v11_20260925/comebin_run.log) — 2026-09-25 04:14:49 → 12:58:15 (31,406 s = 8 h 43 min) | [95f5ea8](https://github.com/paulzierep/COMEBin/commit/95f5ea820f9a4e76f5c2911c0b5ed507ab67b015) | **✅ Complete** (exit 0). CAMI II marine sample 0: `prep_cami2_marine.sh 2000` → 41,988 contigs ≥ 2000 bp, `marine.bam` 4.95 GB, `MODE=cami2`, seed 42, 32 threads. Stopped early at **epoch 159/200** (`--earlystop`, Top-1 99.31 → 99.58 % × 3), Leiden pool 120/120 (99.7 s) → **152 non-empty bins**. CheckM2: **50.60 % / 4.10 %** (HQ 35, MQ 60). CheckM v1: **46.36 % / 5.09 %** (HQ 37, MQ 60) — the strongest quality of any dataset so far (demo 25 %, human 35 %). | Evaluation attempt 1 had `checkm2_rc 1` — DIAMOND hit *No space left on device* (12.5 GB of orphaned `/tmp` intermediates from a CAMI III download attempt filled `/`); orphans removed, `run_eval.sh` re-run: CheckM2 rc 0 / 356 s, CheckM v1 rc 0 / 998 s. [aggregate CSV](../results/marine_v11_20260925.csv), [per-bin table](../runs/marine_v11_20260925/per_bin_results.csv). |
+| [`cami3_v11_20260926`](../runs/cami3_v11_20260926/comebin_run.log) — 2026-09-26 02:45:13 → 04:36:30 (6,677 s) | [95f5ea8](https://github.com/paulzierep/COMEBin/commit/95f5ea820f9a4e76f5c2911c0b5ed507ab67b015) | **Failed, exit 1, 0 bins — disk exhaustion, not a binning bug.** The CAMI III prep's leftover downloads `/tmp/url_anonymous_reads.fq` (9.1 G) + `.fq.gz` (4.7 G) had filled `/` to 100 % since 02:42; `get_result`'s CheckM marker pass then hit ENOSPC (21 hmmfetch fatals + 3 dead worker processes, 04:02–04:04) and the final selection died on `KeyError: '110'` (incomplete `checkm analyze` bacteria table). Training (200/200), Leiden 120/120 and KMeans had completed cleanly before the crash. Watchdog triaged 04:40:01 (terminal marker, no auto-retry). | Both /tmp leftovers verified already staged in the dataset (`logs/sample_{0,1}/*/anonymous_reads.fq.gz`, 5.0 G + 4.7 G; no process held them) and deleted → `/` 100 → 28 %; 68 orphaned HMM temp files (777 M) removed. Fresh-dir deterministic retry with seed 42 → `cami3_v11_20260926_rerun`. |
+| [`cami3_v11_20260926_rerun`](../runs/cami3_v11_20260926_rerun/comebin_run.log) — 2026-09-26 04:48:24 → 06:18:16 (5,392 s = 90 min) | [95f5ea8](https://github.com/paulzierep/COMEBin/commit/95f5ea820f9a4e76f5c2911c0b5ed507ab67b015) | **✅ Complete** (exit 0). CAMI III toy human gut: top-5,000 pooled-GSA contigs (1.1 Gbp), both samples' coverage BAMs (`MODE=cami3`), seed 42, 32 threads. Full **200/200 epochs** (final Top-1 74.95 %, no early stop), Leiden 120/120 → **492 non-empty bins**. CheckM2: **35.97 % / 11.42 %** (HQ 53, MQ 112). CheckM v1: **32.46 % / 13.38 %** (HQ 54, MQ 100) — most bins and most HQ/MQ bins of any run, but the highest mean contamination (strain-rich toy human gut). | Evaluation attempt 1: `checkm_rc 0` (2,514 s, pplacer over 492 bins) but `checkm2_rc 1` — CheckM2 1.1.0's 32-thread gene-calling race on 492 bins (*List of protein files does not match internal reference*); output preserved as `eval/checkm2.incomplete.*`, retry with 16 threads rc 0 (1,137 s). Report chain then ran clean: [aggregate CSV](../results/cami3_v11_20260926_rerun.csv), [per-bin table](../runs/cami3_v11_20260926_rerun/per_bin_results.csv), combined plot, Zenodo v3. |
+| [`human_v11_winner_20260930`](../runs/human_v11_winner_20260930/comebin_run.log) — 2026-09-30 00:41:57 → 02:04:32 (4,955 s = 82 min) | [95f5ea8](https://github.com/paulzierep/COMEBin/commit/95f5ea820f9a4e76f5c2911c0b5ed507ab67b015) (sweep worktree) | **✅ Complete.** Issue-#25 sweep winner (**temperature 0.05**) validated on CAMI II human: seed 42, 32 threads, `MODE=cami2-human`, `Tau(temperature): 0.05` confirmed in log. 200/200 epochs, Leiden 120/120 → **54 non-empty bins**. CheckM2: **61.70 % / 8.25 %** (HQ 22, MQ 26) vs ref `human_v11_20260925` 35.31 % / 5.13 % — **+26.4 pp completeness**. CheckM v1: 61.26 % / 14.71 %. **AMBER F1_bp 0.881** (ref 0.681); accuracy_bp 0.781 / ARI_bp 0.623 — fewer, richer bins (107→54). | Eval chain (`run_eval_chain.sh … human`) completed end-to-end: [aggregate CSV](../results/human_v11_winner_20260930.csv), [per-bin table](../runs/human_v11_winner_20260930/per_bin_results.csv), AMBER artifacts under `results/amber/human/`, biobox `human_sample0.binning` (v0.9.1, validated), Zenodo **v15**. CAMI III winner validation next (`cami3_v11_winner_20260930`). |
+
+### Guard-only launches
+
+Twelve launches stopped before COMEBin started. They are grouped by episode so refusals are not mistaken for benchmark runs; raw watchdog refusals remain in `/vol/data/benchmark/logs/*.launch.log`.
+
+| Episode / time (UTC) | Count | Cause | Next step |
+|---|---:|---|---|
+| [`baseline_unmodified_autorestart1/2/3`](status/supervisor-run.log) — 21:33, 21:35, 21:40 | 3 | Pristine-baseline guard rejected commit `987db95` plus four dirty files. | Restore a clean committed source tree before retrying. |
+| [Default-path baseline before the rerun](status/agent-run.log) — shortly before 00:15 | 1 | Existing `runs/baseline_unmodified` directory blocked an overwrite. | Pass a fresh explicit run name. |
+| [Small-test preflight before attempt 1](status/agent-run.log) — ~22:39 | 2 | Dirty-source guard rejected the uncommitted seed change. | Commit or clean the source before running. |
+| [Small-test preflight before attempt 2](status/agent-run.log) — ~23:08 | 1 | Existing `runs/small_test` directory blocked an overwrite. | Use a fresh run name; preserve the prior evidence. |
+| [Small-test preflight before attempt 3](status/agent-run.log) — ~23:09 | 2 | Start lock was held, then stale failed registration `pid=239956` blocked launch. | Do not delete lock/state files manually; let the benchmark watchdog triage them. |
+| [Small-test-v2 preflight](status/agent-run.log) — ~23:37 | 1 | Dirty-source guard rejected the uncommitted `np.zeros` fix. | Commit or clean the source before running. |
+| [`baseline_rerun` retry 1](status/agent-run.log) — ~00:26 | 1 | Existing timed-run artifacts blocked same-name overwrite; the follow-up then deleted the directory. | Never delete a run directory; preserve evidence and choose a fresh name. |
+| [`baseline_rerun` retry 2](status/agent-run.log) — ~00:29 | 1 | `.active_run` still referenced failed wrapper `pid=262046` for the reused path. | Let `benchmark-watchdog.sh` classify exit 143 and perform the fresh-directory handoff. |
+
+## Data preservation and Zenodo
+
+The concept DOI **[10.5281/zenodo.22935024](https://doi.org/10.5281/zenodo.22935024)**
+accumulates every evaluated run's artifacts as continuous versions (MIT since
+2026-09-24). Current state: **15 versions**, latest **v15**
+([10.5281/zenodo.23042028](https://doi.org/10.5281/zenodo.23042028),
+2026-09-30) — `comebin_benchmark_release_v15_20260930.tar.gz`,
+1,306,237,850 bytes, md5 `e5725cb216231275d9a48ee062c65429`, receipt
+`meta/zenodo_benchmark_release_v15.json` (state `published_verified`,
+doi.org → HTTP 200). It packages **32 runs**: all 24 sweep cells, the CAMI II
+human **sweep winner** (`human_v11_winner_20260930`), the CAMI II human/marine
+references, the CAMI III toy gut runs, and the baseline/fix/small/tiny gates —
+bins FASTA, CheckM2/CheckM outputs, per-bin tables, biobox exports and
+manifests (2,861,573,785 bytes / 1,926 files unpacked). Publishing is handled
+by `bin/zenodo_update.sh` (wired into `run_eval.sh`): it reuses the open draft
+or forks a new version, **streams** the tarball with `curl -T` (a `--data-binary`
+upload OOM'd on the 1.25 GB package on 2026-09-30 and was replaced), clears
+stale files from the reused draft, updates metadata, publishes, and verifies
+file md5 + doi.org resolution, writing a JSON receipt under `meta/`. The
+release checklist, provenance requirements, and future-version workflow are in
+`docs/10-data-preservation.md`. The watchdogs do not upload data automatically;
+the token is kept only in the mode-0600 local secret file. Version 1 was
+published 2026-09-24 with metadata later **edited in place to the MIT
+license** — superseded by v2+ as more runs accumulated.
+
+## How to resume (for a human or a restarted agent)
+
+1. Read `PROGRESS.md` — it contains the full task definition and the current state checklist.
+2. Verify the checklist against what is on disk under `/vol/data`.
+3. Continue from the first unfinished item; update `PROGRESS.md` after each step.
+
+See `docs/00-setup.md` for the agent watchdog that performs automatic restart + free-model rotation on token exhaustion.
+
+## References
+
+- Wang Z. et al. *Effective binning of metagenomic contigs using contrastive multi-view representation learning.* Nat Commun 15, 585 (2024).
+- Parks D.H. et al. *CheckM...* Genome Res 25(7):1043–1055 (2015). (CheckM v1)
+- Chklovsky A. et al. *CheckM2...* Nat Biotechnol (2024). (CheckM2)
+> build · nemotron-3.5-lightning-free
+Let me check the current README state and verify what documentation updates still need doing.
+[0m$ [0mhead -100 /vol/data/repos/metagenomic-binning-benchmark/README.md
+<!--AGENT-STATUS-->
+
+> 🟢 **Agent status:** `running` · ⏱ `2026-09-30T07:36 CEST` · 🏃 last run cami3_v11_winner_20260930: epoch 199/200 · not active · 🧠 `nemotron-3.5-lightning-free` · [status.log](status/status.log)
+
+# Metagenomic binning benchmark
+
+## Agent tag
+
+This repository is maintained by an autonomous agent. The live status banner at
+the very top is the agent tag — always current (auto-updated by the status
+heartbeat). Behind it:
+
+- Full activity log: [`status/agent-activity.log`](status/agent-activity.log)
+- Human-readable major steps: [`status/major-steps.log`](status/major-steps.log)
+  · last 10: [`status/major-steps-last10.log`](status/major-steps-last10.log)
+- Transcript of every command run: [`status/agent-run.log`](status/agent-run.log)
+
+## What this project is
+
+We benchmark metagenomic genome binners with a repeatable harness — per-run
+parameters, datasets, wall time / RAM, and bin quality scored with **CheckM2**
+and **CheckM (v1)**. From now on we **focus only on
+[COMEBin](https://github.com/paulzierep/COMEBin)** with the goal of making it
+**the best binner**. Optimizations are developed on the
+`comebin-optimizations-v11` branch (one commit per fix batch), validated
+small → medium → large, and every evaluated run is recorded.
+
+Got stitched-together by a long-form agent diary too:
+[`docs/`](docs/) · full run history: [`docs/11-run-results.md`](docs/11-run-results.md).
+
+## Progress
+
+- 🏆 **Latest achievement:** issue-#25 sweep delivered + winner validated on
+  CAMI II **human**: `human_v11_winner_20260930` (temp 0.05) → **54 bins,
+  CheckM2 61.70 % / 8.25 %** (vs ref 35.31 % / 5.13 %: **+26.4 pp
+  completeness**), **AMBER F1_bp 0.881** (vs ref 0.681), +20 pp on the official
+  CAMI score. The same winner run is now in flight on CAMI III toy human;
+  every evaluated run is archived on **Zenodo**
+  ([concept DOI](https://doi.org/10.5281/zenodo.22935024)). Full sweep ranking:
+  [`results/sweep_rankings.md`](results/sweep_rankings.md) · validation table:
+  [`docs/13`](docs/13-optimization-sweep-medium.md).
+- ⏭ **Next step:** finish the CAMI III human winner run (eval + AMBER + biobox
+  via `run_eval_chain.sh`), consolidate the Zenodo bundle, and publish the
+  consolidated release with sweep + AMBER + biobox artifacts.
+
+## Benchmark plots
+
+Four benchmark datasets, each a stacked comparison of every evaluated run for
+that dataset (baseline vs fix-branch, same data → directly comparable). One
+row per dataset, rows shown **below each other** (issue #19); every evaluated
+commit/branch appears on each dataset where it was run:
+
+![Combined bar plot — bins per CheckM2 completeness threshold, per run and COMEBin version, four datasets stacked](results/figures/combined_bar_plot.png)
+
+Per-bin scatter (completeness vs contamination, one panel per dataset):
+[`results/figures/comp_vs_cont_by_dataset.png`](results/figures/comp_vs_cont_by_dataset.png)
+· per-run bar charts: `runs/<run>/per_bins.png` · regenerated by
+[`scripts/make_combined_bar_plot.py`](scripts/make_combined_bar_plot.py) /
+[`scripts/make_per_bin_plots.py`](scripts/make_per_bin_plots.py).
+
+## All runs
+
+Every run ever launched — including the failed and tiny/small ones — with run
+date, duration, dataset + public link, COMEBin branch / commit, benchmark size,
+bin count, CheckM2 + HQ/MQ, F1, and a one-line comment:
+
+<!--ALL-RUNS:START-->
+
+| Run | Date | Duration | Dataset (public link) | Branch / commit | Size (contigs) | Bins | CheckM2 comp | CheckM2 cont | HQ / MQ | F1 | Comment |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| `cami3_v11_winner_20260930` | 2026-09-30 | - | CAMI III toy human gut (5,000 contigs) · <https://cami-challenge.org/datasets/> (CAMI III toy download) | `comebin-optimizations-v11 (sweep worktree)` @ `95f5ea8` | 1.1 GB contigs.fa / 15 GB dir | - | - | - | - / - | - | - |
+| `human_v11_winner_20260930` | 2026-09-30 | 1h22m | CAMI II human (4,900 contigs) · <https://frl.publisso.de/data/frl:6425518/> (CAMI II Toy HMP) | `comebin-optimizations-v11 (sweep worktree)` @ `95f5ea8` | 0.17 GB contigs.fa / 25 GB dir | 54 | 61.70 | 8.25 | 22 / 26 | 73.8 | - |
+| `sweep_003_issue28fix` | 2026-09-29 | 47m13s | COMEBin medium (3,000 contigs) · derived - [scripts/make_medium_dataset.sh](scripts/make_medium_dataset.sh) | `comebin-optimizations-v11` @ `41606c8` | 0.014 GB - 14 MB contigs.fa / 0.42 GB dir | 17 | 34.22 | 4.11 | 0 / 2 | 50.4 | sweep issue-#28 fix `41606c8` — no regression vs ref |
+| `sweep_004_temp005` | 2026-09-29 | 47m22s | COMEBin medium (3,000 contigs) · derived - [scripts/make_medium_dataset.sh](scripts/make_medium_dataset.sh) | `comebin-optimizations-v11 (sweep worktree)` @ `95f5ea8` | 0.014 GB - 14 MB contigs.fa / 0.42 GB dir | 13 | 43.55 | 6.77 | 0 / 4 | 59.4 | **#25 winner** temp 0.05 — top CheckM2 F1 (59.4), +9.3 pp comp vs ref |
+| `sweep_005_temp030` | 2026-09-29 | 46m19s | COMEBin medium (3,000 contigs) · derived - [scripts/make_medium_dataset.sh](scripts/make_medium_dataset.sh) | `comebin-optimizations-v11 (sweep worktree)` @ `95f5ea8` | 0.014 GB - 14 MB contigs.fa / 0.42 GB dir | 17 | 33.38 | 3.73 | 0 / 3 | 49.6 | sweep temp 0.30 |
+| `sweep_006_temp050` | 2026-09-29 | 46m39s | COMEBin medium (3,000 contigs) · derived - [scripts/make_medium_dataset.sh](scripts/make_medium_dataset.sh) | `comebin-optimizations-v11 (sweep worktree)` @ `95f5ea8` | 0.014 GB - 14 MB contigs.fa / 0.42 GB dir | 17 | 34.33 | 3.92 | 0 / 3 | 50.6 | sweep temp 0.50 |
+| `sweep_007_emb1024` | 2026-09-29 | 39m41s | COMEBin medium (3,000 contigs) · derived - [scripts/make_medium_dataset.sh](scripts/make_medium_dataset.sh) | `comebin-optimizations-v11 (sweep worktree)` @ `95f5ea8` | 0.014 GB - 14 MB contigs.fa / 0.42 GB dir | 15 | 38.40 | 4.76 | 0 / 2 | 54.7 | sweep emb 1024 |
+| `sweep_008_emb4096` | 2026-09-29 | 1h09m | COMEBin medium (3,000 contigs) · derived - [scripts/make_medium_dataset.sh](scripts/make_medium_dataset.sh) | `comebin-optimizations-v11 (sweep worktree)` @ `95f5ea8` | 0.014 GB - 14 MB contigs.fa / 0.42 GB dir | 16 | 36.33 | 4.81 | 0 / 2 | 52.6 | sweep emb 4096 |
+| `sweep_009_embcov1024` | 2026-09-29 | 39m06s | COMEBin medium (3,000 contigs) · derived - [scripts/make_medium_dataset.sh](scripts/make_medium_dataset.sh) | `comebin-optimizations-v11 (sweep worktree)` @ `95f5ea8` | 0.014 GB - 14 MB contigs.fa / 0.42 GB dir | 16 | 35.80 | 4.12 | 0 / 2 | 52.1 | sweep emb_cov 1024 |
+| `sweep_010_embcov4096` | 2026-09-29 | 1h09m | COMEBin medium (3,000 contigs) · derived - [scripts/make_medium_dataset.sh](scripts/make_medium_dataset.sh) | `comebin-optimizations-v11 (sweep worktree)` @ `95f5ea8` | 0.014 GB - 14 MB contigs.fa / 0.42 GB dir | 17 | 34.10 | 4.50 | 0 / 2 | 50.3 | sweep emb_cov 4096 |
+| `sweep_011_batch512` | 2026-09-29 | 26m23s | COMEBin medium (3,000 contigs) · derived - [scripts/make_medium_dataset.sh](scripts/make_medium_dataset.sh) | `comebin-optimizations-v11 (sweep worktree)` @ `95f5ea8` | 0.014 GB - 14 MB contigs.fa / 0.42 GB dir | 14 | 41.56 | 6.34 | 0 / 2 | 57.6 | sweep batch 512 — 2× faster, +7.3 pp comp |
+| `sweep_012_batch2048` | 2026-09-29 | 1h09m | COMEBin medium (3,000 contigs) · derived - [scripts/make_medium_dataset.sh](scripts/make_medium_dataset.sh) | `comebin-optimizations-v11 (sweep worktree)` @ `95f5ea8` | 0.014 GB - 14 MB contigs.fa / 0.42 GB dir | 18 | 34.68 | 4.12 | 0 / 3 | 50.9 | sweep batch 2048 |
+| `sweep_013_edges80` | 2026-09-29 | 45m57s | COMEBin medium (3,000 contigs) · derived - [scripts/make_medium_dataset.sh](scripts/make_medium_dataset.sh) | `comebin-optimizations-v11 (sweep worktree)` @ `95f5ea8` | 0.014 GB - 14 MB contigs.fa / 0.42 GB dir | 15 | 40.39 | 5.29 | 0 / 2 | 56.6 | sweep max_edges 80 — best cont (5.29) among top-4 |
+| `sweep_014_edges150` | 2026-09-29 | 44m47s | COMEBin medium (3,000 contigs) · derived - [scripts/make_medium_dataset.sh](scripts/make_medium_dataset.sh) | `comebin-optimizations-v11 (sweep worktree)` @ `95f5ea8` | 0.014 GB - 14 MB contigs.fa / 0.42 GB dir | 18 | 32.15 | 3.97 | 0 / 2 | 48.2 | sweep max_edges 150 |
+| `sweep_015_views4` | 2026-09-29 | 25m06s | COMEBin medium (3,000 contigs) · derived - [scripts/make_medium_dataset.sh](scripts/make_medium_dataset.sh) | `comebin-optimizations-v11 (sweep worktree)` @ `95f5ea8` | 0.014 GB - 14 MB contigs.fa / 0.42 GB dir | 17 | 33.84 | 4.84 | 0 / 2 | 49.9 | sweep n_views 4 |
+| `sweep_016_views8` | 2026-09-29 | 1h15m | COMEBin medium (3,000 contigs) · derived - [scripts/make_medium_dataset.sh](scripts/make_medium_dataset.sh) | `comebin-optimizations-v11 (sweep worktree)` @ `95f5ea8` | 0.014 GB - 14 MB contigs.fa / 0.42 GB dir | 17 | 34.68 | 4.56 | 0 / 2 | 50.9 | sweep n_views 8 |
+| `sweep_017_w4` | 2026-09-29 | 45m22s | COMEBin medium (3,000 contigs) · derived - [scripts/make_medium_dataset.sh](scripts/make_medium_dataset.sh) | `comebin-optimizations-v11 (sweep worktree)` @ `95f5ea8` | 0.014 GB - 14 MB contigs.fa / 0.42 GB dir | 17 | 34.22 | 4.11 | 0 / 2 | 50.4 | sweep leiden_workers 4 |
+| `sweep_018_w16` | 2026-09-29 | 45m36s | COMEBin medium (3,000 contigs) · derived - [scripts/make_medium_dataset.sh](scripts/make_medium_dataset.sh) | `comebin-optimizations-v11 (sweep worktree)` @ `95f5ea8` | 0.014 GB - 14 MB contigs.fa / 0.42 GB dir | 17 | 34.22 | 4.11 | 0 / 2 | 50.4 | sweep leiden_workers 16 |
+| `sweep_019_eval1e3` | 2026-09-29 | 44m27s | COMEBin medium (3,000 contigs) · derived - [scripts/make_medium_dataset.sh](scripts/make_medium_dataset.sh) | `comebin-optimizations-v11 (sweep worktree)` @ `95f5ea8` | 0.014 GB - 14 MB contigs.fa / 0.42 GB dir | 17 | 34.22 | 4.11 | 0 / 2 | 50.4 | sweep hmm_evalue 1e-3 |
+| `sweep_020_eval1e7` | 2026-09-29 | 44m46s | COMEBin medium (3,000 contigs) · derived - [scripts/make_medium_dataset.sh](scripts/make_medium_dataset.sh) | `comebin-optimizations-v11 (sweep worktree)` @ `95f5ea8` | 0.014 GB - 14 MB contigs.fa / 0.42 GB dir | 17 | 34.22 | 4.11 | 0 / 2 | 50.4 | sweep hmm_evalue 1e-7 |
+| `sweep_021_comboA` | 2026-09-29 | 32m31s | COMEBin medium (3,000 contigs) · derived - [scripts/make_medium_dataset.sh](scripts/make_medium_dataset.sh) | `comebin-optimizations-v11 (sweep worktree)` @ `95f5ea8` | 0.014 GB - 14 MB contigs.fa / 0.42 GB dir | 20 | 30.30 | 3.21 | 0 / 2 | 46.2 | sweep combo temp 0.3 + emb 1024 + batch 512 |
+| `sweep_022_comboB` | 2026-09-29 | 1h28m | COMEBin medium (3,000 contigs) · derived - [scripts/make_medium_dataset.sh](scripts/make_medium_dataset.sh) | `comebin-optimizations-v11 (sweep worktree)` @ `95f5ea8` | 0.014 GB - 14 MB contigs.fa / 0.42 GB dir | 17 | 34.10 | 4.22 | 0 / 2 | 50.3 | sweep combo temp 0.05 + emb 4096 + batch 2048 |
+| `sweep_023_embcov512_batch512` | 2026-09-29 | 21m02s | COMEBin medium (3,000 contigs) · derived - [scripts/make_medium_dataset.sh](scripts/make_medium_dataset.sh) | `comebin-optimizations-v11 (sweep worktree)` @ `95f5ea8` | 0.014 GB - 14 MB contigs.fa / 0.42 GB dir | 13 | 43.16 | 7.52 | 0 / 2 | 58.9 | sweep emb_cov 512 + batch 512 — #2 overall, fast (21 min) |
+| `sweep_024_seed7` | 2026-09-29 | 46m37s | COMEBin medium (3,000 contigs) · derived - [scripts/make_medium_dataset.sh](scripts/make_medium_dataset.sh) | `comebin-optimizations-v11 (sweep worktree)` @ `95f5ea8` | 0.014 GB - 14 MB contigs.fa / 0.42 GB dir | 15 | 37.37 | 5.60 | 0 / 2 | 53.5 | sweep seed 7 (reproducibility sweep) — 37.4 comp vs 34.2 (seed 42) → seed-sensitive |
+| `small_v11_issue28_regression` | 2026-09-28 | - | COMEBin small-mirror (300 contigs) · /tmp/opencode/realdata/ds (local, for issue #28) | `comebin-optimizations-v11` @ `41606c8` | 0.004 GB - 3.5 MB contigs.fa | - | - | - | - / - | - | issue #28 graceful-zero-bins validation |
+| `sweep_001_ref` | 2026-09-28 | 47m07s | COMEBin medium (3,000 contigs) · derived - [scripts/make_medium_dataset.sh](scripts/make_medium_dataset.sh) | `comebin-optimizations-v11 (sweep worktree)` @ `95f5ea8` | 0.014 GB - 14 MB contigs.fa / 0.42 GB dir | 17 | 34.22 | 4.11 | 0 / 2 | 50.4 | sweep ref (v11 `95f5ea8`, seed 42, 8 thr) — grid baseline |
+| `sweep_002_master` | 2026-09-28 | 1m48s | COMEBin medium (3,000 contigs) · derived - [scripts/make_medium_dataset.sh](scripts/make_medium_dataset.sh) | `master (sweep worktree)` @ `904f649` | 0.014 GB - 14 MB contigs.fa / 0.42 GB dir | - | - | - | - / - | - | sweep stock master `904f649` (unseeded) — failed: medium BAM/assembly mismatch → exit 1, 0 bins, documented |
+| `cami3_v11_20260926` | 2026-09-26 | 1h51m | CAMI III toy human gut (5,000 contigs) · <https://cami-challenge.org/datasets/> (CAMI III toy download) | `comebin-optimizations-v11` @ `95f5ea8` | 1.1 GB contigs.fa / 15 GB dir | - | - | - | - / - | - | failed: FS full (ENOSPC) -> rerun |
+| `cami3_v11_20260926_rerun` | 2026-09-26 | 1h29m | CAMI III toy human gut (5,000 contigs) · <https://cami-challenge.org/datasets/> (CAMI III toy download) | `comebin-optimizations-v11` @ `95f5ea8` | 1.1 GB contigs.fa / 15 GB dir | 492 | 35.97 | 11.42 | 53 / 112 | 51.2 | 492 bins, most HQ/MQ of any run (CAMI III) |
+| `human_v11_20260925` | 2026-09-25 | 1h21m | CAMI II human (4,900 contigs) · <https://frl.publisso.de/data/frl:6425518/> (CAMI II Toy HMP) | `comebin-optimizations-v11` @ `95f5ea8` | 0.17 GB contigs.fa / 25 GB dir | 107 | 35.31 | 5.13 | 20 / 29 | 51.5 | first HQ-rich dataset (CAMI II human) |
+[0m$ [0mls /vol/data/repos/metagenomic-binning-benchmark/results/amber/human/ 2>/dev/null
+amber_report.html
+amber_report_human_v11_winner_20260930.html
+amber_results.tsv
+amber_results_human_v11_winner_20260930.tsv
+bin_metrics.tsv
+bin_metrics_human_v11_winner_20260930.tsv
+comebin_v11_human.binning
+heatmap_bar.png
+heatmap_human_v11_winner_20260930.png
+[0m$ [0mls /vol/data/repos/metagenomic-binning-benchmark/results/amber/human/amber_report_human_v11_winner_20260930.html 2>/dev/null && echo "exists" || echo "not found"
+/vol/data/repos/metagenomic-binning-benchmark/results/amber/human/amber_report_human_v11_winner_20260930.html
+exists
+> build · nemotron-3.5-lightning-free
+Let me verify the current state of everything and ensure consistency.
+[0m$ [0mcat /vol/data/benchmark/.heartbeat
+2026-09-30T05:21:47Z
+[0m$ [0mtail -3 /vol/data/repos/metagenomic-binning-benchmark/status/agent-activity.log
+2026-09-30T05:17:20Z - Final state: CAMI III winner eval chain complete (CheckM2+CheckM v1), all artifacts committed to repo, no active runs, ready for next steps (CAMI II human generalization, docs updates, #25 follow-up)
+2026-09-30T05:21:51Z - CAMI III winner eval chain complete, all artifacts committed, no active runs, ready for next steps: CAMI II human generalization, docs updates, #25 follow-up
+2026-09-30T05:32:36Z - Agent resume: no active runs, all benchmarks complete (sweep 24/24, human winner, CAMI III winner, both eval chains). Ready to begin: CAMI II human generalization documentation, docs updates (docs/15, docs/11, README), Zenodo v15 review verified complete. First unfinished step: CAMI II human generalization docs.
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && git status 2>&1
+On branch main
+Your branch is up to date with 'origin/main'.
+
+Changes not staged for commit:
+  (use "git add <file>..." to update what will be committed)
+  (use "git restore <file>..." to discard changes in working directory)
+	modified:   results/amber/cami3/amber_report_cami3_v11_winner_20260930.html
+
+no changes added to commit (use "git add" and/or "git commit -a")
+> build · nemotron-3.5-lightning-free
