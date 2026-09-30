@@ -135846,3 +135846,288 @@ marine_sample0_input
 > build · big-pickle
 [0m$ [0mls -l /vol/data/datasets/cami_II/marine_sample0_input/binning_gs_subset.tsv 2>/dev/null || find /vol/data/datasets/cami_II -maxdepth 3 -name "binning_gs*" 2>/dev/null | head -5
 -rw-rw-r-- 1 ubuntu ubuntu 1269337 Sep 25 04:13 /vol/data/datasets/cami_II/marine_sample0_input/binning_gs_subset.tsv
+> build · big-pickle
+[0m← [0mWrite /vol/data/repos/metagenomic-binning-benchmark/scripts/run_eval_chain.sh
+Created file successfully: /vol/data/repos/metagenomic-binning-benchmark/scripts/run_eval_chain.sh
+> build · big-pickle
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && bash -n scripts/run_eval_chain.sh && echo "syntax OK" && chmod +x scripts/run_eval_chain.sh
+# dry-run the non-wait parts logically: verify case mapping + that required tools exist
+bash -c 'RUN=x; DATASET=cami3; case "$DATASET" in cami3) GOLD=/vol/data/datasets/cami_III/gold_standard/cami3_toy_binning_gs.tsv; AMBER_SAMPLE=cami3_toy_human_gut; BIOBOX_SAMPLE=toy_human_2samples;; esac; for f in "$GOLD" /vol/data/benchmark/bin/make_amber_prediction.py /vol/data/benchmark/bin/run_eval.sh /vol/data/benchmark/bin/export_biobox.sh /vol/data/benchmark/bin/validate_binning.py /vol/data/repos/CAMI-AMBER/amber.py /vol/data/tools/bin/micromamba; do [ -e "$f" ] && echo "OK   $f" || echo "MISS $f"; done'
+syntax OK
+OK   /vol/data/datasets/cami_III/gold_standard/cami3_toy_binning_gs.tsv
+OK   /vol/data/benchmark/bin/make_amber_prediction.py
+OK   /vol/data/benchmark/bin/run_eval.sh
+OK   /vol/data/benchmark/bin/export_biobox.sh
+OK   /vol/data/benchmark/bin/validate_binning.py
+OK   /vol/data/repos/CAMI-AMBER/amber.py
+OK   /vol/data/tools/bin/micromamba
+> build · big-pickle
+[0m$ [0mcp -f /vol/data/repos/metagenomic-binning-benchmark/scripts/run_eval_chain.sh /vol/data/benchmark/bin/run_eval_chain.sh && chmod +x /vol/data/benchmark/bin/run_eval_chain.sh && md5sum /vol/data/repos/metagenomic-binning-benchmark/scripts/run_eval_chain.sh /vol/data/benchmark/bin/run_eval_chain.sh
+# stop the one-off waiter (it is only sleeping; the benchmark run is a separate process tree)
+kill 672031 2>/dev/null && echo "stopped one-off waiter pid 672031"; sleep 2; pgrep -af "winner_human_20260930.sh" | grep -v pgrep || echo "one-off waiter gone"
+# confirm the benchmark run itself is untouched
+ps -o pid,etime,args -p 634536 2>/dev/null | tail -1; grep -o 'epoch=[0-9]*/200' /vol/data/benchmark/runs/human_v11_winner_20260930/comebin_run.log | tail -1
+8dcdb3a24173f91f35919faa3fcd4ca5  /vol/data/repos/metagenomic-binning-benchmark/scripts/run_eval_chain.sh
+8dcdb3a24173f91f35919faa3fcd4ca5  /vol/data/benchmark/bin/run_eval_chain.sh
+stopped one-off waiter pid 672031
+one-off waiter gone
+ 634536       42:02 bash /vol/data/benchmark/bin/run_comebin_fix.sh /vol/data/benchmark/runs/human_v11_winner_20260930
+epoch=86/200
+> build · big-pickle
+[0m$ [0mcd /vol/data/benchmark && nohup setsid bash /vol/data/benchmark/bin/run_eval_chain.sh /vol/data/benchmark/runs/human_v11_winner_20260930 human 28800 32 >/vol/data/benchmark/logs/human_v11_winner_20260930.chain.log 2>&1 &
+sleep 6
+pgrep -af "run_eval_chain.sh" | grep -v pgrep
+echo "--- chain log ---"; cat /vol/data/benchmark/status/human_v11_winner_20260930.eval_chain.log
+echo "--- .active_run (must be unchanged) ---"; cut -d' ' -f1-2 /vol/data/benchmark/.active_run
+rm -f /vol/data/benchmark/followups/winner_human_20260930.sh && echo "removed superseded one-off waiter script"
+680734 bash /vol/data/benchmark/bin/run_eval_chain.sh /vol/data/benchmark/runs/human_v11_winner_20260930 human 28800 32
+--- chain log ---
+2026-09-30T01:22:37Z chain[human_v11_winner_20260930]: START dataset=human max_wait=28800s threads=32 gold=/vol/data/datasets/cami_II_human/gold_standard/human_binning_gs.tsv
+2026-09-30T01:22:37Z chain[human_v11_winner_20260930]: waiting: epoch=87/200 (waited 0s)
+--- .active_run (must be unchanged) ---
+634536 634533
+removed superseded one-off waiter script
+> build · big-pickle
+[0m$ [0mTS=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+{ printf '%s agent: NEW scripts/run_eval_chain.sh (repo + bin, md5 8dcdb3a2): generic detached eval chain <run_dir> <marine|human|cami3|none> [max_wait] [threads] = wait for exit_code + .active_run release, then run_eval.sh, AMBER (per-dataset gold standard), biobox export + validation; supersedes the one-off human waiter (stopped cleanly, run untouched)\n' "$TS"
+  printf '%s agent: chain now running for human_v11_winner_20260930 (pid 680734, log status/human_v11_winner_20260930.eval_chain.log, waiting at epoch 87/200); DEDUP guard pgrep -f run_eval_chain.sh\n' "$TS"
+} >> /vol/data/repos/metagenomic-binning-benchmark/status/agent-activity.log
+cat >> /vol/data/benchmark/PROGRESS.md <<'EOF'
+
+### 2026-09-30 01:22Z — generic eval chain in the repo (replaces the one-off waiter)
+
+- **New `scripts/run_eval_chain.sh`** (repo + `bin/`, md5 `8dcdb3a2`):
+  `run_eval_chain.sh <run_dir> <marine|human|cami3|none> [max_wait_s] [threads]`
+  → (1) wait until `run_meta.txt` has `exit_code:` **and** the wrapper is
+  released from `.active_run` (8 h default cap), (2) `run_eval.sh`
+  (CheckM2 + CheckM v1 + results CSV + per-bin CSV/plots + Zenodo), (3) AMBER
+  with the per-dataset gold standard (`marine_sample0_input/binning_gs_subset.tsv`,
+  `cami_II_human/gold_standard/human_binning_gs.tsv`,
+  `cami_III/gold_standard/cami3_toy_binning_gs.tsv`), artifacts copied to
+  `results/amber/<dataset>/<run>.*` so no run overwrites another, (4) biobox
+  export + `validate_binning.py`. Every step logs its rc and is non-fatal for
+  the next. **DEDUP: `pgrep -f run_eval_chain.sh` before starting one.**
+- The one-off human waiter was stopped cleanly while still in its wait loop
+  (it had started nothing) and replaced by the generic chain:
+  pid 680734, log `status/human_v11_winner_20260930.eval_chain.log`, waiting at
+  epoch 87/200. The benchmark run itself (pid 634536) was never touched and
+  `.active_run` still points at it.
+- **Next turn can launch the CAMI III winner run** once `.active_run` is free:
+  ```
+  cd /vol/data/benchmark && nohup setsid env \
+    SRC_COMEBIN=/vol/data/repos/COMEBin-v11-sweep \
+    DATA=/vol/data/datasets/cami_III/toy_human_input_2samples \
+    CONTIGS=/vol/data/datasets/cami_III/toy_human_input_2samples/contigs.fa \
+    BAMDIR=/vol/data/datasets/cami_III/toy_human_input_2samples/bamfiles \
+    MODE=cami3 THREADS=32 SEED=42 COMEBIN_TEMPERATURE=0.05 TEMP=0.05 \
+    /vol/data/benchmark/bin/run_comebin_fix.sh \
+    /vol/data/benchmark/runs/cami3_v11_winner_20260930 \
+    > /vol/data/benchmark/logs/cami3_winner_20260930.launch.log 2>&1 &
+  ```
+  then the matching chain: `bash /vol/data/benchmark/bin/run_eval_chain.sh
+  /vol/data/benchmark/runs/cami3_v11_winner_20260930 cami3 28800 32` (AMBER now
+  possible thanks to the new CAMI III gold standard). Reference for comparison:
+  `cami3_v11_20260926_rerun` (492 bins, CheckM2 35.97/11.42, AMBER F1_bp 0.743).
+EOF
+cp /vol/data/benchmark/PROGRESS.md /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md
+EPOCH=$(grep -o 'epoch=[0-9]*/200' /vol/data/benchmark/runs/human_v11_winner_20260930/comebin_run.log | tail -1)
+printf '%s winner run human_v11_winner_20260930 training %s (temp=0.05, CAMI II human, 32 thr, .active_run pid 634536); eval chain pid 680734 waiting (no overlap); AMBER CAMI III delivered (F1 0.743)\n' "$TS" "$EPOCH" > /vol/data/benchmark/.heartbeat
+printf '%s generic run_eval_chain.sh shipped + running for human winner (pid 680734); PROGRESS.md updated with the ready-to-run CAMI III winner launch command\n' "$TS" > /vol/data/benchmark/.activity
+cat /vol/data/benchmark/.heartbeat
+2026-09-30T01:22:56Z winner run human_v11_winner_20260930 training epoch=87/200 (temp=0.05, CAMI II human, 32 thr, .active_run pid 634536); eval chain pid 680734 waiting (no overlap); AMBER CAMI III delivered (F1 0.743)
+> build · big-pickle
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && flock -w 120 /tmp/bench-repo.lock -c '
+  git add scripts/run_eval_chain.sh PROGRESS.md status/agent-activity.log
+  git diff --cached --name-only
+  git commit -q -m "generic detached eval chain (run_eval_chain.sh) + PROGRESS: ready-to-run CAMI III winner launch"
+  git push -q origin HEAD 2>&1 | tail -2; git log --oneline -1; git status --porcelain=v1 | head -5
+'
+PROGRESS.md
+scripts/run_eval_chain.sh
+status/agent-activity.log
+247d4487 generic detached eval chain (run_eval_chain.sh) + PROGRESS: ready-to-run CAMI III winner launch
+ M results/figures/comp_vs_cont_all-runs.png
+ M results/figures/comp_vs_cont_by_dataset.png
+> build · big-pickle
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && grep -n "^#\{2,3\} " docs/06-benchmark-commands.md | head -20; echo "--- tail ---"; tail -15 docs/06-benchmark-commands.md
+7:## COMEBin (every binning run)
+67:## CheckM2 (bin quality, every run)
+80:## CheckM v1 (completeness/purity — lineage workflow, every run)
+96:## Dataset preparation
+165:## Convention
+--- tail ---
+# Then verify /vol/data/benchmark/.active_run before leaving it to the watchdog.
+```
+
+Large data is reserved for post-major-commit runs. See
+`docs/08-dataset-space-plan.md`.
+
+CAMI II assemblies (downloads): see `docs/01-datasets.md` for the Zenodo/GigaDB
+records and md5 checksums.
+
+## Convention
+
+- Every run's `run_meta.txt` carries `cmd_wrapper:` (at launch) and
+  `cmd_train_py:` (captured ~12 s in, background) + `cmd_from_log:` (at finish).
+- Eval runs append `cmd_checkm2:` / `cmd_checkm:` per run.
+- The README performance table links each row to its source commit.
+> build · big-pickle
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && sed -n '96,120p' docs/06-benchmark-commands.md
+## Dataset preparation
+
+DEMO data (COMEBin official test set, unmodified input):
+
+```bash
+# BAM index (once)
+samtools index -@ 32 /vol/data/datasets/comebin_test_data/bamfiles/SRR5720343.bam
+```
+
+Small benchmark dataset (`scripts/make_small_dataset.sh`, GitHub issue #2) —
+top-N contigs by length + all reads overlapping them, using real bioinformatics
+tools (BioPython to select, `bedtools/samtools` for the reads):
+
+```bash
+bash scripts/make_small_dataset.sh [outdir=/vol/data/datasets/comebin_small] [N=300]
+```
+Roughly: `samtools/seqkit` selection → `bedtools intersect -abam SRR5720343.bam
+-b contigs.bed -u > reads.bam` → `samtools index`.
+
+**Small-dataset test run** (correctness gate for issue #2; never overlaps the
+registered benchmark):
+
+```bash
+# Baseline smoke test (default source)
+bash scripts/run_small_test.sh /vol/data/benchmark/runs/small_test 8
+> build · big-pickle
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/docs/06-benchmark-commands.md
+Index: /vol/data/repos/metagenomic-binning-benchmark/docs/06-benchmark-commands.md
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/docs/06-benchmark-commands.md
++++ /vol/data/repos/metagenomic-binning-benchmark/docs/06-benchmark-commands.md
+@@ -161,8 +161,40 @@
+ 
+ CAMI II assemblies (downloads): see `docs/01-datasets.md` for the Zenodo/GigaDB
+ records and md5 checksums.
+ 
++## AMBER (official CAMI scoring) and the follow-on eval chain
++
++```bash
++# CAMI III gold standard for our 5,000-contig subset (once, issue #25)
++python3 scripts/make_cami3_gold_standard.py \
++  --mapping /vol/data/datasets/cami_III/gold_standard/gsa_pooled_mapping.tsv.gz \
++  --contigs /vol/data/datasets/cami_III/toy_human_input_2samples/contigs.fa \
++  --sample cami3_toy_human_gut \
++  -o /vol/data/datasets/cami_III/gold_standard/cami3_toy_binning_gs.tsv
++
++# prediction + scoring (AMBER env = /vol/data/envs/amber, gold standard per dataset)
++python3 scripts/make_amber_prediction.py <run_dir> <marine|human|cami3_toy_human_gut> \
++  > /vol/data/benchmark/amber/<run>.binning
++cd /vol/data/benchmark/amber && micromamba run -p /vol/data/envs/amber \
++  python3 /vol/data/repos/CAMI-AMBER/amber.py <run>.binning \
++  -g <gold_standard.tsv> -o output_<run> -l comebin
++
++# one command for all of it (eval + AMBER + biobox), started detached so it can
++# never overlap the registered benchmark run
++cd /vol/data/benchmark && nohup setsid bash /vol/data/benchmark/bin/run_eval_chain.sh \
++  <run_dir> <marine|human|cami3|none> 28800 32 \
++  > /vol/data/benchmark/logs/<run>.chain.log 2>&1 &
++```
++
++`run_eval_chain.sh` waits until the run's `run_meta.txt` records `exit_code:`
++and the wrapper is released from `/vol/data/benchmark/.active_run`, then runs
++`run_eval.sh` (CheckM2 + CheckM v1 + results CSV + per-bin CSV/plots +
++Zenodo), AMBER (if a gold standard exists for that dataset) and the biobox
++export + `validate_binning.py`. Log: `status/<run>.eval_chain.log`.
++**Always `pgrep -f run_eval_chain.sh` first** — a restart turn must not start a
++second chain for the same run.
++
+ ## Convention
+ 
+ - Every run's `run_meta.txt` carries `cmd_wrapper:` (at launch) and
+   `cmd_train_py:` (captured ~12 s in, background) + `cmd_from_log:` (at finish).
+
+> build · big-pickle
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && TS=$(date -u +%Y-%m-%dT%H:%M:%SZ) && printf '%s agent: docs/06-benchmark-commands.md extended with the AMBER + eval-chain command reference (make_cami3_gold_standard.py, make_amber_prediction.py + amber.py, run_eval_chain.sh detached usage and dedup guard)\n' "$TS" >> status/agent-activity.log && flock -w 120 /tmp/bench-repo.lock -c '
+  git add docs/06-benchmark-commands.md status/agent-activity.log
+  git diff --cached --name-only
+  git commit -q -m "docs/06: document the AMBER scoring and run_eval_chain.sh commands"
+  git push -q origin HEAD 2>&1 | tail -2; git log --oneline -1
+'
+docs/06-benchmark-commands.md
+status/agent-activity.log
+8318137d docs/06: document the AMBER scoring and run_eval_chain.sh commands
+> build · big-pickle
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && cat >> PROGRESS.md <<'EOF'
+
+### 2026-09-30 01:24Z — launch-safety note for the next turn
+
+- `run_eval.sh` **reads** `/vol/data/benchmark/.active_run` but does not
+  register itself there, so a CheckM2/CheckM v1 evaluation is invisible to the
+  `.active_run` check. It does hold `/tmp/benchmark-start.lock` for its whole
+  duration, so a benchmark launcher started at that moment waits up to 300 s
+  (`flock -w`) and then fails — CPU contention with the eval plus a confusing
+  error. **Before launching the CAMI III winner run, confirm the human chain
+  has printed `CHAIN COMPLETE` in
+  `status/human_v11_winner_20260930.eval_chain.log`** (and that
+  `pgrep -f 'run_eval.sh|checkm'` is empty), not just that `.active_run` is
+  clear.
+- Reference numbers for the winner comparison, same dataset / seed / threads:
+  `human_v11_20260925` → 107 bins, CheckM2 35.31/5.13 (HQ 20/MQ 29), CheckM v1
+  32.64/4.65, AMBER F1_bp **0.681**; `cami3_v11_20260926_rerun` → 492 bins,
+  CheckM2 35.97/11.42 (HQ 53/MQ 112), CheckM v1 32.46/13.38, AMBER F1_bp
+  **0.743**.
+- Docs/06 now carries the AMBER + `run_eval_chain.sh` command reference
+  (commit `8318137d`).
+EOF
+cp PROGRESS.md /vol/data/benchmark/PROGRESS.md
+TS=$(date -u +%Y-%m-%dT%H:%M:%SZ); printf '%s agent: PROGRESS.md launch-safety note added (wait for chain CHAIN COMPLETE before the CAMI III winner launch; run_eval.sh is not registered in .active_run) + reference numbers for the winner comparison\n' "$TS" >> status/agent-activity.log
+flock -w 120 /tmp/bench-repo.lock -c '
+  git add PROGRESS.md status/agent-activity.log
+  git diff --cached --name-only
+  git commit -q -m "PROGRESS: launch-safety note (eval is not registered in .active_run) + winner reference numbers"
+  git push -q origin HEAD 2>&1 | tail -2; git log --oneline -1
+'
+PROGRESS.md
+status/agent-activity.log
+742606ce PROGRESS: launch-safety note (eval is not registered in .active_run) + winner reference numbers
+> build · big-pickle
+[0m$ [0mecho "=== TASK_COMPLETE ==="; test -e /vol/data/benchmark/TASK_COMPLETE && echo EXISTS || echo absent
+echo "=== .active_run (unchanged, run only) ==="; cut -d' ' -f1-3 /vol/data/benchmark/.active_run
+echo "=== run progress ==="; grep -o 'epoch=[0-9]*/200' /vol/data/benchmark/runs/human_v11_winner_20260930/comebin_run.log | tail -1
+echo "=== chain ==="; pgrep -af run_eval_chain.sh | grep -v pgrep; tail -2 /vol/data/benchmark/status/human_v11_winner_20260930.eval_chain.log
+echo "=== PROGRESS copies in sync ==="; md5sum /vol/data/benchmark/PROGRESS.md /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md
+echo "=== repo state ==="; cd /vol/data/repos/metagenomic-binning-benchmark && git log --oneline -1 origin/main && git status --porcelain=v1
+echo "=== .heartbeat / .activity ==="; cat /vol/data/benchmark/.heartbeat; cat /vol/data/benchmark/.activity
+=== TASK_COMPLETE ===
+absent
+=== .active_run (unchanged, run only) ===
+634536 634533 /vol/data/benchmark/runs/human_v11_winner_20260930/comebin_run.log
+=== run progress ===
+epoch=90/200
+=== chain ===
+680734 bash /vol/data/benchmark/bin/run_eval_chain.sh /vol/data/benchmark/runs/human_v11_winner_20260930 human 28800 32
+2026-09-30T01:22:37Z chain[human_v11_winner_20260930]: START dataset=human max_wait=28800s threads=32 gold=/vol/data/datasets/cami_II_human/gold_standard/human_binning_gs.tsv
+2026-09-30T01:22:37Z chain[human_v11_winner_20260930]: waiting: epoch=87/200 (waited 0s)
+=== PROGRESS copies in sync ===
+5e45ae64ab8e944394f45d7cb012276e  /vol/data/benchmark/PROGRESS.md
+5e45ae64ab8e944394f45d7cb012276e  /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md
+=== repo state ===
+742606ce PROGRESS: launch-safety note (eval is not registered in .active_run) + winner reference numbers
+ M results/figures/comp_vs_cont_all-runs.png
+ M results/figures/comp_vs_cont_by_dataset.png
+=== .heartbeat / .activity ===
+2026-09-30T01:22:56Z winner run human_v11_winner_20260930 training epoch=87/200 (temp=0.05, CAMI II human, 32 thr, .active_run pid 634536); eval chain pid 680734 waiting (no overlap); AMBER CAMI III delivered (F1 0.743)
+2026-09-30T01:22:56Z generic run_eval_chain.sh shipped + running for human winner (pid 680734); PROGRESS.md updated with the ready-to-run CAMI III winner launch command
+> build · big-pickle
+[0m$ [0mrm -f /tmp/cami3_ctg.ids /tmp/cami3_gs.ids /tmp/cami3_nz.ids /tmp/cami3_gs_by_ctgid.tsv /tmp/cami3_gs_ctgids.tsv /tmp/c25_amber_cami3.md
+pgrep -af "amber.py|checkm" | grep -v pgrep || echo "no stray eval processes"
+TS=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+EPOCH=$(grep -o 'epoch=[0-9]*/200' /vol/data/benchmark/runs/human_v11_winner_20260930/comebin_run.log | tail -1)
+printf '%s turn complete: AMBER CAMI III delivered (F1_bp 0.743, docs/16, commit 16e5ce87, #25 comment 5902189327); generic run_eval_chain.sh shipped (247d4487) and waiting for winner run at %s; no overlap, .active_run pid 634536 only; next: wait for chain CHAIN COMPLETE, then launch CAMI III winner run\n' "$TS" "$EPOCH" > /vol/data/benchmark/.heartbeat
+printf '%s turn complete: CAMI III AMBER + generic eval chain shipped; winner human run at %s, eval chain queued; awaiting run completion\n' "$TS" "$EPOCH" > /vol/data/benchmark/.activity
+printf '%s agent: end of turn — verified final state (TASK_COMPLETE absent, .active_run = winner run only, PROGRESS copies in sync, origin/main = 742606ce, chain pid 680734 waiting at %s)\n' "$TS" "$EPOCH" >> /vol/data/repos/metagenomic-binning-benchmark/status/agent-activity.log
+cat /vol/data/benchmark/.heartbeat; tail -1 /vol/data/repos/metagenomic-binning-benchmark/status/agent-activity.log
+no stray eval processes
+2026-09-30T01:23:55Z turn complete: AMBER CAMI III delivered (F1_bp 0.743, docs/16, commit 16e5ce87, #25 comment 5902189327); generic run_eval_chain.sh shipped (247d4487) and waiting for winner run at epoch=90/200; no overlap, .active_run pid 634536 only; next: wait for chain CHAIN COMPLETE, then launch CAMI III winner run
+2026-09-30T01:23:55Z agent: end of turn — verified final state (TASK_COMPLETE absent, .active_run = winner run only, PROGRESS copies in sync, origin/main = 742606ce, chain pid 680734 waiting at epoch=90/200)
+> build · big-pickle
