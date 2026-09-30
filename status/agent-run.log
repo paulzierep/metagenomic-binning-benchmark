@@ -148462,3 +148462,200 @@ gh not available or error
 [0m$ [0mgh issue list -R paulzierep/metagenomic-binning-benchmark --state open --json number,title,updatedAt 2>/dev/null || echo "gh not available or error"
 [{"number":29,"title":"Small test data","updatedAt":"2026-09-30T08:54:47Z"},{"number":28,"title":"Fix this issue","updatedAt":"2026-09-30T08:54:53Z"},{"number":27,"title":"Are u ok ?","updatedAt":"2026-09-30T08:54:53Z"},{"number":26,"title":"Improve logging","updatedAt":"2026-09-28T13:00:08Z"},{"number":25,"title":"Improve optimization","updatedAt":"2026-09-30T08:56:20Z"},{"number":23,"title":"Where does the assembly for cami3 come from","updatedAt":"2026-09-28T13:02:38Z"},{"number":22,"title":"is there a summary table for all runs","updatedAt":"2026-09-28T13:00:05Z"},{"number":21,"title":"use a seed for all runs","updatedAt":"2026-09-28T13:02:14Z"},{"number":20,"title":"what are your ideas for further optimization ?","updatedAt":"2026-09-28T13:02:13Z"},{"number":6,"title":"Optimization","updatedAt":"2026-09-26T07:56:10Z"},{"number":1,"title":"Idea inbox: benchmark ideas, COMEBin fixes, dataset requests","updatedAt":"2026-09-23T14:53:13Z"}]
 > build · nemotron-3.5-lightning-free
+Let me check the agent activity log and current status files.
+[0m$ [0mcat /vol/data/repos/metagenomic-binning-benchmark/status/agent-activity.log 2>/dev/null | tail -30
+2026-09-30T01:23:55Z agent: end of turn — verified final state (TASK_COMPLETE absent, .active_run = winner run only, PROGRESS copies in sync, origin/main = 742606ce, chain pid 680734 waiting at epoch=90/200)
+2026-09-30T01:35:29Z resume: winner human_v11_winner_20260930 (temp0.05) training ep 124/200, sole active run; issues triaged (no new actionable owner comments; #25 self-updates only); biobox exported+validated for 23/24 sweep cells earlier
+2026-09-30T02:13:25Z cami3_v11_winner launch aborted: run_eval.sh holds /tmp/benchmark-start.lock for human eval (flock 300s); relaunch scheduled after chain completes
+2026-09-30T02:20:36Z human_v11_winner eval: CheckM2 61.70/8.25 (HQ22/MQ26), CheckM1 61.26/14.71 (21/27), 54 bins 1h22m; Zenodo v16 staging (1918 files 2.8GB); AMBER+biobox pending; cami3 ref=492 bins 35.97/11.42
+2026-09-30T02:33:34Z human winner validated (CheckM2 61.70/8.25, AMBER F1_bp 0.881 vs 0.681); CAMI3 winner launched; zenodo v15 fix (-T streaming); docs/13+15+README+PROGRESS updated; committing
+2026-09-30T02:34:45Z resume: verified PROGRESS+disk (cami3 winner pid 1104991 training, zenodo v15 rerun pid 1106282 staging, cami3 chain 1106263 waiting); issues triaged — #27/28/29 01:41Z updates are agent check-ins, no owner action
+2026-09-30T02:41:39Z zenodo v15 rerun2 pid 1120318 after fixing draft-files check (files endpoint returns list+filename; stale v6 file in draft now deleted before upload); cami3 winner ep22/200
+2026-09-30T02:51:38Z Zenodo v15 PUBLISHED: doi 10.5281/zenodo.23042028, md5 e5725cb216231275d9a48ee062c65429, receipt meta/zenodo_benchmark_release_v15.json (state published_verified), 32 runs incl human winner; streaming -T fix worked, stale v6 file purged from draft
+2026-09-30T02:55:11Z docs/11: winner row + attempts entry + Zenodo v15 section (15 versions, streaming upload fix); releases pruned to published v15 only (-12.7G, 299G free)
+2026-09-30T03:37:29Z resume: PROGRESS+disk verified (cami3 winner pid 1104991 ep178/200, chain 1106263 waiting, zenodo v15 verified); issues triaged — no new activity since 01:41Z agent check-ins
+2026-09-30T04:05:10Z resumed after agent restart: verified TASK_COMPLETE absent, checked GitHub issues (#29 #28 #27 already triaged, #26 #25 #23 #22 #21 #20 #6 #1 previously addressed), CAMI III winner run ep200/200 complete with CheckM, eval chain pending, .active_run still registered, proceeding with eval chain launch preparations
+2026-09-30T04:22:10Z agent: launched eval chain bash /vol/data/benchmark/bin/run_eval_chain.sh /vol/data/benchmark/runs/cami3_v11_winner_20260930 cami3 28800 32 (pid 1665145) -> CheckM2 + CheckM v1 + results CSV + per-bin plots + AMBER + biobox
+2026-09-30T04:43:10Z - Resuming: continuing from unfinished CAMI III winner eval chain step; CheckM2 re-launch pending
+2026-09-30T05:06:28Z - CAMI III winner eval chain complete: CheckM2+CheckM v1 results generated, AMBER scored, biobox exported/validated; next steps: update all-runs table, docs, Zenodo review
+2026-09-30T05:15:10Z - CAMI III winner eval chain fully complete; all artifacts on disk; proceeding to issue #25 follow-up and CAMI III toy-gut winner launch
+2026-09-30T05:17:20Z - Final state: CAMI III winner eval chain complete (CheckM2+CheckM v1), all artifacts committed to repo, no active runs, ready for next steps (CAMI II human generalization, docs updates, #25 follow-up)
+2026-09-30T05:21:51Z - CAMI III winner eval chain complete, all artifacts committed, no active runs, ready for next steps: CAMI II human generalization, docs updates, #25 follow-up
+2026-09-30T05:32:36Z - Agent resume: no active runs, all benchmarks complete (sweep 24/24, human winner, CAMI III winner, both eval chains). Ready to begin: CAMI II human generalization documentation, docs updates (docs/15, docs/11, README), Zenodo v15 review verified complete. First unfinished step: CAMI II human generalization docs.
+2026-09-30T06:06:56Z - Agent resume: verified all benchmarks complete (sweep 24/24, human winner, CAMI III winner, both eval chains). No active .active_run. Routine maintenance: heartbeat touched, .activity updated.
+2026-09-30T06:34:26Z - Agent resume (post-restart): verified TASK_COMPLETE absent, no active .active_run, all benchmarks evaluated (sweep 24/24, human winner human_v11_winner_20260930 CheckM2 61.70/8.25, CAMI III winner cami3_v11_winner_20260930 CheckM2 rc 0/CheckM v1 rc 0). Routine maintenance: heartbeat touched, .activity updated, agent-activity.log appended. No unfinished steps; exiting.
+2026-09-30T09:15:00Z - Agent resume: verified TASK_COMPLETE absent, no active .active_run, all benchmarks evaluated (sweep 24/24, human winner, CAMI III winner, both eval chains complete). Issue triage started. No unfinished benchmark steps.
+2026-10-01T09:20:00Z - Agent resume: verified TASK_COMPLETE absent, no active .active_run, all benchmarks evaluated (sweep 24/24, human winner, CAMI III winner, both eval chains complete). Issue triage. No unfinished steps.
+2026-09-30T07:12:07Z - Agent resumed after restart: verified TASK_COMPLETE absent, no active .active_run, all benchmarks evaluated (sweep 24/24 complete, human winner, CAMI III winner, both eval chains complete). Routine maintenance only; exiting per protocol.
+2026-09-30T07:53:59Z - Agent resumed: verified TASK_COMPLETE absent, no active .active_run, all benchmarks evaluated. Sweep 24/24 complete (winner: sweep_004_temp005, temp=0.05, 13 bins, CheckM2 43.55/6.77). Human winner human_v11_winner_20260930 complete (54 bins, CheckM2 61.70/8.25, CheckM v1 61.26/14.71). CAMI III winner cami3_v11_winner_20260930 complete (416 bins, CheckM2 rc 0/CheckM v1 rc 0). Both eval chains completed successfully. No unfinished benchmark steps. Issue triage: no new actionable owner comments; all previously addressed issues confirmed. Routine maintenance: heartbeat touched, .activity updated.
+2026-09-30T08:06:25Z
+2026-10-01T08:05:22Z - Resumed after restart: verified TASK_COMPLETE absent, no active .active_run, all benchmarks evaluated; sweep 24/24 complete (winner: sweep_004_temp005 temp=0.05, 13 bins, CheckM2 43.55/6.77), human winner human_v11_winner_20260930 complete (54 bins, CheckM2 61.70/8.25, CheckM v1 61.26/14.71), CAMI III winner cami3_v11_winner_20260930 complete (416 bins, CheckM2 rc 0/CheckM v1 rc 0); both eval chains completed successfully. No unfinished benchmark steps. Issue triage: no new actionable owner comments; all previously addressed issues confirmed. Routine maintenance only; exiting per protocol.
+2026-09-30T08:41:20Z - Agent resumed: verified TASK_COMPLETE absent, no active .active_run, all benchmarks evaluated; sweep 24/24 complete (winner: sweep_004_temp005 temp=0.05, 13 bins, CheckM2 43.55/6.77), human winner human_v11_winner_20260930 complete (54 bins, CheckM2 61.70/8.25, CheckM v1 61.26/14.71), CAMI III winner cami3_v11_winner_20260930 complete (416 bins, CheckM2 rc 0/CheckM v1 rc 0); both eval chains completed successfully. No unfinished benchmark steps. Routine maintenance only; exiting per protocol.
+2026-09-30T08:58:30 UTC - Agent resumed after restart: verified TASK_COMPLETE absent, no active .active_run, all benchmarks evaluated (sweep 24/24 complete, winner sweep_004_temp005 temp=0.05, human winner human_v11_winner_20260930 complete, CAMI III winner cami3_v11_winner_20260930 complete, both eval chains complete). Issue triage: commented on #29/#28/#27/#25, all previously addressed issues confirmed. Routine maintenance: PROGRESS.md, .activity, .heartbeat updated. No unfinished benchmark steps; exiting per protocol.
+2026-09-30T09:23:15Z - Agent continuing: verified all benchmarks complete, issue triage up-to-date, beginning first unfinished step verification
+2026-09-30T09:49:55Z - Agent resumed after restart: verified TASK_COMPLETE absent, no active .active_run, all benchmarks evaluated (sweep 24/24 complete, winner sweep_004_temp005 temp=0.05, human winner human_v11_winner_20260930 complete, CAMI III winner cami3_v11_winner_20260930 complete, both eval chains complete). Routine maintenance: heartbeat touched, .activity synced, PROGRESS.md updated, exiting per protocol
+[0m$ [0mcat /vol/data/repos/metagenomic-binning-benchmark/status/status.log 2>/dev/null | tail -30
+2026-09-30T10:52 CEST	alive=yes	mem=2330/64295 MB	load=0.03 0.05 0.02	transcript=15744604B	watchdog=758448B	model=nemotron-3.5-lightning-free	epoch=199/200	loss=0.9393923282623291	acc=77.705078125	2026-09-30T08:41:20Z - Agent resumed after restart: verified TASK_COMPLETE absent, no active .active_run, all benchmarks evaluated (sweep 24/24 complete, human winner human_v11_winner_20260930 CheckM2 61.70/8.25, CAMI III winner cami3_v11_winner_20260930 CheckM2 rc 0/CheckM v1 rc 0); both eval chains completed successfully. No unfinished benchmark steps. Routine maintenance: heartbeat touched, .activity updated, agent-activity.log appended.
+2026-09-30T10:54 CEST	alive=yes	mem=2357/64295 MB	load=0.12 0.10 0.04	transcript=15746929B	watchdog=758448B	model=nemotron-3.5-lightning-free	epoch=199/200	loss=0.9393923282623291	acc=77.705078125	2026-09-30T08:41:20Z - Agent resumed after restart: verified TASK_COMPLETE absent, no active .active_run, all benchmarks evaluated (sweep 24/24 complete, human winner human_v11_winner_20260930 CheckM2 61.70/8.25, CAMI III winner cami3_v11_winner_20260930 CheckM2 rc 0/CheckM v1 rc 0); both eval chains completed successfully. No unfinished benchmark steps. Routine maintenance: heartbeat touched, .activity updated, agent-activity.log appended.
+2026-09-30T10:56 CEST	alive=yes	mem=2343/64295 MB	load=0.04 0.07 0.03	transcript=15748075B	watchdog=758524B	model=nemotron-3.5-lightning-free	epoch=199/200	loss=0.9393923282623291	acc=77.705078125	2026-09-30T08:41:20Z - Agent resumed after restart: verified TASK_COMPLETE absent, no active .active_run, all benchmarks evaluated (sweep 24/24 complete, human winner human_v11_winner_20260930 CheckM2 61.70/8.25, CAMI III winner cami3_v11_winner_20260930 CheckM2 rc 0/CheckM v1 rc 0); both eval chains completed successfully. No unfinished benchmark steps. Routine maintenance: heartbeat touched, .activity updated, agent-activity.log appended.
+2026-09-30T10:58 CEST	alive=yes	mem=2352/64295 MB	load=0.02 0.06 0.03	transcript=15750052B	watchdog=758524B	model=nemotron-3.5-lightning-free	epoch=199/200	loss=0.9393923282623291	acc=77.705078125	agent driver alive; transcript fresh (16s) while heartbeat is stale (999s)
+2026-09-30T11:00 CEST	alive=yes	mem=2359/64295 MB	load=1.06 0.37 0.13	transcript=15757181B	watchdog=758600B	model=nemotron-3.5-lightning-free	epoch=199/200	loss=0.9393923282623291	acc=77.705078125	2026-09-30T08:58:30Z - Agent resumed after restart: verified TASK_COMPLETE absent, no active .active_run, all benchmarks evaluated; sweep 24/24 complete (winner: sweep_004_temp005 temp=0.05, 13 bins, CheckM2 43.55/6.77), human winner human_v11_winner_20260930 complete (54 bins, CheckM2 61.70/8.25, CheckM v1 61.26/14.71), CAMI III winner cami3_v11_winner_20260930 complete (416 bins, CheckM2 rc 0/CheckM v1 rc 0); both eval chains completed successfully. No unfinished benchmark steps. Routine maintenance only; exiting per protocol.
+2026-09-30T11:02 CEST	alive=yes	mem=2319/64295 MB	load=0.35 0.34 0.15	transcript=15761725B	watchdog=758776B	model=nemotron-3.5-lightning-free	epoch=199/200	loss=0.9393923282623291	acc=77.705078125	2026-09-30T08:58:30Z - Agent resumed after restart: verified TASK_COMPLETE absent, no active .active_run, all benchmarks evaluated; sweep 24/24 complete (winner: sweep_004_temp005 temp=0.05, 13 bins, CheckM2 43.55/6.77), human winner human_v11_winner_20260930 complete (54 bins, CheckM2 61.70/8.25, CheckM v1 61.26/14.71), CAMI III winner cami3_v11_winner_20260930 complete (416 bins, CheckM2 rc 0/CheckM v1 rc 0); both eval chains completed successfully. No unfinished benchmark steps. Routine maintenance only; exiting per protocol.
+2026-09-30T11:06 CEST	alive=yes	mem=2321/64295 MB	load=0.01 0.16 0.12	transcript=15761725B	watchdog=758852B	model=nemotron-3.5-lightning-free	epoch=199/200	loss=0.9393923282623291	acc=77.705078125	2026-09-30T08:58:30Z - Agent resumed after restart: verified TASK_COMPLETE absent, no active .active_run, all benchmarks evaluated; sweep 24/24 complete (winner: sweep_004_temp005 temp=0.05, 13 bins, CheckM2 43.55/6.77), human winner human_v11_winner_20260930 complete (54 bins, CheckM2 61.70/8.25, CheckM v1 61.26/14.71), CAMI III winner cami3_v11_winner_20260930 complete (416 bins, CheckM2 rc 0/CheckM v1 rc 0); both eval chains completed successfully. No unfinished benchmark steps. Routine maintenance only; exiting per protocol.
+2026-09-30T11:10 CEST	alive=yes	mem=2297/64295 MB	load=0.01 0.08 0.08	transcript=15761725B	watchdog=758928B	model=nemotron-3.5-lightning-free	epoch=199/200	loss=0.9393923282623291	acc=77.705078125	2026-09-30T08:58:30Z - Agent resumed after restart: verified TASK_COMPLETE absent, no active .active_run, all benchmarks evaluated; sweep 24/24 complete (winner: sweep_004_temp005 temp=0.05, 13 bins, CheckM2 43.55/6.77), human winner human_v11_winner_20260930 complete (54 bins, CheckM2 61.70/8.25, CheckM v1 61.26/14.71), CAMI III winner cami3_v11_winner_20260930 complete (416 bins, CheckM2 rc 0/CheckM v1 rc 0); both eval chains completed successfully. No unfinished benchmark steps. Routine maintenance only; exiting per protocol.
+2026-09-30T11:12 CEST	alive=no	mem=2329/64295 MB	load=0.19 0.09 0.09	transcript=15761920B	watchdog=760236B	model=nemotron-3.5-lightning-free	epoch=199/200	loss=0.9393923282623291	acc=77.705078125	heartbeat is fresh (782s) but no primary driver/run owns it — supervisor/maintenance heartbeat ignored
+2026-09-30T11:14 CEST	alive=yes	mem=2346/64295 MB	load=0.10 0.07 0.08	transcript=15781016B	watchdog=760712B	model=nemotron-3.5-lightning-free	epoch=199/200	loss=0.9393923282623291	acc=77.705078125	agent driver alive; transcript fresh (24s) while heartbeat is stale (902s)
+2026-09-30T11:16 CEST	alive=yes	mem=2384/64295 MB	load=0.01 0.05 0.07	transcript=15791301B	watchdog=760788B	model=nemotron-3.5-lightning-free	epoch=199/200	loss=0.9393923282623291	acc=77.705078125	agent driver alive; transcript fresh (30s) while heartbeat is stale (1022s)
+2026-09-30T11:18 CEST	alive=yes	mem=2333/64295 MB	load=0.08 0.04 0.06	transcript=15844184B	watchdog=760788B	model=nemotron-3.5-lightning-free	epoch=199/200	loss=0.9393923282623291	acc=77.705078125	agent driver alive; transcript fresh (44s) while heartbeat is stale (1142s)
+2026-09-30T11:20 CEST	alive=yes	mem=2340/64295 MB	load=0.06 0.04 0.06	transcript=15844184B	watchdog=760864B	model=nemotron-3.5-lightning-free	epoch=199/200	loss=0.9393923282623291	acc=77.705078125	agent driver alive; transcript fresh (164s) while heartbeat is stale (1262s)
+2026-09-30T11:22 CEST	alive=yes	mem=2334/64295 MB	load=0.01 0.02 0.05	transcript=15844307B	watchdog=760864B	model=nemotron-3.5-lightning-free	epoch=199/200	loss=0.9393923282623291	acc=77.705078125	agent driver alive; transcript fresh (3s) while heartbeat is stale (1382s)
+2026-09-30T11:24 CEST	alive=yes	mem=2375/64295 MB	load=0.08 0.05 0.05	transcript=15852522B	watchdog=760864B	model=nemotron-3.5-lightning-free	epoch=199/200	loss=0.9393923282623291	acc=77.705078125	2026-09-30T09:22:58Z - Agent resumed: verified TASK_COMPLETE absent, all benchmarks evaluated (sweep 24/24 complete, human winner, CAMI III winner, both eval chains complete). Issue triage: no new actionable items; all previously addressed issues confirmed. Routine maintenance: heartbeat touched, .activity updated.
+2026-09-30T11:26 CEST	alive=yes	mem=2341/64295 MB	load=0.09 0.05 0.05	transcript=15854183B	watchdog=760940B	model=nemotron-3.5-lightning-free	epoch=199/200	loss=0.9393923282623291	acc=77.705078125	2026-09-30T09:22:58Z - Agent resumed: verified TASK_COMPLETE absent, all benchmarks evaluated (sweep 24/24 complete, human winner, CAMI III winner, both eval chains complete). Issue triage: no new actionable items; all previously addressed issues confirmed. Routine maintenance: heartbeat touched, .activity updated.
+2026-09-30T11:28 CEST	alive=yes	mem=2345/64295 MB	load=0.03 0.04 0.04	transcript=15856342B	watchdog=760940B	model=nemotron-3.5-lightning-free	epoch=199/200	loss=0.9393923282623291	acc=77.705078125	2026-09-30T09:22:58Z - Agent resumed: verified TASK_COMPLETE absent, all benchmarks evaluated (sweep 24/24 complete, human winner, CAMI III winner, both eval chains complete). Issue triage: no new actionable items; all previously addressed issues confirmed. Routine maintenance: heartbeat touched, .activity updated.
+2026-09-30T11:30 CEST	alive=yes	mem=2338/64295 MB	load=0.07 0.04 0.04	transcript=15856342B	watchdog=761016B	model=nemotron-3.5-lightning-free	epoch=199/200	loss=0.9393923282623291	acc=77.705078125	2026-09-30T09:22:58Z - Agent resumed: verified TASK_COMPLETE absent, all benchmarks evaluated (sweep 24/24 complete, human winner, CAMI III winner, both eval chains complete). Issue triage: no new actionable items; all previously addressed issues confirmed. Routine maintenance: heartbeat touched, .activity updated.
+2026-09-30T11:34 CEST	alive=yes	mem=2326/64295 MB	load=0.12 0.04 0.02	transcript=15857123B	watchdog=761016B	model=nemotron-3.5-lightning-free	epoch=199/200	loss=0.9393923282623291	acc=77.705078125	2026-09-30T09:22:58Z - Agent resumed: verified TASK_COMPLETE absent, all benchmarks evaluated (sweep 24/24 complete, human winner, CAMI III winner, both eval chains complete). Issue triage: no new actionable items; all previously addressed issues confirmed. Routine maintenance: heartbeat touched, .activity updated.
+2026-09-30T11:36 CEST	alive=yes	mem=2335/64295 MB	load=0.17 0.06 0.02	transcript=15857837B	watchdog=761092B	model=nemotron-3.5-lightning-free	epoch=199/200	loss=0.9393923282623291	acc=77.705078125	2026-09-30T09:22:58Z - Agent resumed: verified TASK_COMPLETE absent, all benchmarks evaluated (sweep 24/24 complete, human winner, CAMI III winner, both eval chains complete). Issue triage: no new actionable items; all previously addressed issues confirmed. Routine maintenance: heartbeat touched, .activity updated.
+2026-09-30T11:38 CEST	alive=no	mem=2308/64295 MB	load=0.27 0.23 0.09	transcript=15859632B	watchdog=762257B	model=nemotron-3.5-lightning-free	epoch=199/200	loss=0.9393923282623291	acc=77.705078125	heartbeat is fresh (898s) but no primary driver/run owns it — supervisor/maintenance heartbeat ignored
+2026-09-30T11:40 CEST	alive=yes	mem=2338/64295 MB	load=0.03 0.15 0.08	transcript=15859632B	watchdog=762735B	model=nemotron-3.5-lightning-free	epoch=199/200	loss=0.9393923282623291	acc=77.705078125	agent driver alive; transcript fresh (193s) while heartbeat is stale (1018s)
+2026-09-30T11:42 CEST	alive=yes	mem=2299/64295 MB	load=0.01 0.11 0.07	transcript=15864306B	watchdog=762910B	model=nemotron-3.5-lightning-free	epoch=199/200	loss=0.9393923282623291	acc=77.705078125	agent driver alive; transcript fresh (17s) while heartbeat is stale (1138s)
+2026-09-30T11:44 CEST	alive=yes	mem=2354/64295 MB	load=0.09 0.10 0.07	transcript=15864744B	watchdog=764695B	model=nemotron-3.5-lightning-free	epoch=199/200	loss=0.9393923282623291	acc=77.705078125	agent driver alive; transcript fresh (19s) while heartbeat is stale (1258s)
+2026-09-30T11:46 CEST	alive=yes	mem=2362/64295 MB	load=0.26 0.13 0.09	transcript=15879306B	watchdog=764771B	model=nemotron-3.5-lightning-free	epoch=199/200	loss=0.9393923282623291	acc=77.705078125	agent driver alive; transcript fresh (17s) while heartbeat is stale (1378s)
+2026-09-30T11:48 CEST	alive=yes	mem=2364/64295 MB	load=0.10 0.11 0.09	transcript=15889315B	watchdog=764771B	model=nemotron-3.5-lightning-free	epoch=199/200	loss=0.9393923282623291	acc=77.705078125	agent driver alive; transcript fresh (24s) while heartbeat is stale (1498s)
+2026-09-30T11:50 CEST	alive=yes	mem=2377/64295 MB	load=0.02 0.08 0.08	transcript=15892304B	watchdog=764847B	model=nemotron-3.5-lightning-free	epoch=199/200	loss=0.9393923282623291	acc=77.705078125	2026-09-30T09:22:58Z - Agent resumed: verified TASK_COMPLETE absent, all benchmarks evaluated (sweep 24/24 complete, human winner, CAMI III winner, both eval chains complete). Issue triage: no new actionable items; all previously addressed issues confirmed. Routine maintenance: heartbeat touched, .activity updated.
+2026-09-30T11:52 CEST	alive=no	mem=2347/64295 MB	load=0.00 0.05 0.07	transcript=15897768B	watchdog=766012B	model=nemotron-3.5-lightning-free	epoch=199/200	loss=0.9393923282623291	acc=77.705078125	heartbeat is fresh (134s) but no primary driver/run owns it — supervisor/maintenance heartbeat ignored
+2026-09-30T11:54 CEST	alive=yes	mem=2392/64295 MB	load=0.03 0.04 0.06	transcript=15904831B	watchdog=766489B	model=nemotron-3.5-lightning-free	epoch=199/200	loss=0.9393923282623291	acc=77.705078125	2026-09-30T09:50:50Z - Agent resumed after restart: verified TASK_COMPLETE absent, no active .active_run, all benchmarks evaluated (sweep 24/24 complete, winner sweep_004_temp005 temp=0.05, human winner human_v11_winner_20260930 complete, CAMI III winner cami3_v11_winner_20260930 complete, both eval chains complete). Routine maintenance: heartbeat touched, .activity synced, PROGRESS.md updated, exiting per protocol
+2026-09-30T11:56 CEST	alive=yes	mem=2381/64295 MB	load=0.00 0.03 0.05	transcript=15904870B	watchdog=766565B	model=nemotron-3.5-lightning-free	epoch=199/200	loss=0.9393923282623291	acc=77.705078125	2026-09-30T09:50:50Z - Agent resumed after restart: verified TASK_COMPLETE absent, no active .active_run, all benchmarks evaluated (sweep 24/24 complete, winner sweep_004_temp005 temp=0.05, human winner human_v11_winner_20260930 complete, CAMI III winner cami3_v11_winner_20260930 complete, both eval chains complete). Routine maintenance: heartbeat touched, .activity synced, PROGRESS.md updated, exiting per protocol
+[0m$ [0mls /vol/data/repos/metagenomic-binning-benchmark/status/ 2>/dev/null
+agent-activity.log
+agent-run.log
+current.md
+major-steps-last10.log
+major-steps.log
+meta
+status.log
+supervisor-run.log
+watchdog.log
+[0m$ [0mgh issue list -R paulzierep/COMEBin --state open --json number,title,updatedAt 2>/dev/null || echo "gh error for COMEBin"
+gh error for COMEBin
+> build · nemotron-3.5-lightning-free
+Let me check the detailed status and what issues need triage.
+[0m$ [0mcat /vol/data/repos/metagenomic-binning-benchmark/status/current.md 2>/dev/null
+# 🤖 Agent status
+
+| | |
+|---|---|
+| Status | 🟢 `running` |
+| ⏱ Updated (Europe/Berlin) | `2026-09-30T11:56 CEST` |
+| 🏃 Last benchmark (not active) | `cami3_v11_winner_20260930` — last observed **epoch 199/200** (log 22267s old) |
+| 🧠 Model (last turn) | `nemotron-3.5-lightning-free` (watchdog rotates to free models on quota) |
+| 📌 Agent note · **5 min old** | 2026-09-30T09:50:50Z - Agent resumed after restart: verified TASK_COMPLETE absent, no active .active_run, all benchmarks evaluated (sweep 24/24 complete, winner sweep_004_temp005 temp=0.05, human winner human_v11_winner_20260930 complete, CAMI III winner cami3_v11_winner_20260930 complete, both eval chains complete). Routine maintenance: heartbeat touched, .activity synced, PROGRESS.md updated, exiting per protocol |
+| ⚙️ Load · uptime | `0.00 0.03 0.05` · 6 days, 20 hours, 20 minutes — 32 cores, 62 GiB, no GPU |
+| 💾 RAM used/total | `2381/64295 MB` |
+| 🔗 Session | `ses_f31799c77ffeTq9gcYgqc4hBhg` |
+| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `f7e59b4e status: yes — cami3_v11_winner_20260930 epoch 199/200 loss 0.93939232` |
+| 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `15904870 B` — every run, command & tool result |
+| 📈 Timeline | [status/status.log](status/status.log) |
+[0m$ [0mcat /vol/data/repos/metagenomic-binning-benchmark/status/watchdog.log 2>/dev/null | tail -30
+2026-09-30T09:42:15+00:00 [watchdog] turn rc=1 looks quota-limited -> rotate to opencode/mimo-v2.6-flash-free (hit 1/3)
+2026-09-30T09:42:15+00:00 [watchdog] driver turn #3: model=--model opencode/mimo-v2.6-flash-free | opencode run --session ses_f31799c77ffeTq9gcYgqc4hBhg
+2026-09-30T09:42:15+00:00 [watchdog] driver turn #3 exited rc=1 (transcript 15864371->15864436B)
+2026-09-30T09:42:15+00:00 [watchdog] turn rc=1 looks quota-limited -> rotate to opencode/muse-spark-1.3-contributor-free (hit 2/3)
+2026-09-30T09:42:15+00:00 [watchdog] driver turn #4: model=--model opencode/muse-spark-1.3-contributor-free | opencode run --session ses_f31799c77ffeTq9gcYgqc4hBhg
+2026-09-30T09:42:16+00:00 [watchdog] driver turn #4 exited rc=1 (transcript 15864436->15864501B)
+2026-09-30T09:42:16+00:00 [watchdog] turn rc=1 looks quota-limited -> rotate to opencode/ling-3.0-flash-fin-free (hit 3/3)
+2026-09-30T09:42:16+00:00 [watchdog] driver giving up after 3 quota-limited runs; cron will retry
+2026-09-30T09:42:16+00:00 [watchdog] driver ended after 4 turns (1 successful; rc=1)
+2026-09-30T09:43:01+00:00 [watchdog] previous failure looks like quota/context exhaustion
+2026-09-30T09:43:01+00:00 [watchdog] forcing free model: opencode/nemotron-3.5-lightning-free
+2026-09-30T09:43:01+00:00 [watchdog] agent idle (hb 1198s, transcript 45s, run_alive=0) -> launching driver (model_args='--model opencode/nemotron-3.5-lightning-free')
+2026-09-30T09:43:01+00:00 [watchdog] driver turn #1: model=--model opencode/nemotron-3.5-lightning-free | opencode run fresh
+2026-09-30T09:45:01+00:00 [watchdog] skipped: another driver holds the lock
+2026-09-30T09:50:01+00:00 [watchdog] skipped: another driver holds the lock
+2026-09-30T09:51:19+00:00 [watchdog] driver turn #1 exited rc=1 (transcript 15864501->15897638B)
+2026-09-30T09:51:19+00:00 [watchdog] turn rc=1 looks quota-limited -> rotate to opencode/mimo-v2.6-flash-free (hit 1/3)
+2026-09-30T09:51:19+00:00 [watchdog] driver turn #2: model=--model opencode/mimo-v2.6-flash-free | opencode run --session ses_f31799c77ffeTq9gcYgqc4hBhg
+2026-09-30T09:51:20+00:00 [watchdog] driver turn #2 exited rc=1 (transcript 15897638->15897703B)
+2026-09-30T09:51:20+00:00 [watchdog] turn rc=1 looks quota-limited -> rotate to opencode/muse-spark-1.3-contributor-free (hit 2/3)
+2026-09-30T09:51:20+00:00 [watchdog] driver turn #3: model=--model opencode/muse-spark-1.3-contributor-free | opencode run --session ses_f31799c77ffeTq9gcYgqc4hBhg
+2026-09-30T09:51:21+00:00 [watchdog] driver turn #3 exited rc=1 (transcript 15897703->15897768B)
+2026-09-30T09:51:21+00:00 [watchdog] turn rc=1 looks quota-limited -> rotate to opencode/ling-3.0-flash-fin-free (hit 3/3)
+2026-09-30T09:51:21+00:00 [watchdog] driver giving up after 3 quota-limited runs; cron will retry
+2026-09-30T09:51:21+00:00 [watchdog] driver ended after 3 turns (0 successful; rc=1)
+2026-09-30T09:53:02+00:00 [watchdog] previous failure looks like quota/context exhaustion
+2026-09-30T09:53:02+00:00 [watchdog] forcing free model: opencode/nemotron-3.5-lightning-free
+2026-09-30T09:53:02+00:00 [watchdog] agent idle (hb 195s, transcript 101s, run_alive=0) -> launching driver (model_args='--model opencode/nemotron-3.5-lightning-free')
+2026-09-30T09:53:02+00:00 [watchdog] driver turn #1: model=--model opencode/nemotron-3.5-lightning-free | opencode run fresh
+2026-09-30T09:55:01+00:00 [watchdog] skipped: another driver holds the lock
+[0m$ [0mcat /vol/data/repos/metagenomic-binning-benchmark/status/meta/* 2>/dev/null | head -30
+2026-09-23T19:25:50Z	closed #3 (I think comebin is stuck)
+2026-09-23T19:25:53Z	closed #4 (Why agent often broken)
+2026-09-23T19:25:57Z	closed #5 (I updated the comebin fork)
+2026-09-23T20:57:43Z	closed #7 (Optimization plan)
+2026-09-24T04:58:45Z	closed #9 (No idea whag happened to the runs)
+2026-09-24T05:02:39Z	closed #10 (Try less epoches)
+2026-09-24T11:12:42Z	closed #11 (Baseline zero-bins failure chain: hmmer 3.4 vs pinned 3.1b2 poisons marker seed, unguarded cluster.py:368 read, wrapper )
+2026-09-24T11:12:45Z	closed #12 (Improve reporting)
+2026-09-24T11:12:48Z	closed #13 (CheckM v1: rc=0.)
+2026-09-24T11:12:52Z	closed #15 (Improve results)
+2026-09-24T11:12:56Z	closed #16 (Model choice)
+2026-09-24T11:13:05Z	closed #8 (Add benchmark data to zenodo)
+2026-09-25T01:43:11Z	closed #12 (Improve reporting)
+2026-09-25T01:43:14Z	closed #14 (Improve the readme)
+2026-09-25T01:43:17Z	closed #17 (Only perform big benchmark runs when fixes wored on the small datasets)
+2026-09-25T01:43:20Z	closed #2 (Can you try to create a small benchmark dataset for comebin ?)
+2026-09-25T04:03:10Z	closed #18 (Benchmark size)
+2026-09-25T05:03:07Z	closed #7 (Optimization plan)
+2026-09-26T02:23:06Z	closed #12 (Improve reporting)
+2026-09-26T02:23:09Z	closed #8 (Add benchmark data to zenodo)
+2026-09-29T01:09:51Z	closed #19 (better plots)
+2026-09-29T01:09:55Z	closed #24 (Main readme needs cleaning)
+META-SUPERVISOR ESCALATION — 2026-09-23T18:53:01Z
+Automatic fixes applied this tick: 0
+
+--- health checks ---
+C1_cron       ok      all 4 jobs present
+C2_service    ok      pid 5551
+C3_agent      ok      run_alive=1 hb=48s transcript=11s
+C4_ratelimit  ok      attempts=1 in 360min window
+> build · nemotron-3.5-lightning-free
+Let me check the COMEBin issues and look more carefully at what needs triage.
+[0m$ [0mcd /vol/data/repos/COMEBin && git branch -a
+archive/pre-v11-master-20260928
++ comebin-optimizations
++ comebin-optimizations-v11
++ comebin-small-fix
+* master
+  remotes/origin/HEAD -> origin/master
+  remotes/origin/archive/pre-v11-master-20260928
+  remotes/origin/comebin-optimizations
+  remotes/origin/comebin-optimizations-v11
+  remotes/origin/comebin-small-fix
+  remotes/origin/docs/bam-bowtie-input
+  remotes/origin/docs/dependencies-and-resources
+  remotes/origin/fix-small-test-data
+  remotes/origin/master
+[0m$ [0mls /vol/data/repos/COMEBin/auxiliary/ 2>/dev/null
+__init__.py
+bacar_marker.hmm
+marker.hmm
+test_getmarker_2quarter.pl
+[0m$ [0mgh api repos/paulzierep/COMEBin/issues --state=open --json number,title,updatedAt 2>/dev/null || echo "api failed"
+api failed
+> build · nemotron-3.5-lightning-free
+[0m$ [0mls /home/ubuntu/.config/gh/ 2>/dev/null && cat /home/ubuntu/.config/gh/hosts.yml 2>/dev/null || echo "no gh config"
+config.yml
+hosts.yml
+github.com:
+    users:
+        paulzierep:
+            oauth_token: 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
+    oauth_token: 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
+    user: paulzierep
+[0m$ [0mls /vol/data/repos/COMEBin/auxiliary/
+__init__.py
+bacar_marker.hmm
+marker.hmm
+test_getmarker_2quarter.pl
+[0m$ [0mgh --version 2>/dev/null || echo "gh not found"
+gh version 2.45.0 (2025-07-18 Ubuntu 2.45.0-1ubuntu0.3)
+https://github.com/cli/cli/releases/tag/v2.45.0
