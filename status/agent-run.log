@@ -138386,3 +138386,168 @@ epoch=49/200
 ---resources---
 2026-09-30T02:51:31+00:00	1105032,1105035,1109733,1134195,1134227,1134259,1134291	2901.9	7.060	5009
 > build · mimo-v2.6-flash-free
+Training healthy (ep 49/200, 21 s/epoch, ETA ~03:57Z). Starting safe archive cleanup now: old release tarballs (content verified on Zenodo v1–v15).
+[0m$ [0mls -lah /vol/data/benchmark/releases/*.tar.gz 2>/dev/null | awk '{printf "%.2fG  %s %s %s  %s\n", $5/1073741824, $6, $7, $8, $9}'; echo "---receipts---"; ls /vol/data/benchmark/meta/zenodo_benchmark_release_v*.json 2>/dev/null | wc -l; df -h /vol/data | tail -1
+0.00G  Sep 29 02:03  /vol/data/benchmark/releases/comebin_benchmark_release_dryrun_20260929.tar.gz
+0.00G  Sep 29 08:08  /vol/data/benchmark/releases/comebin_benchmark_release_v10_20260929.tar.gz
+0.00G  Sep 29 09:02  /vol/data/benchmark/releases/comebin_benchmark_release_v11_20260929.tar.gz
+0.00G  Sep 29 10:26  /vol/data/benchmark/releases/comebin_benchmark_release_v12_20260929.tar.gz
+0.00G  Sep 29 12:32  /vol/data/benchmark/releases/comebin_benchmark_release_v13_20260929.tar.gz
+0.00G  Sep 29 14:35  /vol/data/benchmark/releases/comebin_benchmark_release_v14_20260929.tar.gz
+0.00G  Sep 29 23:42  /vol/data/benchmark/releases/comebin_benchmark_release_v15_20260929.tar.gz
+0.00G  Sep 30 02:48  /vol/data/benchmark/releases/comebin_benchmark_release_v15_20260930.tar.gz
+0.00G  Sep 26 01:38  /vol/data/benchmark/releases/comebin_benchmark_release_v2_20260926.tar.gz
+0.00G  Sep 26 07:43  /vol/data/benchmark/releases/comebin_benchmark_release_v3_20260926.tar.gz
+0.00G  Sep 28 14:08  /vol/data/benchmark/releases/comebin_benchmark_release_v4_20260928.tar.gz
+0.00G  Sep 29 01:46  /vol/data/benchmark/releases/comebin_benchmark_release_v5_20260929.tar.gz
+0.00G  Sep 29 03:52  /vol/data/benchmark/releases/comebin_benchmark_release_v6_20260929.tar.gz
+0.00G  Sep 29 04:51  /vol/data/benchmark/releases/comebin_benchmark_release_v7_20260929.tar.gz
+0.00G  Sep 29 05:50  /vol/data/benchmark/releases/comebin_benchmark_release_v8_20260929.tar.gz
+0.00G  Sep 29 06:43  /vol/data/benchmark/releases/comebin_benchmark_release_v9_20260929.tar.gz
+---receipts---
+14
+/dev/vdb        492G  180G  287G  39% /vol/data
+> build · mimo-v2.6-flash-free
+The awk sizes printed wrong (human units). Let me measure precisely, then delete only tarballs with verified publish receipts (keep the published v15).
+[0m$ [0mcd /vol/data/benchmark/releases && du -ch *.tar.gz | tail -1; echo "---stale stage/api dirs---"; ls -d stage.* api.* 2>/dev/null | head; echo "---sizes in bytes---"; stat -c '%s %n' *.tar.gz | sort -rn | head -20
+14G	total
+---stale stage/api dirs---
+---sizes in bytes---
+1306237850 comebin_benchmark_release_v15_20260930.tar.gz
+1109448921 comebin_benchmark_release_v15_20260929.tar.gz
+1071907684 comebin_benchmark_release_v14_20260929.tar.gz
+1063425726 comebin_benchmark_release_v13_20260929.tar.gz
+1054859472 comebin_benchmark_release_v12_20260929.tar.gz
+1050760527 comebin_benchmark_release_v11_20260929.tar.gz
+1046655937 comebin_benchmark_release_v10_20260929.tar.gz
+1042549474 comebin_benchmark_release_v9_20260929.tar.gz
+1038512191 comebin_benchmark_release_v8_20260929.tar.gz
+1034286808 comebin_benchmark_release_v7_20260929.tar.gz
+1030343939 comebin_benchmark_release_v6_20260929.tar.gz
+1025875384 comebin_benchmark_release_dryrun_20260929.tar.gz
+530074137 comebin_benchmark_release_v5_20260929.tar.gz
+524489950 comebin_benchmark_release_v4_20260928.tar.gz
+520343638 comebin_benchmark_release_v3_20260926.tar.gz
+168110629 comebin_benchmark_release_v2_20260926.tar.gz
+> build · mimo-v2.6-flash-free
+12.7 GB of tarballs deletable (v2–v15 all have publish receipts; today's v15 ⊇ the stale Sep-29 build). Removing all but the published v15.
+[0m$ [0mcd /vol/data/benchmark/releases && for f in *.tar.gz; do [ "$f" = "comebin_benchmark_release_v15_20260930.tar.gz" ] && { echo "KEEP $f"; continue; }; echo "DELETE $f ($(stat -c%s "$f") bytes)"; rm -f "$f"; done; echo "---after---"; ls -la /vol/data/benchmark/releases/; df -h /vol/data | tail -1
+DELETE comebin_benchmark_release_dryrun_20260929.tar.gz (1025875384 bytes)
+DELETE comebin_benchmark_release_v10_20260929.tar.gz (1046655937 bytes)
+DELETE comebin_benchmark_release_v11_20260929.tar.gz (1050760527 bytes)
+DELETE comebin_benchmark_release_v12_20260929.tar.gz (1054859472 bytes)
+DELETE comebin_benchmark_release_v13_20260929.tar.gz (1063425726 bytes)
+DELETE comebin_benchmark_release_v14_20260929.tar.gz (1071907684 bytes)
+DELETE comebin_benchmark_release_v15_20260929.tar.gz (1109448921 bytes)
+KEEP comebin_benchmark_release_v15_20260930.tar.gz
+DELETE comebin_benchmark_release_v2_20260926.tar.gz (168110629 bytes)
+DELETE comebin_benchmark_release_v3_20260926.tar.gz (520343638 bytes)
+DELETE comebin_benchmark_release_v4_20260928.tar.gz (524489950 bytes)
+DELETE comebin_benchmark_release_v5_20260929.tar.gz (530074137 bytes)
+DELETE comebin_benchmark_release_v6_20260929.tar.gz (1030343939 bytes)
+DELETE comebin_benchmark_release_v7_20260929.tar.gz (1034286808 bytes)
+DELETE comebin_benchmark_release_v8_20260929.tar.gz (1038512191 bytes)
+DELETE comebin_benchmark_release_v9_20260929.tar.gz (1042549474 bytes)
+---after---
+total 1284352
+drwxrwxr-x  3 ubuntu ubuntu       4096 Sep 30 02:52 .
+drwxrwxr-x 14 ubuntu ubuntu       4096 Sep 30 02:33 ..
+-rw-rw-r--  1 ubuntu ubuntu 1306237850 Sep 30 02:48 comebin_benchmark_release_v15_20260930.tar.gz
+drwxrwxr-x  4 ubuntu ubuntu       4096 Sep 24 09:27 comebin_small_20260924
+-rw-rw-r--  1 ubuntu ubuntu     100579 Sep 26 01:11 manifest.20260926T011057Z.json
+-rw-rw-r--  1 ubuntu ubuntu     101492 Sep 26 01:36 manifest.20260926T013645Z.json
+-rw-rw-r--  1 ubuntu ubuntu     101492 Sep 26 02:11 manifest.20260926T021113Z.json
+-rw-rw-r--  1 ubuntu ubuntu     203694 Sep 26 07:38 manifest.20260926T073806Z.json
+-rw-rw-r--  1 ubuntu ubuntu     209716 Sep 28 14:02 manifest.20260928T140247Z.json
+-rw-rw-r--  1 ubuntu ubuntu     213770 Sep 29 01:27 manifest.20260929T012704Z.json
+-rw-rw-r--  1 ubuntu ubuntu     218766 Sep 29 01:33 manifest.20260929T013339Z.json
+-rw-rw-r--  1 ubuntu ubuntu     217681 Sep 29 01:41 manifest.20260929T014055Z.json
+-rw-rw-r--  1 ubuntu ubuntu     220621 Sep 29 01:43 manifest.20260929T014302Z.json
+-rw-rw-r--  1 ubuntu ubuntu     220621 Sep 29 01:57 manifest.20260929T015712Z.json
+-rw-rw-r--  1 ubuntu ubuntu     225492 Sep 29 03:46 manifest.20260929T034636Z.json
+-rw-rw-r--  1 ubuntu ubuntu     231312 Sep 29 04:45 manifest.20260929T044538Z.json
+-rw-rw-r--  1 ubuntu ubuntu     237135 Sep 29 05:44 manifest.20260929T054441Z.json
+-rw-rw-r--  1 ubuntu ubuntu     242569 Sep 29 06:37 manifest.20260929T063736Z.json
+-rw-rw-r--  1 ubuntu ubuntu     248198 Sep 29 08:02 manifest.20260929T080159Z.json
+-rw-rw-r--  1 ubuntu ubuntu     253738 Sep 29 08:56 manifest.20260929T085555Z.json
+-rw-rw-r--  1 ubuntu ubuntu     259661 Sep 29 10:20 manifest.20260929T102011Z.json
+-rw-rw-r--  1 ubuntu ubuntu     264938 Sep 29 11:01 manifest.20260929T110137Z.json
+-rw-rw-r--  1 ubuntu ubuntu     271021 Sep 29 12:25 manifest.20260929T122539Z.json
+-rw-rw-r--  1 ubuntu ubuntu     276460 Sep 29 13:28 manifest.20260929T132831Z.json
+-rw-rw-r--  1 ubuntu ubuntu     282507 Sep 29 14:29 manifest.20260929T142847Z.json
+-rw-rw-r--  1 ubuntu ubuntu     288301 Sep 29 15:19 manifest.20260929T151915Z.json
+-rw-rw-r--  1 ubuntu ubuntu     294090 Sep 29 16:47 manifest.20260929T164705Z.json
+-rw-rw-r--  1 ubuntu ubuntu     299754 Sep 29 17:44 manifest.20260929T174439Z.json
+-rw-rw-r--  1 ubuntu ubuntu     305441 Sep 29 18:42 manifest.20260929T184234Z.json
+-rw-rw-r--  1 ubuntu ubuntu     311254 Sep 29 19:39 manifest.20260929T193917Z.json
+-rw-rw-r--  1 ubuntu ubuntu     317075 Sep 29 20:36 manifest.20260929T203625Z.json
+-rw-rw-r--  1 ubuntu ubuntu     323443 Sep 29 21:21 manifest.20260929T212123Z.json
+-rw-rw-r--  1 ubuntu ubuntu     329234 Sep 29 23:02 manifest.20260929T230228Z.json
+-rw-rw-r--  1 ubuntu ubuntu     334579 Sep 29 23:36 manifest.20260929T233550Z.json
+-rw-rw-r--  1 ubuntu ubuntu     339982 Sep 30 00:35 manifest.20260930T003457Z.json
+-rw-rw-r--  1 ubuntu ubuntu     371072 Sep 30 02:19 manifest.20260930T021903Z.json
+-rw-rw-r--  1 ubuntu ubuntu     372620 Sep 30 02:31 manifest.20260930T023053Z.json
+-rw-rw-r--  1 ubuntu ubuntu     372620 Sep 30 02:41 manifest.20260930T024103Z.json
+/dev/vdb        492G  168G  299G  36% /vol/data
+> build · mimo-v2.6-flash-free
+Freed 12.7 GB (299G free now). While CAMI III trains, let me check whether docs/11 (full run history) needs the winner entry.
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && grep -n '^##\|^###' docs/11-run-results.md | tail -12; echo "---winner mentioned?---"; grep -c 'human_v11_winner' docs/11-run-results.md
+20:## Run history — what happened and what's next
+24:### COMEBin-executing attempts
+46:### Guard-only launches
+61:## Data preservation and Zenodo
+65:## How to resume (for a human or a restarted agent)
+73:## References
+---winner mentioned?---
+0
+> build · mimo-v2.6-flash-free
+[0m→ [0mRead /vol/data/repos/metagenomic-binning-benchmark/docs/11-run-results.md 
+> build · mimo-v2.6-flash-free
+docs/11 needs the winner row + current Zenodo state. Fetching peak RAM for the row first.
+[0m$ [0mawk -F'\t' 'NR>1 && $3+0>mx {mx=$3+0; rss=$4} END {printf "max cpu %.0f%% rss %s GB\n", mx, rss}' /vol/data/benchmark/runs/human_v11_winner_20260930/logs/resources.tsv; awk -F'\t' 'NR>1 {if ($4+0>mx) mx=$4+0} END {printf "max rss %s GB\n", mx}' /vol/data/benchmark/runs/human_v11_winner_20260930/logs/resources.tsv; echo "---cami3 ep---"; grep -oE 'epoch=[0-9]+/200' /vol/data/benchmark/runs/cami3_v11_winner_20260930/comebin_run.log | tail -1; date -u +%H:%M:%SZ
+max cpu 3021% rss 7.564 GB
+max rss 10.251 GB
+---cami3 ep---
+epoch=54/200
+02:53:25Z
+> build · mimo-v2.6-flash-free
+Peak RAM 10.25 GB. Updating docs/11 (winner row, attempts entry, Zenodo v15 section).
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/docs/11-run-results.md
+Index: /vol/data/repos/metagenomic-binning-benchmark/docs/11-run-results.md
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/docs/11-run-results.md
++++ /vol/data/repos/metagenomic-binning-benchmark/docs/11-run-results.md
+@@ -12,8 +12,9 @@
+ | `tiny_test_n101` | 2026-09-25 | [c8f22e4](https://github.com/paulzierep/COMEBin/commit/c8f22e4935a66a0fd58b794489a9021671b15437) | `comebin_tiny_101` (101 contigs) | 8 | 85 s | – | 1 | 63.89 / 9.05 | 46.58 / 6.35 | ✅ complete, smallest passing dataset (30 epochs); [CSV](../results/tiny_test_n101.csv) |
+ | `human_v11_20260925` | 2026-09-25 | [95f5ea8](https://github.com/paulzierep/COMEBin/commit/95f5ea820f9a4e76f5c2911c0b5ed507ab67b015) | CAMI II human host-associated (4,900 contigs / 166 Mbp, ~1/6 demo) | 32 | 4,912 s (82 min) | 10.40 GB | 107 | 35.31 / 5.13 (HQ 20, MQ 29) | 32.64 / 4.65 (HQ 21, MQ 29) | ✅ complete; 200/200 epochs, final Top-1 ≈ 96 %; first dataset with substantial HQ recovery; [CSV](../results/human_v11_20260925.csv) |
+ | `marine_v11_20260925` | 2026-09-25 | [95f5ea8](https://github.com/paulzierep/COMEBin/commit/95f5ea820f9a4e76f5c2911c0b5ed507ab67b015) | CAMI II marine (41,988 contigs ≥ 2000 bp, sample 0) | 32 | 31,406 s (8 h 43 min) | 8.32 GB | 152 | 50.60 / 4.10 (HQ 35, MQ 60) | 46.36 / 5.09 (HQ 37, MQ 60) | ✅ complete; 159/200 epochs, early stop (Top-1 99.58 % × 3), Leiden 120/120; strongest quality of all datasets so far; [CSV](../results/marine_v11_20260925.csv) |
+ | `cami3_v11_20260926_rerun` | 2026-09-26 | [95f5ea8](https://github.com/paulzierep/COMEBin/commit/95f5ea820f9a4e76f5c2911c0b5ed507ab67b015) | CAMI III toy human gut (5,000 pooled-GSA contigs / 1.1 Gbp, 2 samples) | 32 | 5,392 s (90 min) | 10.37 GB | 492 | 35.97 / 11.42 (HQ 53, MQ 112) | 32.46 / 13.38 (HQ 54, MQ 100) | ✅ complete; 200/200 epochs (final Top-1 74.95 %, no early stop), Leiden 120/120; first attempt `cami3_v11_20260926` failed on a full `/` (see history); [CSV](../results/cami3_v11_20260926_rerun.csv) |
++| `human_v11_winner_20260930` | 2026-09-30 | [95f5ea8](https://github.com/paulzierep/COMEBin/commit/95f5ea820f9a4e76f5c2911c0b5ed507ab67b015) | CAMI II human (4,900 contigs), **sweep winner temp 0.05** | 32 | 4,955 s (82 min) | 10.25 GB | 54 | 61.70 / 8.25 (HQ 22, MQ 26) | 61.26 / 14.71 (HQ 21, MQ 27) | ✅ complete; 200/200 epochs, Leiden 120/120; **AMBER F1_bp 0.881** vs ref 0.681 (+26.4 pp CheckM2 comp); [CSV](../results/human_v11_winner_20260930.csv) |
+ | `baseline_unmodified` | 2026-09-23 | [987db95](https://github.com/paulzierep/COMEBin/commit/987db95d8d399f30b7c82a5f5f40ed6bfdc906c7) (upstream) | COMEBin demo (29,434 contigs) | 32 | – | – | – | – | – | ⏹ failed at epoch 175/200 — see [Run history](#run-history--what-happened-and-whats-next) |
+ 
+ Column contract: **Wall time** = total seconds (plus per-stage breakdown in `docs/02-comebin-baseline.md`), **Bins** = bins exported (≥200 kb filter noted), **comp/cont** = mean completeness / mean contamination, **HQ/MQ counts** live in `results/<run>.csv`. **Source commit** is always a clickable link to that exact commit on GitHub. Per-bin CheckM2 values for the completed medium gate are in [`medium_v11_20260924_checkm2_stats.csv`](../medium_v11_20260924_checkm2_stats.csv).
+ 
+
+> build · mimo-v2.6-flash-free
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/docs/11-run-results.md
+Index: /vol/data/repos/metagenomic-binning-benchmark/docs/11-run-results.md
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/docs/11-run-results.md
++++ /vol/data/repos/metagenomic-binning-benchmark/docs/11-run-results.md
+@@ -19,9 +19,13 @@
+ Column contract: **Wall time** = total seconds (plus per-stage breakdown in `docs/02-comebin-baseline.md`), **Bins** = bins exported (≥200 kb filter noted), **comp/cont** = mean completeness / mean contamination, **HQ/MQ counts** live in `results/<run>.csv`. **Source commit** is always a clickable link to that exact commit on GitHub. Per-bin CheckM2 values for the completed medium gate are in [`medium_v11_20260924_checkm2_stats.csv`](../medium_v11_20260924_checkm2_stats.csv).
+ 
+ ## Run history — what happened and what's next
+ 
+-Seventeen COMEBin-executing attempts have been recorded: nine terminal failures and eight completed runs. The baseline rerun, small functional gate, medium derivative, large fix run, the 101-contig tiny floor run, the CAMI II human ~1/6 run, the CAMI II marine ~1/6 run, and the CAMI III toy human gut run now have verified bin artifacts and CheckM2/CheckM outputs. Run links point to tracked evidence mirrors; the status banner at the top is authoritative for any active run.
++Seventeen COMEBin-executing attempts were recorded before the sweep; the
++24-cell medium sweep (issue #25) added 24 more attempts, and the sweep-winner
++validation runs continue below — all sweep cells are documented in
++[`docs/13-optimization-sweep-medium.md`](13-optimization-sweep-medium.md).
++The baseline rerun, small functional gate, medium derivative, large fix run, the 101-contig tiny floor run, the CAMI II human ~1/6 run, the CAMI II marine ~1/6 run, the CAMI III toy human gut run, and the **sweep-winner CAMI II human run** now have verified bin artifacts and CheckM2/CheckM outputs. Run links point to tracked evidence mirrors; the status banner at the top is authoritative for any active run.
+ 
+ ### COMEBin-executing attempts
+ 
+ | Run / time (UTC) | Source | Result and cause | Next step |
+
+> build · mimo-v2.6-flash-free
