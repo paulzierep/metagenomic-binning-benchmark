@@ -133175,3 +133175,223 @@ bash,628423 /vol/data/benchmark/bin/zenodo_update.sh
  628423 Wed Sep 30 00:34:57 2026 bash /vol/data/benchmark/bin/zenodo_update.sh
 > build · big-pickle
 The Zenodo hook is streaming a ~1GB tarball upload while holding the start lock. My winner-run launch waits (300s timeout). Let me monitor.
+[0m$ [0msleep 90; ps -o pid,etime,stat -p 628423,634536 2>/dev/null; echo "---"; fuser /tmp/benchmark-start.lock 2>&1; echo "---"; ls /vol/data/benchmark/runs/human_v11_winner_20260930 2>&1 | head -3
+PID     ELAPSED STAT
+ 634536       02:09 S
+---
+/tmp/benchmark-start.lock: 634536
+---
+comebin_out
+comebin_run.log
+logs
+> build · big-pickle
+The Zenodo hook finished and released the lock — my winner run acquired it and started. Let me verify registration and training.
+[0m$ [0mcat /vol/data/benchmark/.active_run | head -1; echo "=== run_meta ==="; head -16 /vol/data/benchmark/runs/human_v11_winner_20260930/run_meta.txt 2>&1 | grep -E 'commit|sweep|cmd_wrapper|threads|seed|contigs'; echo "=== v15 hook result ==="; ls -t /vol/data/benchmark/meta/zenodo_benchmark_release_v*.json | head -1
+634536 634533 /vol/data/benchmark/runs/human_v11_winner_20260930/comebin_run.log /vol/data/benchmark/runs/human_v11_winner_20260930 1790728917 cami2-human /vol/data/repos/COMEBin-v11-sweep /vol/data/datasets/cami_II_human/human_sample0_input/contigs.fa /vol/data/datasets/cami_II_human/human_sample0_input/bamfiles
+=== run_meta ===
+source:     /vol/data/repos/COMEBin-v11-sweep (branch )
+commit:     95f5ea820f9a4e76f5c2911c0b5ed507ab67b015
+contigs:    /vol/data/datasets/cami_II_human/human_sample0_input/contigs.fa
+threads:    32
+seed:       42
+sweep:      temp=0.05 emb=ref emb_cov=ref batch=ref max_edges=ref leiden_workers=ref hmm_evalue=ref n_views=6
+cmd_wrapper: /vol/data/tools/bin/micromamba run -p /vol/data/envs/comebin bash run_comebin.sh -a /vol/data/datasets/cami_II_human/human_sample0_input/contigs.fa -p /vol/data/datasets/cami_II_human/human_sample0_input/bamfiles -o /vol/data/benchmark/runs/human_v11_winner_20260930/comebin_out -n 6 -t 32 -d cpu -s 42 -l 0.05 
+=== v15 hook result ===
+/vol/data/benchmark/meta/zenodo_benchmark_release_v14.json
+> build · big-pickle
+Winner run is registered with `-l 0.05` confirmed. Let me check whether the v15 Zenodo publish completed.
+[0m$ [0mls -la /vol/data/benchmark/releases/ | tail -4; echo "=== v15 receipt? ==="; ls /vol/data/benchmark/meta/zenodo* 2>/dev/null | grep -c v15; echo "=== zenodo log tail ==="; ls /vol/data/benchmark/logs/ | grep -iE 'zenodo|eval' | tail -3
+-rw-rw-r--  1 ubuntu ubuntu     323443 Sep 29 21:21 manifest.20260929T212123Z.json
+-rw-rw-r--  1 ubuntu ubuntu     329234 Sep 29 23:02 manifest.20260929T230228Z.json
+-rw-rw-r--  1 ubuntu ubuntu     334579 Sep 29 23:36 manifest.20260929T233550Z.json
+-rw-rw-r--  1 ubuntu ubuntu     339982 Sep 30 00:35 manifest.20260930T003457Z.json
+=== v15 receipt? ===
+0
+=== zenodo log tail ===
+small_test_v4.eval-retry.log
+small_test_v4.eval.log
+tiny_test_n101_eval.log
+> build · big-pickle
+[0m$ [0mgrep -nE '^LOG=|log\(\)|LOGFILE|>> ?"?\$' /vol/data/benchmark/bin/zenodo_update.sh | head -8
+56:log() { echo "[zenodo_update] $*"; }
+> build · big-pickle
+[0m$ [0mgrep -n 'zenodo_update' /proc/*/cmdline 2>/dev/null | head -2; echo "==="; ls -la /vol/data/benchmark/releases/comebin_benchmark_release_v15* 2>/dev/null; echo "=== find the log for the run_eval chain of cell 24 (it tees somewhere) ==="; ls -t /vol/data/benchmark/logs/ | head -8
+===
+-rw-rw-r-- 1 ubuntu ubuntu 1109448921 Sep 29 23:42 /vol/data/benchmark/releases/comebin_benchmark_release_v15_20260929.tar.gz
+-rw-rw-r-- 1 ubuntu ubuntu 1113725280 Sep 30 00:41 /vol/data/benchmark/releases/comebin_benchmark_release_v15_20260930.tar.gz
+=== find the log for the run_eval chain of cell 24 (it tees somewhere) ===
+agent-run.log
+winner_human_20260930.launch.log
+status-heartbeat.log
+sweep_cell9_202609290807.log
+watchdog.log
+meta-watchdog.log
+supervise-alive.log
+supervisor-run.log
+> build · big-pickle
+[0m$ [0mtail -3 /vol/data/benchmark/status/sweep_medium.log; ps aux | grep '[r]un_sweep_medium' | wc -l; echo "=== v15 published? check zenodo API for latest version ==="; grep -l 'v15' /vol/data/benchmark/meta/zenodo_benchmark_release_v*.json 2>/dev/null | head -1 || echo "no v15 receipt"
+[2026-09-30T00:41:57Z] DONE sweep_024_seed7 (eval OK, results CSV + per-bin plots generated)
+[2026-09-30T00:41:57Z] SWEEP COMPLETE (24 cells processed) — all cells ok
+[2026-09-30T00:41:57Z] SWEEP TALLY: ok=16 failed=0 skipped=0
+0
+=== v15 published? check zenodo API for latest version ===
+> build · big-pickle
+Sweep driver completed cleanly. Let me verify whether v15 was actually published on Zenodo.
+[0m$ [0mcurl -s "https://zenodo.org/api/records?q=conceptrecid:22935024&sort=mostrecent&size=3" 2>/dev/null | python3 -c "
+import json,sys
+try:
+    d=json.load(sys.stdin)
+    for h in d.get('hits',{}).get('hits',[]):
+        print(h.get('id'), h.get('metadata',{}).get('version'), h.get('state'), h.get('updated')[:19])
+except Exception as e:
+    print('ERR', e)
+"
+23040201 14.0 done 2026-09-29T14:48:25
+> build · big-pickle
+[0m$ [0mls -t /vol/data/benchmark/runs/sweep_024_seed7/eval/*.log 2>/dev/null | head -3; for f in /vol/data/benchmark/runs/sweep_024_seed7/eval/*.log; do echo "== $f"; tail -5 "$f" 2>/dev/null; done 2>/dev/null | tail -20
+== /vol/data/benchmark/runs/sweep_024_seed7/eval/*.log
+> build · big-pickle
+[0m$ [0mls /vol/data/benchmark/runs/sweep_024_seed7/eval/ 2>&1; echo "=== any zenodo output captured? ==="; grep -rl 'zenodo' /vol/data/benchmark/runs/sweep_024_seed7/ 2>/dev/null | head -3
+checkm
+checkm2
+=== any zenodo output captured? ===
+> build · big-pickle
+Sweep complete. The v15 publish hook exited without a receipt — I'll fold that into the final Zenodo bundle step. Now let me commit the docs/tool updates (lock first).
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && git status --short | head -20
+M PROGRESS.md
+ M docs/13-optimization-sweep-medium.md
+ M results/all_runs_table.md
+ M results/figures/comp_vs_cont_all-runs.png
+ M results/figures/comp_vs_cont_by_dataset.png
+ M results/sweep_rankings.md
+ M scripts/make_all_runs_table.py
+?? results/sweep_024_seed7.csv
+> build · big-pickle
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && flock -w 300 /tmp/bench-repo.lock bash -c '
+git add PROGRESS.md docs/13-optimization-sweep-medium.md results/all_runs_table.md results/sweep_rankings.md scripts/make_all_runs_table.py results/sweep_024_seed7.csv status/agent-activity.log 2>&1
+git commit -q -m "sweep complete: final ranking + winner temp=0.05; docs + tables updated
+
+Issue #25 24-cell medium sweep finished. sweep_024_seed7 eval OK
+(15 bins, CheckM2 37.37/5.60). rank_sweep_medium.py ranks 23 evaluated
+cells (cell 2 = documented stock-master failure); winner is
+sweep_004_temp005 (temperature 0.05): CheckM2 43.55/6.77, F1 59.37 vs
+ref 34.22/4.11 / 50.44. Runners-up batch/emb_cov 512 (fast + strong).
+
+docs/13 marked COMPLETE with per-cell results, winner analysis (low
+temperature boosts completeness most; batch<=512 is cheapest strong
+axis) and the parameter-provenance cross-check note. make_all_runs_table
+now labels sweep worktrees (sweep / master) and carries one-line
+comments per sweep cell; 23 sweep rows flow into README section e.
+PROGRESS.md updated. Winner launched on CAMI II human (temp 0.05)." 2>&1 | tail -2
+git log --oneline -1'
+e021b0f3 sweep complete: final ranking + winner temp=0.05; docs + tables updated
+> build · big-pickle
+Committed. Now let me post the #25 result comment with the ranking summary. Let me check the existing comments first.
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && gh issue comment -R paulzierep/metagenomic-binning-benchmark 25 --body "$(cat <<'EOF'
+Sweep complete — 24/24 cells, ranking delivered 🏁
+
+The 24-cell medium-dataset sweep (issue #25) is **done** (2026-09-28 → 2026-09-30). 23 cells evaluated end-to-end (CheckM2 + CheckM v1 + per-bin plots); cell 2 (`sweep_002_master`, stock upstream `904f649`) is the one documented failure — it dies on the medium BAM/assembly mismatch (`KeyError: 'BATS_…_scaffold_22978'`, exit 1 after 108 s, 0 bins), same root cause as #2, not retried.
+
+**Winner (your rule: bin stats first) → `sweep_004_temp005`: temperature 0.05**
+- CheckM2 **43.55 % completeness / 6.77 % contamination**, F1 **59.37** (13 bins)
+- vs reference run (defaults): 34.22 / 4.11, F1 50.44 → **+9.3 pp completeness, +8.9 F1**
+
+Top 5 (full table in `results/sweep_rankings.md`, also in docs/13):
+
+| Rank | Cell | Param | Wall | Bins | CheckM2 comp/cont | F1 |
+|---|---|---|---|---|---|---|
+| 1 | sweep_004_temp005 | temp 0.05 | 47m | 13 | 43.55 / 6.77 | 59.37 |
+| 2 | sweep_023_embcov512_batch512 | emb_cov 512, batch 512 | 21m | 13 | 43.16 / 7.52 | 58.85 |
+| 3 | sweep_011_batch512 | batch 512 | 26m | 14 | 41.56 / 6.34 | 57.57 |
+| 4 | sweep_013_edges80 | max_edges 80 | 46m | 15 | 40.39 / 5.29 | 56.63 |
+| 5 | sweep_007_emb1024 | emb 1024 | 40m | 15 | 38.40 / 4.76 | 54.73 |
+
+Takeaways:
+- **Low temperature is the single strongest lever** for completeness.
+- **batch ≤ 512** is the cheapest strong change (~2× faster AND +~7 pp completeness) — runner-up confirms it as an independent axis (emb_cov 512).
+- **Seed sensitivity is real**: same reference config with seed 7 (cell 24) gives 37.37 vs 34.22 completeness — relevant to #21.
+- All params verified against the actual command line (`cmd_wrapper`), so the ranking is not affected by the old stale `sweep:` meta text (documented in docs/13 + sweep_rankings.md).
+
+**Next steps (following your "only cami ii/iii human for larger data" rule):**
+- ✅ Winner **temp 0.05** launched on **CAMI II human** (4,900 contigs, `95f5ea8`, seed 42, 32 threads) — running now.
+- After it finishes: AMBER scoring vs the CAMI II human gold standard, biobox v0.9.1 export (bins FASTA + `<sample>.binning` + stats), then CAMI III toy human with the winner.
+- Medium/other datasets get archived to Zenodo + freed (v15 release already staged).
+EOF
+)" 2>&1 | tail -3
+https://github.com/paulzierep/metagenomic-binning-benchmark/issues/25#issuecomment-5901812071
+> build · big-pickle
+Comment posted. Let me log activity and check the winner run's progress.
+[0m$ [0mTS=$(date -u +"%Y-%m-%dT%H:%M:%SZ"); \
+echo "$TS post #25 result comment (issuecomment-5901812071): winner temp0.05, top-5 table, next steps (CAMI II human running)" >> /vol/data/repos/metagenomic-binning-benchmark/status/agent-activity.log; \
+echo "$TS commit e021b0f3 (sweep docs+ranking); winner human run active" > /vol/data/benchmark/.activity; \
+touch /vol/data/benchmark/.heartbeat; \
+grep -oE 'epoch=[0-9]+/200|Automatically selected|user-specified' /vol/data/benchmark/runs/human_v11_winner_20260930/comebin_run.log | tail -2
+{"exit":0,"truncated":false,"output":"","status":"completed"}
+> build · big-pickle
+[0m$ [0mgrep -oE 'epoch=[0-9]+/200|Tau\(temperature\)|Use user-specified' /vol/data/benchmark/runs/human_v11_winner_20260930/comebin_run.log 2>/dev/null | tail -2; echo "---"; tail -1 /vol/data/benchmark/runs/human_v11_winner_20260930/comebin_run.log 2>/dev/null | cut -c1-120
+Tau(temperature)
+---
+2026-09-30 00:42:21,521 - Coverage inputs: contigs=4900, views=6, BAMs=1, workers=1.
+> build · big-pickle
+[0m$ [0mgrep -B1 -A1 'Tau(temperature)' /vol/data/benchmark/runs/human_v11_winner_20260930/comebin_run.log | head -5
+HMMER sequence E-value: 1e-5
+Tau(temperature): 0.05
+Running data augmentation.
+> build · big-pickle
+Temperature confirmed: `Tau(temperature): 0.05` on the winner human run. Let me verify the v15 Zenodo publish status while training runs.
+[0m$ [0mcurl -s "https://zenodo.org/api/records?q=conceptrecid:22935024&size=20&sort=mostrecent" 2>/dev/null | python3 -c "
+import json,sys
+d=json.load(sys.stdin)
+hs=d.get('hits',{}).get('hits',[])
+print('records:', len(hs))
+for h in hs:
+    print(h.get('id'), h.get('metadata',{}).get('version'), h.get('state'))
+"
+records: 1
+23040201 14.0 done
+> build · big-pickle
+v15 was not published (hook died before publish completed); the tarball is staged locally and will fold into the final consolidated Zenodo bundle. The winner run is healthy (training on 4,900 contigs, temp 0.05 confirmed). While it trains (~1.5–2 h), let me verify the AMBER + biobox tooling for the follow-on.
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && head -40 scripts/make_amber_prediction.py | grep -nE 'usage|human|gsa|prediction|binning' | head; echo "=== export_biobox usage ==="; head -30 scripts/export_biobox.sh | grep -E 'Usage|take|\$1|run' | head -8
+2:"""make_amber_prediction.py — build an AMBER genome-binning prediction TSV.
+4:Issue #25 follow-on: AMBER needs a `@@SEQUENCEID BINID` binning file plus the
+8:  python3 make_amber_prediction.py <run_dir> <sample_id> > out.binning
+16:  python3 make_amber_prediction.py runs/marine_v11_20260925 marine \
+17:      > /vol/data/benchmark/amber/marine_comebin.binning
+19:      <that file> -g <binning_gs.tsv> -o output_marine -l comebin_v11
+27:        sys.exit("usage: make_amber_prediction.py <run_dir> <sample_id>")
+=== export_biobox usage ===
+# export_biobox.sh <run_dir>  — export a run's bins as a CAMI biobox tarball.
+# Our run layout:
+#   runs/<run>/comebin_out/comebin_res/comebin_res_bins/<id>.fa   (cluster bins)
+#   runs/<run>/per_bin_results.csv                                (stats)
+# Output (written next to the run dir):
+#   runs/<run>/biobox/<sample>.binning                            (CAMI v0.9.1)
+#   runs/<run>/biobox/binning.tar.gz                              (tree of bins)
+#   runs/<run>/biobox/bins.fasta.gz                               (all bins, concat)
+> build · big-pickle
+Both tools are ready. Let me check the disk usage to plan the archive-and-free step (owner's directive) once the run completes.
+[0m$ [0mdu -sh /vol/data/benchmark/runs/ 2>/dev/null | tail -1; echo "=== top runs by size ==="; du -sh /vol/data/benchmark/runs/* 2>/dev/null | sort -rh | head -8; echo "=== datasets ==="; du -sh /vol/data/datasets/* 2>/dev/null | sort -rh | head -8
+29G	/vol/data/benchmark/runs/
+=== top runs by size ===
+9.1G	/vol/data/benchmark/runs/cami3_v11_20260926_rerun
+3.7G	/vol/data/benchmark/runs/cami3_v11_20260926
+2.8G	/vol/data/benchmark/runs/marine_v11_20260925
+1.7G	/vol/data/benchmark/runs/baseline_rerun_autorestart1
+1.5G	/vol/data/benchmark/runs/human_v11_20260925
+1.2G	/vol/data/benchmark/runs/baseline_unmodified
+688M	/vol/data/benchmark/runs/fix_v11_20260924
+612M	/vol/data/benchmark/runs/sweep_008_emb4096
+=== datasets ===
+64G	/vol/data/datasets/cami_II
+27G	/vol/data/datasets/cami_II_human
+16G	/vol/data/datasets/cami_III
+6.4G	/vol/data/datasets/comebin_test_data
+5.2G	/vol/data/datasets/comebin_test_data.zip
+424M	/vol/data/datasets/comebin_medium
+100M	/vol/data/datasets/comebin_small
+47M	/vol/data/datasets/comebin_tiny_101
+> build · big-pickle
+Disk plan is clear. Now let me monitor the winner run (training on CAMI II human, ETA ~1.5 h). I'll check at intervals.
+[0m$ [0mgrep -oE 'epoch=[0-9]+/200' /vol/data/benchmark/runs/human_v11_winner_20260930/comebin_run.log 2>/dev/null | tail -1; tail -1 /vol/data/benchmark/runs/human_v11_winner_20260930/comebin_run.log | cut -c1-90
+2026-09-30 00:42:21,521 - Coverage inputs: contigs=4900, views=6, BAMs=1, workers=1.
+> build · big-pickle
