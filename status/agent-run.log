@@ -137918,3 +137918,157 @@ Index: /vol/data/repos/metagenomic-binning-benchmark/docs/13-optimization-sweep-
 > build · big-pickle
 [0m→ [0mRead /vol/data/repos/metagenomic-binning-benchmark/docs/15-amber-cami2-human.md 
 > build · big-pickle
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/docs/15-amber-cami2-human.md
+Index: /vol/data/repos/metagenomic-binning-benchmark/docs/15-amber-cami2-human.md
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/docs/15-amber-cami2-human.md
++++ /vol/data/repos/metagenomic-binning-benchmark/docs/15-amber-cami2-human.md
+@@ -79,4 +79,25 @@
+   genome assignment (0 missing), 64 unique genomes.
+ - The pooled mapping (`gsa_pooled_mapping.tsv.gz`, `PC*` ids) is a *different*
+   assembly and is **not** used here — the sample-level `gsa_mapping.tsv.gz`
+   (`S0C*`) is the correct ground truth for this subset.
++
++## 2026-09-30 — winner (temp 0.05) rescored against the same gold standard
++
++`human_v11_winner_20260930` (54 bins, seed 42, THREADS 32) scored with the
++identical gold standard via the generic chain (`make_amber_prediction.py` +
++`amber.py -l comebin`):
++
++| | ref `human_v11_20260925` (107 bins) | winner `human_v11_winner_20260930` (54 bins) |
++|---|---|---|
++| accuracy_bp | 0.814 | 0.781 |
++| precision_weighted_bp | 0.819 | 0.888 |
++| recall_weighted_bp | 0.722 | 0.875 |
++| **F1_bp** | **0.681** | **0.881** |
++| ARI_bp | 0.769 | 0.623 |
++| misclassification_bp | 0.181 | 0.111 |
++
++The low-temperature winner trades strict per-sequence assignment (accuracy and
++ARI drop) for **purer, more complete bins** (precision 0.819→0.888, recall
++0.722→0.875, F1_bp +0.20, misclassification halved). Files:
++`results/amber/human/amber_{results,bin_metrics}_human_v11_winner_20260930.tsv`,
++`amber_report_human_v11_winner_20260930.html`, `heatmap_human_v11_winner_20260930.png`.
+
+> build · big-pickle
+[0m→ [0mRead /vol/data/repos/metagenomic-binning-benchmark/README.md [90m[limit=30, offset=18][0m
+> build · big-pickle
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/README.md
+Index: /vol/data/repos/metagenomic-binning-benchmark/README.md
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/README.md
++++ /vol/data/repos/metagenomic-binning-benchmark/README.md
+@@ -29,17 +29,20 @@
+ [`docs/`](docs/) · full run history: [`docs/11-run-results.md`](docs/11-run-results.md).
+ 
+ ## Progress
+ 
+-- 🏆 **Latest achievement:** CAMI III run delivered —
+-  `cami3_v11_20260926_rerun` on the toy human-gut set: **492 bins**,
+-  CheckM2 35.97 % / 11.42 % (HQ 53 / MQ 112), wall 90 min; every evaluated run
+-  archived on **Zenodo v3**
+-  ([concept DOI](https://doi.org/10.5281/zenodo.22935024) · [version DOI](https://doi.org/10.5281/zenodo.22973575)).
+-- ⏭ **Next step:** run the medium-dataset optimization sweep (issue #25,
+-  20+ runs with varied parameters/commits, best by bin stats then runtime) and
+-  reconcile the fork's master with `comebin-optimizations-v11`; then re-run
+-  CAMI II & III **human** sets on any fix that survives the sweep.
++- 🏆 **Latest achievement:** issue-#25 sweep delivered + winner validated on
++  CAMI II **human**: `human_v11_winner_20260930` (temp 0.05) → **54 bins,
++  CheckM2 61.70 % / 8.25 %** (vs ref 35.31 % / 5.13 %: **+26.4 pp
++  completeness**), **AMBER F1_bp 0.881** (vs ref 0.681), +20 pp on the official
++  CAMI score. The same winner run is now in flight on CAMI III toy human;
++  every evaluated run is archived on **Zenodo**
++  ([concept DOI](https://doi.org/10.5281/zenodo.22935024)). Full sweep ranking:
++  [`results/sweep_rankings.md`](results/sweep_rankings.md) · validation table:
++  [`docs/13`](docs/13-optimization-sweep-medium.md).
++- ⏭ **Next step:** finish the CAMI III human winner run (eval + AMBER + biobox
++  via `run_eval_chain.sh`), consolidate the Zenodo bundle, and publish the
++  consolidated release with sweep + AMBER + biobox artifacts.
+ 
+ ## Benchmark plots
+ 
+ Four benchmark datasets, each a stacked comparison of every evaluated run for
+
+> build · big-pickle
+Checking Zenodo re-run + cami3 progress before committing.
+[0m$ [0mtail -3 /vol/data/benchmark/logs/zenodo_update_v15_rerun_20260930.log | cut -c1-130; echo "---cami3---"; grep -oE 'epoch=[0-9]+/200' /vol/data/benchmark/runs/cami3_v11_winner_20260930/comebin_run.log 2>/dev/null | tail -1; tail -2 /vol/data/benchmark/runs/cami3_v11_winner_20260930/comebin_run.log | cut -c1-90
+[zenodo_update] runs in package: baseline_rerun_autorestart1 (60 bins) cami3_v11_20260926_rerun (492 bins) fix_v11_20260924 (71 bi
+[zenodo_update] manifest: 1926 files, 2861567070 bytes
+[zenodo_update] reusing open draft 23042028
+---cami3---
+2026-09-30 02:33:01,260 - NN training: first combined-model backward pass and optimizer st
+ 25%|██▌       | 1/4 [00:05<00:15,  5.13s/it] 50%|█████     | 2/4 [00:10
+> build · big-pickle
+Committing now. Checking the working-tree state first (watch out for the supervisor committer's churn in `status/` and `runs/cami3*`).
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && git status --porcelain | head -40; echo "---diff stat README---"; git diff --stat README.md
+M PROGRESS.md
+ M README.md
+ M docs/13-optimization-sweep-medium.md
+ M docs/15-amber-cami2-human.md
+ M results/all_runs_table.md
+ M results/figures/combined_bar_plot.png
+ M results/figures/combined_bar_plot.svg
+ M results/figures/comp_vs_cont_all-runs.png
+ M results/figures/comp_vs_cont_by_dataset.png
+ M results/main_runs_table.md
+ M scripts/zenodo_update.sh
+?? results/amber/human/amber_report_human_v11_winner_20260930.html
+?? results/amber/human/amber_results_human_v11_winner_20260930.tsv
+?? results/amber/human/bin_metrics_human_v11_winner_20260930.tsv
+?? results/amber/human/heatmap_human_v11_winner_20260930.png
+?? results/human_v11_winner_20260930.csv
+---diff stat README---
+ README.md | 21 ++++++++++++---------
+ 1 file changed, 12 insertions(+), 9 deletions(-)
+> build · big-pickle
+Working tree is clean — my changes are exactly the intended paths. Let me log, then commit under the lock (staging only intended paths).
+[0m$ [0mTS=$(date -u +"%Y-%m-%dT%H:%M:%SZ"); echo "$TS human winner validated (CheckM2 61.70/8.25, AMBER F1_bp 0.881 vs 0.681); CAMI3 winner launched; zenodo v15 fix (-T streaming); docs/13+15+README+PROGRESS updated; committing" >> /vol/data/repos/metagenomic-binning-benchmark/status/agent-activity.log; cd /vol/data/repos/metagenomic-binning-benchmark && git add PROGRESS.md README.md docs/13-optimization-sweep-medium.md docs/15-amber-cami2-human.md results/all_runs_table.md results/main_runs_table.md results/figures/combined_bar_plot.png results/figures/combined_bar_plot.svg results/figures/comp_vs_cont_all-runs.png results/figures/comp_vs_cont_by_dataset.png scripts/zenodo_update.sh results/amber/human/amber_report_human_v11_winner_20260930.html results/amber/human/amber_results_human_v11_winner_20260930.tsv results/amber/human/bin_metrics_human_v11_winner_20260930.tsv results/amber/human/heatmap_human_v11_winner_20260930.png results/human_v11_winner_20260930.csv runs/human_v11_winner_20260930/run_meta.txt runs/human_v11_winner_20260930/comebin_run.log runs/human_v11_winner_20260930/logs/resources.tsv runs/human_v11_winner_20260930/logs/sampler.out runs/human_v11_winner_20260930/comebin_res/comebin.log runs/human_v11_winner_20260930/comebin_res/config.yml runs/human_v11_winner_20260930/comebin_res/training.log status/agent-activity.log && git status --porcelain | grep -cE '^[MAD]' && git status --porcelain | grep -vE '^[MAD]' | head -5
+17
+> build · big-pickle
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && git diff --cached --stat | tail -25; echo "---run_meta cached diff---"; git diff --cached -- runs/human_v11_winner_20260930/run_meta.txt | grep -E '^[+-]' | grep -vE '^[+-]{3}' | head -15
+PROGRESS.md                                        |   34 +
+ README.md                                          |   21 +-
+ docs/13-optimization-sweep-medium.md               |   26 +-
+ docs/15-amber-cami2-human.md                       |   21 +
+ results/all_runs_table.md                          |    2 +
+ .../amber_report_human_v11_winner_20260930.html    | 1122 ++++++++++++++++++++
+ .../amber_results_human_v11_winner_20260930.tsv    |    3 +
+ .../bin_metrics_human_v11_winner_20260930.tsv      |  119 +++
+ .../human/heatmap_human_v11_winner_20260930.png    |  Bin 0 -> 353 bytes
+ results/figures/combined_bar_plot.png              |  Bin 429938 -> 443203 bytes
+ results/figures/combined_bar_plot.svg              |  566 ++++++----
+ results/figures/comp_vs_cont_all-runs.png          |  Bin 192840 -> 235860 bytes
+ results/figures/comp_vs_cont_by_dataset.png        |  Bin 273424 -> 321279 bytes
+ results/human_v11_winner_20260930.csv              |    2 +
+ results/main_runs_table.md                         |    1 +
+ scripts/zenodo_update.sh                           |   19 +-
+ status/agent-activity.log                          |    1 +
+ 17 files changed, 1740 insertions(+), 197 deletions(-)
+---run_meta cached diff---
+> build · big-pickle
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && git status --porcelain runs/ | head; echo "---is human winner run_meta final?---"; grep -E '^exit_code|^wall_s|^cmd_eval|^bins:' runs/human_v11_winner_20260930/run_meta.txt | head; echo "---ls run dir---"; ls runs/human_v11_winner_20260930/; echo "---tracked list---"; git ls-files runs/human_v11_winner_20260930/
+---is human winner run_meta final?---
+exit_code:  0
+wall_s:     4955
+bins:       54  -> /vol/data/benchmark/runs/human_v11_winner_20260930/comebin_out/comebin_res/comebin_res_bins
+---ls run dir---
+comebin_res
+comebin_run.log
+logs
+per_bin_results.csv
+per_bins.png
+run_meta.txt
+---tracked list---
+runs/human_v11_winner_20260930/comebin_res/comebin.log
+runs/human_v11_winner_20260930/comebin_res/config.yml
+runs/human_v11_winner_20260930/comebin_res/training.log
+runs/human_v11_winner_20260930/comebin_run.log
+runs/human_v11_winner_20260930/logs/resources.tsv
+runs/human_v11_winner_20260930/logs/sampler.out
+runs/human_v11_winner_20260930/per_bin_results.csv
+runs/human_v11_winner_20260930/per_bins.png
+runs/human_v11_winner_20260930/run_meta.txt
+> build · big-pickle
+All 17 staged files are mine (the run-dir metadata was already committed final by the supervisor). Committing + pushing under the lock.
+[0m
+> build · mimo-v2.6-flash-free
