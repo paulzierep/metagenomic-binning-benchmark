@@ -2,14 +2,15 @@
 
 | | |
 |---|---|
-| Status | 🔴 `stopped (watchdog will restart)` |
-| ⏱ Updated (Europe/Berlin) | `2026-09-30T06:24 CEST` |
-| 🏃 Last benchmark (not active) | `cami3_v11_winner_20260930` — last observed **epoch 199/200** (log 2347s old) |
+| Status | 🟢 `running` |
+| ⏱ Updated (Europe/Berlin) | `2026-09-30T06:26 CEST` |
+| 🏃 Last benchmark (not active) | `cami3_v11_winner_20260930` — last observed **epoch 199/200** (log 2468s old) |
 | 🧠 Model (last turn) | `nemotron-3.5-lightning-free` (watchdog rotates to free models on quota) |
-| 📌 Agent note · **2 min old** | heartbeat is fresh (180s) but no primary driver/run owns it — supervisor/maintenance heartbeat ignored |
-| ⚙️ Load · uptime | `13.94 13.27 17.18` · 6 days, 14 hours, 48 minutes — 32 cores, 62 GiB, no GPU |
-| 💾 RAM used/total | `17117/64295 MB` |
+| 📌 Agent note · **4 min old** | 2026-09-30T04:21:07Z
+2026-09-30T04:22:10Z - Eval chain launched for CAMI III winner run cami3_v11_winner_20260930 |
+| ⚙️ Load · uptime | `11.94 12.91 16.57` · 6 days, 14 hours, 50 minutes — 32 cores, 62 GiB, no GPU |
+| 💾 RAM used/total | `3803/64295 MB` |
 | 🔗 Session | `ses_f31799c77ffeTq9gcYgqc4hBhg` |
-| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `79d297ce meta: supervise tick 2026-09-30T04:23:01Z — 0 fix(es)` |
-| 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `14542293 B` — every run, command & tool result |
+| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `d08e22b5 status: no — cami3_v11_winner_20260930 epoch 199/200 loss 0.939392328` |
+| 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `14550492 B` — every run, command & tool result |
 | 📈 Timeline | [status/status.log](status/status.log) |
