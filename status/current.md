@@ -3,13 +3,13 @@
 | | |
 |---|---|
 | Status | 🟢 `running` |
-| ⏱ Updated (Europe/Berlin) | `2026-09-30T04:04 CEST` |
-| 🏃 Live benchmark | `human_v11_winner_20260930` — **epoch 199/200** · loss `0.1844758540391922` · top1 acc `97.32421875` (log 241s fresh) |
+| ⏱ Updated (Europe/Berlin) | `2026-09-30T04:06 CEST` |
+| 🏃 Last benchmark (not active) | `human_v11_winner_20260930` — last observed **epoch 199/200** (log 361s old) |
 | 🧠 Model (last turn) | `big-pickle` (watchdog rotates to free models on quota) |
-| 📌 Agent note · **28 min old** | agent driver alive; transcript fresh (36s) while heartbeat is stale (1712s) |
-| ⚙️ Load · uptime | `15.22 23.19 26.97` · 6 days, 12 hours, 28 minutes — 32 cores, 62 GiB, no GPU |
-| 💾 RAM used/total | `2766/64295 MB` |
+| 📌 Agent note · **30 min old** | agent driver alive; transcript fresh (1s) while heartbeat is stale (1832s) |
+| ⚙️ Load · uptime | `6.39 17.63 24.50` · 6 days, 12 hours, 30 minutes — 32 cores, 62 GiB, no GPU |
+| 💾 RAM used/total | `5502/64295 MB` |
 | 🔗 Session | `ses_f31799c77ffeTq9gcYgqc4hBhg` |
-| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `a0ffbf29 meta: supervise tick 2026-09-30T02:03:01Z — 0 fix(es)` |
-| 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `14210210 B` — every run, command & tool result |
+| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `da789764 status: yes — human_v11_winner_20260930 epoch 199/200 loss 0.18447585` |
+| 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `14234487 B` — every run, command & tool result |
 | 📈 Timeline | [status/status.log](status/status.log) |
