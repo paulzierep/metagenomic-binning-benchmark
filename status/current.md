@@ -3,13 +3,13 @@
 | | |
 |---|---|
 | Status | 🟢 `running` |
-| ⏱ Updated (Europe/Berlin) | `2026-09-30T03:20 CEST` |
-| 🏃 Live benchmark | `human_v11_winner_20260930` — **epoch 78/200** · loss `2.447855234146118` · top1 acc `54.365234375` (log 1s fresh) |
+| ⏱ Updated (Europe/Berlin) | `2026-09-30T03:22 CEST` |
+| 🏃 Live benchmark | `human_v11_winner_20260930` — **epoch 84/200** · loss `1.8796966075897217` · top1 acc `63.746742248535156` (log 3s fresh) |
 | 🧠 Model (last turn) | `big-pickle` (watchdog rotates to free models on quota) |
-| 📌 Agent note · **5 min old** | 2026-09-30T01:14:37Z resume after restart: verified winner human run active; sweep 24/24 complete; issue triage = no new owner input; follow-on eval chain being prepared |
-| ⚙️ Load · uptime | `30.37 30.00 24.65` · 6 days, 11 hours, 44 minutes — 32 cores, 62 GiB, no GPU |
-| 💾 RAM used/total | `5398/64295 MB` |
+| 📌 Agent note · **0 min old** | 2026-09-30T01:21:33Z monitoring winner human ep83/200 |
+| ⚙️ Load · uptime | `31.87 30.70 25.55` · 6 days, 11 hours, 46 minutes — 32 cores, 62 GiB, no GPU |
+| 💾 RAM used/total | `6027/64295 MB` |
 | 🔗 Session | `ses_f31799c77ffeTq9gcYgqc4hBhg` |
-| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `cae68d8c status: yes — human_v11_winner_20260930 epoch 72/200 loss 2.888596296` |
-| 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `14097332 B` — every run, command & tool result |
+| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `08cec34c PROGRESS: AMBER CAMI III delivered (F1_bp 0.743) + winner human run at ` |
+| 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `14174198 B` — every run, command & tool result |
 | 📈 Timeline | [status/status.log](status/status.log) |
