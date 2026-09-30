@@ -132973,3 +132973,205 @@ escalate-1790709189.txt
 313:NEW_ID=$(python3 -c "import json;print(json.load(open('$WORK/resp.json')).get('id') or '$DRAFT_ID')")
 317:  req GET "https://zenodo.org/api/deposit/depositions/$DRAFT_ID"
 318:  [ "$CODE" = "200" ] || die "polling draft state failed (HTTP $CODE)"
+> build · big-pickle
+[0m$ [0msed -n '300,340p' /vol/data/benchmark/bin/zenodo_update.sh
+-H "Content-Type: application/json" --data-binary "@$WORK/meta.json"
+[ "$CODE" = "200" ] || die "metadata update failed (HTTP $CODE): $(head -c 300 "$WORK/resp.json")"
+log "metadata updated (version $VERSION.0, title/description refreshed)"
+rm -rf "$WORK"; WORK=$(mktemp -d "$RELEASES/api.XXXXXX")
+
+# --- Publish + verify ---------------------------------------------------------
+# Zenodo's publish action may answer 202 (Accepted) and finish asynchronously;
+# poll the deposition until its state is `done` before verifying.
+req POST "https://zenodo.org/api/deposit/depositions/$DRAFT_ID/actions/publish"
+case "$CODE" in
+  200|201|202) ;;
+  *) die "publish failed (HTTP $CODE): $(head -c 400 "$WORK/resp.json")" ;;
+esac
+NEW_ID=$(python3 -c "import json;print(json.load(open('$WORK/resp.json')).get('id') or '$DRAFT_ID')")
+NEW_DOI=$(python3 -c "
+import json;d=json.load(open('$WORK/resp.json'));print(d.get('doi') or d.get('metadata',{}).get('doi') or '')")
+for _ in 1 2 3 4 5 6 7 8 9 10; do
+  req GET "https://zenodo.org/api/deposit/depositions/$DRAFT_ID"
+  [ "$CODE" = "200" ] || die "polling draft state failed (HTTP $CODE)"
+  STATE=$(python3 -c "import json;print(json.load(open('$WORK/resp.json')).get('state',''))")
+  [ "$STATE" = "done" ] && break
+  sleep 3
+done
+[ "${STATE:-}" = "done" ] || die "deposition did not reach state=done (state=${STATE:-unknown})"
+log "published record $NEW_ID (doi $NEW_DOI)"
+rm -rf "$WORK"; WORK=$(mktemp -d "$RELEASES/api.XXXXXX")
+
+req GET "https://zenodo.org/api/records/$NEW_ID"
+[ "$CODE" = "200" ] || die "post-publish record lookup failed (HTTP $CODE)"
+python3 - "$WORK/resp.json" "$FNAME" "$(stat -c%s "$OUT")" "$OUT_MD5" <<'PY'
+import json, sys
+rec, fname, size, md5 = json.load(open(sys.argv[1])), sys.argv[2], int(sys.argv[3]), sys.argv[4]
+# Zenodo returns "files" either as {"entries": {...}} (API 2.x), a bare dict, or
+# a plain list (API 1.x shape) — normalise all three before the lookups.
+raw = rec.get("files", {})
+if isinstance(raw, dict):
+    files = raw.get("entries", {}) or raw
+else:
+    files = {f.get("key") or f.get("filename"): f for f in raw}
+entry = files.get(fname)
+if entry is None:
+> build · big-pickle
+The Zenodo hook polls asynchronously (could take a while). The run slot is free, so I can launch the winner on CAMI II human. Let me check how the human run was launched before.
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && grep -E 'contigs|bamdir|threads|seed|source|commit|MODE|mode' runs/human_v11_20260925/run_meta.txt | head -12; echo "=== human input dir ==="; ls /vol/data/datasets/cami_II/human_sample0_input/ 2>&1 | head
+source:     /vol/data/repos/COMEBin-v11 (branch comebin-optimizations-v11)
+commit:     95f5ea820f9a4e76f5c2911c0b5ed507ab67b015
+contigs:    /vol/data/datasets/cami_II_human/human_sample0_input/contigs.fa
+bamdir:     /vol/data/datasets/cami_II_human/human_sample0_input/bamfiles
+threads:    32
+seed:       42
+cmd_wrapper: /vol/data/tools/bin/micromamba run -p /vol/data/envs/comebin bash run_comebin.sh -a /vol/data/datasets/cami_II_human/human_sample0_input/contigs.fa -p /vol/data/datasets/cami_II_human/human_sample0_input/bamfiles -o /vol/data/benchmark/runs/human_v11_20260925/comebin_out -n 6 -t 32 -d cpu -s 42 
+cmd_from_log: 2026-09-25 03:34:22,252 - HMMsearch command: /vol/data/envs/comebin/bin/hmmsearch --domtblout /vol/data/datasets/cami_II_human/human_sample0_input/.contigs.fa.bacar_marker.hmmout.1473618.91h4_894.tmp -E 1e-05 --cpu 32 /vol/data/repos/COMEBin-v11/auxiliary/bacar_marker.hmm /vol/data/datasets/cami_II_human/human_sample0_input/contigs.fa.frag.faa
+cmd_checkm2: /vol/data/tools/bin/micromamba run -p /vol/data/envs/checkm2 checkm2 predict --threads 32 --database_path /vol/data/benchmark/checkm2db/CheckM2_database/uniref100.KO.1.dmnd --input /vol/data/benchmark/runs/human_v11_20260925/comebin_out/comebin_res/comebin_res_bins --output-directory /vol/data/benchmark/runs/human_v11_20260925/eval/checkm2 -x fa --force
+=== human input dir ===
+ls: cannot access '/vol/data/datasets/cami_II/human_sample0_input/': No such file or directory
+> build · big-pickle
+[0m$ [0mls -d /vol/data/datasets/cami_II_human/human_sample0_input 2>&1 && df -h /vol/data | tail -1; echo "=== run_comebin_fix.sh cami2-human mode check ==="; grep -nE 'cami2|human|MODE' /vol/data/repos/metagenomic-binning-benchmark/scripts/run_comebin_fix.sh | head -15
+/vol/data/datasets/cami_II_human/human_sample0_input
+/dev/vdb        492G  180G  287G  39% /vol/data
+=== run_comebin_fix.sh cami2-human mode check ===
+13:MODE=${MODE:-fix}
+135:  "$RUNDIR/comebin_run.log" "$RUNDIR" "$(date +%s)" "$MODE" "$SRC" "$CONTIGS" "$BAMDIR" > "$ACTIVE.tmp.$$"
+> build · big-pickle
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && sed -n '1,40p' scripts/run_comebin_fix.sh
+#!/usr/bin/env bash
+# run_comebin_fix.sh — run a FIXED COMEBin source tree on the demo dataset and
+# record the run exactly like the baseline. The default is the current v1.1.0
+# optimization worktree; override with SRC_COMEBIN=/path/to/repo.
+set -euo pipefail
+
+MM=/vol/data/tools/bin/micromamba
+ENV=/vol/data/envs/comebin
+SRC=${SRC_COMEBIN:-/vol/data/repos/COMEBin-v11}
+DATA=${DATA:-/vol/data/datasets/comebin_test_data}
+CONTIGS=${CONTIGS:-"$DATA/BATS_SAMN07137077_METAG.scaffolds.min500.fasta.f1k.fasta"}
+BAMDIR=${BAMDIR:-"$DATA/bamfiles"}
+MODE=${MODE:-fix}
+[ -f "$CONTIGS" ] || { echo "ERROR: contigs file not found: $CONTIGS"; exit 1; }
+[ -d "$BAMDIR" ] || { echo "ERROR: bamdir not found: $BAMDIR"; exit 1; }
+RUNDIR=$(realpath -m "${1:-/vol/data/benchmark/runs/fix_v11}")
+THREADS=${THREADS:-32}
+SEED=${SEED:-}
+START_LOCK=/tmp/benchmark-start.lock
+ACTIVE=/vol/data/benchmark/.active_run
+[ -f "$SRC/COMEBin/run_comebin.sh" ] || { echo "ERROR: invalid SRC_COMEBIN repo root: $SRC"; exit 1; }
+
+exec 9>"$START_LOCK"
+# Bounded wait: a just-finished run can leave fd 9 briefly open in a lingering
+# child, which made the sweep's next cell fail instantly ("another benchmark
+# launch holds ...").  Wait for it to clear instead of racing it.
+flock -w 300 9 || { echo "ERROR: another benchmark launch holds $START_LOCK (waited 300s)"; exit 1; }
+if [ -f "$ACTIVE" ] && [ "${BENCHMARK_WATCHDOG_REPLACE:-0}" != "1" ]; then
+  read -r active_pid active_pgid active_log active_dir active_start active_mode active_src < "$ACTIVE" || true
+  active_state=$(ps -o stat= -p "${active_pid:-0}" 2>/dev/null | tr -d ' ' || true)
+  if [ -n "${active_pid:-}" ] && kill -0 "$active_pid" 2>/dev/null && [[ "$active_state" != Z* ]]; then
+    echo "ERROR: benchmark already active: pid=$active_pid dir=$active_dir mode=${active_mode:-baseline}"
+    exit 1
+  fi
+  old_rc=$(grep -m1 '^exit_code:' "${active_dir:-/nonexistent}/run_meta.txt" 2>/dev/null | awk '{print $2}' || true)
+  [ "${old_rc:-}" = "0" ] || { echo "ERROR: stale failed run requires benchmark-watchdog triage: $active_dir"; exit 1; }
+  rm -f "$ACTIVE"
+fi
+if [ -f "$RUNDIR/run_meta.txt" ] || [ -d "$RUNDIR/comebin_out" ]; then
+  echo "ERROR: refusing to overwrite existing run directory: $RUNDIR"
+> build · big-pickle
+The harness accepts `COMEBIN_TEMPERATURE`. Let me verify the sweep worktree is clean, then launch the winner (temp=0.05) on CAMI II human, detached and registered.
+[0m$ [0mcd /vol/data/repos/COMEBin-v11-sweep && git rev-parse HEAD && git status --porcelain | head -3 && test -d /vol/data/datasets/cami_II_human/human_sample0_input/bamfiles && ls /vol/data/datasets/cami_II_human/human_sample0_input/bamfiles | head -3
+95f5ea820f9a4e76f5c2911c0b5ed507ab67b015
+human.bam
+human.bam.bai
+> build · big-pickle
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && grep -nE 'COMEBIN_TEMPERATURE|TEMP' scripts/run_comebin_fix.sh | head -5; echo "=== check -l flag accepted ==="; grep -n '\-l' /vol/data/repos/COMEBin-v11-sweep/COMEBin/run_comebin.sh | head -3
+79:if [ -n "${COMEBIN_TEMPERATURE:-${TEMP:-}}" ]; then
+81:    COMEBIN_ARGS+=(-l "${COMEBIN_TEMPERATURE:-${TEMP:-}}")
+113:  echo "sweep:      temp=${TEMP:-ref} emb=${EMB:-ref} emb_cov=${EMB_COV:-ref} batch=${BATCH:-ref} max_edges=${MAX_EDGES:-ref} leiden_workers=${LEIDEN_WORKERS:-ref} hmm_evalue=${HMM_EVALUE:-ref} n_views=${N_VIEWS:-6}"
+119:# libmamba resolves its scratch directory from TMPDIR, TMP, TEMP and TEMPDIR.
+120:# TEMP is a long-standing POSIX name for "temporary directory", so exporting
+=== check -l flag accepted ===
+28:	echo "  -l FLOAT        temperature in loss function (default=0.07 for assemblies with an N50 > 10000, default=0.15 for others)"
+212:    leiden_options+=(--leiden_workers "${leiden_workers}")
+> build · big-pickle
+Everything checks out. Let me confirm the Zenodo hook state, then launch the winner on CAMI II human (temp=0.05, 32 threads, 4,900 contigs), detached and registered.
+[0m$ [0mps aux | grep -c '[z]enodo_update'; tail -2 /vol/data/benchmark/status/sweep_medium.log
+1
+[2026-09-29T23:42:47Z] START sweep_024_seed7 src=COMEBin-v11-sweep @ 95f5ea8 threads=8 seed=7 temp=ref emb=ref emb_cov=ref batch=ref max_edges=ref lw=ref heval=ref n_views=6
+[2026-09-30T00:29:24Z] RUN_DONE sweep_024_seed7 exit=0
+> build · big-pickle
+The Zenodo hook is still polling, but the run slot is free. Before launching, let me check the sweep meta write and TEMP handling ordering in the harness (to record temp correctly).
+[0m→ [0mRead /vol/data/repos/metagenomic-binning-benchmark/scripts/run_comebin_fix.sh [90m[limit=40, offset=100][0m
+> build · big-pickle
+The `sweep:` meta line reads `${TEMP:-ref}` before the internal `unset`, so exporting both `TEMP=0.05` (honest meta) and `COMEBIN_TEMPERATURE=0.05` (safe transport) records everything correctly. Let me launch the winner on CAMI II human, detached.
+[0m$ [0mtest -e /vol/data/benchmark/runs/human_v11_winner_20260930 && echo "EXISTS - abort" || echo "fresh dir OK"; test -f /vol/data/benchmark/.active_run && echo "active exists" || echo "no active run"
+fresh dir OK
+no active run
+> build · big-pickle
+[0m$ [0mcd /vol/data/benchmark && nohup env \
+  SRC_COMEBIN=/vol/data/repos/COMEBin-v11-sweep \
+  DATA=/vol/data/datasets/cami_II_human/human_sample0_input \
+  CONTIGS=/vol/data/datasets/cami_II_human/human_sample0_input/contigs.fa \
+  BAMDIR=/vol/data/datasets/cami_II_human/human_sample0_input/bamfiles \
+  MODE=cami2-human \
+  THREADS=32 SEED=42 \
+  COMEBIN_TEMPERATURE=0.05 TEMP=0.05 \
+  /vol/data/benchmark/bin/run_comebin_fix.sh /vol/data/benchmark/runs/human_v11_winner_20260930 \
+  > /vol/data/benchmark/logs/winner_human_20260930.launch.log 2>&1 &
+echo "launcher pid: $!"
+sleep 8
+cat /vol/data/benchmark/.active_run 2>&1 | head -1
+launcher pid: 634534
+cat: /vol/data/benchmark/.active_run: No such file or directory
+> build · big-pickle
+[0m$ [0msleep 10; cat /vol/data/benchmark/.active_run 2>&1 | head -1; echo "---"; tail -12 /vol/data/benchmark/logs/winner_human_20260930.launch.log 2>&1
+cat: /vol/data/benchmark/.active_run: No such file or directory
+---
+> build · big-pickle
+[0m$ [0mps aux | grep '[r]un_comebin_fix' | wc -l; ps -p 634534 -o pid,stat,cmd 2>/dev/null | tail -1; ls /vol/data/benchmark/runs/human_v11_winner_20260930 2>&1; tail -20 /vol/data/benchmark/logs/winner_human_20260930.launch.log 2>&1
+2
+ 634534 S    /bin/bash -c cd /vol/data/benchmark && nohup env \   SRC_COMEBIN=/vol/data/repos/COMEBin-v11-sweep \   DATA=/vol/data/datasets/cami_II_human/human_sample0_input \   CONTIGS=/vol/data/datasets/cami_II_human/human_sample0_input/contigs.fa \   BAMDIR=/vol/data/datasets/cami_II_human/human_sample0_input/bamfiles \   MODE=cami2-human \   THREADS=32 SEED=42 \   COMEBIN_TEMPERATURE=0.05 TEMP=0.05 \   /vol/data/benchmark/bin/run_comebin_fix.sh /vol/data/benchmark/runs/human_v11_winner_20260930 \   > /vol/data/benchmark/logs/winner_human_20260930.launch.log 2>&1 & echo "launcher pid: $!" sleep 8 cat /vol/data/benchmark/.active_run 2>&1 | head -1
+ls: cannot access '/vol/data/benchmark/runs/human_v11_winner_20260930': No such file or directory
+> build · big-pickle
+[0m$ [0mps aux | grep '[r]un_comebin_fix' | head -5; echo "=== flock state ==="; ls -la /tmp/benchmark-start.lock; fuser /tmp/benchmark-start.lock 2>&1; echo "=== what is the wrapper bash -c doing? ==="; cat /proc/634534/status 2>/dev/null | grep -E 'State|PPid'; ps -o pid,ppid,stat,wchan:18 -p 634534 2>/dev/null | tail -1
+ubuntu    634534  0.0  0.0   7744  1988 ?        S    00:40   0:00 /bin/bash -c cd /vol/data/benchmark && nohup env \   SRC_COMEBIN=/vol/data/repos/COMEBin-v11-sweep \   DATA=/vol/data/datasets/cami_II_human/human_sample0_input \   CONTIGS=/vol/data/datasets/cami_II_human/human_sample0_input/contigs.fa \   BAMDIR=/vol/data/datasets/cami_II_human/human_sample0_input/bamfiles \   MODE=cami2-human \   THREADS=32 SEED=42 \   COMEBIN_TEMPERATURE=0.05 TEMP=0.05 \   /vol/data/benchmark/bin/run_comebin_fix.sh /vol/data/benchmark/runs/human_v11_winner_20260930 \   > /vol/data/benchmark/logs/winner_human_20260930.launch.log 2>&1 & echo "launcher pid: $!" sleep 8 cat /vol/data/benchmark/.active_run 2>&1 | head -1
+ubuntu    634536  0.0  0.0   7744  3580 ?        S    00:40   0:00 bash /vol/data/benchmark/bin/run_comebin_fix.sh /vol/data/benchmark/runs/human_v11_winner_20260930
+=== flock state ===
+-rw-rw-r-- 1 ubuntu ubuntu 0 Sep 30 00:40 /tmp/benchmark-start.lock
+/tmp/benchmark-start.lock: 566996 634536 634538
+=== what is the wrapper bash -c doing? ===
+State:	S (sleeping)
+PPid:	1
+ 634534       1 S    do_wait
+> build · big-pickle
+The run is blocked on the start lock held by cell 24's eval chain (Zenodo v15 publish still in progress). The launch has a 300s flock timeout. Let me monitor.
+[0m$ [0mps -o pid,etime,stat,wchan:16 -p 628423,634536 2>/dev/null; echo "=== zenodo work dirs ==="; ls -t /vol/data/benchmark/releases/api.* 2>/dev/null | head -2; ls -t /vol/data/benchmark/releases/ | head -3
+PID     ELAPSED STAT WCHAN
+ 628423       06:03 S    do_wait
+ 634536       00:29 S    do_wait
+=== zenodo work dirs ===
+comebin_benchmark_release_v15_20260930.tar.gz
+api.YK9qRb
+stage.86Bo4W
+> build · big-pickle
+[0m$ [0mtail -c 400 /vol/data/benchmark/releases/api.YK9qRb/resp.json 2>/dev/null | head -c 400; echo; echo "=== ps of zenodo children (upload in progress?) ==="; pgrep -P 628423 | tr '\n' ' '; echo; ls -la /vol/data/benchmark/releases/api.YK9qRb/ 2>/dev/null | head
+=== ps of zenodo children (upload in progress?) ===
+630255 630256 
+total 8
+drwx------ 2 ubuntu ubuntu 4096 Sep 30 00:35 .
+drwxrwxr-x 5 ubuntu ubuntu 4096 Sep 30 00:35 ..
+> build · big-pickle
+[0m$ [0mps -o pid,etime,stat,wchan:20,cmd -p 630255,630256 2>/dev/null | tail -2 | cut -c1-140
+630255       05:47 S    pipe_write           tar --sort=name --owner=0 --group=0 --numeric-owner --mtime=2020-01-01 00:00:00Z -cf - -C /vol
+ 630256       05:47 R    -                    gzip -n
+> build · big-pickle
+[0m$ [0mpstree -ap 628423 2>/dev/null | head -6; echo "=== launched when? ==="; ps -o pid,lstart,cmd -p 628423 | tail -1 | cut -c1-130
+bash,628423 /vol/data/benchmark/bin/zenodo_update.sh
+  |-gzip,630256 -n
+  `-tar,630255 --sort=name --owner=0 --group=0 --numeric-owner --mtime=2020-01-01 00:00:00Z -cf - -C ...
+=== launched when? ===
+ 628423 Wed Sep 30 00:34:57 2026 bash /vol/data/benchmark/bin/zenodo_update.sh
+> build · big-pickle
+The Zenodo hook is streaming a ~1GB tarball upload while holding the start lock. My winner-run launch waits (300s timeout). Let me monitor.
