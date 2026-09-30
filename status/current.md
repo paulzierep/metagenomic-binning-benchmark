@@ -3,13 +3,13 @@
 | | |
 |---|---|
 | Status | 🟢 `running` |
-| ⏱ Updated (Europe/Berlin) | `2026-09-30T03:14 CEST` |
-| 🏃 Live benchmark | `human_v11_winner_20260930` — **epoch 60/200** · loss `3.801575183868408` · top1 acc `37.906898498535156` (log 2s fresh) |
+| ⏱ Updated (Europe/Berlin) | `2026-09-30T03:16 CEST` |
+| 🏃 Live benchmark | `human_v11_winner_20260930` — **epoch 66/200** · loss `3.483922004699707` · top1 acc `41.24348831176758` (log 4s fresh) |
 | 🧠 Model (last turn) | `big-pickle` (watchdog rotates to free models on quota) |
-| 📌 Agent note · **30 min old** | 2026-09-30T00:43:28Z commit e021b0f3 (sweep docs+ranking); winner human run active |
-| ⚙️ Load · uptime | `30.90 29.02 21.87` · 6 days, 11 hours, 38 minutes — 32 cores, 62 GiB, no GPU |
-| 💾 RAM used/total | `5677/64295 MB` |
+| 📌 Agent note · **1 min old** | 2026-09-30T01:14:37Z resume after restart: verified winner human run active; sweep 24/24 complete; issue triage = no new owner input; follow-on eval chain being prepared |
+| ⚙️ Load · uptime | `29.63 29.52 22.95` · 6 days, 11 hours, 40 minutes — 32 cores, 62 GiB, no GPU |
+| 💾 RAM used/total | `6737/64295 MB` |
 | 🔗 Session | `ses_f31799c77ffeTq9gcYgqc4hBhg` |
-| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `f65ebe5f meta: supervise tick 2026-09-30T01:13:01Z — 2 fix(es)` |
-| 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `14018848 B` — every run, command & tool result |
+| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `d45d0580 status: yes — human_v11_winner_20260930 epoch 60/200 loss 3.801575183` |
+| 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `14058851 B` — every run, command & tool result |
 | 📈 Timeline | [status/status.log](status/status.log) |
