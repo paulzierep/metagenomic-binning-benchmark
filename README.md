@@ -30,15 +30,18 @@ Got stitched-together by a long-form agent diary too:
 
 ## Progress
 
-- 🏆 **Latest achievement:** CAMI III run delivered —
-  `cami3_v11_20260926_rerun` on the toy human-gut set: **492 bins**,
-  CheckM2 35.97 % / 11.42 % (HQ 53 / MQ 112), wall 90 min; every evaluated run
-  archived on **Zenodo v3**
-  ([concept DOI](https://doi.org/10.5281/zenodo.22935024) · [version DOI](https://doi.org/10.5281/zenodo.22973575)).
-- ⏭ **Next step:** run the medium-dataset optimization sweep (issue #25,
-  20+ runs with varied parameters/commits, best by bin stats then runtime) and
-  reconcile the fork's master with `comebin-optimizations-v11`; then re-run
-  CAMI II & III **human** sets on any fix that survives the sweep.
+- 🏆 **Latest achievement:** issue-#25 sweep delivered + winner validated on
+  CAMI II **human**: `human_v11_winner_20260930` (temp 0.05) → **54 bins,
+  CheckM2 61.70 % / 8.25 %** (vs ref 35.31 % / 5.13 %: **+26.4 pp
+  completeness**), **AMBER F1_bp 0.881** (vs ref 0.681), +20 pp on the official
+  CAMI score. The same winner run is now in flight on CAMI III toy human;
+  every evaluated run is archived on **Zenodo**
+  ([concept DOI](https://doi.org/10.5281/zenodo.22935024)). Full sweep ranking:
+  [`results/sweep_rankings.md`](results/sweep_rankings.md) · validation table:
+  [`docs/13`](docs/13-optimization-sweep-medium.md).
+- ⏭ **Next step:** finish the CAMI III human winner run (eval + AMBER + biobox
+  via `run_eval_chain.sh`), consolidate the Zenodo bundle, and publish the
+  consolidated release with sweep + AMBER + biobox artifacts.
 
 ## Benchmark plots
 

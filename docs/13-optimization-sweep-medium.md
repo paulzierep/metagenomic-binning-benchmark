@@ -177,3 +177,27 @@ disagreement.
   ✅ generated for marine (152 bins), human (107), medium and cami3 (492).
 - **Archive each binning result**: bins FASTA + biobox output + stats shipped
   with the run's Zenodo archive record.
+
+## Winner validation on larger data (2026-09-30) ✅
+
+Per the owner's rule ("only the winning parameter set advances to CAMI II & III
+human"), the #25 winner **temp 0.05** was re-run at THREADS 32 / seed 42 on the
+two human sets:
+
+| Run | Dataset | Wall | Bins | CheckM2 comp/cont | HQ / MQ | AMBER F1_bp |
+|---|---|---|---|---|---|---|
+| `human_v11_winner_20260930` (temp 0.05) | CAMI II human (4,900) | 1h22m | 54 | **61.70 / 8.25** | 22 / 26 | **0.881** |
+| `human_v11_20260925` (ref) | CAMI II human (4,900) | 1h21m | 107 | 35.31 / 5.13 | 20 / 29 | 0.681 |
+| `cami3_v11_winner_20260930` (temp 0.05) | CAMI III toy human (5,000) | running | – | – | – | – |
+| `cami3_v11_20260926_rerun` (ref) | CAMI III toy human (5,000) | 1h29m | 492 | 35.97 / 11.42 | 53 / 112 | 0.743 |
+
+**CAMI II human result**: temp 0.05 lifts CheckM2 completeness by **+26.4 pp**
+(35.31 → 61.70), HQ 20→22, and AMBER F1_bp 0.681→**0.881**. Honest trade-offs:
+contamination +3.1 pp (8.25), and bin count drops 107→54 — the low temperature
+creates fewer, richer bins, which also lowers AMBER accuracy_bp (0.814→0.781)
+and ARI_bp (0.769→0.623) even as pair-level F1 rises. CheckM v1 mirrors the
+gain (32.64→61.26 comp). Full numbers:
+`results/human_v11_winner_20260930.csv`, per-bin rows + plots under
+`runs/human_v11_winner_20260930/`, AMBER under `results/amber/human/`, biobox
+`human_sample0.binning` (v0.9.1, validated). CAMI III winner run + eval chain
+(AMBER vs `cami3_toy_binning_gs.tsv`, biobox) are in flight.

@@ -80,3 +80,24 @@ subset is a 4,900-contig selection that COMEBin bins almost completely.
 - The pooled mapping (`gsa_pooled_mapping.tsv.gz`, `PC*` ids) is a *different*
   assembly and is **not** used here — the sample-level `gsa_mapping.tsv.gz`
   (`S0C*`) is the correct ground truth for this subset.
+
+## 2026-09-30 — winner (temp 0.05) rescored against the same gold standard
+
+`human_v11_winner_20260930` (54 bins, seed 42, THREADS 32) scored with the
+identical gold standard via the generic chain (`make_amber_prediction.py` +
+`amber.py -l comebin`):
+
+| | ref `human_v11_20260925` (107 bins) | winner `human_v11_winner_20260930` (54 bins) |
+|---|---|---|
+| accuracy_bp | 0.814 | 0.781 |
+| precision_weighted_bp | 0.819 | 0.888 |
+| recall_weighted_bp | 0.722 | 0.875 |
+| **F1_bp** | **0.681** | **0.881** |
+| ARI_bp | 0.769 | 0.623 |
+| misclassification_bp | 0.181 | 0.111 |
+
+The low-temperature winner trades strict per-sequence assignment (accuracy and
+ARI drop) for **purer, more complete bins** (precision 0.819→0.888, recall
+0.722→0.875, F1_bp +0.20, misclassification halved). Files:
+`results/amber/human/amber_{results,bin_metrics}_human_v11_winner_20260930.tsv`,
+`amber_report_human_v11_winner_20260930.html`, `heatmap_human_v11_winner_20260930.png`.

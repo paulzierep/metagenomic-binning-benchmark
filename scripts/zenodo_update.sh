@@ -249,8 +249,23 @@ BUCKET=$(python3 -c "import json;print(json.load(open('$WORK/resp.json'))['links
 rm -rf "$WORK"; WORK=$(mktemp -d "$RELEASES/api.XXXXXX")
 
 FNAME=$(basename "$OUT")
-req PUT "$BUCKET/$FNAME" -H "Content-Type: application/octet-stream" \
-  --data-binary "@$OUT"
+# Stream the tarball with curl -T instead of --data-binary, which buffers the
+# whole file in memory and OOM'd on the ~1.25 GB release package (2026-09-30).
+rm -rf "$WORK"; WORK=$(mktemp -d "$RELEASES/api.XXXXXX")
+req GET "https://zenodo.org/api/deposit/depositions/$DRAFT_ID/files"
+if [ "$CODE" = "200" ]; then
+  EXISTING_ID=$(python3 -c "
+import json,sys
+d=json.load(open('$WORK/resp.json'))
+print(next((f['id'] for f in (d.get('files') or []) if f.get('key')=='$FNAME'), ''))")
+  if [ -n "$EXISTING_ID" ]; then
+    rm -rf "$WORK"; WORK=$(mktemp -d "$RELEASES/api.XXXXXX")
+    req DELETE "https://zenodo.org/api/deposit/depositions/$DRAFT_ID/files/$EXISTING_ID"
+    [ "$CODE" = "204" ] || log "WARNING: stale file entry delete returned HTTP $CODE"
+  fi
+fi
+rm -rf "$WORK"; WORK=$(mktemp -d "$RELEASES/api.XXXXXX")
+req PUT "$BUCKET/$FNAME" -H "Content-Type: application/octet-stream" -T "$OUT"
 [ "$CODE" = "201" ] || die "file upload failed (HTTP $CODE): $(head -c 300 "$WORK/resp.json")"
 UP_MD5=$(python3 -c "import json;print(json.load(open('$WORK/resp.json'))['checksum'].replace('md5:',''))")
 [ "$UP_MD5" = "$OUT_MD5" ] || die "uploaded md5 $UP_MD5 != local $OUT_MD5"

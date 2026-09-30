@@ -1007,3 +1007,37 @@ Python script.
   **0.743**.
 - Docs/06 now carries the AMBER + `run_eval_chain.sh` command reference
   (commit `8318137d`).
+
+### 2026-09-30 02:30Z — human winner VALIDATED on CAMI II human + CAMI III winner launched
+
+- **`human_v11_winner_20260930` (temp 0.05, seed 42, 32 thr) COMPLETE**: exit 0,
+  wall 4955 s (~1h22m), **54 bins**, eval chain finished `CHAIN COMPLETE` at
+  02:27:52Z (run_eval → CheckM2+CheckM v1 → CSV → Zenodo hook → AMBER → biobox).
+  - CheckM2 **61.70 / 8.25** (HQ 22 / MQ 26); CheckM v1 61.26 / 14.71 (21 / 27).
+  - vs ref `human_v11_20260925` (107 bins, CheckM2 35.31/5.13, HQ 20/MQ 29,
+    CheckM v1 32.64/4.65): **+26.4 pp CheckM2 completeness** (61.70 vs 35.31),
+    +3.1 pp contamination (8.25 vs 5.13), HQ 20→22 / MQ 29→26. Fewer, richer bins
+    (107→54): temp 0.05 merges more contigs per bin.
+  - **AMBER vs human gold standard (F1_bp): 0.881 vs ref 0.681 (+0.20)**; ARI_bp
+    0.623 vs 0.769 and accuracy_bp 0.781 vs 0.814 drop — the higher F1 comes from
+    fewer/cleaner bins; honest trade-off to report in the #25 follow-up.
+    Artifacts: `results/amber/human/amber_{results,bin_metrics,report,heatmap}_human_v11_winner_20260930.*`,
+    `results/human_v11_winner_20260930.csv`, `runs/human_v11_winner_20260930/`
+    (per_bin CSV + plots), biobox `runs/human_v11_winner_20260930/biobox/`
+    (`human_sample0.binning` v0.9.1 validated OK).
+- **Zenodo fix**: the v15 publish failed twice with `curl: option --data-binary:
+  out of memory` — the hook uploaded the ~1.25 GB release tarball with
+  `--data-binary @file` (whole file in RAM). Fixed in
+  `scripts/zenodo_update.sh` + `bin/zenodo_update.sh` (byte-identical):
+  stream the tarball with `curl -T` and delete any stale same-named file in the
+  draft first. v15 re-run started detached 02:30Z (reusing draft 23042028;
+  concept 10.5281/zenodo.22935024).
+- **CAMI III winner run launched** `cami3_v11_winner_20260930` (temp 0.05, seed
+  42, THREADS 32, 5,000 ctgs, 2 samples) at 02:29:58Z, registered in
+  `.active_run` (pid 1104991, mode cami3, source COMEBin-v11-sweep@95f5ea8,
+  `sweep:` meta honestly records temp=0.05). Eval chain
+  `run_eval_chain.sh ... cami3 28800 32` (pid 1106263) waits and will run eval +
+  AMBER (gold `cami3_toy_binning_gs.tsv`) + biobox. Reference:
+  `cami3_v11_20260926_rerun` (492 bins, CheckM2 35.97/11.42, F1_bp 0.743).
+- Tables/docs refreshed: `scripts/make_all_runs_table.py` → README "All runs" +
+  `results/all_runs_table.md` now carry the winner row (F1 73.8).
