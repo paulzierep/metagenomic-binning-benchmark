@@ -136131,3 +136131,25 @@ no stray eval processes
 2026-09-30T01:23:55Z turn complete: AMBER CAMI III delivered (F1_bp 0.743, docs/16, commit 16e5ce87, #25 comment 5902189327); generic run_eval_chain.sh shipped (247d4487) and waiting for winner run at epoch=90/200; no overlap, .active_run pid 634536 only; next: wait for chain CHAIN COMPLETE, then launch CAMI III winner run
 2026-09-30T01:23:55Z agent: end of turn — verified final state (TASK_COMPLETE absent, .active_run = winner run only, PROGRESS copies in sync, origin/main = 742606ce, chain pid 680734 waiting at epoch=90/200)
 > build · big-pickle
+Turn complete. Summary of what I did:
+
+## Resume verification
+- `TASK_COMPLETE` absent → continued. `PROGRESS.md` read first; disk state checked against it.
+- **Sweep 24/24 is complete** (23 results CSVs, cell 2 = documented stock-master failure), ranking delivered, #25 result comment already posted.
+- **First unfinished step** = advancing the sweep winner (temp 0.05) to real data. `runs/human_v11_winner_20260930` is registered and live in `.active_run` (pid 634536, epoch 90/200, ~02:00Z ETA) — left completely untouched.
+
+## Issue triage (no duplication)
+Every open issue's `updatedAt` matches the agent's own last comment (#25 00:43Z, #29/#28/#27 13:08Z, #26 09-28); `paulzierep/COMEBin` issues are disabled. So no reply was needed on the backlog. One **new-information** comment was posted: #25 `5902189327` for the AMBER work below.
+
+## New deliverable: AMBER for CAMI III (no benchmark slot needed)
+- The official `gsa_pooled_mapping.tsv.gz` (117 MB) is keyed by anonymous `PC…` ids, our input by `NZ_*_from_*_to_*` headers → new **`scripts/make_cami3_gold_standard.py`** joins them on the reference contig id: **5,000/5,000 contigs (100 % bp) → 390 genomes**, format-validated.
+- Scored the existing CAMI III run end-to-end: **F1_bp 0.743** (prec 0.719 / recall 0.769 / ARI 0.351 / 99.6 % bp assigned). All three datasets now have official AMBER numbers: marine 0.330 / human 0.681 / CAMI III 0.743.
+- `docs/16-amber-cami3-toy.md` written; `docs/01`, `docs/13`, `docs/14`, `docs/15`, `docs/06` updated; artifacts in `results/amber/cami3/`.
+
+## Automation for the finish line
+- New generic **`scripts/run_eval_chain.sh <run> <marine|human|cami3|none>`** (repo + `bin/`): waits for `exit_code:` **and** `.active_run` release, then CheckM2 + CheckM v1 → AMBER → biobox + validation. Replaced the one-off waiter (stopped cleanly, run never touched). Running detached for the human winner (pid 680734), verified waiting, no overlap.
+
+## Housekeeping
+Heartbeat/`.activity` refreshed with live epoch probe, one timestamped line per action in `status/agent-activity.log`, both `PROGRESS.md` copies md5-identical, all commits taken under `/tmp/bench-repo.lock` with only intended paths staged (`16e5ce87`, `247d4487`, `8318137d`, `742606ce` → `origin/main`).
+
+**Next turn:** wait for `CHAIN COMPLETE` in `status/human_v11_winner_20260930.eval_chain.log` (the eval is *not* registered in `.active_run` — noted in PROGRESS.md), then launch the CAMI III winner run using the exact command already recorded in PROGRESS.md.
