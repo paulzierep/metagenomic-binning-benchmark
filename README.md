@@ -1,6 +1,6 @@
 <!--AGENT-STATUS-->
 
-> 🔴 **Agent status:** `stopped (watchdog will restart)` · ⏱ `2026-09-30T07:18 CEST` · 🏃 last run cami3_v11_winner_20260930: epoch 199/200 · not active · 🧠 `nemotron-3.5-lightning-free` · [status.log](status/status.log)
+> 🟢 **Agent status:** `running` · ⏱ `2026-09-30T07:20 CEST` · 🏃 last run cami3_v11_winner_20260930: epoch 199/200 · not active · 🧠 `nemotron-3.5-lightning-free` · [status.log](status/status.log)
 
 # Metagenomic binning benchmark
 
