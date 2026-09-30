@@ -135207,3 +135207,330 @@ S0C3363	OTU_97.326.1	1485	5437
 @@SEQUENCEID	BINID
 S0C31388	bin_0
 > build · big-pickle
+Now I'll write a reusable script to build the CAMI III gold standard (needed for the next step's AMBER scoring):
+[0m← [0mWrite /vol/data/repos/metagenomic-binning-benchmark/scripts/make_cami3_gold_standard.py
+Created file successfully: /vol/data/repos/metagenomic-binning-benchmark/scripts/make_cami3_gold_standard.py
+> build · big-pickle
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && chmod +x scripts/make_cami3_gold_standard.py && python3 scripts/make_cami3_gold_standard.py --mapping /vol/data/datasets/cami_III/gold_standard/gsa_pooled_mapping.tsv.gz --contigs /vol/data/datasets/cami_III/toy_human_input_2samples/contigs.fa --sample cami3_toy_human_gut -o /vol/data/datasets/cami_III/gold_standard/cami3_toy_binning_gs.tsv
+ERROR: unexpected mapping header: '@SampleID:cami3_toy_human_gut_short_read_pooled_assembly\n'
+> build · big-pickle
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/scripts/make_cami3_gold_standard.py
+Index: /vol/data/repos/metagenomic-binning-benchmark/scripts/make_cami3_gold_standard.py
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/scripts/make_cami3_gold_standard.py
++++ /vol/data/repos/metagenomic-binning-benchmark/scripts/make_cami3_gold_standard.py
+@@ -49,20 +49,37 @@
+     args = ap.parse_args()
+ 
+     # reference contig id -> (genome/bin id, taxid). The mapping has ~6.1 M rows
+     # and ~53 k distinct reference contigs, so one streaming pass is enough.
++    # The file starts with `@SampleID:…` metadata, then the `@@SEQUENCEID …`
++    # column declaration, then the rows; take the column positions from that
++    # declaration so a future re-release with a different column order still
++    # parses.
+     ref2bin = {}
+     with open_maybe_gzip(args.mapping) as fh:
+-        header = fh.readline()
+-        if not header.startswith("@@SEQUENCEID"):
+-            sys.exit(f"ERROR: unexpected mapping header: {header[:80]!r}")
++        cols = None
++        for line in fh:
++            if line.startswith("@@SEQUENCEID"):
++                cols = [c.strip() for c in line.rstrip("\n").split("\t") if c.strip()]
++                cols = [c[2:] if c.startswith("@@") else c for c in cols]
++                break
++            if not line.startswith("@"):
++                sys.exit(f"ERROR: no @@SEQUENCEID column declaration in "
++                         f"{args.mapping} (got {line[:80]!r})")
++        if cols is None:
++            sys.exit(f"ERROR: mapping has no @@SEQUENCEID declaration: {args.mapping}")
++        for name in ("BINID", "TAXID", "contig_id"):
++            if name not in cols:
++                sys.exit(f"ERROR: mapping has no {name!r} column; declared: {cols}")
++        i_bin, i_tax, i_ref = cols.index("BINID"), cols.index("TAXID"), cols.index("contig_id")
+         n_rows = 0
+         for line in fh:
+             f = line.rstrip("\n").split("\t")
+-            if len(f) <= REF_CTG_COL:
++            if len(f) <= i_ref:
+                 continue
+             n_rows += 1
+-            ref2bin.setdefault(f[REF_CTG_COL], (f[BIN_COL], f[TAX_COL]))
++            ref2bin.setdefault(f[i_ref], (f[i_bin], f[i_tax]))
++    print(f"# mapping columns: {cols}", file=sys.stderr)
+     print(f"# mapping rows: {n_rows}, distinct reference contigs: {len(ref2bin)}",
+           file=sys.stderr)
+ 
+     rows, n_bins, unmapped = [], set(), []
+
+> build · big-pickle
+[0m✗ [0mEdit /vol/data/repos/metagenomic-binning-benchmark/scripts/make_cami3_gold_standard.py failed
+[91m[1mError: [0mCould not find oldString in /vol/data/repos/metagenomic-binning-benchmark/scripts/make_cami3_gold_standard.py. It must match exactly, including whitespace and indentation.
+> build · big-pickle
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && grep -n "BIN_COL\|args = ap" scripts/make_cami3_gold_standard.py
+34:BIN_COL, TAX_COL, REF_CTG_COL = 1, 2, 4  # 0-based columns of BINID/TAXID/contig_id
+49:    args = ap.parse_args()
+> build · big-pickle
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/scripts/make_cami3_gold_standard.py
+Index: /vol/data/repos/metagenomic-binning-benchmark/scripts/make_cami3_gold_standard.py
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/scripts/make_cami3_gold_standard.py
++++ /vol/data/repos/metagenomic-binning-benchmark/scripts/make_cami3_gold_standard.py
+@@ -30,11 +30,9 @@
+ import argparse
+ import gzip
+ import sys
+ 
+-BIN_COL, TAX_COL, REF_CTG_COL = 1, 2, 4  # 0-based columns of BINID/TAXID/contig_id
+ 
+-
+ def open_maybe_gzip(path):
+     return gzip.open(path, "rt") if path.endswith(".gz") else open(path, encoding="utf-8")
+ 
+ 
+
+> build · big-pickle
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && python3 -c "import ast,sys; ast.parse(open('scripts/make_cami3_gold_standard.py').read())" && echo "parse OK" && python3 scripts/make_cami3_gold_standard.py --mapping /vol/data/datasets/cami_III/gold_standard/gsa_pooled_mapping.tsv.gz --contigs /vol/data/datasets/cami_III/toy_human_input_2samples/contigs.fa --sample cami3_toy_human_gut -o /vol/data/datasets/cami_III/gold_standard/cami3_toy_binning_gs.tsv
+parse OK
+# mapping columns: ['SEQUENCEID', 'BINID', 'TAXID', 'LENGTH', 'contig_id', 'number_reads', 'start_position', 'end_position']
+# mapping rows: 6140132, distinct reference contigs: 52940
+# contigs: 5000  mapped: 5000  unmapped: 0
+# genomes (gold-standard bins): 390
+# bp mapped: 1126537317/1126537317 (100.00 %)
+# wrote /vol/data/datasets/cami_III/gold_standard/cami3_toy_binning_gs.tsv
+> build · big-pickle
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && python3 scripts/validate_binning.py /vol/data/datasets/cami_III/gold_standard/cami3_toy_binning_gs.tsv; echo "rc=$?"; head -4 /vol/data/datasets/cami_III/gold_standard/cami3_toy_binning_gs.tsv; wc -l /vol/data/datasets/cami_III/gold_standard/cami3_toy_binning_gs.tsv
+OK  /vol/data/datasets/cami_III/gold_standard/cami3_toy_binning_gs.tsv
+rc=0
+@Version:0.9.1
+@SampleID:cami3_toy_human_gut
+@@SEQUENCEID	BINID	TAXID	_LENGTH
+NZ_CP060488.1_from_7_to_6745934_total_6745928	ASV102.6	2763022	6745928
+5003 /vol/data/datasets/cami_III/gold_standard/cami3_toy_binning_gs.tsv
+> build · big-pickle
+Gold standard validates. Now scoring the existing CAMI III reference run with AMBER as an end-to-end check (light, single-threaded, no overlap with the active run):
+[0m$ [0mcd /vol/data/benchmark/amber && python3 /vol/data/repos/metagenomic-binning-benchmark/scripts/make_amber_prediction.py /vol/data/benchmark/runs/cami3_v11_20260926_rerun cami3_toy_human_gut > cami3_comebin.binning 2>cami3_pred.err; echo "pred rc=$?"; cat cami3_pred.err; wc -l cami3_comebin.binning
+pred rc=0
+# 492 bins, 4957 contigs mapped
+4960 cami3_comebin.binning
+> build · big-pickle
+[0m$ [0mcd /vol/data/benchmark/amber && timeout 900 /vol/data/tools/bin/micromamba run -p /vol/data/envs/amber python3 /vol/data/repos/CAMI-AMBER/amber.py cami3_comebin.binning -g /vol/data/datasets/cami_III/gold_standard/cami3_toy_binning_gs.tsv -o output_cami3_ref -l comebin_v11 2>&1 | tail -25; echo "rc=$?"
+2026-09-30 01:18:58,816 INFO Found @Version:0.9.1 in Gold standard
+2026-09-30 01:18:58,816 INFO Found @SampleID:cami3_toy_human_gut in Gold standard
+2026-09-30 01:18:58,819 INFO Found @Version:0.9.1 in comebin_v11
+2026-09-30 01:18:58,819 INFO Found @SampleID:cami3_toy_human_gut in comebin_v11
+2026-09-30 01:18:58,826 INFO Creating output directories
+2026-09-30 01:18:58,826 INFO Evaluating Gold standard, sample cami3_toy_human_gut, genome binning
+2026-09-30 01:18:58,826 INFO Loading cami3_toy_human_gut of Gold standard
+2026-09-30 01:18:59,116 INFO Evaluating comebin_v11, sample cami3_toy_human_gut, genome binning
+2026-09-30 01:18:59,117 INFO Loading cami3_toy_human_gut of comebin_v11
+2026-09-30 01:18:59,567 INFO Saving computed metrics
+2026-09-30 01:18:59,595 INFO Creating genome binning plots
+2026-09-30 01:19:04,531 INFO Creating HTML page
+2026-09-30 01:19:05,895 INFO AMBER finished successfully. All results have been saved to /vol/data/benchmark/amber/output_cami3_ref
+rc=0
+> build · big-pickle
+[0m$ [0mcd /vol/data/benchmark/amber/output_cami3_ref && ls; echo "=== results ==="; python3 -c "
+import csv
+rows=list(csv.DictReader(open('amber_results.tsv'), delimiter='\t'))
+keys=['percentage_of_assigned_bps','accuracy_bp','precision_avg_bp','precision_weighted_bp','recall_avg_bp','recall_weighted_bp','f1_score_bp','ARI','ARI_bp','misclassification_bp','f1_score_seq','precision_avg_seq','recall_avg_seq']
+for r in rows:
+    for k in keys:
+        if k in r: print(f'{k:32s} {r[k]}')
+    break
+print('--- all column names ---')
+print(list(rows[0].keys()))
+"
+bin_metrics.tsv
+genome
+genome_metrics_cami1.tsv
+heatmap_bar.png
+index.html
+log.txt
+results.tsv
+=== results ===
+Traceback (most recent call last):
+  File "<string>", line 3, in <module>
+FileNotFoundError: [Errno 2] No such file or directory: 'amber_results.tsv'
+> build · big-pickle
+[0m$ [0mcd /vol/data/benchmark/amber/output_cami3_ref && python3 -c "
+import csv
+rows=list(csv.DictReader(open('results.tsv'), delimiter='\t'))
+for r in rows:
+    for k,v in r.items():
+        if v not in ('','NA'): print(f'{k:34s} {v}')
+    break
+"; echo "=== compare: how did docs/14/15 files look? ==="; head -3 /vol/data/repos/metagenomic-binning-benchmark/results/amber/human/amber_results.tsv | cut -c1-300
+Sample                             cami3_toy_human_gut
+Tool                               Gold standard
+accuracy_bp                        1.0
+accuracy_seq                       1.0
+adjusted_rand_index_bp             1.0
+adjusted_rand_index_seq            1.0
+binning type                       genome
+f1_score_bp                        1.0
+f1_score_bp_cami1                  1.0
+f1_score_per_bp                    1.0
+f1_score_per_seq                   1.0
+f1_score_seq                       1.0
+f1_score_seq_cami1                 1.0
+misclassification_bp               0.0
+misclassification_seq              0.0
+percentage_of_assigned_bps         1.0
+percentage_of_assigned_seqs        1.0
+precision_avg_bp                   1.0
+precision_avg_bp_sem               0.0
+precision_avg_bp_var               0.0
+precision_avg_seq                  1.0
+precision_avg_seq_sem              0.0
+precision_weighted_bp              1.0
+precision_weighted_seq             1.0
+rand_index_bp                      1.0
+rand_index_seq                     1.0
+recall_avg_bp                      1.0
+recall_avg_bp_cami1                1.0
+recall_avg_bp_sem                  0.0
+recall_avg_bp_sem_cami1            0.0
+recall_avg_bp_var                  0.0
+recall_avg_bp_var_cami1            0.0
+recall_avg_seq                     1.0
+recall_avg_seq_cami1               1.0
+recall_avg_seq_sem                 0.0
+recall_avg_seq_sem_cami1           0.0
+recall_weighted_bp                 1.0
+recall_weighted_seq                1.0
+=== compare: how did docs/14/15 files look? ===
+Sample	Tool	accuracy_bp	accuracy_seq	adjusted_rand_index_bp	adjusted_rand_index_seq	binning type	f1_score_bp	f1_score_bp_cami1	f1_score_per_bp	f1_score_per_seq	f1_score_seq	f1_score_seq_cami1	misclassification_bp	misclassification_seq	percentage_of_assigned_bps	percentage_of_assigned_seqs	precision_
+human	Gold standard	1.0	1.0	1.0	1.0	genome	1.0	1.0	1.0	1.0	1.0	1.0	0.0	0.0	1.0	1.0	1.0	0.0	0.0	1.0	0.0	1.0	1.0	1.0	1.0	NA	1.0	1.0	0.0	0.0	0.0	0.0	1.0	1.0	0.0	0.0	1.0	1.0
+human	comebin_v11	0.8139295799838323	0.5014285714285714	0.7687643589671295	0.45674482033451236	genome	0.6811954794754752	0.4311950292595752	0.767346043693498	0.5395454379094536	0.6372645915479507	0.405001776057731	0.1805932288634603	0.4945484468216417	0.9933156628116333	0.9920408163265306	0.62610158
+> build · big-pickle
+[0m$ [0mcd /vol/data/benchmark/amber/output_cami3_ref && python3 -c "
+import csv
+rows=list(csv.DictReader(open('results.tsv'), delimiter='\t'))
+keys=['percentage_of_assigned_bps','accuracy_bp','precision_avg_bp','precision_weighted_bp','recall_avg_bp','recall_weighted_bp','f1_score_bp','f1_score_seq','adjusted_rand_index_bp','misclassification_bp','percentage_of_assigned_seqs']
+for r in rows:
+    if r['Tool']=='Gold standard': continue
+    print('tool:', r['Tool'])
+    for k in keys: print(f'  {k:32s} {r[k]}')
+"; echo "=== bin_metrics head ==="; head -3 bin_metrics.tsv | cut -c1-200; wc -l bin_metrics.tsv
+tool: comebin_v11
+  percentage_of_assigned_bps       0.9955779627316154
+  accuracy_bp                      0.6891757301635841
+  precision_avg_bp                 0.7194408677254177
+  precision_weighted_bp            0.6922368272120641
+  recall_avg_bp                    0.7685493886353966
+  recall_weighted_bp               0.5818648642244667
+  f1_score_bp                      0.7431847576770867
+  f1_score_seq                     0.711579694338759
+  adjusted_rand_index_bp           0.35069014027549017
+  misclassification_bp             0.30776317278793586
+  percentage_of_assigned_seqs      0.9914
+=== bin_metrics head ===
+BINID	Tool	genome_id	length_gs	precision_bp	precision_seq	rank	recall_bp	recall_seq	sample_id	seq_counts_gs	seq_length_mean	total_length	total_seq_counts	tp_length	tp_seq_counts
+vASV89.0	Gold standard	vASV89.0	73268	1.0	1.0	NA	1.0	1.0	cami3_toy_human_gut	1	73268.0	73268	1	73268	1
+ASV102.6	Gold standard	ASV102.6	6745928	1.0	1.0	NA	1.0	1.0	cami3_toy_human_gut	1	6745928.0	6745928	1	6745928	1
+883 bin_metrics.tsv
+> build · big-pickle
+[0m$ [0mls /vol/data/benchmark/amber/output_human/ /vol/data/benchmark/amber/output_marine/ 2>/dev/null
+/vol/data/benchmark/amber/output_human/:
+bin_metrics.tsv
+genome
+genome_metrics_cami1.tsv
+heatmap_bar.png
+index.html
+log.txt
+results.tsv
+
+/vol/data/benchmark/amber/output_marine/:
+bin_metrics.tsv
+genome
+genome_metrics_cami1.tsv
+heatmap_bar.png
+index.html
+log.txt
+results.tsv
+> build · big-pickle
+[0m$ [0mdu -sh /vol/data/benchmark/amber/output_cami3_ref/* /vol/data/benchmark/amber/cami3_comebin.binning 2>/dev/null; echo "=== repo human artifacts sizes ==="; du -sh /vol/data/repos/metagenomic-binning-benchmark/results/amber/human/*; head -2 /vol/data/repos/metagenomic-binning-benchmark/results/amber/human/amber_report.html | cut -c1-100
+116K	/vol/data/benchmark/amber/output_cami3_ref/bin_metrics.tsv
+2.1M	/vol/data/benchmark/amber/output_cami3_ref/genome
+132K	/vol/data/benchmark/amber/output_cami3_ref/genome_metrics_cami1.tsv
+4.0K	/vol/data/benchmark/amber/output_cami3_ref/heatmap_bar.png
+3.4M	/vol/data/benchmark/amber/output_cami3_ref/index.html
+4.0K	/vol/data/benchmark/amber/output_cami3_ref/log.txt
+4.0K	/vol/data/benchmark/amber/output_cami3_ref/results.tsv
+284K	/vol/data/benchmark/amber/cami3_comebin.binning
+=== repo human artifacts sizes ===
+2.2M	/vol/data/repos/metagenomic-binning-benchmark/results/amber/human/amber_report.html
+4.0K	/vol/data/repos/metagenomic-binning-benchmark/results/amber/human/amber_results.tsv
+24K	/vol/data/repos/metagenomic-binning-benchmark/results/amber/human/bin_metrics.tsv
+80K	/vol/data/repos/metagenomic-binning-benchmark/results/amber/human/comebin_v11_human.binning
+4.0K	/vol/data/repos/metagenomic-binning-benchmark/results/amber/human/heatmap_bar.png
+> build · big-pickle
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && grep -n "amber\|biobox" .gitignore; echo "--- copying ---"; mkdir -p results/amber/cami3 && S=/vol/data/benchmark/amber/output_cami3_ref && cp -f $S/results.tsv results/amber/cami3/amber_results.tsv && cp -f $S/index.html results/amber/cami3/amber_report.html && cp -f $S/bin_metrics.tsv results/amber/cami3/bin_metrics.tsv && cp -f $S/heatmap_bar.png results/amber/cami3/heatmap_bar.png && cp -f $S/log.txt results/amber/cami3/amber_log.txt && cp -f /vol/data/benchmark/amber/cami3_comebin.binning results/amber/cami3/comebin_v11_cami3.binning && cp -f /vol/data/datasets/cami_III/gold_standard/cami3_toy_binning_gs.tsv results/amber/cami3/cami3_toy_binning_gs.tsv && ls -la results/amber/cami3/ && git status --porcelain results/amber | head
+--- copying ---
+total 4224
+drwxrwxr-x 2 ubuntu ubuntu    4096 Sep 30 01:19 .
+drwxrwxr-x 5 ubuntu ubuntu    4096 Sep 30 01:19 ..
+-rw-rw-r-- 1 ubuntu ubuntu     983 Sep 30 01:19 amber_log.txt
+-rw-rw-r-- 1 ubuntu ubuntu 3529705 Sep 30 01:19 amber_report.html
+-rw-rw-r-- 1 ubuntu ubuntu    1570 Sep 30 01:19 amber_results.tsv
+-rw-rw-r-- 1 ubuntu ubuntu  117843 Sep 30 01:19 bin_metrics.tsv
+-rw-rw-r-- 1 ubuntu ubuntu  362672 Sep 30 01:19 cami3_toy_binning_gs.tsv
+-rw-rw-r-- 1 ubuntu ubuntu  289042 Sep 30 01:19 comebin_v11_cami3.binning
+-rw-rw-r-- 1 ubuntu ubuntu     353 Sep 30 01:19 heatmap_bar.png
+?? results/amber/cami3/
+> build · big-pickle
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && ls docs/; echo "=== README amber refs ==="; grep -n -i "amber" README.md | head -20; echo "=== docs/15 tail ==="; tail -25 docs/15-amber-cami2-human.md
+00-setup.md
+01-datasets.md
+02-comebin-baseline.md
+03-fixes.md
+04-evaluation.md
+05-agent-restart.md
+06-benchmark-commands.md
+07-fix-batches.md
+08-dataset-space-plan.md
+09-optimization-strategy.md
+10-data-preservation.md
+11-run-results.md
+12-comebin-master-divergence.md
+13-optimization-sweep-medium.md
+14-amber-cami2-marine.md
+15-amber-cami2-human.md
+=== README amber refs ===
+=== docs/15 tail ===
+|---|---|---|---|---|---|---|
+| CAMI II marine | 34.1 % | 0.330 | 0.735 | 0.213 | 0.844 | 0.138 |
+| CAMI II human  | 99.3 % | 0.681 | 0.626 | 0.747 | 0.769 | 0.181 |
+
+The marine assembly is a 41,988-contig full simulation where COMEBin only
+bins the large contigs (34 % of bp), so recall is structurally low; the human
+subset is a 4,900-contig selection that COMEBin bins almost completely.
+
+## Files in this repo
+
+- `results/amber/human/amber_results.tsv` — summary row (all metrics).
+- `results/amber/human/bin_metrics.tsv` — per-bin AMBER metrics.
+- `results/amber/human/amber_report.html` — full interactive AMBER report.
+- `results/amber/human/heatmap_bar.png` — per-bin precision/recall heatmap.
+- `results/amber/human/comebin_v11_human.binning` — the exact prediction.
+
+## Notes / provenance
+
+- AMBER = `CAMI-challenge/AMBER` master `f8b3a60`; env `/vol/data/envs/amber`
+  (Python 3.11, requirements.txt pinned).
+- Gold standard IDs `S0C*` match the assembly; all 4,900 subset contigs have a
+  genome assignment (0 missing), 64 unique genomes.
+- The pooled mapping (`gsa_pooled_mapping.tsv.gz`, `PC*` ids) is a *different*
+  assembly and is **not** used here — the sample-level `gsa_mapping.tsv.gz`
+  (`S0C*`) is the correct ground truth for this subset.
+> build · big-pickle
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && grep -n -i "amber" docs/01-datasets.md docs/13-optimization-sweep-medium.md docs/11-run-results.md | head -20
+docs/01-datasets.md:166:| Ground truth | ✅ **imported 2026-09-29**: `setup.tar.gz` (1,906,532,721 B) pulled from <https://frl.publisso.de/data/frl:6425518/gastrooral/setup.tar.gz>; the correct per-sample mapping is `extract/…/contigs/gsa_mapping.tsv.gz` (`S0C*`→`OTU`), filtered to our 4,900 contigs → `gold_standard/human_binning_gs.tsv` (4,900/4,900 mapped, 64 genomes, AMBER format). AMBER eval in [`docs/15-amber-cami2-human.md`](15-amber-cami2-human.md) (F1_bp 0.681). Note the pooled `gsa_pooled_mapping.tsv.gz` uses `PC…` ids from a *different* (pooled) assembly and is not used. |
+docs/13-optimization-sweep-medium.md:38:> disc space. Use amber for performance of cami II, use the gold standard if
+docs/13-optimization-sweep-medium.md:149:- **AMBER**: use [AMBER](https://github.com/CAMI-challenge/AMBER) against the
+docs/13-optimization-sweep-medium.md:151:  ✅ **done**: [docs/14](14-amber-cami2-marine.md) marine (F1_bp 0.330) and
+docs/13-optimization-sweep-medium.md:152:  [docs/15](15-amber-cami2-human.md) human (F1_bp 0.681). The human gold
+docs/13-optimization-sweep-medium.md:155:  scored with one command via `scripts/make_amber_prediction.py`.
+docs/13-optimization-sweep-medium.md:163:    (`@Version`/`@SampleID` + `@@SEQUENCEID BINID`), the same file AMBER
+> build · big-pickle
