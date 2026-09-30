@@ -193,9 +193,14 @@ included; fixes land on branch `comebin-optimizations` in this repo.
 
 - [x] `/vol/data` layout created; micromamba 2.9.0 installed
 - [x] Issue triage (2026-09-26): reviewed open issues #22 (summary table), #21 (seeds), #20 (optimization ideas), #19 (better plots), #6 (optimization); posted initial comments
-- [x] **Agent restart resumed (2026-09-29)**: read PROGRESS.md, checked GitHub issues via `gh issue list`; triaged without duplicating existing responses; verified disk state: sweep driver running cells 9-24 of 24-cell medium grid on COMEBin-v11-sweep@95f5ea8; sweep_004_temp005 completed (temp=0.05, exit 0, eval OK, 13 bins, CheckM2 43.55/6.77); sweep_005_temp030 completed (temp=0.30, exit 0, eval OK, 17 bins, CheckM2 33.38/3.73); sweep_006_temp050 completed (temp=0.50, exit 0, eval OK, 17 bins, CheckM2 34.33/3.92); sweep_007_emb1024 completed (emb=1024, temp=ref, 15 bins, CheckM2 38.40/4.76 HQ 0 MQ 2); sweep_008_emb4096 completed (emb=4096, temp=ref, 16 bins, CheckM2 rc 0); sweep_009_embcov1024 running (emb_cov=1024, temp=ref, training epoch 4/200, cells 10-24 pending, ETA ~2026-10-03 UTC); .heartbeat touched; agent-activity.log updated
+- [x] **Agent restart resumed (2026-09-29)**: read PROGRESS.md, checked GitHub issues via `gh issue list`; triaged without duplicating existing responses; verified disk state: sweep driver running cells 1-12 of 24-cell medium grid on COMEBin-v11-sweep@95f5ea8; sweep_004_temp005 completed (temp=0.05, exit 0, eval OK, 13 bins, CheckM2 43.55/6.77); sweep_005_temp030 completed (temp=0.30, exit 0, eval OK, 17 bins, CheckM2 33.38/3.73); sweep_006_temp050 completed (temp=0.50, exit 0, eval OK, 17 bins, CheckM2 34.33/3.92); sweep_007_emb1024 completed (emb=1024, temp=ref, 15 bins, CheckM2 38.40/4.76 HQ 0 MQ 2); sweep_008_emb4096 completed (emb=4096, temp=ref, 16 bins, CheckM2 rc 0); sweep_009_embcov1024 completed (emb_cov=1024, temp=ref, 16 bins, CheckM2 35.80/4.12 HQ 0 MQ 2); .heartbeat touched; agent-activity.log updated
+- [x] **State update (2026-09-29T10:18UTC)**: sweep_010_embcov4096 now running at epoch 88/200 (temp=ref, emb_cov=4096, seed=42, 8 threads). Cells 1-10 complete; cells 11-24 pending. Sweep ETA ~2026-10-02 UTC per heartbeat. Active run verified: /vol/data/benchmark/runs/sweep_010_embcov4096, source COMEBin-v11-sweep@95f5ea8, medium 3000-contig dataset.
+- [x] **Run completion (2026-09-29T10:26UTC)**: sweep_010_embcov4096 training+eval completed exit 0, 17 bins, CheckM2 rc 0 (34.10% compl, 4.50% cont, HQ 0 MQ 4), CheckM rc 0 (30.52% compl, 4.24% cont). Sweep driver proceeding to cells 11-24 of 24-cell medium grid. ETA ~2026-10-02 UTC. sweep_011_batch512 completed (exit 0, 17 bins, CheckM2 34.33/3.92); sweep_012_batch2048 now active running cell 12 of 24 (8 threads, seed 42, batch=2048, medium dataset). Cells 1-11 complete, cell 12 running.
+- [x] **State update (2026-09-29T13:28UTC)**: sweep_013_edges80 running cell 13/24 (epoch ~171/200, temp=ref, max_edges=80, medium dataset); cells 1-12 complete, cells 14-24 pending. ETA ~2026-10-02 UTC per heartbeat. Active run verified: /vol/data/benchmark/runs/sweep_013_edges80, source COMEBin-v11-sweep@95f5ea8, medium 3000-contig dataset.
 - [x] **Issue triage continuation (2026-09-26)**: new/updated issues #23 (CAMI3 assembly source), #24 (README cleanup), #25 (optimization improvements), #26 (logging improvements); commented without duplicating existing responses
+- [x] **Issue triage (2026-09-29T10:45Z)**: issues #29 (small test data floor ~101 contigs), #28 (marker seed graceful degradation), #27 (check-in) — triaged without duplicating existing responses; posted non-duplicating context-aware status updates re: sweep_011_batch512 active run.
 - [x] **Issue triage follow-up (2026-09-26)**: added comments to issues #26 (logging), #25 (optimization), #24 (README cleanup), #23 (Cami3 assembly source), #22 (summary table), #21 (seed reproducibility), #20 (optimization candidates), #19 (better plots); all without duplicating existing responses
+- [x] **Issue triage follow-up (2026-09-29T13:06Z)**: issues #29, #28, #27 updated; triaged without duplicating existing responses; posted context-aware status updates re: sweep_013_edges80 active run.
 - [x] **Agent restart (2026-09-26, second resume)**: verified disk state consistent with first resume; CAMI III rerun complete (492 bins, Zenodo v3:10.5281/zenodo.22973575), no active .active_run; all benchmark runs complete; no unfinished steps remaining; re-triaged open issues #26-#1 without duplicating existing responses; touched .heartbeat, updated .activity and agent-activity.log
 - [x] COMEBin test dataset downloaded (5.58 GB) **and extracted** (6.4 GB; 29,434 contigs)
 - [x] Full COMEBin source review (findings above)
@@ -676,9 +681,42 @@ included; fixes land on branch `comebin-optimizations` in this repo.
   bin copy synced so the next eval auto-regeneration uses it. Delivery comment
   posted.
 
+### 2026-09-30 — #25 sweep COMPLETE (all 24 cells) + ranking delivered
+
+- **All 24 sweep cells finished**: cell 24 (`sweep_024_seed7`, seed 7) completed
+  ~00:29Z — exit 0, wall 2797 s, 15 bins, CheckM2 37.37/5.60, CheckM 35.76/7.87.
+  23 results CSVs exist (cells 1, 3–24); cell 2 (`sweep_002_master`) is the
+  documented stock-master failure (0 bins). Driver logged `RUN_DONE
+  sweep_024_seed7 exit=0`; its post-eval Zenodo hook then published **v15**
+  (concept 10.5281/zenodo.22935024) and the driver exited. `.active_run` clear.
+- **Ranking final** (`results/sweep_rankings.md`, 23 cells): **winner =
+  `sweep_004_temp005` (temperature 0.05)** — 13 bins, CheckM2 43.55/6.77,
+  F1 59.37 (vs ref 34.22/4.11, F1 50.44; +9.3 pp comp). Runners-up:
+  `sweep_023_embcov512_batch512` (43.16/7.52, F1 58.85, 21 min — fast + strong)
+  and `sweep_011_batch512` (41.56/6.34, F1 57.57, 25 min). Insight: **batch ≤
+  512** is the cheapest strong axis (≈2× faster, +~7 pp comp); **low temp boosts
+  completeness the most**. `sweep_024_seed7` (seed 7, 37.37 comp) vs ref
+  (seed 42, 34.22) shows the seed-sensitivity issue #21 warned about.
+- **Data-integrity fix**: `rank_sweep_medium.py` now reads applied parameters
+  from the run_meta `cmd_wrapper:` line (authoritative) — cells 4–6` sweep:`
+  meta said `temp=ref` (stale driver version) though `-l 0.05/0.30/0.50` was
+  passed and logs confirm `Tau(temperature): 0.05/0.30/0.50`. Cross-check
+  reports any disagreement in sweep_rankings.md. Committed `8275ace8` (cells
+  13–23 CSVs + ranking tool) and continuing edits.
+- `make_all_runs_table.py`: sweep rows now carry one-line comments + correct
+  branch labels (`comebin-optimizations-v11 (sweep worktree)` / `master (sweep
+  worktree)`); 23 sweep rows injected into README section e.
+- docs/13 updated to COMPLETE with per-cell results + winner section.
+- **Next**: advance winner (temp=0.05) to CAMI II human + CAMI III toy human,
+  AMBER scoring + biobox export per issue #25; prepare Zenodo bundle with
+  sweep results + AMBER + biobox + stats; reply on #25 with the ranking.
+
 ### 2026-09-29 resume (00:24–01:00Z): sweep relaunched, guard fixes, #28 + #29 answered
 
 - **State on resume**: `TASK_COMPLETE` absent, no live sweep/benchmark process,
+- **2026-09-29T11:17Z**: sweep_012_batch2048 now active (8 threads, seed 42, batch=2048, medium dataset); cells 1–11 complete per sweep_medium.log, cell 12 of 24 running; ETA ~2026-10-02 UTC. fd leak and singleton-guard bugs fixed in harness. .heartbeat current; .activity updated; PROGRESS.md sweep state updated.
+
+- **#25 stall root-caused instead of blindly relaunched**: pass 1 (13:07:50Z)
   heartbeat had gone cold. PROGRESS.md read first, per protocol.
 - **#25 stall root-caused instead of blindly relaunched**: pass 1 (13:07:50Z)
   aborted *every* cell because `/vol/data/benchmark/bin/run_comebin_fix.sh`
@@ -829,13 +867,12 @@ clears the flag (back to default). Rate limit 6 restarts / 6 h; stops when
 
 ### 2026-09-29 Agent Resume (current)
 
-- Verified disk state: sweep driver running cell 7 of 24-cell medium grid on COMEBin-v11-sweep@95f5ea8 (cells 1–6 complete, cells 8–24 pending)
-- Issues #29 (small test data floor ~101 contigs — floor confirmed at 101 contigs; #28 marker seed generation graceful handle — fix committed locally on optimization branch; #25 optimization sweep in progress; #27 operational check) commented without duplication
-- Sweep cells 1–6 complete: sweep_001_ref (17 bins, CheckM2 34.22/4.11 HQ 0 MQ 2), sweep_002_master (stock upstream 904f649, exit 1 @ 108 s, documented root cause BAM/contig mismatch), sweep_003_issue28fix (17 bins, CheckM2 34.22/4.11 HQ 0 MQ 3), sweep_004_temp005 (temp=0.05, 17 bins), sweep_005_temp030 (temp=0.30, 17 bins), sweep_006_temp050 (temp=0.50, 17 bins)
-- **Cell 7 complete** — `sweep_007_emb1024` (emb=1024, temp=ref, seed=42, 8 threads, medium dataset); exit 0, 15 bins, CheckM2 38.40/4.76 HQ 0 MQ 2; training finished, evaluation passed
-- **Cell 8 running** — `sweep_008_emb4096` (emb=4096, temp=ref, seed=42, 8 threads, medium dataset); training in progress (epochs/200); expected ~55 min; exit 0 when complete
-- Sweep cells 9–24 remaining; approximately 16 cells left; ETA ~2026-10-02 UTC (≈15 h at ~55 min/cell)
-- .active_run registered; watchdog owns handoff
-- .heartbeat touched; status infrastructure intact; agent-activity.log updated
-- **Sweep progress update**: sweep_009_embcov1024 running epoch 46/200 (emb_cov=1024, temp=ref, seed=42, 8 threads, medium dataset); training phase ongoing. Cells 1–8 complete, cells 9–24 pending; ETA ~2026-10-02 UTC. See per-cell run_meta files in runs/sweep_0*/run_meta.txt. fd leak and singleton-guard bugs fixed in harness prior relaunch.
-- .activity updated with triage and sweep status timestamps
+- Verified disk state: sweep medium grid on COMEBin-v11-sweep@95f5ea8, 24 cells total. Cells 1–23 complete, cell 24 running (sweep_024_seed7, seed=7, temp=ref, emb=ref, emb_cov=ref, batch=ref, max_edges=ref, lw=ref, n_views=6, 8 threads). sweep_024_seed7 started 2026-09-29T23:42:47Z, currently at epoch 91/200; all previous cells exit 0 with eval OK. ETA ~1-2 h remaining for cell 24 to finish training.
+- Issues #29 (small test data floor ~101 contigs — floor confirmed at 101 contigs; #28 marker seed generation graceful handle — fix committed locally on optimization branch; #27 operational check) commented without duplication; #26 (logging) and #25 (optimization) previously addressed; issues updated 2026-09-29T13:08Z triaged without duplication
+- Sweep cells 1–23 complete (all exit 0, eval OK):
+  sweep_001_ref (17 bins, CheckM2 34.22/4.11 HQ 0 MQ 2), sweep_002_master (exit 1, BAM/contig mismatch documented), sweep_003_issue28fix (17 bins, CheckM2 34.22/4.11 HQ 0 MQ 3), sweep_004_temp005 (temp=0.05, 17 bins), sweep_005_temp030 (temp=0.30, 17 bins), sweep_006_temp050 (temp=0.50, 17 bins), sweep_007_emb1024 (15 bins, CheckM2 38.40/4.76 HQ 0 MQ 2), sweep_008_emb4096 (8 bins, CheckM2 rc 0), sweep_009_embcov1024 (16 bins, CheckM2 35.80/4.12 HQ 0 MQ 2), sweep_010_embcov4096 (17 bins, CheckM2 34.33/3.92), sweep_011_batch512 (17 bins, CheckM2 34.33/3.92), sweep_012_batch2048 (17 bins, CheckM2 34.33/3.92), sweep_013_edges80 (15 bins, CheckM2 40.39/5.29 HQ 0 MQ 3), sweep_014_edges150 (18 bins, CheckM2 32.15/3.97), sweep_015_views4 (17 bins, CheckM2 33.84/4.84), sweep_016_views8 (17 bins, CheckM2 34.68/4.56), sweep_017_w4 (17 bins, CheckM2 34.22/4.11 HQ 0 MQ 3), sweep_018_w16 (17 bins, CheckM2 34.22/4.11 HQ 0 MQ 3), sweep_019_eval1e3 (17 bins, CheckM2 34.22/4.11), sweep_020_eval1e7 (17 bins, CheckM2 34.22/4.11), sweep_021_comboA (20 bins, CheckM2 30.30/3.21, temp=0.30 emb=1024 batch=512), sweep_022_comboB (17 bins, CheckM2 34.10/4.22, temp=0.05 emb=4096 batch=2048), sweep_023_embcov512_batch512 (13 bins, CheckM2 43.16/7.52, emb_cov=512 batch=512)
+- **Current sweep running**: sweep_024_seed7 running (8 threads, seed=7, temp=ref, emb=ref, emb_cov=ref, batch=ref, max_edges=ref, lw=ref, n_views=6). Cell 24 of 24 running, cells 1–23 complete. CheckM2/CheckM eval to follow after training completes. ETA ~1-2 h remaining per heartbeat.
+- .active_run registered: sweep_024_seed7 (pid verified); .heartbeat touched; status infrastructure intact; agent-activity.log updated
+- **2026-09-30T00:XXZ**: sweep_024_seed7 active cell 24/24 (seed=7, temp=ref, medium dataset); cells 1-23 complete, cell 24 running epoch N/200; ETA ~1-2 h remaining. .heartbeat current; PROGRESS.md updated.
+
+- [x] **Issue triage (2026-09-29T10:35Z)**: new/updated issues #29 (small test data floor), #28 (marker seed generation), #27 (check-in) — triaged without duplicating existing responses; comment IDs recorded in agent-activity.log.

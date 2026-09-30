@@ -168,14 +168,22 @@ def main():
                                    "-", "-")
         commit = meta.get("commit", "-")
         branch = meta.get("branch")
-        if not branch:
+        if not branch or not branch.strip():
             src = meta.get("source", "")
+            # Strip a trailing " (branch ...)" marker before matching dir names.
+            src_dir = re.sub(r"\s*\(branch .*\)\s*$", "", src).rstrip("/")
             m = re.search(r"\(branch (.*?)\)", src)
-            if m:
+            if m and m.group(1).strip():
                 branch = m.group(1)
-            elif src.rstrip("/").endswith("COMEBin") or src.rstrip("/").endswith("COMEBin-v11"):
-                # Plain source dir without a branch marker -> upstream/master.
-                branch = "master" if src.rstrip("/").endswith("COMEBin") else "comebin-optimizations-v11"
+            elif src_dir.endswith("COMEBin") or src_dir.endswith("COMEBin-v11") or src_dir.endswith("COMEBin-v11-sweep"):
+                if src_dir.endswith("COMEBin"):
+                    branch = "master"
+                elif src_dir.endswith("COMEBin-v11-sweep"):
+                    branch = "comebin-optimizations-v11 (sweep worktree)"
+                else:
+                    branch = "comebin-optimizations-v11"
+            elif src_dir.endswith("COMEBin-master904"):
+                branch = "master (sweep worktree)"
             else:
                 branch = "-"
         exit_code = meta.get("exit_code")
@@ -191,7 +199,6 @@ def main():
         mq = a.get("checkm2_MQ", "-")
         f1 = f1_score(comp, cont) if comp != "-" else "-"
 
-        # One-line comment - stable human notes per run.
         comment = {
             "baseline_unmodified": "first baseline try (pre-dataset fixes); superseded",
             "baseline_rerun": "aborted/rerun; use baseline_rerun_autorestart1",
@@ -209,6 +216,30 @@ def main():
             "cami3_v11_20260926": "failed: FS full (ENOSPC) -> rerun",
             "cami3_v11_20260926_rerun": "492 bins, most HQ/MQ of any run (CAMI III)",
             "small_v11_issue28_regression": "issue #28 graceful-zero-bins validation",
+            "sweep_001_ref": "sweep ref (v11 `95f5ea8`, seed 42, 8 thr) — grid baseline",
+            "sweep_002_master": "sweep stock master `904f649` (unseeded) — failed: medium BAM/assembly mismatch → exit 1, 0 bins, documented",
+            "sweep_003_issue28fix": "sweep issue-#28 fix `41606c8` — no regression vs ref",
+            "sweep_004_temp005": "**#25 winner** temp 0.05 — top CheckM2 F1 (59.4), +9.3 pp comp vs ref",
+            "sweep_005_temp030": "sweep temp 0.30",
+            "sweep_006_temp050": "sweep temp 0.50",
+            "sweep_007_emb1024": "sweep emb 1024",
+            "sweep_008_emb4096": "sweep emb 4096",
+            "sweep_009_embcov1024": "sweep emb_cov 1024",
+            "sweep_010_embcov4096": "sweep emb_cov 4096",
+            "sweep_011_batch512": "sweep batch 512 — 2× faster, +7.3 pp comp",
+            "sweep_012_batch2048": "sweep batch 2048",
+            "sweep_013_edges80": "sweep max_edges 80 — best cont (5.29) among top-4",
+            "sweep_014_edges150": "sweep max_edges 150",
+            "sweep_015_views4": "sweep n_views 4",
+            "sweep_016_views8": "sweep n_views 8",
+            "sweep_017_w4": "sweep leiden_workers 4",
+            "sweep_018_w16": "sweep leiden_workers 16",
+            "sweep_019_eval1e3": "sweep hmm_evalue 1e-3",
+            "sweep_020_eval1e7": "sweep hmm_evalue 1e-7",
+            "sweep_021_comboA": "sweep combo temp 0.3 + emb 1024 + batch 512",
+            "sweep_022_comboB": "sweep combo temp 0.05 + emb 4096 + batch 2048",
+            "sweep_023_embcov512_batch512": "sweep emb_cov 512 + batch 512 — #2 overall, fast (21 min)",
+            "sweep_024_seed7": "sweep seed 7 (reproducibility sweep) — 37.4 comp vs 34.2 (seed 42) → seed-sensitive",
         }.get(r["name"], "-")
 
         if exit_code == "running":

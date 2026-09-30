@@ -1,22 +1,28 @@
 # Optimization sweep on the medium dataset (issue #25)
 
-Status: **LIVE** (2026-09-28 13:09Z – …). Driver `scripts/run_sweep_medium.sh`
-runs the 24 cells **serially, one at a time, never overlapping the registered
-run slot** (`.active_run` gate + wait-active_clear), is resumable (`--from N`
-skips completed cells, RESUME-evals orphaned rc=0 runs), and is a singleton
-(`pgrep` ancestor/child guard + `flock`). Each cell is a full medium run with
-seed 42, THREADS 8, registered via `run_comebin_fix.sh`.
+Status: **COMPLETE** (2026-09-28 13:09Z → 2026-09-30 ~00:34Z). All 24 cells
+finished: 23 evaluated (cells 1, 3–24), 1 documented failure (cell 2, stock
+master). Every cell ran **serially, one at a time, never overlapping the
+registered run slot** (`.active_run` gate + wait-active_clear), was resumable
+(`--from N`), and was a singleton (`pgrep` ancestor/child guard + `flock`).
+Each cell = a full medium run with seed 42 (cell 24: seed 7), THREADS 8,
+registered via `run_comebin_fix.sh`.
 
-Cell status (2026-09-29 01:10Z):
-- `sweep_001_ref` (v11 `95f5ea8` reference) — ✅ done, eval'd: 2,827 s wall,
-  17 bins, CheckM2 34.22 / 4.11 (HQ 0 / MQ 2), CheckM 32.00 / 5.31 (0 / 3).
+Cell status (final):
+- `sweep_001_ref` (v11 `95f5ea8` reference) — ✅ 2,827 s wall, 17 bins,
+  CheckM2 34.22 / 4.11 (HQ 0 / MQ 2), CheckM 32.00 / 5.31 (0 / 3).
 - `sweep_002_master` (stock upstream `904f649`, unseeded) — ❌ documented
   failure: stock master dies on the medium BAM/assembly mismatch (issue-#2
   family; `KeyError: 'BATS_…_scaffold_22978'`), exit 1 after 108 s, 0 bins —
   not retried, root cause in `runs/sweep_002_master/` + #28 thread.
-- `sweep_003_issue28fix` (v11 `41606c8`, issue-#28 fix) — 🟡 training
-  (2026-09-29 00:41Z…).
-- cells 4–24 — pending, in grid order below.
+- `sweep_003_issue28fix` (v11 `41606c8`, issue-#28 fix) — ✅ 2,833 s, 17 bins,
+  CheckM2 34.22 / 4.11 — **no regression vs ref** (identical stats; the fix
+  only touches the zero-bin edge case).
+- Cells 4–24 — ✅ all done, evaluated, ranked (below). `sweep_024_seed7`
+  (seed 7) completed 2026-09-30: 2,797 s, 15 bins, CheckM2 37.37 / 5.60.
+
+**Final ranking:** [`results/sweep_rankings.md`](../results/sweep_rankings.md)
+(23 ranked cells; full grid in the table below). Final rankings:
 
 Harness fixes landed while the sweep stalled (see #28 thread, commits
 `fa69730a 55ad99dd 57b9cb5d 20ca7e39`): `${TEMP:-}`-style `set -u` guards +
@@ -63,32 +69,67 @@ Purpose: one-factor-at-a-time around the reference defaults
 (`-n 6`, temp 0.15, emb 2048, emb_cov 2048, batch 1024, max_edges 100,
 leiden_workers = threads).
 
-| # | Axis | Value | run name |
-|---|---|---|---|
-| 1 | reference (no override) | defaults | `sweep_001_ref` |
-| 2 | commit | **master 904f649** (unmodified) | `sweep_002_master` |
-| 3 | commit | **41606c8** (issue #28 fix, v11) | `sweep_003_issue28fix` |
-| 4 | temperature `-l` | 0.05 | `sweep_004_temp005` |
-| 5 | temperature `-l` | 0.30 | `sweep_005_temp030` |
-| 6 | temperature `-l` | 0.50 | `sweep_006_temp050` |
-| 7 | emb_szs `-e` | 1024 | `sweep_007_emb1024` |
-| 8 | emb_szs `-e` | 4096 | `sweep_008_emb4096` |
-| 9 | emb_szs_forcov `-c` | 1024 | `sweep_009_embcov1024` |
-| 10 | emb_szs_forcov `-c` | 4096 | `sweep_010_embcov4096` |
-| 11 | batch_size `-b` | 512 | `sweep_011_batch512` |
-| 12 | batch_size `-b` | 2048 | `sweep_012_batch2048` |
-| 13 | max_edges `-m` | 80 | `sweep_013_edges80` |
-| 14 | max_edges `-m` | 150 | `sweep_014_edges150` |
-| 15 | n_views `-n` | 4 | `sweep_015_views4` |
-| 16 | n_views `-n` | 8 | `sweep_016_views8` |
-| 17 | leiden_workers `-w` | 4 | `sweep_017_w4` |
-| 18 | leiden_workers `-w` | 16 | `sweep_018_w16` |
-| 19 | hmm_evalue `-E` | 1e-3 | `sweep_019_eval1e3` |
-| 20 | hmm_evalue `-E` | 1e-7 | `sweep_020_eval1e7` |
-| 21 | combo | temp 0.3 + emb 1024 + batch 512 | `sweep_021_comboA` |
-| 22 | combo | temp 0.05 + emb 4096 + batch 2048 | `sweep_022_comboB` |
-| 23 | combo | emb_cov 512 + batch 512 (early-stop disabled — `--earlystop` is hardcoded in `run_comebin.sh`, not a CLI flag — so this cell tests the small-emb-cov regime instead) | `sweep_023_embcov512_batch512` |
-| 24 | seed sanity | seed 7 (reproducibility check) | `sweep_024_seed7` |
+| # | Axis | Value | run name | Result |
+|---|---|---|---|---|
+| 1 | reference (no override) | defaults | `sweep_001_ref` | 17 bins, CheckM2 34.22/4.11 |
+| 2 | commit | **master 904f649** (unmodified) | `sweep_002_master` | ❌ failed (BAM/assembly mismatch), 0 bins |
+| 3 | commit | **41606c8** (issue #28 fix, v11) | `sweep_003_issue28fix` | 17 bins, 34.22/4.11 (no regression) |
+| 4 | temperature `-l` | 0.05 | `sweep_004_temp005` | **🥇 13 bins, 43.55/6.77 — WINNER** |
+| 5 | temperature `-l` | 0.30 | `sweep_005_temp030` | 17 bins, 33.38/3.73 |
+| 6 | temperature `-l` | 0.50 | `sweep_006_temp050` | 17 bins, 34.33/3.92 |
+| 7 | emb_szs `-e` | 1024 | `sweep_007_emb1024` | 15 bins, 38.40/4.76 |
+| 8 | emb_szs `-e` | 4096 | `sweep_008_emb4096` | 16 bins, 36.33/4.81 |
+| 9 | emb_szs_forcov `-c` | 1024 | `sweep_009_embcov1024` | 16 bins, 35.80/4.12 |
+| 10 | emb_szs_forcov `-c` | 4096 | `sweep_010_embcov4096` | 17 bins, 34.10/4.50 |
+| 11 | batch_size `-b` | 512 | `sweep_011_batch512` | 14 bins, 41.56/6.34 (2× faster) |
+| 12 | batch_size `-b` | 2048 | `sweep_012_batch2048` | 18 bins, 34.68/4.12 |
+| 13 | max_edges `-m` | 80 | `sweep_013_edges80` | 15 bins, 40.39/5.29 |
+| 14 | max_edges `-m` | 150 | `sweep_014_edges150` | 18 bins, 32.15/3.97 |
+| 15 | n_views `-n` | 4 | `sweep_015_views4` | 17 bins, 33.84/4.84 |
+| 16 | n_views `-n` | 8 | `sweep_016_views8` | 17 bins, 34.68/4.56 |
+| 17 | leiden_workers `-w` | 4 | `sweep_017_w4` | 17 bins, 34.22/4.11 |
+| 18 | leiden_workers `-w` | 16 | `sweep_018_w16` | 17 bins, 34.22/4.11 |
+| 19 | hmm_evalue `-E` | 1e-3 | `sweep_019_eval1e3` | 17 bins, 34.22/4.11 |
+| 20 | hmm_evalue `-E` | 1e-7 | `sweep_020_eval1e7` | 17 bins, 34.22/4.11 |
+| 21 | combo | temp 0.3 + emb 1024 + batch 512 | `sweep_021_comboA` | 20 bins, 30.30/3.21 |
+| 22 | combo | temp 0.05 + emb 4096 + batch 2048 | `sweep_022_comboB` | 17 bins, 34.10/4.22 |
+| 23 | combo | emb_cov 512 + batch 512 (early-stop disabled — `--earlystop` is hardcoded in `run_comebin.sh`, not a CLI flag — so this cell tests the small-emb-cov regime instead) | `sweep_023_embcov512_batch512` | 13 bins, 43.16/7.52 (🥈, 21 min) |
+| 24 | seed sanity | seed 7 (reproducibility check) | `sweep_024_seed7` | 15 bins, 37.37/5.60 (seed-sensitive) |
+
+## Results & winner
+
+Full ranking (23 cells): [`results/sweep_rankings.md`](../results/sweep_rankings.md).
+Ranking rule applied = owner's order (CheckM2 comp desc → cont asc → HQ+MQ
+desc → F1 desc → wall asc).
+
+| Rank | Cell | Params (non-ref) | Wall | Bins | CheckM2 comp | cont | F1 | CheckM1 comp/cont |
+|---|---|---|---|---|---|---|---|---|
+| 1 | `sweep_004_temp005` | temp=0.05 | 2842 | 13 | 43.55 | 6.77 | 59.37 | 39.96/9.63 |
+| 2 | `sweep_023_embcov512_batch512` | emb_cov=512 batch=512 | 1262 | 13 | 43.16 | 7.52 | 58.85 | 41.34/9.46 |
+| 3 | `sweep_011_batch512` | batch=512 | 1583 | 14 | 41.56 | 6.34 | 57.57 | 37.94/7.60 |
+| 4 | `sweep_013_edges80` | max_edges=80 | 2757 | 15 | 40.39 | 5.29 | 56.63 | 36.91/6.86 |
+| … | (19 more cells) | … | … | … | … | … | … | … |
+| 23 | `sweep_021_comboA` | temp=0.30 emb=1024 batch=512 | 1951 | 20 | 30.30 | 3.21 | 46.15 | 27.65/2.92 |
+| ref | `sweep_001_ref` | reference | 2827 | 17 | 34.22 | 4.11 | 50.44 | 32.00/5.31 |
+
+**Winner: `sweep_004_temp005` — temperature 0.05.** Gains vs reference:
++9.33 pp CheckM2 completeness (43.55 vs 34.22), F1 59.37 vs 50.44 (+8.93).
+Cost: contamination 6.77 vs 4.11 (finer bins → more splits), 13 vs 17 bins.
+The other strong cells (emb_cov 512 + batch 512, batch 512) confirm that
+**batch ≤ 512** is the single cheapest + most effective axis (≈2× faster +
+~+7 pp completeness), and **low temperature (0.05)** boosts completeness the
+most of any single parameter. Per the owner's rule (stats first, runtime
+only as tiebreak) temp 0.05 wins; batch/emb_cov 512 are noted as the
+cost-efficient runner-up regime.
+
+**Parameter-provenance note:** the ranking reads each cell's applied parameters
+from `run_meta.txt` `cmd_wrapper:` (the record of what COMEBin actually
+received), not the driver's `sweep:` meta line. The meta line for cells 4–6
+was written by an earlier driver version and records `temp=ref` even though
+`-l 0.05 / 0.30 / 0.50` was on the command line and each run log confirms
+`Tau(temperature): 0.05 / 0.30 / 0.50` — the runs themselves are correct, the
+meta text was stale. `rank_sweep_medium.py` cross-checks both and reports any
+disagreement.
 
 ## Ranking rule (owner's order)
 
