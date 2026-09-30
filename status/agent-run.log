@@ -136693,3 +136693,207 @@ The human winner used the clean sweep worktree at `95f5ea8` — same one I'll us
 62G total, 58G avail
  02:05:58 up 6 days, 12:30,  1 user,  load average: 6.86, 17.91, 24.62
 > build · big-pickle
+32 cores; the COMEBin run finished so load is dropping. CheckM2 uses 32 threads briefly; I'll launch CAMI III now (the human-winner eval overlap is only a few minutes of CheckM2). Let me check the human launch log to replicate the exact launch pattern.
+[0m$ [0mls /vol/data/benchmark/logs/ | grep -E 'human_v11_winner|cami3' ; echo "---"; cat /vol/data/benchmark/logs/human_v11_winner_20260930.launch.log 2>/dev/null | head -20
+cami3_rerun.launch.log
+cami3_v11_20260926_launch.log
+finish_prep_cami3.log
+finish_prep_cami3.out
+finish_prep_cami3.sh
+human_v11_winner_20260930.chain.log
+prep_cami3_toy.log
+---
+> build · big-pickle
+[0m$ [0mls /vol/data/benchmark/runs/human_v11_winner_20260930/; echo "---logs dir in run---"; ls /vol/data/benchmark/runs/human_v11_winner_20260930/logs/ 2>/dev/null; echo "---watchdog head---"; sed -n '1,40p' /vol/data/benchmark/bin/benchmark-watchdog.sh 2>/dev/null | grep -vE '^\s*#' | head -30
+comebin_out
+comebin_run.log
+eval
+logs
+run_meta.txt
+---logs dir in run---
+resources.tsv
+sampler.out
+---watchdog head---
+set -u
+export HOME=/home/ubuntu
+BENCH=${BENCH_ROOT:-/vol/data/benchmark}
+ACTIVE="$BENCH/.active_run"        # pid pgid logfile rundir start_ts mode source [contigs bamdir]
+SLOG="$BENCH/logs/benchmark-watchdog.log"
+LOCK=${BENCH_WATCHDOG_LOCK:-/tmp/benchmark-watchdog.lock}
+HANG_S=${BENCH_HANG_S:-2400}       # 40 min without new log output => hung
+MAX_PER_RUN=${BENCH_MAX_RESTARTS:-3}
+REPO=${BENCHMARK_REPO:-/vol/data/repos/metagenomic-binning-benchmark}
+RUNNER_REF=${BENCH_RUNNER_REF:-HEAD}
+SNAPSHOT_ROOT="$BENCH/.runner-snapshots"
+log() { echo "$(date -Is) [bm-watchdog] $*" >>"$SLOG"; }
+
+exec 9>"$LOCK"
+flock -n 9 || exit 0
+[ -f "$BENCH/TASK_COMPLETE" ] && exit 0
+[ -f "$ACTIVE" ] || exit 0
+mkdir -p "$BENCH/logs" "$SNAPSHOT_ROOT"
+
+read -r pid pgid logfile rundir start mode source contigs bamdir < "$ACTIVE"
+name=$(basename "${rundir:-}")
+root_name=${name%%_autorestart*}
+mode=${mode:-baseline}
+source=${source:-/vol/data/repos/COMEBin}
+> build · big-pickle
+[0m$ [0msed -n '140,200p' /vol/data/benchmark/bin/run_comebin_fix.sh | grep -vE '^\s*#' | head -45
+rc=$?
+  trap - EXIT
+  if [ -n "$SAMPLER_PID" ] && kill -0 "$SAMPLER_PID" 2>/dev/null; then
+    kill "$SAMPLER_PID" 2>/dev/null || true
+    wait "$SAMPLER_PID" 2>/dev/null || true
+  fi
+  if [ "$rc" -eq 0 ] && [ -f "$ACTIVE" ]; then
+    read -r current_pid _ < "$ACTIVE" || true
+    [ "${current_pid:-}" = "$$" ] && rm -f "$ACTIVE"
+  fi
+  exit "$rc"
+}
+trap cleanup EXIT
+trap 'exit 130' INT TERM
+
+sample_resources() {
+  printf 'timestamp\tpids\tcpu_pct\trss_gb\tsystem_mem_mb\n'
+  while :; do
+    read -r pids cpu_pct rss_kb <<<"$(ps -eo pid=,pcpu=,rss=,args= | awk -v out="$RUNDIR/comebin_out" '
+      index($0, out) && $4 !~ /^awk/ {
+        p = p ? p "," $1 : $1; c += $2; r += $3
+      }
+      END { printf "%s %.1f %.0f", p, c, r }
+    ')"
+    system_mem_mb=$(free -m | awk '/Mem:/{print $3}')
+    printf '%s\t%s\t%s\t%.3f\t%s\n' "$(date -Is)" "${pids:-none}" \
+      "${cpu_pct:-0}" "$(awk -v kb="${rss_kb:-0}" 'BEGIN{print kb/1048576}')" "$system_mem_mb"
+    sleep 30 & wait $!
+  done
+}
+sample_resources > "$RUNDIR/logs/resources.tsv" 2> "$RUNDIR/logs/sampler.out" 9>&- &
+SAMPLER_PID=$!
+
+( sleep 12; MCMD=$(pgrep -af 'main.py train' 2>/dev/null | head -1 | cut -d' ' -f2-); \
+  [ -n "$MCMD" ] && echo "cmd_train_py: $MCMD" >> "$RUNDIR/run_meta.txt" ) 9>&- &
+
+START=$(date +%s)
+set +e
+CUDA_VISIBLE_DEVICES= "$MM" run -p "$ENV" bash run_comebin.sh \
+  "${COMEBIN_ARGS[@]}" 9>&- 2>&1 | tee "$RUNDIR/comebin_run.log" 9>&-
+RC=${PIPESTATUS[0]}
+set -e
+END=$(date +%s)
+
+BINS="$RUNDIR/comebin_out/comebin_res/comebin_res_bins"
+> build · big-pickle
+Launching the CAMI III winner validation run (temp 0.05, seed 42, 32 thr, sweep worktree `95f5ea8`) detached per protocol.
+[0m$ [0mcd /vol/data/benchmark && pgrep -f run_eval_chain.sh | wc -l && SRC_COMEBIN=/vol/data/repos/COMEBin-v11-sweep CONTIGS=/vol/data/datasets/cami_III/toy_human_input_2samples/contigs.fa BAMDIR=/vol/data/datasets/cami_III/toy_human_input_2samples/bamfiles MODE=cami3 THREADS=32 SEED=42 COMEBIN_TEMPERATURE=0.05 TEMP=0.05 nohup setsid /vol/data/benchmark/bin/run_comebin_fix.sh /vol/data/benchmark/runs/cami3_v11_winner_20260930 > /vol/data/benchmark/logs/cami3_v11_winner_20260930.launch.log 2>&1 & echo "launched pid $!"
+launched pid 944096
+3
+> build · big-pickle
+[0m$ [0msleep 8; echo "---chains---"; pgrep -af run_eval_chain.sh | head; echo "---active---"; cat /vol/data/benchmark/.active_run 2>/dev/null; echo; echo "---launch log---"; head -25 /vol/data/benchmark/logs/cami3_v11_winner_20260930.launch.log 2>/dev/null | cut -c1-120
+---chains---
+680732 /bin/bash -c cd /vol/data/benchmark && nohup setsid bash /vol/data/benchmark/bin/run_eval_chain.sh /vol/data/benchmark/runs/human_v11_winner_20260930 human 28800 32 >/vol/data/benchmark/logs/human_v11_winner_20260930.chain.log 2>&1 & sleep 6 pgrep -af "run_eval_chain.sh" | grep -v pgrep echo "--- chain log ---"; cat /vol/data/benchmark/status/human_v11_winner_20260930.eval_chain.log echo "--- .active_run (must be unchanged) ---"; cut -d' ' -f1-2 /vol/data/benchmark/.active_run rm -f /vol/data/benchmark/followups/winner_human_20260930.sh && echo "removed superseded one-off waiter script"
+680734 bash /vol/data/benchmark/bin/run_eval_chain.sh /vol/data/benchmark/runs/human_v11_winner_20260930 human 28800 32
+944096 /bin/bash -c cd /vol/data/benchmark && pgrep -f run_eval_chain.sh | wc -l && SRC_COMEBIN=/vol/data/repos/COMEBin-v11-sweep CONTIGS=/vol/data/datasets/cami_III/toy_human_input_2samples/contigs.fa BAMDIR=/vol/data/datasets/cami_III/toy_human_input_2samples/bamfiles MODE=cami3 THREADS=32 SEED=42 COMEBIN_TEMPERATURE=0.05 TEMP=0.05 nohup setsid /vol/data/benchmark/bin/run_comebin_fix.sh /vol/data/benchmark/runs/cami3_v11_winner_20260930 > /vol/data/benchmark/logs/cami3_v11_winner_20260930.launch.log 2>&1 & echo "launched pid $!"
+944230 /bin/bash -c sleep 8; echo "---chains---"; pgrep -af run_eval_chain.sh | head; echo "---active---"; cat /vol/data/benchmark/.active_run 2>/dev/null; echo; echo "---launch log---"; head -25 /vol/data/benchmark/logs/cami3_v11_winner_20260930.launch.log 2>/dev/null | cut -c1-120
+---active---
+
+---launch log---
+> build · big-pickle
+[0m$ [0msleep 10; echo "---launch log---"; cat /vol/data/benchmark/logs/cami3_v11_winner_20260930.launch.log 2>/dev/null | cut -c1-150; echo "---active---"; cat /vol/data/benchmark/.active_run 2>/dev/null; echo; echo "---run dir---"; ls /vol/data/benchmark/runs/cami3_v11_winner_20260930/ 2>/dev/null; echo "---fix procs---"; ps aux | grep -E '[r]un_comebin_fix.sh' | head -3
+---launch log---
+---active---
+
+---run dir---
+---fix procs---
+ubuntu    944096  0.0  0.0   7744  2016 ?        S    02:06   0:00 /bin/bash -c cd /vol/data/benchmark && pgrep -f run_eval_chain.sh | wc -l && SRC_COMEBIN=/vol/data/repos/COMEBin-v11-sweep CONTIGS=/vol/data/datasets/cami_III/toy_human_input_2samples/contigs.fa BAMDIR=/vol/data/datasets/cami_III/toy_human_input_2samples/bamfiles MODE=cami3 THREADS=32 SEED=42 COMEBIN_TEMPERATURE=0.05 TEMP=0.05 nohup setsid /vol/data/benchmark/bin/run_comebin_fix.sh /vol/data/benchmark/runs/cami3_v11_winner_20260930 > /vol/data/benchmark/logs/cami3_v11_winner_20260930.launch.log 2>&1 & echo "launched pid $!"
+ubuntu    944099  0.0  0.0   7744  3488 ?        Ss   02:06   0:00 bash /vol/data/benchmark/bin/run_comebin_fix.sh /vol/data/benchmark/runs/cami3_v11_winner_20260930
+> build · big-pickle
+The launcher (944099) is running but blocked early — likely waiting on the start lock. Let me check who holds it.
+[0m$ [0mecho "---start.lock holders---"; lslocks 2>/dev/null | grep -E 'benchmark-start|START' ; ls -la /tmp/benchmark-start.lock 2>/dev/null; echo "---procs with lock---"; ps aux | grep -E 'run_sweep|run_comebin|run_eval' | grep -v grep | head; echo "---watchdog log tail---"; tail -5 /vol/data/benchmark/logs/benchmark-watchdog.log 2>/dev/null | cut -c1-150
+---start.lock holders---
+COMMAND            PID  TYPE   SIZE MODE   M      START        END PATH
+flock           944101 FLOCK        WRITE* 0          0          0 /tmp/benchmark-start.lock
+-rw-rw-r-- 1 ubuntu ubuntu 0 Sep 30 02:06 /tmp/benchmark-start.lock
+---procs with lock---
+ubuntu    680734  0.0  0.0   7744  3592 ?        Ss   01:22   0:00 bash /vol/data/benchmark/bin/run_eval_chain.sh /vol/data/benchmark/runs/human_v11_winner_20260930 human 28800 32
+ubuntu    938238  0.0  0.0   7876  3596 ?        S    02:04   0:00 bash /vol/data/benchmark/bin/run_eval.sh /vol/data/benchmark/runs/human_v11_winner_20260930 32
+ubuntu    944099  0.0  0.0   7744  3488 ?        Ss   02:06   0:00 bash /vol/data/benchmark/bin/run_comebin_fix.sh /vol/data/benchmark/runs/cami3_v11_winner_20260930
+---watchdog log tail---
+2026-09-25T01:45:01+00:00 [bm-watchdog] tiny_test_n100 terminal failure: run_meta exit_code=1 — active-run cleared; no automatic retry
+2026-09-26T04:40:01+00:00 [bm-watchdog] cami3_v11_20260926 terminal failure: run_meta exit_code=1 — active-run cleared; no automatic retry
+2026-09-28T13:00:01+00:00 [bm-watchdog] active-run directory is outside /vol/data/benchmark/runs: /tmp/opencode/small_v11_prepatch_baseline; refusing 
+2026-09-28T14:20:02+00:00 [bm-watchdog] sweep_002_master terminal failure: run_meta exit_code=1 — active-run cleared; no automatic retry
+2026-09-29T01:50:01+00:00 [bm-watchdog] sweep_004_temp005 terminal failure: run_meta exit_code=1 — active-run cleared; no automatic retry
+> build · big-pickle
+The launcher holds the start lock; its stdout is just block-buffered (redirect to file). Let me re-check the run dir and `.active_run` registration.
+[0m$ [0msleep 15; ls /vol/data/benchmark/runs/cami3_v11_winner_20260930/ 2>/dev/null; echo "---active---"; cat /vol/data/benchmark/.active_run 2>/dev/null; echo; echo "---meta---"; cat /vol/data/benchmark/runs/cami3_v11_winner_20260930/run_meta.txt 2>/dev/null | cut -c1-100 | head -15
+---active---
+
+---meta---
+> build · big-pickle
+[0m$ [0mps -o pid,ppid,stat,wchan:28,etime,args -p 944099,944101 2>/dev/null; echo "---children of 944099---"; pgrep -P 944099 | xargs -r ps -o pid,stat,wchan:28,args 2>/dev/null; echo "---any flock waiting---"; lslocks 2>/dev/null | grep -E 'benchmark-start'
+PID    PPID STAT WCHAN                            ELAPSED COMMAND
+ 944099  944096 Ss   do_wait                            00:51 bash /vol/data/benchmark/bin/run_comebin_fix.sh /vol/data/benchmark/runs/cami3_v11_winner_20260930
+ 944101  944099 S    locks_lock_inode_wait              00:51 flock -w 300 9
+---children of 944099---
+    PID STAT WCHAN                        COMMAND
+ 944101 S    locks_lock_inode_wait        flock -w 300 9
+---any flock waiting---
+flock           944101 FLOCK        WRITE* 0          0          0 /tmp/benchmark-start.lock
+> build · big-pickle
+[0m$ [0mgrep -nE 'lock|flock|exec 9|STOP' /vol/data/benchmark/bin/run_eval.sh | head -20; echo "---eval progress---"; tail -3 /vol/data/benchmark/status/human_v11_winner_20260930.eval_chain.log | cut -c1-120; echo "---checkm2 procs---"; ps aux | grep -c '[c]heckm2'
+19:exec 9>/tmp/benchmark-start.lock
+20:# Bounded wait: the run that just finished can still hold this lock through a
+23:flock -w 600 9 || { echo "ERROR: another benchmark launch/evaluation holds /tmp/benchmark-start.lock (waited 600s)"; exit 1; }
+94:# preserved (same convention as the CheckM v1 block below) so the evidence of
+---eval progress---
+[09/30/2026 02:05:54 AM] INFO: Calculating metadata for 54 bins with 32 threads:
+    Finished processing 1 of 54 (1.85%) bin metadata.    Finished processing 2 of 54 (3.70%) bin metadata.    Finishe
+[09/30/2026 02:05:55 AM] INFO: Annotating input genomes with DIAMOND using 32 threads
+---checkm2 procs---
+14
+> build · big-pickle
+`run_eval.sh` holds the start lock for the whole eval — my cami3 launcher will self-abort in ~4 min (flock -w 300). I'll relaunch it after the human chain finishes. Meanwhile let me inspect the chain's AMBER step to make sure it uses the right (sample-level) human gold standard.
+[0m$ [0msed -n '/3. AMBER/,/4. biobox/p' /vol/data/benchmark/bin/run_eval_chain.sh | grep -vE '^\s*#' | head -60
+if [ -n "$GOLD" ] && [ -f "$GOLD" ] \
+   && [ -d "$RUN/comebin_out/comebin_res/comebin_res_bins" ]; then
+  PRED=$AMBER_DIR/${RUN_NAME}.binning
+  OUT_DIR=$AMBER_DIR/output_${RUN_NAME}
+  if python3 "$BIN/make_amber_prediction.py" "$RUN" "$AMBER_SAMPLE" >"$PRED" 2>>"$LOG"; then
+    log "AMBER: scoring $RUN_NAME (out $OUT_DIR)"
+    ( cd "$AMBER_DIR" && "$MM" run -p /vol/data/envs/amber python3 \
+        /vol/data/repos/CAMI-AMBER/amber.py "$(basename "$PRED")" \
+        -g "$GOLD" -o "$(basename "$OUT_DIR")" -l comebin ) >>"$LOG" 2>&1 \
+      && log "AMBER OK rc=0" || log "AMBER FAILED rc=$?"
+    REPO_AMBER=$REPO/results/amber/$DATASET
+    mkdir -p "$REPO_AMBER"
+    [ -f "$OUT_DIR/results.tsv" ] && cp -f "$OUT_DIR/results.tsv" "$REPO_AMBER/amber_results_${RUN_NAME}.tsv"
+    [ -f "$OUT_DIR/bin_metrics.tsv" ] && cp -f "$OUT_DIR/bin_metrics.tsv" "$REPO_AMBER/bin_metrics_${RUN_NAME}.tsv"
+    [ -f "$OUT_DIR/index.html" ] && cp -f "$OUT_DIR/index.html" "$REPO_AMBER/amber_report_${RUN_NAME}.html"
+    [ -f "$OUT_DIR/heatmap_bar.png" ] && cp -f "$OUT_DIR/heatmap_bar.png" "$REPO_AMBER/heatmap_${RUN_NAME}.png"
+    log "AMBER artifacts copied to $REPO_AMBER/${RUN_NAME}.*"
+  else
+    log "AMBER: prediction build FAILED"
+  fi
+else
+  log "AMBER: skipped (no gold standard for '$DATASET' or no bins dir)"
+fi
+> build · big-pickle
+[0m$ [0mhead -5 /vol/data/datasets/cami_II_human/gold_standard/human_binning_gs.tsv; echo "---lines---"; wc -l /vol/data/datasets/cami_II_human/gold_standard/human_binning_gs.tsv; echo "---pred gen---"; grep -nE 'AMBER_SAMPLE|human|gsa|pooled|sample|S0C|OTU' /vol/data/benchmark/bin/make_amber_prediction.py | head -25
+@Version:0.9.1
+@SampleID:human
+@@SEQUENCEID	BINID	TAXID	_LENGTH
+S0C3363	OTU_97.326.1	1485	5437
+S0C65655	OTU_97.10592.0	1485	6524
+---lines---
+4903 /vol/data/datasets/cami_II_human/gold_standard/human_binning_gs.tsv
+---pred gen---
+8:  python3 make_amber_prediction.py <run_dir> <sample_id> > out.binning
+12:`@Version:0.9.1`, `@SampleID:<sample_id>`, `@@SEQUENCEID\tBINID` (matches what
+27:        sys.exit("usage: make_amber_prediction.py <run_dir> <sample_id>")
+28:    run_dir, sample_id = sys.argv[1], sys.argv[2]
+38:    out = [f"@Version:0.9.1", f"@SampleID:{sample_id}", "@@SEQUENCEID\tBINID"]
+> build · big-pickle
+Gold standard is the proper per-sequence v0.9.1 file for the 4,900 human contigs — the chain's AMBER step is correct. Monitoring the eval chain while the cami3 launcher times out harmlessly.
