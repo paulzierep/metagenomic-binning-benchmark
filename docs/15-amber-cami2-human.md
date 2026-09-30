@@ -57,6 +57,7 @@ subset is a length-selected 4,900-contig assembly with full read coverage, so
 |---|---|---|---|---|---|---|
 | CAMI II marine | 34.1 % | 0.330 | 0.735 | 0.213 | 0.844 | 0.138 |
 | CAMI II human  | 99.3 % | 0.681 | 0.626 | 0.747 | 0.769 | 0.181 |
+| CAMI III toy gut | 99.6 % | 0.743 | 0.719 | 0.769 | 0.351 | 0.308 | ([docs/16](16-amber-cami3-toy.md)) |
 
 The marine assembly is a 41,988-contig full simulation where COMEBin only
 bins the large contigs (34 % of bp), so recall is structurally low; the human

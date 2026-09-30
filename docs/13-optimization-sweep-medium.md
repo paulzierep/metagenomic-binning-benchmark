@@ -148,11 +148,15 @@ disagreement.
   Zenodo (already v2/v3 for main runs) and delete local copies to free disk.
 - **AMBER**: use [AMBER](https://github.com/CAMI-challenge/AMBER) against the
   CAMI II gold standard (`binning_gs.tsv`) for official precision/recall/F1.
-  ✅ **done**: [docs/14](14-amber-cami2-marine.md) marine (F1_bp 0.330) and
-  [docs/15](15-amber-cami2-human.md) human (F1_bp 0.681). The human gold
-  standard was imported 2026-09-29 (`setup.tar.gz` → `gsa_mapping.tsv.gz`
-  filtered to the 4,900-contig subset, 64 genomes) and the winner run can be
-  scored with one command via `scripts/make_amber_prediction.py`.
+  ✅ **done for all three datasets**: [docs/14](14-amber-cami2-marine.md)
+  marine (F1_bp 0.330), [docs/15](15-amber-cami2-human.md) human (F1_bp 0.681)
+  and [docs/16](16-amber-cami3-toy.md) CAMI III toy gut (F1_bp 0.743, 2026-09-30).
+  The human gold standard was imported 2026-09-29 (`setup.tar.gz` →
+  `gsa_mapping.tsv.gz` filtered to the 4,900-contig subset, 64 genomes) and the
+  CAMI III one built 2026-09-30 by `scripts/make_cami3_gold_standard.py` (official
+  `gsa_pooled_mapping.tsv.gz` joined to our 5,000-contig subset on the reference
+  contig id → 5,000/5,000 mapped, 390 genomes). Any further run is scored with
+  one command via `scripts/make_amber_prediction.py` + `amber.py`.
 - **No trimming**: use the full assembly/contigs when present (CAMI II/III
   publish full assemblies); only the demo/medium/small/tiny derivations were
   length-filtered for COMEBin feasibility.

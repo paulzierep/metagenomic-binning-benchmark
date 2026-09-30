@@ -65,4 +65,6 @@ binned at all at sequence-level because COMEBin keeps large contigs: only
   contigs are therefore not "perfect-match" noise — AMBER treats them as
   unassigned, so `percentage_of_assigned_*` reflects real COMEBin assignment.
 - This is the marine run's official CAMI benchmark number; the human + CAMI III
-  evaluations can follow once the sweep winner is chosen (docs/13).
+  evaluations are now done too — [docs/15](15-amber-cami2-human.md) (F1_bp
+  0.681) and [docs/16](16-amber-cami3-toy.md) (F1_bp 0.743), so all three
+  datasets are scored with the same AMBER version.
