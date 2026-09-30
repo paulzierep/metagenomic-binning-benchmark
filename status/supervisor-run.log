@@ -69588,3 +69588,74 @@ Index: /vol/data/repos/metagenomic-binning-benchmark/scripts/meta-watchdog.sh
 [0m← [0mWrite /tmp/opencode/t/h2.sh
 Created file successfully: /tmp/opencode/t/h2.sh
 > build · big-pickle
+[0m$ [0mcd /tmp/opencode/t && bash -n /vol/data/repos/metagenomic-binning-benchmark/scripts/meta-watchdog.sh && echo "SYNTAX OK" && bash h2.sh 2>&1 | tail -50
+SYNTAX OK
+c1b block lines: 125
+== CASE 1: repo and bin identical ==
+  check C1b_deploy ok :: installed pipeline scripts identical to repo source
+== CASE 2: both drifted, tool_held.sh is executing ==
+  holder pid=683458  fd9=/tmp/agent-watchdog.lock
+  note_fix deployed stale/missing pipeline scripts to bin: tool_free.sh tool_held.sh
+  check C1b_deploy ok :: installed pipeline scripts identical to repo source
+  tool_free.sh  in bin: v2  (expect v2)
+  tool_held.sh  in bin: v2  (expect v1)
+== CASE 3: holder exits, next tick deploys the held script ==
+  holder gone: yes
+  check C1b_deploy ok :: installed pipeline scripts identical to repo source
+  tool_held.sh  in bin: v2  (expect v2)
+== CASE 4: python helper drifted, invoked by an argv field ==
+  note_fix deployed stale/missing pipeline scripts to bin: helper.py spare.py
+  check C1b_deploy ok :: installed pipeline scripts identical to repo source
+  helper.py in bin: v2  (expect v1)
+  spare.py  in bin: v2  (expect v2)
+  perms: 644 spare (expect 644), 755 sh (expect 755)
+== CASE 5: nothing drifted, but a script IS in use (no false defer) ==
+  check C1b_deploy ok :: installed pipeline scripts identical to repo source
+== DONE ==
+> build · big-pickle
+[0m← [0mWrite /tmp/opencode/t/dbg5.sh
+Created file successfully: /tmp/opencode/t/dbg5.sh
+> build · big-pickle
+[0m$ [0mcd /tmp/opencode/t && bash dbg5.sh 2>&1 | head -40
+--- procs whose cmdline mentions probe.sh ---
+--- their fds under $BENCH/bin ---
+--- self=760678 ppid chain ---
+  walk=760678 comm=(bash) ppid=760677
+  walk=760677 comm=(bash) ppid=5551
+  walk=5551 comm=(opencode) ppid=1
+> build · big-pickle
+[0m$ [0mcd /tmp/opencode/t && which setsid; setsid bash -c 'exec 9<"$1"; sleep 60' _ /tmp/opencode/t/h2/bench/bin/probe.sh </dev/null >/tmp/opencode/t/setsid.out 2>&1 & sleep 2; echo "exit-status-file:"; ls -l /tmp/opencode/t/setsid.out; cat /tmp/opencode/t/setsid.out; echo "--- survivors ---"; for p in /proc/[0-9]*; do c=$(tr '\0' ' ' < "$p/cmdline" 2>/dev/null); case "$c" in *probe.sh*|*'sleep 60'*) echo "${p#/proc/}: $c";; esac; done
+/usr/bin/setsid
+exit-status-file:
+-rw-rw-r-- 1 ubuntu ubuntu 76 Sep 30 01:35 /tmp/opencode/t/setsid.out
+_: line 1: /tmp/opencode/t/h2/bench/bin/probe.sh: No such file or directory
+--- survivors ---
+762853: sleep 60 
+763048: /bin/bash -c cd /tmp/opencode/t && which setsid; setsid bash -c 'exec 9<"$1"; sleep 60' _ /tmp/opencode/t/h2/bench/bin/probe.sh </dev/null >/tmp/opencode/t/setsid.out 2>&1 & sleep 2; echo "exit-status-file:"; ls -l /tmp/opencode/t/setsid.out; cat /tmp/opencode/t/setsid.out; echo "--- survivors ---"; for p in /proc/[0-9]*; do c=$(tr '\0' ' ' < "$p/cmdline" 2>/dev/null); case "$c" in *probe.sh*|*'sleep 60'*) echo "${p#/proc/}: $c";; esac; done 
+763050: sleep 60
+> build · big-pickle
+[0m$ [0mcd /tmp/opencode/t && pkill -x sleep; ls h2/bench/bin/; setsid bash -c 'exec 9<"$1"; sleep 60' _ /tmp/opencode/t/h2/bench/bin/tool_held.sh </dev/null >/dev/null 2>&1 & sleep 2; echo "--- procs ---"; for p in /proc/[0-9]*; do c=$(tr '\0' ' ' < "$p/cmdline" 2>/dev/null); case "$c" in *'sleep 60'*) echo "${p#/proc/}: cmd=$c"; for f in "$p"/fd/*; do l=$(readlink "$f" 2>/dev/null) || continue; case "$l" in /tmp/opencode/t/h2*) echo "    $f -> $l";; esac; done;; esac; done
+helper.py
+spare.py
+tool_free.sh
+tool_held.sh
+--- procs ---
+/bin/bash: line 1: /proc/762854/cmdline: No such file or directory
+/bin/bash: line 1: /proc/762886/cmdline: No such file or directory
+/bin/bash: line 1: /proc/762918/cmdline: No such file or directory
+/bin/bash: line 1: /proc/762950/cmdline: No such file or directory
+764213: cmd=/bin/bash -c cd /tmp/opencode/t && pkill -x sleep; ls h2/bench/bin/; setsid bash -c 'exec 9<"$1"; sleep 60' _ /tmp/opencode/t/h2/bench/bin/tool_held.sh </dev/null >/dev/null 2>&1 & sleep 2; echo "--- procs ---"; for p in /proc/[0-9]*; do c=$(tr '\0' ' ' < "$p/cmdline" 2>/dev/null); case "$c" in *'sleep 60'*) echo "${p#/proc/}: cmd=$c"; for f in "$p"/fd/*; do l=$(readlink "$f" 2>/dev/null) || continue; case "$l" in /tmp/opencode/t/h2*) echo "    $f -> $l";; esac; done;; esac; done 
+764221: cmd=sleep 60 
+764222: cmd=sleep 60 
+    /proc/764222/fd/9 -> /tmp/opencode/t/h2/bench/bin/tool_held.sh
+> build · big-pickle
+Found it: the holders were being launched without `--fork`, so `setsid` kept them as children of the harness shell — an ancestor of the scanner, which the (correct) self/ancestor skip filtered out. Re-running with forced forks.
+[0m$ [0mcd /tmp/opencode/t && sed -i 's/^setsid /setsid --fork /' h2.sh && sed -i "s|holder_real=\$(pgrep -f \"sleep 60\" | head -1)|X|" h2.sh 2>/dev/null; grep -n 'setsid\|holder_real' h2.sh
+26:setsid --fork bash -c 'exec 9<"$1"; sleep 60' _ "$BENCH/bin/tool_held.sh" </dev/null >/dev/null 2>&1 &
+29:holder_real=$(pgrep -f "sleep 60" | head -1)
+30:echo "  holder pid=$holder_real  fd9=$(readlink /proc/$holder_real/fd/9 2>/dev/null)"
+39:kill "$holder_real" 2>/dev/null; wait "$holder" 2>/dev/null; sleep 1
+40:echo "  holder gone: $([ -d /proc/$holder_real ] && echo NO || echo yes)"
+48:setsid --fork sleep 30 "$BENCH/bin/helper.py" </dev/null >/dev/null 2>&1 &
+60:setsid --fork bash -c 'exec 9<"$1"; sleep 30' _ "$BENCH/bin/tool_held.sh" </dev/null >/dev/null 2>&1 &
+> build · big-pickle
