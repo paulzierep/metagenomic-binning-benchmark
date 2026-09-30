@@ -3,17 +3,13 @@
 | | |
 |---|---|
 | Status | 🟢 `running` |
-| ⏱ Updated (Europe/Berlin) | `2026-09-30T07:32 CEST` |
-| 🏃 Last benchmark (not active) | `cami3_v11_winner_20260930` — last observed **epoch 199/200** (log 6428s old) |
+| ⏱ Updated (Europe/Berlin) | `2026-09-30T07:33 CEST` |
+| 🏃 Last benchmark (not active) | `cami3_v11_winner_20260930` — last observed **epoch 199/200** (log 6489s old) |
 | 🧠 Model (last turn) | `nemotron-3.5-lightning-free` (watchdog rotates to free models on quota) |
-| 📌 Agent note · **10 min old** | 2026-09-30T04:21:07Z
-2026-09-30T04:22:10Z - Eval chain launched for CAMI III winner run cami3_v11_winner_20260930
-2026-09-30T04:42:17Z - Resuming after agent restart: CAMI III winner eval chain CheckM2 failed due to lock contention; re-launching evaluation
-2026-09-30T05:05:14Z - CAMI III winner eval chain COMPLETE: run_eval.sh (CheckM2+CheckM v1) + results CSV + per-bin plots + AMBER + biobox all succeeded; Zenodo v15 retained
-2026-09-30T05:21:51Z - CAMI III winner eval chain complete, all artifacts committed, no active runs, ready for next steps: CAMI II human generalization, docs updates, #25 follow-up |
-| ⚙️ Load · uptime | `0.24 0.92 5.01` · 6 days, 15 hours, 56 minutes — 32 cores, 62 GiB, no GPU |
-| 💾 RAM used/total | `2357/64295 MB` |
+| 📌 Agent note · **0 min old** | 2026-09-30T05:32:36Z - Agent resumed; no active runs; all benchmarks complete; starting CAMI II human generalization documentation and docs updates |
+| ⚙️ Load · uptime | `0.41 0.83 4.70` · 6 days, 15 hours, 57 minutes — 32 cores, 62 GiB, no GPU |
+| 💾 RAM used/total | `2404/64295 MB` |
 | 🔗 Session | `ses_f31799c77ffeTq9gcYgqc4hBhg` |
-| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `47d3efd4 status: yes — cami3_v11_winner_20260930 epoch 199/200 loss 0.93939232` |
-| 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `15086807 B` — every run, command & tool result |
+| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `fe1ffbf2 status: yes — cami3_v11_winner_20260930 epoch 199/200 loss 0.93939232` |
+| 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `15090708 B` — every run, command & tool result |
 | 📈 Timeline | [status/status.log](status/status.log) |
