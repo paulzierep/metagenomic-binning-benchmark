@@ -952,3 +952,38 @@ Python script.
 - #25 comment `5902189327` posted with the three-dataset AMBER table.
 - Winner run `human_v11_winner_20260930` at epoch 80/200 (01:20Z) — untouched;
   the eval/AMBER/biobox chain is still waiting.
+
+### 2026-09-30 01:22Z — generic eval chain in the repo (replaces the one-off waiter)
+
+- **New `scripts/run_eval_chain.sh`** (repo + `bin/`, md5 `8dcdb3a2`):
+  `run_eval_chain.sh <run_dir> <marine|human|cami3|none> [max_wait_s] [threads]`
+  → (1) wait until `run_meta.txt` has `exit_code:` **and** the wrapper is
+  released from `.active_run` (8 h default cap), (2) `run_eval.sh`
+  (CheckM2 + CheckM v1 + results CSV + per-bin CSV/plots + Zenodo), (3) AMBER
+  with the per-dataset gold standard (`marine_sample0_input/binning_gs_subset.tsv`,
+  `cami_II_human/gold_standard/human_binning_gs.tsv`,
+  `cami_III/gold_standard/cami3_toy_binning_gs.tsv`), artifacts copied to
+  `results/amber/<dataset>/<run>.*` so no run overwrites another, (4) biobox
+  export + `validate_binning.py`. Every step logs its rc and is non-fatal for
+  the next. **DEDUP: `pgrep -f run_eval_chain.sh` before starting one.**
+- The one-off human waiter was stopped cleanly while still in its wait loop
+  (it had started nothing) and replaced by the generic chain:
+  pid 680734, log `status/human_v11_winner_20260930.eval_chain.log`, waiting at
+  epoch 87/200. The benchmark run itself (pid 634536) was never touched and
+  `.active_run` still points at it.
+- **Next turn can launch the CAMI III winner run** once `.active_run` is free:
+  ```
+  cd /vol/data/benchmark && nohup setsid env \
+    SRC_COMEBIN=/vol/data/repos/COMEBin-v11-sweep \
+    DATA=/vol/data/datasets/cami_III/toy_human_input_2samples \
+    CONTIGS=/vol/data/datasets/cami_III/toy_human_input_2samples/contigs.fa \
+    BAMDIR=/vol/data/datasets/cami_III/toy_human_input_2samples/bamfiles \
+    MODE=cami3 THREADS=32 SEED=42 COMEBIN_TEMPERATURE=0.05 TEMP=0.05 \
+    /vol/data/benchmark/bin/run_comebin_fix.sh \
+    /vol/data/benchmark/runs/cami3_v11_winner_20260930 \
+    > /vol/data/benchmark/logs/cami3_winner_20260930.launch.log 2>&1 &
+  ```
+  then the matching chain: `bash /vol/data/benchmark/bin/run_eval_chain.sh
+  /vol/data/benchmark/runs/cami3_v11_winner_20260930 cami3 28800 32` (AMBER now
+  possible thanks to the new CAMI III gold standard). Reference for comparison:
+  `cami3_v11_20260926_rerun` (492 bins, CheckM2 35.97/11.42, AMBER F1_bp 0.743).
