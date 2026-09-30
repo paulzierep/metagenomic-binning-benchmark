@@ -147382,3 +147382,264 @@ drwxrwxr-x  2 ubuntu ubuntu   4096 Sep 28 12:58 auxiliary
 {"exit":0,"truncated":false,"output":"","status":"completed"}
 [0m$ [0mgh issue list --state open --json number,title,updatedAt --repo paulzierep/metagenomic-binning-benchmark 2>/dev/null | head -50
 [{"number":29,"title":"Small test data","updatedAt":"2026-09-30T08:54:47Z"},{"number":28,"title":"Fix this issue","updatedAt":"2026-09-30T08:54:53Z"},{"number":27,"title":"Are u ok ?","updatedAt":"2026-09-30T08:54:53Z"},{"number":26,"title":"Improve logging","updatedAt":"2026-09-28T13:00:08Z"},{"number":25,"title":"Improve optimization","updatedAt":"2026-09-30T08:56:20Z"},{"number":23,"title":"Where does the assembly for cami3 come from","updatedAt":"2026-09-28T13:02:38Z"},{"number":22,"title":"is there a summary table for all runs","updatedAt":"2026-09-28T13:00:05Z"},{"number":21,"title":"use a seed for all runs","updatedAt":"2026-09-28T13:02:14Z"},{"number":20,"title":"what are your ideas for further optimization ?","updatedAt":"2026-09-28T13:02:13Z"},{"number":6,"title":"Optimization","updatedAt":"2026-09-26T07:56:10Z"},{"number":1,"title":"Idea inbox: benchmark ideas, COMEBin fixes, dataset requests","updatedAt":"2026-09-23T14:53:13Z"}]
+> build · nemotron-3.5-lightning-free
+Let me check the current state more thoroughly - look at runs directory, check for TASK_COMPLETE, and examine what issues might need attention.
+[0m$ [0mls /vol/data/benchmark/runs/ | wc -l
+42
+[0m$ [0mcat /vol/data/benchmark/.watchdog_last_status
+1
+[0m$ [0mcat /vol/data/benchmark/.watchdog_model_ix
+0
+[0m$ [0mcat /vol/data/benchmark/.status_sig
+alive=yes|state=running|note=agent driver alive; transcript fresh (24s) while heartbeat is stale (902s)|tsize=15781016|wsize=760712|model=nemotron-3.5-lightning-free|epoch=199|loss=0.9393923282623291|acc=77.705078125|run=cami3_v11_winner_20260930|run_registered=0
+[0m$ [0mls /vol/data/benchmark/TASK_COMPLETE 2>/dev/null || echo "TASK_COMPLETE does not exist"
+TASK_COMPLETE does not exist
+[0m$ [0mls /vol/data/benchmark/runs/ | head -30
+baseline_rerun
+baseline_rerun_autorestart1
+baseline_unmodified
+cami3_v11_20260926
+cami3_v11_20260926_rerun
+cami3_v11_winner_20260930
+fix_v11_20260924
+human_v11_20260925
+human_v11_winner_20260930
+marine_v11_20260925
+medium_v11_20260924
+small_test
+small_test_v2
+small_test_v3
+small_test_v4
+small_v11_issue28_regression
+sweep_001_ref
+sweep_002_master
+sweep_003_issue28fix
+sweep_004_temp005
+sweep_005_temp030
+sweep_006_temp050
+sweep_007_emb1024
+sweep_008_emb4096
+sweep_009_embcov1024
+sweep_010_embcov4096
+sweep_011_batch512
+sweep_012_batch2048
+sweep_013_edges80
+sweep_014_edges150
+> build · nemotron-3.5-lightning-free
+[0m$ [0mls /vol/data/benchmark/runs/ | grep -E '^(sweep_0[1-9]|sweep_1[0-9]|sweep_2[0-4])'
+sweep_010_embcov4096
+sweep_011_batch512
+sweep_012_batch2048
+sweep_013_edges80
+sweep_014_edges150
+sweep_015_views4
+sweep_016_views8
+sweep_017_w4
+sweep_018_w16
+sweep_019_eval1e3
+sweep_020_eval1e7
+sweep_021_comboA
+sweep_022_comboB
+sweep_023_embcov512_batch512
+sweep_024_seed7
+[0m$ [0mls -la /vol/data/benchmark/runs/sweep_024_seed7/ 2>/dev/null | head -20
+total 184
+drwxrwxr-x  6 ubuntu ubuntu   4096 Sep 30 00:54 .
+drwxrwxr-x 44 ubuntu ubuntu   4096 Sep 30 02:29 ..
+drwxrwxr-x  3 ubuntu ubuntu   4096 Sep 30 00:54 biobox
+drwxrwxr-x  4 ubuntu ubuntu   4096 Sep 29 23:43 comebin_out
+-rw-rw-r--  1 ubuntu ubuntu 151838 Sep 30 00:29 comebin_run.log
+drwxrwxr-x  4 ubuntu ubuntu   4096 Sep 30 00:29 eval
+drwxrwxr-x  2 ubuntu ubuntu   4096 Sep 29 23:42 logs
+-rw-rw-r--  1 ubuntu ubuntu   1928 Sep 30 00:34 run_meta.txt
+[0m$ [0mls /vol/data/benchmark/runs/ | sort | tail -20
+sweep_007_emb1024
+sweep_008_emb4096
+sweep_009_embcov1024
+sweep_010_embcov4096
+sweep_011_batch512
+sweep_012_batch2048
+sweep_013_edges80
+sweep_014_edges150
+sweep_015_views4
+sweep_016_views8
+sweep_017_w4
+sweep_018_w16
+sweep_019_eval1e3
+sweep_020_eval1e7
+sweep_021_comboA
+sweep_022_comboB
+sweep_023_embcov512_batch512
+sweep_024_seed7
+tiny_test_n100
+tiny_test_n101
+[0m$ [0mcat /vol/data/benchmark/runs/sweep_024_seed7/run_meta.txt 2>/dev/null
+run:        /vol/data/benchmark/runs/sweep_024_seed7
+source:     /vol/data/benchmark/../repos/COMEBin-v11-sweep (branch )
+date:       2026-09-29T23:42:47+00:00
+commit:     95f5ea820f9a4e76f5c2911c0b5ed507ab67b015
+contigs:    /vol/data/datasets/comebin_medium/contigs.fa
+bamdir:     /vol/data/datasets/comebin_medium/bamfiles
+threads:    8
+n_views:    6
+seed:       7
+allow_zero_bins: 0
+sweep:      temp=ref emb=ref emb_cov=ref batch=ref max_edges=ref leiden_workers=ref hmm_evalue=ref n_views=6
+host:       32 cores, 62G RAM, gpu=none
+cmd_wrapper: /vol/data/tools/bin/micromamba run -p /vol/data/envs/comebin bash run_comebin.sh -a /vol/data/datasets/comebin_medium/contigs.fa -p /vol/data/datasets/comebin_medium/bamfiles -o /vol/data/benchmark/runs/sweep_024_seed7/comebin_out -n 6 -t 8 -d cpu -s 7 
+exit_code:  0
+wall_s:     2797
+finished:   2026-09-30T00:29:24+00:00
+bins:       15  -> /vol/data/benchmark/runs/sweep_024_seed7/comebin_out/comebin_res/comebin_res_bins
+cmd_checkm2: /vol/data/tools/bin/micromamba run -p /vol/data/envs/checkm2 checkm2 predict --threads 32 --database_path /vol/data/benchmark/checkm2db/CheckM2_database/uniref100.KO.1.dmnd --input /vol/data/benchmark/runs/sweep_024_seed7/comebin_out/comebin_res/comebin_res_bins --output-directory /vol/data/benchmark/runs/sweep_024_seed7/eval/checkm2 -x fa --force
+checkm2_rc: 0 checkm2_wall_s: 46 checkm2_threads: 32
+cmd_checkm: LD_LIBRARY_PATH=/vol/data/envs/checkm/lib:/vol/data/envs/comebin/lib /vol/data/tools/bin/micromamba run -p /vol/data/envs/comebin checkm lineage_wf -x fa -t 32 --tmpdir /vol/data/benchmark/runs/sweep_024_seed7/eval/checkm/tmp /vol/data/benchmark/runs/sweep_024_seed7/comebin_out/comebin_res/comebin_res_bins /vol/data/benchmark/runs/sweep_024_seed7/eval/checkm/out
+checkm_rc: 0 checkm_wall_s: 278
+checkm2_bins: 15 checkm2_compl_mean: 37.37 checkm2_cont_mean: 5.60
+checkm_bins: 15 checkm_compl_mean: 35.76 checkm_cont_mean: 7.87
+> build · nemotron-3.5-lightning-free
+[0m$ [0mfor d in /vol/data/benchmark/runs/sweep_0*; do echo "=== $(basename $d) ==="; if [ -f "$d/run_meta.txt" ]; then tail -3 "$d/run_meta.txt"; echo "has eval: $(ls $d/eval 2>/dev/null | head -3)"; else echo "NO run_meta.txt"; fi; done
+=== sweep_001_ref ===
+checkm_rc: 0 checkm_wall_s: 285
+checkm2_bins: 17 checkm2_compl_mean: 34.22 checkm2_cont_mean: 4.11
+checkm_bins: 17 checkm_compl_mean: 32.00 checkm_cont_mean: 5.31
+has eval: checkm
+checkm2
+=== sweep_002_master ===
+finished:   2026-09-28T14:15:53+00:00
+bins:       0  -> /vol/data/benchmark/runs/sweep_002_master/comebin_out/comebin_res/comebin_res_bins (missing or empty)
+watchdog_terminal: 2026-09-28T14:20:02+00:00 run_meta exit_code=1
+has eval: 
+=== sweep_003_issue28fix ===
+checkm_rc: 0 checkm_wall_s: 289
+checkm2_bins: 17 checkm2_compl_mean: 34.22 checkm2_cont_mean: 4.11
+checkm_bins: 17 checkm_compl_mean: 32.00 checkm_cont_mean: 5.31
+has eval: checkm
+checkm2
+=== sweep_004_temp005 ===
+checkm_rc: 0 checkm_wall_s: 275
+checkm2_bins: 13 checkm2_compl_mean: 43.55 checkm2_cont_mean: 6.77
+checkm_bins: 13 checkm_compl_mean: 39.96 checkm_cont_mean: 9.63
+has eval: checkm
+checkm2
+=== sweep_005_temp030 ===
+checkm_rc: 0 checkm_wall_s: 262
+checkm2_bins: 17 checkm2_compl_mean: 33.38 checkm2_cont_mean: 3.73
+checkm_bins: 17 checkm_compl_mean: 28.76 checkm_cont_mean: 4.14
+has eval: checkm
+checkm2
+=== sweep_006_temp050 ===
+checkm_rc: 0 checkm_wall_s: 270
+checkm2_bins: 17 checkm2_compl_mean: 34.33 checkm2_cont_mean: 3.92
+checkm_bins: 17 checkm_compl_mean: 29.49 checkm_cont_mean: 5.18
+has eval: checkm
+checkm2
+=== sweep_007_emb1024 ===
+checkm_rc: 0 checkm_wall_s: 268
+checkm2_bins: 15 checkm2_compl_mean: 38.40 checkm2_cont_mean: 4.76
+checkm_bins: 15 checkm_compl_mean: 34.76 checkm_cont_mean: 5.18
+has eval: checkm
+checkm2
+=== sweep_008_emb4096 ===
+checkm_rc: 0 checkm_wall_s: 279
+checkm2_bins: 16 checkm2_compl_mean: 36.33 checkm2_cont_mean: 4.81
+checkm_bins: 16 checkm_compl_mean: 32.58 checkm_cont_mean: 4.95
+has eval: checkm
+checkm2
+=== sweep_009_embcov1024 ===
+checkm_rc: 0 checkm_wall_s: 279
+checkm2_bins: 16 checkm2_compl_mean: 35.80 checkm2_cont_mean: 4.12
+checkm_bins: 16 checkm_compl_mean: 34.14 checkm_cont_mean: 4.93
+has eval: checkm
+checkm2
+=== sweep_010_embcov4096 ===
+checkm_rc: 0 checkm_wall_s: 268
+checkm2_bins: 17 checkm2_compl_mean: 34.10 checkm2_cont_mean: 4.50
+checkm_bins: 17 checkm_compl_mean: 30.52 checkm_cont_mean: 4.24
+has eval: checkm
+checkm2
+=== sweep_011_batch512 ===
+checkm_rc: 0 checkm_wall_s: 273
+checkm2_bins: 14 checkm2_compl_mean: 41.56 checkm2_cont_mean: 6.34
+checkm_bins: 14 checkm_compl_mean: 37.94 checkm_cont_mean: 7.60
+has eval: checkm
+checkm2
+=== sweep_012_batch2048 ===
+checkm_rc: 0 checkm_wall_s: 275
+checkm2_bins: 18 checkm2_compl_mean: 34.68 checkm2_cont_mean: 4.12
+checkm_bins: 18 checkm_compl_mean: 30.12 checkm_cont_mean: 3.98
+has eval: checkm
+checkm2
+=== sweep_013_edges80 ===
+checkm_rc: 0 checkm_wall_s: 280
+checkm2_bins: 15 checkm2_compl_mean: 40.39 checkm2_cont_mean: 5.29
+checkm_bins: 15 checkm_compl_mean: 36.91 checkm_cont_mean: 6.86
+has eval: checkm
+checkm2
+=== sweep_014_edges150 ===
+checkm_rc: 0 checkm_wall_s: 282
+checkm2_bins: 18 checkm2_compl_mean: 32.15 checkm2_cont_mean: 3.97
+checkm_bins: 18 checkm_compl_mean: 30.20 checkm_cont_mean: 5.16
+has eval: checkm
+checkm2
+=== sweep_015_views4 ===
+checkm_rc: 0 checkm_wall_s: 286
+checkm2_bins: 17 checkm2_compl_mean: 33.84 checkm2_cont_mean: 4.84
+checkm_bins: 17 checkm_compl_mean: 33.08 checkm_cont_mean: 5.66
+has eval: checkm
+checkm2
+=== sweep_016_views8 ===
+checkm_rc: 0 checkm_wall_s: 283
+checkm2_bins: 17 checkm2_compl_mean: 34.68 checkm2_cont_mean: 4.56
+checkm_bins: 17 checkm_compl_mean: 31.85 checkm_cont_mean: 5.61
+has eval: checkm
+checkm2
+=== sweep_017_w4 ===
+checkm_rc: 0 checkm_wall_s: 279
+checkm2_bins: 17 checkm2_compl_mean: 34.22 checkm2_cont_mean: 4.11
+checkm_bins: 17 checkm_compl_mean: 32.00 checkm_cont_mean: 5.31
+has eval: checkm
+checkm2
+=== sweep_018_w16 ===
+checkm_rc: 0 checkm_wall_s: 280
+checkm2_bins: 17 checkm2_compl_mean: 34.22 checkm2_cont_mean: 4.11
+checkm_bins: 17 checkm_compl_mean: 32.00 checkm_cont_mean: 5.31
+has eval: checkm
+checkm2
+=== sweep_019_eval1e3 ===
+checkm_rc: 0 checkm_wall_s: 278
+checkm2_bins: 17 checkm2_compl_mean: 34.22 checkm2_cont_mean: 4.11
+checkm_bins: 17 checkm_compl_mean: 32.00 checkm_cont_mean: 5.31
+has eval: checkm
+checkm2
+=== sweep_020_eval1e7 ===
+checkm_rc: 0 checkm_wall_s: 282
+checkm2_bins: 17 checkm2_compl_mean: 34.22 checkm2_cont_mean: 4.11
+checkm_bins: 17 checkm_compl_mean: 32.00 checkm_cont_mean: 5.31
+has eval: checkm
+checkm2
+=== sweep_021_comboA ===
+checkm_rc: 0 checkm_wall_s: 280
+checkm2_bins: 20 checkm2_compl_mean: 30.30 checkm2_cont_mean: 3.21
+checkm_bins: 20 checkm_compl_mean: 27.65 checkm_cont_mean: 2.92
+has eval: checkm
+checkm2
+=== sweep_022_comboB ===
+checkm_rc: 0 checkm_wall_s: 271
+checkm2_bins: 17 checkm2_compl_mean: 34.10 checkm2_cont_mean: 4.22
+checkm_bins: 17 checkm_compl_mean: 30.90 checkm_cont_mean: 4.92
+has eval: checkm
+checkm2
+=== sweep_023_embcov512_batch512 ===
+checkm_rc: 0 checkm_wall_s: 271
+checkm2_bins: 13 checkm2_compl_mean: 43.16 checkm2_cont_mean: 7.52
+checkm_bins: 13 checkm_compl_mean: 41.34 checkm_cont_mean: 9.46
+has eval: checkm
+checkm2
+=== sweep_024_seed7 ===
+checkm_rc: 0 checkm_wall_s: 278
+checkm2_bins: 15 checkm2_compl_mean: 37.37 checkm2_cont_mean: 5.60
+checkm_bins: 15 checkm_compl_mean: 35.76 checkm_cont_mean: 7.87
+has eval: checkm
+checkm2
+> build · nemotron-3.5-lightning-free
