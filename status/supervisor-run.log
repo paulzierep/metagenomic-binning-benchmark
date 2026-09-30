@@ -69228,3 +69228,363 @@ count=4
   /proc/746742/fd/2  -e? yes  -> socket:[13359295]
   /proc/746742/fd/9  -e? yes  -> /tmp/opencode/t/dbg4/bin/held.sh
 > build · big-pickle
+[0m$ [0mcd /tmp/opencode/t && rm -rf h && mkdir -p h/bin h/meta h/repo/scripts && echo v1 > h/bin/held.sh && echo v1 > h/bin/freed.sh
+# launch holder from a DETACHED session so it is NOT a descendant of the scanner
+setsid nohup bash -c 'exec 9<"/tmp/opencode/t/h/bin/held.sh"; sleep 90' >/dev/null 2>&1 &
+sleep 1
+pgrep -f 'sleep 90' | head -1
+echo "--- verify holder fd ---"; for p in $(pgrep -f 'sleep 90'); do ls -l /proc/$p/fd 2>/dev/null | grep held; done
+cat > scan.sh <<'EOF'
+set -u
+BENCH=/tmp/opencode/t/h
+META=/tmp/opencode/t/h/meta
+source <(awk '/^IN_USE=""$/,/^# ---- C1c:/' /vol/data/repos/metagenomic-binning-benchmark/scripts/meta-watchdog.sh | head -n -1) 2>/dev/null
+echo "IN_USE=[$IN_USE]"
+script_in_use held.sh  && echo "held.sh  -> IN-USE (correct)" || echo "held.sh  -> MISSED (BUG)"
+script_in_use freed.sh && echo "freed.sh -> IN-USE (WRONG)"     || echo "freed.sh -> free (correct)"
+EOF
+bash scan.sh 2>&1
+pkill -f 'sleep 90' 2>/dev/null; true
+747246
+--- verify holder fd ---
+lr-x------ 1 ubuntu ubuntu 64 Sep 30 01:32 9 -> /tmp/opencode/t/h/bin/held.sh
+> build · big-pickle
+[0m⚙ [0mexecute {"code":"const r = await tools.shell_command({command:\"ls -la /tmp/opencode/t/ 2>/dev/null; echo '---SCRIPT---'; cat /tmp/opencode/t/run.sh 2>/dev/null; echo '---SCAN---'; cat /tmp/opencode/t/scan.sh 2>/dev/null\"});\ntext(r);\n"} 
+> build · big-pickle
+[0m$ [0mls -la /tmp/opencode/t/ 2>/dev/null; echo '---RUN---'; cat /tmp/opencode/t/run.sh 2>/dev/null; echo '---SCAN---'; cat /tmp/opencode/t/scan.sh 2>/dev/null
+total 76
+drwxrwxr-x 11 ubuntu ubuntu 4096 Sep 30 01:32 .
+drwxrwxr-x 17 ubuntu ubuntu 4096 Sep 30 01:30 ..
+drwxrwxr-x  3 ubuntu ubuntu 4096 Sep 30 01:30 bench
+drwxrwxr-x  3 ubuntu ubuntu 4096 Sep 30 01:30 dbg
+drwxrwxr-x  5 ubuntu ubuntu 4096 Sep 30 01:31 dbg2
+drwxrwxr-x  4 ubuntu ubuntu 4096 Sep 30 01:31 dbg3
+drwxrwxr-x  3 ubuntu ubuntu 4096 Sep 30 01:31 dbg4
+drwxrwxr-x  2 ubuntu ubuntu 4096 Sep 30 01:30 fakebin
+-rw-rw-r--  1 ubuntu ubuntu   83 Sep 30 01:30 fixes.txt
+drwxrwxr-x  5 ubuntu ubuntu 4096 Sep 30 01:32 h
+-rw-rw-r--  1 ubuntu ubuntu 6019 Sep 30 01:30 harness.sh
+drwxrwxr-x  2 ubuntu ubuntu 4096 Sep 30 01:30 meta
+-rw-rw-r--  1 ubuntu ubuntu   25 Sep 30 01:30 out.txt
+drwxrwxr-x  3 ubuntu ubuntu 4096 Sep 30 01:30 repo
+-rw-rw-r--  1 ubuntu ubuntu 1756 Sep 30 01:30 run.sh
+-rw-rw-r--  1 ubuntu ubuntu  422 Sep 30 01:32 scan.sh
+-rw-rw-r--  1 ubuntu ubuntu  336 Sep 30 01:31 t2.sh
+-rw-rw-r--  1 ubuntu ubuntu  717 Sep 30 01:31 t3.sh
+---RUN---
+set -u
+BENCH=/tmp/opencode/t/bench
+REPO=/tmp/opencode/t/repo
+META=/tmp/opencode/t/meta
+rm -rf "$BENCH" "$REPO" "$META"; mkdir -p "$BENCH/bin" "$REPO/scripts" "$META"
+check() { printf 'C1b_deploy\t%s\t%s\n' "$1" "$2" > /tmp/opencode/t/out.txt; }
+note_fix() { echo "AUTOFIX: $*" >> /tmp/opencode/t/fixes.txt; }
+echo "v1" > "$REPO/scripts/tool_free.sh";  echo "v1" > "$BENCH/bin/tool_free.sh"
+echo "v1" > "$REPO/scripts/tool_busy.sh";  echo "v1" > "$BENCH/bin/tool_busy.sh"
+setsid bash -c 'exec 9<"$0"; sleep 120' "$BENCH/bin/tool_busy.sh" & busy=$!
+sleep 1
+# case 1: both in sync -> ok, no /proc scan
+sed -n '/^IN_USE=""$/,$p' /vol/data/repos/metagenomic-binning-benchmark/scripts/meta-watchdog.sh > /dev/null
+. /dev/stdin <<'BLOCK'
+BLOCK
+source <(awk '/^IN_USE=""$/,/^# ---- C1c:/' /vol/data/repos/metagenomic-binning-benchmark/scripts/meta-watchdog.sh | head -n -1)
+echo "CASE1 (in sync):     $(cat /tmp/opencode/t/out.txt 2>/dev/null || echo '(no check emitted)')"
+echo "v2" > "$REPO/scripts/tool_free.sh"; echo "v2" > "$REPO/scripts/tool_busy.sh"
+source <(awk '/^IN_USE=""$/,/^# ---- C1c:/' /vol/data/repos/metagenomic-binning-benchmark/scripts/meta-watchdog.sh | head -n -1)
+echo "CASE2 (one free, one held): $(cat /tmp/opencode/t/out.txt)"
+echo "  free content now: $(cat $BENCH/bin/tool_free.sh)  (expect v2)"
+echo "  busy content now: $(cat $BENCH/bin/tool_busy.sh)  (expect v1 = UNTOUCHED)"
+kill $busy 2>/dev/null; wait $busy 2>/dev/null
+source <(awk '/^IN_USE=""$/,/^# ---- C1c:/' /vol/data/repos/metagenomic-binning-benchmark/scripts/meta-watchdog.sh | head -n -1)
+echo "CASE3 (holder gone): $(cat /tmp/opencode/t/out.txt)"
+echo "  busy content now: $(cat $BENCH/bin/tool_busy.sh)  (expect v2)"
+echo "--- fixes ---"; cat /tmp/opencode/t/fixes.txt
+---SCAN---
+set -u
+BENCH=/tmp/opencode/t/h
+META=/tmp/opencode/t/h/meta
+source <(awk '/^IN_USE=""$/,/^# ---- C1c:/' /vol/data/repos/metagenomic-binning-benchmark/scripts/meta-watchdog.sh | head -n -1) 2>/dev/null
+echo "IN_USE=[$IN_USE]"
+script_in_use held.sh  && echo "held.sh  -> IN-USE (correct)" || echo "held.sh  -> MISSED (BUG)"
+script_in_use freed.sh && echo "freed.sh -> IN-USE (WRONG)"     || echo "freed.sh -> free (correct)"
+> build · big-pickle
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && sed -n '135,290p' scripts/meta-watchdog.sh | cat -n | sed 's/^/    /' | awk '{printf "%d: %s\n", $1+134, substr($0, index($0,$2))}' | head -170
+135: note_fix "reinstalled cron jobs and verified cron.service (was:$cron_bad)"
+136: check C1_cron ok "reinstalled: 4 exact jobs, cron active"
+137: else
+138: check C1_cron broken "cron repair failed (was:$cron_bad)"
+139: fi
+140: fi
+141:          7	
+142: # ---- C1b: installed pipeline scripts match repo source ---------------------- #
+143: # C1 only covers the four cron jobs. The evaluation pipeline is executed from the
+144: # INSTALLED copies in $BENCH/bin (run_eval.sh calls its helpers via $(dirname $0)),
+145: # so a helper that exists in the repo but was never deployed silently disables that
+146: # feature on every future run. Mirror scripts/ -> bin/ and verify byte identity.
+147:         13	
+148: # Is installed script $1 genuinely being executed right now?
+149: # A bash script is held open as a file descriptor for as long as it runs (bash
+150: # reads it incrementally), so an fd pointing at the installed path means "do not
+151: # touch it". A python helper does not keep its source open, so also match an argv
+152: # field that IS exactly the installed path.
+153: # The match is whole-field on purpose: the escalation prompt handed to the LLM
+154: # supervisor is a single argv field naming every drifted script, so a substring
+155: # match would report every script as "in use" forever and permanently disable
+156: # auto-deploy. This process and its ancestors are skipped as well, for the same
+157: # reason.
+158: # One pass over /proc fills IN_USE with the basenames of installed scripts that a
+159: # live process is executing. Collected as a set rather than probed per job: the
+160: # per-job variant cost ~9 s each (a readlink per fd per pid), which would add
+161: # minutes to a tick whenever several helpers drifted.
+162: IN_USE=""
+163: scan_in_use() {
+164: local pid_dir pid walk skip fd fdlink
+165: IN_USE=""
+166: for pid_dir in /proc/[0-9]*; do
+167: pid=${pid_dir#/proc/}
+168: [ -r "$pid_dir/cmdline" ] || continue
+169: # skip self and every ancestor
+170: skip=""
+171: walk=$pid
+172: while [ -n "$walk" ] && [ "$walk" -gt 1 ] 2>/dev/null; do
+173: [ "$walk" = "$$" ] && { skip=1; break; }
+174: walk=$(sed 's/^.*) //' "/proc/$walk/stat" 2>/dev/null | awk '{print $2}')
+175: done
+176: [ -n "$skip" ] && continue
+177: for fd in "$pid_dir"/fd/*; do
+178: [ -e "$fd" ] || continue
+179: fdlink=$(readlink "$fd" 2>/dev/null) || continue
+180: case "$fdlink" in
+181: "$BENCH/bin/"*)
+182: fdlink=${fdlink#"$BENCH/bin/"}
+183: case "$fdlink" in
+184: " (deleted)") fdlink=${fdlink%" (deleted)"} ;;
+185: *" "*)         continue ;;
+186: esac
+187: case "$fdlink" in */*) continue ;; esac
+188: IN_USE="$IN_USE $fdlink"
+189: ;;
+190: esac
+191: done
+192: tr '\0' '\n' < "$pid_dir/cmdline" 2>/dev/null | while IFS= read -r arg; do
+193: case "$arg" in
+194: "$BENCH/bin/"*)
+195: arg=${arg#"$BENCH/bin/"}
+196: case "$arg" in */*) continue ;; esac
+197: printf '%s\n' "$arg" >> "$META/.in_use.$$"
+198: ;;
+199: esac
+200: done
+201: done
+202: if [ -f "$META/.in_use.$$" ]; then
+203: IN_USE="$IN_USE $(tr '\n' ' ' < "$META/.in_use.$$")"
+204: rm -f "$META/.in_use.$$"
+205: fi
+206: }
+207:         73	
+208: script_in_use() {
+209: case " $IN_USE " in *" $1 "*) return 0 ;; esac
+210: return 1
+211: }
+212:         78	
+213: deploy_bad=""
+214: for src in "$REPO"/scripts/*; do
+215: [ -f "$src" ] || continue
+216: job=$(basename "$src")
+217: case "$job" in __pycache__|*.pyc|*.pyo) continue ;; esac
+218: dst="$BENCH/bin/$job"
+219: if [ ! -f "$dst" ]; then
+220: deploy_bad="$deploy_bad $job(missing)"
+221: elif ! cmp -s "$src" "$dst"; then
+222: deploy_bad="$deploy_bad $job(stale)"
+223: fi
+224: done
+225:         91	
+226: # Defer ONLY what is actually executing. A blanket "some run is live => deploy
+227: # nothing" rule accumulated drift for the entire duration of every multi-hour run:
+228: # helpers that nothing was executing kept their stale installed copy, so the
+229: # feature they implement stayed disabled until the run happened to end. The /proc
+230: # scan is only paid for when something has actually drifted.
+231: deploy_safe=""
+232: deploy_defer=""
+233: if [ -n "$deploy_bad" ]; then
+234: scan_in_use
+235: for entry in $deploy_bad; do
+236: job=${entry%%(*}
+237: if script_in_use "$job"; then
+238: deploy_defer="$deploy_defer $entry(in-use)"
+239: else
+240: deploy_safe="$deploy_safe $job"
+241: fi
+242: done
+243: fi
+244: if [ -n "$deploy_safe" ]; then
+245: for job in $deploy_safe; do
+246: src="$REPO/scripts/$job"
+247: dst="$BENCH/bin/$job"
+248: mkdir -p "$BENCH/bin"
+249: # Atomic rename: a process that already has the old file open keeps reading
+250: # the old inode, so this can never corrupt a script mid-execution.
+251: cp "$src" "$BENCH/bin/.$job.deploy-new" || continue
+252: case "$job" in
+253: *.sh) chmod 755 "$BENCH/bin/.$job.deploy-new" ;;
+254: *)    chmod 644 "$BENCH/bin/.$job.deploy-new" ;;
+255: esac
+256: mv "$BENCH/bin/.$job.deploy-new" "$dst" || continue
+257: done
+258: # py helpers are invoked via `python3`, so they need read access but not +x.
+259: chmod 755 "$BENCH/bin"/*.sh 2>/dev/null || true
+260: fi
+261: deploy_still=""
+262: for src in "$REPO"/scripts/*; do
+263: [ -f "$src" ] || continue
+264: job=$(basename "$src")
+265: case "$job" in __pycache__|*.pyc|*.pyo) continue ;; esac
+266: cmp -s "$src" "$BENCH/bin/$job" || deploy_still="$deploy_still $job(unfixed)"
+267: done
+268: deploy_fixmsg="deployed stale/missing pipeline scripts to bin:$(printf '%s' "$deploy_safe" | tr -s ' ')"
+269: if [ -n "$deploy_safe" ]; then
+270: note_fix "$deploy_fixmsg"
+271: fi
+272: if [ -z "$deploy_still" ]; then
+273: if [ -n "$deploy_defer" ]; then
+274: check C1b_deploy ok "$deploy_fixmsg; deferred (in use):$(printf '%s' "$deploy_defer" | tr -s ' ')"
+275: elif [ -n "$deploy_safe" ]; then
+276: check C1b_deploy ok "re-deployed:$deploy_safe"
+277: else
+278: check C1b_deploy ok "installed pipeline scripts identical to repo source"
+279: fi
+280: else
+281: check C1b_deploy broken "deploy failed, still stale:$deploy_still (was:$deploy_bad)"
+282: fi
+283:        149	
+284: # ---- C1c: no unsourced executables installed in bin ------------------------- #
+285: # C1b only walks repo/scripts -> bin. The reverse direction is invisible to it, so
+286: # a script that is executed from bin but has no source in the repo (it was written
+287: # straight into bin, or its source was deleted) stays unversioned, unreviewable and
+288: # unreproducible, and no future edit can ever reach it. That is exactly how
+289: # supervise-alive.sh — a live cron job — ended up with no source.
+290: # Nothing here can be auto-fixed: the only correct repair is to add the source to
+> build · big-pickle
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && git show HEAD:scripts/meta-watchdog.sh | sed -n '138,200p' | cat -n
+1	    check C1_cron broken "cron repair failed (was:$cron_bad)"
+     2	  fi
+     3	fi
+     4	
+     5	# ---- C1b: installed pipeline scripts match repo source ---------------------- #
+     6	# C1 only covers the four cron jobs. The evaluation pipeline is executed from the
+     7	# INSTALLED copies in $BENCH/bin (run_eval.sh calls its helpers via $(dirname $0)),
+     8	# so a helper that exists in the repo but was never deployed silently disables that
+     9	# feature on every future run. Mirror scripts/ -> bin/ and verify byte identity.
+    10	deploy_bad=""
+    11	for src in "$REPO"/scripts/*; do
+    12	  [ -f "$src" ] || continue
+    13	  job=$(basename "$src")
+    14	  case "$job" in __pycache__|*.pyc|*.pyo) continue ;; esac
+    15	  dst="$BENCH/bin/$job"
+    16	  if [ ! -f "$dst" ]; then
+    17	    deploy_bad="$deploy_bad $job(missing)"
+    18	  elif ! cmp -s "$src" "$dst"; then
+    19	    deploy_bad="$deploy_bad $job(stale)"
+    20	  fi
+    21	done
+    22	if [ -n "$deploy_bad" ]; then
+    23	  # Never swap a script out from under a live run: bash reads scripts
+    24	  # incrementally, so replacing one mid-execution can corrupt the run. Defer
+    25	  # the deploy instead; the next tick after the run finishes applies it.
+    26	  deploy_pid=""
+    27	  if [ -f "$BENCH/.active_run" ]; then
+    28	    read -r deploy_pid _ _ _ _ _ _ < "$BENCH/.active_run" || true
+    29	  fi
+    30	  deploy_pstat=$(ps -o stat= -p "${deploy_pid:-0}" 2>/dev/null | tr -d ' ' || true)
+    31	  if [ -n "${deploy_pid:-}" ] && [ "${deploy_pid:-0}" -gt 0 ] 2>/dev/null \
+    32	     && [ -n "$deploy_pstat" ] && [[ "$deploy_pstat" != Z* ]]; then
+    33	    check C1b_deploy ok "deploy deferred: benchmark run pid $deploy_pid is live; pending:$deploy_bad"
+    34	  else
+    35	    for src in "$REPO"/scripts/*; do
+    36	      [ -f "$src" ] || continue
+    37	      job=$(basename "$src")
+    38	      case "$job" in __pycache__|*.pyc|*.pyo) continue ;; esac
+    39	      dst="$BENCH/bin/$job"
+    40	      if [ ! -f "$dst" ] || ! cmp -s "$src" "$dst"; then
+    41	        mkdir -p "$BENCH/bin"
+    42	        cp "$src" "$BENCH/bin/.$job.deploy-new" || continue
+    43	        case "$job" in
+    44	          *.sh) chmod 755 "$BENCH/bin/.$job.deploy-new" ;;
+    45	          *)    chmod 644 "$BENCH/bin/.$job.deploy-new" ;;
+    46	        esac
+    47	        mv "$BENCH/bin/.$job.deploy-new" "$dst" || continue
+    48	      fi
+    49	    done
+    50	    # py helpers are invoked via `python3`, so they need read access but not +x.
+    51	    chmod 755 "$BENCH/bin"/*.sh 2>/dev/null || true
+    52	    deploy_still=""
+    53	    for src in "$REPO"/scripts/*; do
+    54	      [ -f "$src" ] || continue
+    55	      job=$(basename "$src")
+    56	      case "$job" in __pycache__|*.pyc|*.pyo) continue ;; esac
+    57	      cmp -s "$src" "$BENCH/bin/$job" || deploy_still="$deploy_still $job(unfixed)"
+    58	    done
+    59	    if [ -z "$deploy_still" ]; then
+    60	      note_fix "deployed stale/missing pipeline scripts to bin:$(printf '%s' "$deploy_bad" | tr -s ' ')"
+    61	      check C1b_deploy ok "re-deployed:$deploy_bad"
+    62	    else
+    63	      check C1b_deploy broken "deploy failed, still stale:$deploy_still (was:$deploy_bad)"
+> build · big-pickle
+Now let me fix a semantic regression I introduced: a *deferred* deploy (in-use script) would now be reported as `broken`, though deferral is intentional.
+[0m→ [0mRead /vol/data/repos/metagenomic-binning-benchmark/scripts/meta-watchdog.sh [90m[offset=244, limit=40][0m
+> build · big-pickle
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/scripts/meta-watchdog.sh
+Index: /vol/data/repos/metagenomic-binning-benchmark/scripts/meta-watchdog.sh
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/scripts/meta-watchdog.sh
++++ /vol/data/repos/metagenomic-binning-benchmark/scripts/meta-watchdog.sh
+@@ -257,29 +257,32 @@
+   done
+   # py helpers are invoked via `python3`, so they need read access but not +x.
+   chmod 755 "$BENCH/bin"/*.sh 2>/dev/null || true
+ fi
++# A deferral is not a failure: the job is stale on purpose until nothing is running
++# it. So only re-verify what we were actually able to deploy, and report the
++# deliberately held jobs separately.
+ deploy_still=""
++deploy_held=""
+ for src in "$REPO"/scripts/*; do
+   [ -f "$src" ] || continue
+   job=$(basename "$src")
+   case "$job" in __pycache__|*.pyc|*.pyo) continue ;; esac
++  if script_in_use "$job"; then
++    cmp -s "$src" "$BENCH/bin/$job" || deploy_held="$deploy_held $job(in-use)"
++    continue
++  fi
+   cmp -s "$src" "$BENCH/bin/$job" || deploy_still="$deploy_still $job(unfixed)"
+ done
+-deploy_fixmsg="deployed stale/missing pipeline scripts to bin:$(printf '%s' "$deploy_safe" | tr -s ' ')"
+ if [ -n "$deploy_safe" ]; then
+-  note_fix "$deploy_fixmsg"
++  note_fix "deployed stale/missing pipeline scripts to bin:$(printf '%s' "$deploy_safe" | tr -s ' ')"
+ fi
+-if [ -z "$deploy_still" ]; then
+-  if [ -n "$deploy_defer" ]; then
+-    check C1b_deploy ok "$deploy_fixmsg; deferred (in use):$(printf '%s' "$deploy_defer" | tr -s ' ')"
+-  elif [ -n "$deploy_safe" ]; then
+-    check C1b_deploy ok "re-deployed:$deploy_safe"
+-  else
+-    check C1b_deploy ok "installed pipeline scripts identical to repo source"
+-  fi
+-else
++if [ -n "$deploy_still" ]; then
+   check C1b_deploy broken "deploy failed, still stale:$deploy_still (was:$deploy_bad)"
++elif [ -n "$deploy_held" ]; then
++  check C1b_deploy ok "in sync except in-use scripts (deployed nothing onto a running script):$deploy_held"
++else
++  check C1b_deploy ok "installed pipeline scripts identical to repo source"
+ fi
+ 
+ # ---- C1c: no unsourced executables installed in bin ------------------------- #
+ # C1b only walks repo/scripts -> bin. The reverse direction is invisible to it, so
+
+> build · big-pickle
+[0m← [0mWrite /tmp/opencode/t/h2.sh
+Created file successfully: /tmp/opencode/t/h2.sh
+> build · big-pickle
