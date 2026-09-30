@@ -137491,3 +137491,229 @@ run dir absent (good)
 [0m$ [0mcd /vol/data/benchmark && SRC_COMEBIN=/vol/data/repos/COMEBin-v11-sweep CONTIGS=/vol/data/datasets/cami_III/toy_human_input_2samples/contigs.fa BAMDIR=/vol/data/datasets/cami_III/toy_human_input_2samples/bamfiles MODE=cami3 THREADS=32 SEED=42 COMEBIN_TEMPERATURE=0.05 TEMP=0.05 nohup setsid /vol/data/benchmark/bin/run_comebin_fix.sh /vol/data/benchmark/runs/cami3_v11_winner_20260930 > /vol/data/benchmark/logs/cami3_v11_winner_20260930.launch.log 2>&1 & echo "cami3 launcher pid $!"
 cami3 launcher pid 1104990
 > build · big-pickle
+[0m$ [0msleep 45; echo "---active---"; cat /vol/data/benchmark/.active_run 2>/dev/null; echo; echo "---launch log---"; cat /vol/data/benchmark/logs/cami3_v11_winner_20260930.launch.log 2>/dev/null | grep -vE '^\s*$' | cut -c1-130 | head -20
+---active---
+1104991 1104991 /vol/data/benchmark/runs/cami3_v11_winner_20260930/comebin_run.log /vol/data/benchmark/runs/cami3_v11_winner_20260930 1790735398 cami3 /vol/data/repos/COMEBin-v11-sweep /vol/data/datasets/cami_III/toy_human_input_2samples/contigs.fa /vol/data/datasets/cami_III/toy_human_input_2samples/bamfiles
+
+---launch log---
+preflight_free_gb: run_fs=286 tmp_fs=12 floor=2
+source: /vol/data/repos/COMEBin-v11-sweep (branch ) commit: 95f5ea820f9a4e76f5c2911c0b5ed507ab67b015 (dirty files: 0)
+run:        /vol/data/benchmark/runs/cami3_v11_winner_20260930
+source:     /vol/data/repos/COMEBin-v11-sweep (branch )
+date:       2026-09-30T02:29:58+00:00
+commit:     95f5ea820f9a4e76f5c2911c0b5ed507ab67b015
+contigs:    /vol/data/datasets/cami_III/toy_human_input_2samples/contigs.fa
+bamdir:     /vol/data/datasets/cami_III/toy_human_input_2samples/bamfiles
+threads:    32
+n_views:    6
+seed:       42
+allow_zero_bins: 0
+sweep:      temp=0.05 emb=ref emb_cov=ref batch=ref max_edges=ref leiden_workers=ref hmm_evalue=ref n_views=6
+host:       32 cores, 62G RAM, gpu=none
+cmd_wrapper: /vol/data/tools/bin/micromamba run -p /vol/data/envs/comebin bash run_comebin.sh -a /vol/data/datasets/cami_III/toy_h
+Random seed: 42
+Leiden workers: same as -t (32)
+HNSW neighbors per contig: 100
+HMMER sequence E-value: 1e-5
+Tau(temperature): 0.05
+> build · big-pickle
+CAMI III winner run registered (temp 0.05, seed 42, 32 thr) with honest `sweep:` meta. Now the eval chain + Zenodo v15 re-run.
+[0m$ [0mecho "chains now: $(pgrep -f run_eval_chain.sh | wc -l)"; cd /vol/data/benchmark && nohup setsid bash /vol/data/benchmark/bin/run_eval_chain.sh /vol/data/benchmark/runs/cami3_v11_winner_20260930 cami3 28800 32 > /vol/data/benchmark/logs/cami3_v11_winner_20260930.chain.log 2>&1 & echo "cami3 chain pid $!"
+chains now: 2
+cami3 chain pid 1106262
+> build · big-pickle
+[0m$ [0mps -eo pid,etime,args | grep '[r]un_eval_chain.sh' | grep -v 'bash -c' | cut -c1-100
+1106263       00:03 bash /vol/data/benchmark/bin/run_eval_chain.sh /vol/data/benchmark/runs/cami3_v1
+> build · big-pickle
+[0m$ [0mcd /vol/data/benchmark && nohup setsid bash bin/zenodo_update.sh > logs/zenodo_update_v15_rerun_20260930.log 2>&1 & echo "zenodo v15 rerun pid $!"; sleep 3; echo "---"; tail -2 logs/zenodo_update_v15_rerun_20260930.log | cut -c1-120
+zenodo v15 rerun pid 1106280
+---
+tail: cannot open 'logs/zenodo_update_v15_rerun_20260930.log' for reading: No such file or directory
+> build · big-pickle
+[0m$ [0msleep 8; ls -la /vol/data/benchmark/logs/zenodo_update_v15_rerun_20260930.log 2>&1; cat /vol/data/benchmark/logs/zenodo_update_v15_rerun_20260930.log 2>/dev/null | cut -c1-120; echo "---proc---"; ps -eo pid,etime,args | grep '[z]enodo_update' | cut -c1-90
+-rw-rw-r-- 1 ubuntu ubuntu 84 Sep 30 02:30 /vol/data/benchmark/logs/zenodo_update_v15_rerun_20260930.log
+[zenodo_update] staging benchmark data -> /vol/data/benchmark/releases/stage.LnhwBN
+---proc---
+1106280       00:13 /bin/bash -c cd /vol/data/benchmark && nohup setsid bash bin/zenodo_up
+1106282       00:13 bash bin/zenodo_update.sh
+1106889       00:08 /bin/bash -c sleep 8; ls -la /vol/data/benchmark/logs/zenodo_update_v1
+> build · big-pickle
+Zenodo v15 re-run is running (pid 1106282). Let me see what the human-winner eval left in the repo for me to commit.
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && git status --porcelain | head -30; echo "---runs dir for winner---"; ls runs/human_v11_winner_20260930/ 2>/dev/null | head; echo "---amber/human---"; ls results/amber/human/ | grep winner
+M results/figures/combined_bar_plot.png
+ M results/figures/combined_bar_plot.svg
+ M results/figures/comp_vs_cont_all-runs.png
+ M results/figures/comp_vs_cont_by_dataset.png
+ M results/main_runs_table.md
+ M scripts/zenodo_update.sh
+?? results/amber/human/amber_report_human_v11_winner_20260930.html
+?? results/amber/human/amber_results_human_v11_winner_20260930.tsv
+?? results/amber/human/bin_metrics_human_v11_winner_20260930.tsv
+?? results/amber/human/heatmap_human_v11_winner_20260930.png
+?? results/human_v11_winner_20260930.csv
+---runs dir for winner---
+comebin_res
+comebin_run.log
+logs
+per_bin_results.csv
+per_bins.png
+run_meta.txt
+---amber/human---
+amber_report_human_v11_winner_20260930.html
+amber_results_human_v11_winner_20260930.tsv
+bin_metrics_human_v11_winner_20260930.tsv
+heatmap_human_v11_winner_20260930.png
+> build · big-pickle
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && git status --porcelain | wc -l; git status --porcelain | grep -E 'human_v11_winner|runs/' | head; echo "---ignored check---"; git check-ignore runs/human_v11_winner_20260930 2>/dev/null && echo "ignored" || echo "not ignored"; echo "---what is tracked in runs (sample)---"; git ls-files runs/ | grep -E 'sweep_004|winner' | head -5
+11
+?? results/amber/human/amber_report_human_v11_winner_20260930.html
+?? results/amber/human/amber_results_human_v11_winner_20260930.tsv
+?? results/amber/human/bin_metrics_human_v11_winner_20260930.tsv
+?? results/amber/human/heatmap_human_v11_winner_20260930.png
+?? results/human_v11_winner_20260930.csv
+---ignored check---
+not ignored
+---what is tracked in runs (sample)---
+runs/cami3_v11_winner_20260930/comebin_run.log
+runs/cami3_v11_winner_20260930/logs/resources.tsv
+runs/cami3_v11_winner_20260930/logs/sampler.out
+runs/cami3_v11_winner_20260930/run_meta.txt
+runs/human_v11_winner_20260930/comebin_res/comebin.log
+> build · big-pickle
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && echo "---gitignore runs---"; grep -n 'runs' .gitignore | head; echo "---status ignored runs---"; git status --porcelain=v1 --ignored runs/ 2>/dev/null | head -8; echo "---ls-files head runs---"; git ls-files runs/ | head -8; echo "---log for cami3 winner in index---"; git log --oneline -1 -- runs/cami3_v11_winner_20260930 2>/dev/null | head -2
+---gitignore runs---
+15:# NOTE: per-run DETAILED LOGS ARE TRACKED in the repo (runs/<run>/, synced by the
+18:# on disk under /vol/data/benchmark/runs/.
+19:runs/*
+20:!runs/*/
+21:!runs/README.md
+22:!runs/*/run_meta.txt
+23:!runs/*/comebin_run.log
+24:!runs/*/logs/
+25:!runs/*/logs/resources.tsv
+26:!runs/*/logs/sampler.out
+---status ignored runs---
+---ls-files head runs---
+runs/README.md
+runs/baseline_rerun/comebin_res/comebin.log
+runs/baseline_rerun/comebin_res/config.yml
+runs/baseline_rerun/comebin_res/training.log
+runs/baseline_rerun/comebin_run.log
+runs/baseline_rerun/run_meta.txt
+runs/baseline_rerun_autorestart1/comebin_res/comebin.log
+runs/baseline_rerun_autorestart1/comebin_res/config.yml
+---log for cami3 winner in index---
+80466ffa status: yes — cami3_v11_winner_20260930 epoch —/200 loss — acc — model big-pickle — 2026-09-30T02:20:36Z human winner eval d
+> build · big-pickle
+There's an automated status committer (`80466ffa`) I didn't make — let me inspect recent commits and find what's auto-committing.
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && git log --oneline -8; echo "---show 80466ffa---"; git show --stat 80466ffa 2>/dev/null | head -25; echo "---author---"; git show -s --format='%an <%ae> | %ad' 80466ffa
+80466ffa status: yes — cami3_v11_winner_20260930 epoch —/200 loss — acc — model big-pickle — 2026-09-30T02:20:36Z human winner eval d
+7aca6cee status: yes — human_v11_winner_20260930 epoch 199/200 loss 0.1844758540391922 acc 97.32421875 model big-pickle — 2026-09-30T02:20:36Z human winner eval d
+2511971d status: yes — human_v11_winner_20260930 epoch 199/200 loss 0.1844758540391922 acc 97.32421875 model big-pickle — 2026-09-30T02:20:36Z human winner eval d
+0fdde1a7 status: yes — human_v11_winner_20260930 epoch 199/200 loss 0.1844758540391922 acc 97.32421875 model big-pickle — 2026-09-30T02:20:36Z human winner eval d
+f4ea0173 meta: supervise tick 2026-09-30T02:23:01Z — 0 fix(es)
+54076d40 status: yes — human_v11_winner_20260930 epoch 199/200 loss 0.1844758540391922 acc 97.32421875 model big-pickle — 2026-09-30T02:20:36Z human winner eval d
+a8b6c80c status: yes — human_v11_winner_20260930 epoch 199/200 loss 0.1844758540391922 acc 97.32421875 model big-pickle — 2026-09-30T02:13:25Z human eval chain: C
+ef9bdc9d status: yes — human_v11_winner_20260930 epoch 199/200 loss 0.1844758540391922 acc 97.32421875 model big-pickle — 2026-09-30T02:13:25Z human eval chain: C
+---show 80466ffa---
+commit 80466ffa95034ea8b1082f4c3478bef823ede2f6
+Author: paulzierep <paulzierep@users.noreply.github.com>
+Date:   Wed Sep 30 02:30:04 2026 +0000
+
+    status: yes — cami3_v11_winner_20260930 epoch —/200 loss — acc — model big-pickle — 2026-09-30T02:20:36Z human winner eval d
+
+ README.md                                         |   2 +-
+ runs/cami3_v11_winner_20260930/comebin_run.log    |   7 +++++++
+ runs/cami3_v11_winner_20260930/logs/resources.tsv |   2 ++
+ runs/cami3_v11_winner_20260930/logs/sampler.out   |   0
+ runs/cami3_v11_winner_20260930/run_meta.txt       |  13 +++++++++++++
+ status/agent-run.log                              | Bin 14268831 -> 14287830 bytes
+ status/current.md                                 |  14 +++++++-------
+ status/status.log                                 |   1 +
+ status/watchdog.log                               |   1 +
+ 9 files changed, 32 insertions(+), 8 deletions(-)
+---author---
+paulzierep <paulzierep@users.noreply.github.com> | Wed Sep 30 02:30:04 2026 +0000
+> build · big-pickle
+There's an automatic supervisor status-committer in this repo — I'll coordinate via the lock and commit only my intended paths. Let me look at docs/13 and 15 and README section e to update them with the human-winner validation.
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && wc -l docs/13-optimization-sweep-medium.md docs/15-amber.md 2>/dev/null; grep -n '^#\|^##' docs/13-optimization-sweep-medium.md | head -20; echo "---doc15---"; grep -n '^#\|^##' docs/15-amber.md 2>/dev/null | head -20
+178 docs/13-optimization-sweep-medium.md
+  178 total
+1:# Optimization sweep on the medium dataset (issue #25)
+43:## Dataset
+51:## Harness
+66:## Grid (24 cells — all seed 42, THREADS 8)
+99:## Results & winner
+134:## Ranking rule (owner's order)
+144:## Follow-on per issue #25
+---doc15---
+> build · big-pickle
+[0m→ [0mRead /vol/data/repos/metagenomic-binning-benchmark/docs/13-optimization-sweep-medium.md [90m[offset=99, limit=80][0m
+> build · big-pickle
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && ls docs/; echo "---README section e---"; grep -n '^## e\|^### e\|section e\|all_runs_table\|sweep' README.md | head -15
+00-setup.md
+01-datasets.md
+02-comebin-baseline.md
+03-fixes.md
+04-evaluation.md
+05-agent-restart.md
+06-benchmark-commands.md
+07-fix-batches.md
+08-dataset-space-plan.md
+09-optimization-strategy.md
+10-data-preservation.md
+11-run-results.md
+12-comebin-master-divergence.md
+13-optimization-sweep-medium.md
+14-amber-cami2-marine.md
+15-amber-cami2-human.md
+16-amber-cami3-toy.md
+---README section e---
+38:- ⏭ **Next step:** run the medium-dataset optimization sweep (issue #25,
+41:  CAMI II & III **human** sets on any fix that survives the sweep.
+68:| `sweep_003_issue28fix` | 2026-09-29 | 47m13s | COMEBin medium (3,000 contigs) · derived - [scripts/make_medium_dataset.sh](scripts/make_medium_dataset.sh) | `comebin-optimizations-v11` @ `41606c8` | 0.014 GB - 14 MB contigs.fa / 0.42 GB dir | 17 | 34.22 | 4.11 | 0 / 2 | 50.4 | sweep issue-#28 fix `41606c8` — no regression vs ref |
+69:| `sweep_004_temp005` | 2026-09-29 | 47m22s | COMEBin medium (3,000 contigs) · derived - [scripts/make_medium_dataset.sh](scripts/make_medium_dataset.sh) | `comebin-optimizations-v11 (sweep worktree)` @ `95f5ea8` | 0.014 GB - 14 MB contigs.fa / 0.42 GB dir | 13 | 43.55 | 6.77 | 0 / 4 | 59.4 | **#25 winner** temp 0.05 — top CheckM2 F1 (59.4), +9.3 pp comp vs ref |
+70:| `sweep_005_temp030` | 2026-09-29 | 46m19s | COMEBin medium (3,000 contigs) · derived - [scripts/make_medium_dataset.sh](scripts/make_medium_dataset.sh) | `comebin-optimizations-v11 (sweep worktree)` @ `95f5ea8` | 0.014 GB - 14 MB contigs.fa / 0.42 GB dir | 17 | 33.38 | 3.73 | 0 / 3 | 49.6 | sweep temp 0.30 |
+71:| `sweep_006_temp050` | 2026-09-29 | 46m39s | COMEBin medium (3,000 contigs) · derived - [scripts/make_medium_dataset.sh](scripts/make_medium_dataset.sh) | `comebin-optimizations-v11 (sweep worktree)` @ `95f5ea8` | 0.014 GB - 14 MB contigs.fa / 0.42 GB dir | 17 | 34.33 | 3.92 | 0 / 3 | 50.6 | sweep temp 0.50 |
+72:| `sweep_007_emb1024` | 2026-09-29 | 39m41s | COMEBin medium (3,000 contigs) · derived - [scripts/make_medium_dataset.sh](scripts/make_medium_dataset.sh) | `comebin-optimizations-v11 (sweep worktree)` @ `95f5ea8` | 0.014 GB - 14 MB contigs.fa / 0.42 GB dir | 15 | 38.40 | 4.76 | 0 / 2 | 54.7 | sweep emb 1024 |
+73:| `sweep_008_emb4096` | 2026-09-29 | 1h09m | COMEBin medium (3,000 contigs) · derived - [scripts/make_medium_dataset.sh](scripts/make_medium_dataset.sh) | `comebin-optimizations-v11 (sweep worktree)` @ `95f5ea8` | 0.014 GB - 14 MB contigs.fa / 0.42 GB dir | 16 | 36.33 | 4.81 | 0 / 2 | 52.6 | sweep emb 4096 |
+74:| `sweep_009_embcov1024` | 2026-09-29 | 39m06s | COMEBin medium (3,000 contigs) · derived - [scripts/make_medium_dataset.sh](scripts/make_medium_dataset.sh) | `comebin-optimizations-v11 (sweep worktree)` @ `95f5ea8` | 0.014 GB - 14 MB contigs.fa / 0.42 GB dir | 16 | 35.80 | 4.12 | 0 / 2 | 52.1 | sweep emb_cov 1024 |
+75:| `sweep_010_embcov4096` | 2026-09-29 | 1h09m | COMEBin medium (3,000 contigs) · derived - [scripts/make_medium_dataset.sh](scripts/make_medium_dataset.sh) | `comebin-optimizations-v11 (sweep worktree)` @ `95f5ea8` | 0.014 GB - 14 MB contigs.fa / 0.42 GB dir | 17 | 34.10 | 4.50 | 0 / 2 | 50.3 | sweep emb_cov 4096 |
+76:| `sweep_011_batch512` | 2026-09-29 | 26m23s | COMEBin medium (3,000 contigs) · derived - [scripts/make_medium_dataset.sh](scripts/make_medium_dataset.sh) | `comebin-optimizations-v11 (sweep worktree)` @ `95f5ea8` | 0.014 GB - 14 MB contigs.fa / 0.42 GB dir | 14 | 41.56 | 6.34 | 0 / 2 | 57.6 | sweep batch 512 — 2× faster, +7.3 pp comp |
+77:| `sweep_012_batch2048` | 2026-09-29 | 1h09m | COMEBin medium (3,000 contigs) · derived - [scripts/make_medium_dataset.sh](scripts/make_medium_dataset.sh) | `comebin-optimizations-v11 (sweep worktree)` @ `95f5ea8` | 0.014 GB - 14 MB contigs.fa / 0.42 GB dir | 18 | 34.68 | 4.12 | 0 / 3 | 50.9 | sweep batch 2048 |
+78:| `sweep_013_edges80` | 2026-09-29 | 45m57s | COMEBin medium (3,000 contigs) · derived - [scripts/make_medium_dataset.sh](scripts/make_medium_dataset.sh) | `comebin-optimizations-v11 (sweep worktree)` @ `95f5ea8` | 0.014 GB - 14 MB contigs.fa / 0.42 GB dir | 15 | 40.39 | 5.29 | 0 / 2 | 56.6 | sweep max_edges 80 — best cont (5.29) among top-4 |
+79:| `sweep_014_edges150` | 2026-09-29 | 44m47s | COMEBin medium (3,000 contigs) · derived - [scripts/make_medium_dataset.sh](scripts/make_medium_dataset.sh) | `comebin-optimizations-v11 (sweep worktree)` @ `95f5ea8` | 0.014 GB - 14 MB contigs.fa / 0.42 GB dir | 18 | 32.15 | 3.97 | 0 / 2 | 48.2 | sweep max_edges 150 |
+80:| `sweep_015_views4` | 2026-09-29 | 25m06s | COMEBin medium (3,000 contigs) · derived - [scripts/make_medium_dataset.sh](scripts/make_medium_dataset.sh) | `comebin-optimizations-v11 (sweep worktree)` @ `95f5ea8` | 0.014 GB - 14 MB contigs.fa / 0.42 GB dir | 17 | 33.84 | 4.84 | 0 / 2 | 49.9 | sweep n_views 4 |
+> build · big-pickle
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && grep -n '^#' README.md | head -20; echo "---human rows---"; grep -nE 'human_v11|cami3_v11|marine_v11' README.md | head -8
+5:# Metagenomic binning benchmark
+7:## Agent tag
+18:## What this project is
+31:## Progress
+43:## Benchmark plots
+58:## All runs
+114:## Important links
+---human rows---
+34:  `cami3_v11_20260926_rerun` on the toy human-gut set: **492 bins**,
+93:| `cami3_v11_20260926` | 2026-09-26 | 1h51m | CAMI III toy human gut (5,000 contigs) · <https://cami-challenge.org/datasets/> (CAMI III toy download) | `comebin-optimizations-v11` @ `95f5ea8` | 1.1 GB contigs.fa / 15 GB dir | - | - | - | - / - | - | failed: FS full (ENOSPC) -> rerun |
+94:| `cami3_v11_20260926_rerun` | 2026-09-26 | 1h29m | CAMI III toy human gut (5,000 contigs) · <https://cami-challenge.org/datasets/> (CAMI III toy download) | `comebin-optimizations-v11` @ `95f5ea8` | 1.1 GB contigs.fa / 15 GB dir | 492 | 35.97 | 11.42 | 53 / 112 | 51.2 | 492 bins, most HQ/MQ of any run (CAMI III) |
+95:| `human_v11_20260925` | 2026-09-25 | 1h21m | CAMI II human (4,900 contigs) · <https://frl.publisso.de/data/frl:6425518/> (CAMI II Toy HMP) | `comebin-optimizations-v11` @ `95f5ea8` | 0.17 GB contigs.fa / 25 GB dir | 107 | 35.31 | 5.13 | 20 / 29 | 51.5 | first HQ-rich dataset (CAMI II human) |
+96:| `marine_v11_20260925` | 2026-09-25 | 8h43m | CAMI II marine (41,988 contigs) · <https://doi.org/10.5281/zenodo.5013479> (CAMI II asmbly record) | `comebin-optimizations-v11` @ `95f5ea8` | 0.32 GB contigs.fa / 5.9 GB dir | 152 | 50.60 | 4.10 | 35 / 60 | 66.2 | best-quality dataset so far (CAMI II marine) |
+> build · big-pickle
+Now I have all reference numbers. Let me update the docs and README, starting with the README table insert (checking the header and top rows first).
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && sed -n '58,71p' README.md
+## All runs
+
+Every run ever launched — including the failed and tiny/small ones — with run
+date, duration, dataset + public link, COMEBin branch / commit, benchmark size,
+bin count, CheckM2 + HQ/MQ, F1, and a one-line comment:
+
+<!--ALL-RUNS:START-->
+
+| Run | Date | Duration | Dataset (public link) | Branch / commit | Size (contigs) | Bins | CheckM2 comp | CheckM2 cont | HQ / MQ | F1 | Comment |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| `sweep_003_issue28fix` | 2026-09-29 | 47m13s | COMEBin medium (3,000 contigs) · derived - [scripts/make_medium_dataset.sh](scripts/make_medium_dataset.sh) | `comebin-optimizations-v11` @ `41606c8` | 0.014 GB - 14 MB contigs.fa / 0.42 GB dir | 17 | 34.22 | 4.11 | 0 / 2 | 50.4 | sweep issue-#28 fix `41606c8` — no regression vs ref |
+| `sweep_004_temp005` | 2026-09-29 | 47m22s | COMEBin medium (3,000 contigs) · derived - [scripts/make_medium_dataset.sh](scripts/make_medium_dataset.sh) | `comebin-optimizations-v11 (sweep worktree)` @ `95f5ea8` | 0.014 GB - 14 MB contigs.fa / 0.42 GB dir | 13 | 43.55 | 6.77 | 0 / 4 | 59.4 | **#25 winner** temp 0.05 — top CheckM2 F1 (59.4), +9.3 pp comp vs ref |
+| `sweep_005_temp030` | 2026-09-29 | 46m19s | COMEBin medium (3,000 contigs) · derived - [scripts/make_medium_dataset.sh](scripts/make_medium_dataset.sh) | `comebin-optimizations-v11 (sweep worktree)` @ `95f5ea8` | 0.014 GB - 14 MB contigs.fa / 0.42 GB dir | 17 | 33.38 | 3.73 | 0 / 3 | 49.6 | sweep temp 0.30 |
+| `sweep_006_temp050` | 2026-09-29 | 46m39s | COMEBin medium (3,000 contigs) · derived - [scripts/make_medium_dataset.sh](scripts/make_medium_dataset.sh) | `comebin-optimizations-v11 (sweep worktree)` @ `95f5ea8` | 0.014 GB - 14 MB contigs.fa / 0.42 GB dir | 17 | 34.33 | 3.92 | 0 / 3 | 50.6 | sweep temp 0.50 |
+> build · big-pickle
