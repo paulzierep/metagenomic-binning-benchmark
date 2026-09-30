@@ -138329,3 +138329,60 @@ epoch=27/200
 02:49:36
 > build · mimo-v2.6-flash-free
 Upload **succeeded** (md5 verified) with metadata v15.0 — the publish POST is in flight. Checking for the receipt.
+[0m$ [0msleep 30; tail -5 /vol/data/benchmark/logs/zenodo_update_v15_rerun2_20260930.log | cut -c1-160; echo "---process---"; ps -eo pid | grep -qx 1120318 && echo running || echo exited; echo "---receipt---"; ls -lt /vol/data/benchmark/meta/*receipt* 2>/dev/null | head -3; cat /vol/data/benchmark/meta/*receipt*.json 2>/dev/null | head -c 400
+[zenodo_update] published record 23042028 (doi 10.5281/zenodo.23042028)
+verified published file comebin_benchmark_release_v15_20260930.tar.gz: 1306237850 bytes md5 e5725cb216231275d9a48ee062c65429
+[zenodo_update] doi.org/10.5281/zenodo.23042028 -> HTTP 200
+receipt: /vol/data/benchmark/meta/zenodo_benchmark_release_v15.json
+[zenodo_update] done — version 15 published under concept DOI 10.5281/zenodo.22935024
+---process---
+exited
+---receipt---
+> build · mimo-v2.6-flash-free
+🎉 **Zenodo v15 published** (doi 10.5281/zenodo.23042028, md5 verified, doi.org → 200). Verifying the receipt + concept version chain.
+[0m$ [0mcat /vol/data/benchmark/meta/zenodo_benchmark_release_v15.json | python3 -m json.tool | head -15; echo "---concept latest---"; TOK=$(tr -d '\n' < ~/.zenodo_token); curl -sS -H "Authorization: Bearer $TOK" "https://zenodo.org/api/records/22935025/versions" | python3 -c "import json,sys
+h=json.load(sys.stdin)['hits']['hits']
+print('versions:', len(h))
+for r in sorted(h, key=lambda x:int(x['id'])): print(r['id'], r.get('metadata',{}).get('version'))"
+{
+    "bytes": "1306237850",
+    "concept_doi": "10.5281/zenodo.22935024",
+    "content_sha256": "14ebf742c76af1c40176750654d8facda8d92be46bc8ad87e15ad8ecbe478583",
+    "doi": "10.5281/zenodo.23042028",
+    "doi_resolver_http": "200",
+    "filename": "comebin_benchmark_release_v15_20260930.tar.gz",
+    "md5": "e5725cb216231275d9a48ee062c65429",
+    "published_at_utc": "2026-09-30T02:49:38.419652+00:00",
+    "receipt_path": "/vol/data/benchmark/meta/zenodo_benchmark_release_v15.json",
+    "record_id": "23042028",
+    "runs": "baseline_rerun_autorestart1 (60 bins),cami3_v11_20260926_rerun (492 bins),fix_v11_20260924 (71 bins),human_v11_20260925 (107 bins),human_v11_winner_20260930 (54 bins),marine_v11_20260925 (152 bins),medium_v11_20260924 (16 bins),small_test_v4 (3 bins),sweep_001_ref (17 bins),sweep_003_issue28fix (17 bins),sweep_004_temp005 (13 bins),sweep_005_temp030 (17 bins),sweep_006_temp050 (17 bins),sweep_007_emb1024 (15 bins),sweep_008_emb4096 (16 bins),sweep_009_embcov1024 (16 bins),sweep_010_embcov4096 (17 bins),sweep_011_batch512 (14 bins),sweep_012_batch2048 (18 bins),sweep_013_edges80 (15 bins),sweep_014_edges150 (18 bins),sweep_015_views4 (17 bins),sweep_016_views8 (17 bins),sweep_017_w4 (17 bins),sweep_018_w16 (17 bins),sweep_019_eval1e3 (17 bins),sweep_020_eval1e7 (17 bins),sweep_021_comboA (20 bins),sweep_022_comboB (17 bins),sweep_023_embcov512_batch512 (13 bins),sweep_024_seed7 (15 bins),tiny_test_n101 (1 bins)",
+    "state": "published_verified",
+    "version": "15"
+}
+---concept latest---
+versions: 15
+22935025 1.0
+22969763 2.0
+22973575 3.0
+23017738 4.0
+23027854 5.0
+23029442 6.0
+23030160 7.0
+23031407 8.0
+23032275 9.0
+23033658 10.0
+23034838 11.0
+23036619 12.0
+23037392 13.0
+23040201 14.0
+23042028 15.0
+> build · mimo-v2.6-flash-free
+v15 receipt verified — 32 runs archived including the human winner. Logging the milestone and checking CAMI III training health.
+[0m$ [0mTS=$(date -u +"%Y-%m-%dT%H:%M:%SZ"); echo "$TS Zenodo v15 PUBLISHED: doi 10.5281/zenodo.23042028, md5 e5725cb216231275d9a48ee062c65429, receipt meta/zenodo_benchmark_release_v15.json (state published_verified), 32 runs incl human winner; streaming -T fix worked, stale v6 file purged from draft" >> /vol/data/repos/metagenomic-binning-benchmark/status/agent-activity.log; echo "$TS zenodo v15 published+verified; cami3 winner training; v16 auto after cami3 eval" > /vol/data/benchmark/.activity; touch /vol/data/benchmark/.heartbeat; echo "---cami3 health---"; grep -oE 'epoch=[0-9]+/200' /vol/data/benchmark/runs/cami3_v11_winner_20260930/comebin_run.log | tail -1; grep -E 'loss|Top1' /vol/data/benchmark/runs/cami3_v11_winner_20260930/comebin_run.log | tail -2 | cut -c1-140; echo "---resources---"; tail -1 /vol/data/benchmark/runs/cami3_v11_winner_20260930/logs/resources.tsv
+---cami3 health---
+epoch=49/200
+2026-09-30 02:51:04,460 - NN training: epoch=48/200, batches=4, loss=4.5081906, top1=16.2793, elapsed=22.454s, process_memory={'VmPeak': '85
+2026-09-30 02:51:25,463 - NN training: epoch=49/200, batches=4, loss=4.5454588, top1=15.5827, elapsed=21.002s, process_memory={'VmPeak': '85
+---resources---
+2026-09-30T02:51:31+00:00	1105032,1105035,1109733,1134195,1134227,1134259,1134291	2901.9	7.060	5009
+> build · mimo-v2.6-flash-free
