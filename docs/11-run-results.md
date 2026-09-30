@@ -13,13 +13,18 @@ One row per benchmark run, updated by the agent after each run (timings from `ru
 | `human_v11_20260925` | 2026-09-25 | [95f5ea8](https://github.com/paulzierep/COMEBin/commit/95f5ea820f9a4e76f5c2911c0b5ed507ab67b015) | CAMI II human host-associated (4,900 contigs / 166 Mbp, ~1/6 demo) | 32 | 4,912 s (82 min) | 10.40 GB | 107 | 35.31 / 5.13 (HQ 20, MQ 29) | 32.64 / 4.65 (HQ 21, MQ 29) | ✅ complete; 200/200 epochs, final Top-1 ≈ 96 %; first dataset with substantial HQ recovery; [CSV](../results/human_v11_20260925.csv) |
 | `marine_v11_20260925` | 2026-09-25 | [95f5ea8](https://github.com/paulzierep/COMEBin/commit/95f5ea820f9a4e76f5c2911c0b5ed507ab67b015) | CAMI II marine (41,988 contigs ≥ 2000 bp, sample 0) | 32 | 31,406 s (8 h 43 min) | 8.32 GB | 152 | 50.60 / 4.10 (HQ 35, MQ 60) | 46.36 / 5.09 (HQ 37, MQ 60) | ✅ complete; 159/200 epochs, early stop (Top-1 99.58 % × 3), Leiden 120/120; strongest quality of all datasets so far; [CSV](../results/marine_v11_20260925.csv) |
 | `cami3_v11_20260926_rerun` | 2026-09-26 | [95f5ea8](https://github.com/paulzierep/COMEBin/commit/95f5ea820f9a4e76f5c2911c0b5ed507ab67b015) | CAMI III toy human gut (5,000 pooled-GSA contigs / 1.1 Gbp, 2 samples) | 32 | 5,392 s (90 min) | 10.37 GB | 492 | 35.97 / 11.42 (HQ 53, MQ 112) | 32.46 / 13.38 (HQ 54, MQ 100) | ✅ complete; 200/200 epochs (final Top-1 74.95 %, no early stop), Leiden 120/120; first attempt `cami3_v11_20260926` failed on a full `/` (see history); [CSV](../results/cami3_v11_20260926_rerun.csv) |
+| `human_v11_winner_20260930` | 2026-09-30 | [95f5ea8](https://github.com/paulzierep/COMEBin/commit/95f5ea820f9a4e76f5c2911c0b5ed507ab67b015) | CAMI II human (4,900 contigs), **sweep winner temp 0.05** | 32 | 4,955 s (82 min) | 10.25 GB | 54 | 61.70 / 8.25 (HQ 22, MQ 26) | 61.26 / 14.71 (HQ 21, MQ 27) | ✅ complete; 200/200 epochs, Leiden 120/120; **AMBER F1_bp 0.881** vs ref 0.681 (+26.4 pp CheckM2 comp); [CSV](../results/human_v11_winner_20260930.csv) |
 | `baseline_unmodified` | 2026-09-23 | [987db95](https://github.com/paulzierep/COMEBin/commit/987db95d8d399f30b7c82a5f5f40ed6bfdc906c7) (upstream) | COMEBin demo (29,434 contigs) | 32 | – | – | – | – | – | ⏹ failed at epoch 175/200 — see [Run history](#run-history--what-happened-and-whats-next) |
 
 Column contract: **Wall time** = total seconds (plus per-stage breakdown in `docs/02-comebin-baseline.md`), **Bins** = bins exported (≥200 kb filter noted), **comp/cont** = mean completeness / mean contamination, **HQ/MQ counts** live in `results/<run>.csv`. **Source commit** is always a clickable link to that exact commit on GitHub. Per-bin CheckM2 values for the completed medium gate are in [`medium_v11_20260924_checkm2_stats.csv`](../medium_v11_20260924_checkm2_stats.csv).
 
 ## Run history — what happened and what's next
 
-Seventeen COMEBin-executing attempts have been recorded: nine terminal failures and eight completed runs. The baseline rerun, small functional gate, medium derivative, large fix run, the 101-contig tiny floor run, the CAMI II human ~1/6 run, the CAMI II marine ~1/6 run, and the CAMI III toy human gut run now have verified bin artifacts and CheckM2/CheckM outputs. Run links point to tracked evidence mirrors; the status banner at the top is authoritative for any active run.
+Seventeen COMEBin-executing attempts were recorded before the sweep; the
+24-cell medium sweep (issue #25) added 24 more attempts, and the sweep-winner
+validation runs continue below — all sweep cells are documented in
+[`docs/13-optimization-sweep-medium.md`](13-optimization-sweep-medium.md).
+The baseline rerun, small functional gate, medium derivative, large fix run, the 101-contig tiny floor run, the CAMI II human ~1/6 run, the CAMI II marine ~1/6 run, the CAMI III toy human gut run, and the **sweep-winner CAMI II human run** now have verified bin artifacts and CheckM2/CheckM outputs. Run links point to tracked evidence mirrors; the status banner at the top is authoritative for any active run.
 
 ### COMEBin-executing attempts
 
@@ -42,6 +47,7 @@ Seventeen COMEBin-executing attempts have been recorded: nine terminal failures 
 | [`marine_v11_20260925`](../runs/marine_v11_20260925/comebin_run.log) — 2026-09-25 04:14:49 → 12:58:15 (31,406 s = 8 h 43 min) | [95f5ea8](https://github.com/paulzierep/COMEBin/commit/95f5ea820f9a4e76f5c2911c0b5ed507ab67b015) | **✅ Complete** (exit 0). CAMI II marine sample 0: `prep_cami2_marine.sh 2000` → 41,988 contigs ≥ 2000 bp, `marine.bam` 4.95 GB, `MODE=cami2`, seed 42, 32 threads. Stopped early at **epoch 159/200** (`--earlystop`, Top-1 99.31 → 99.58 % × 3), Leiden pool 120/120 (99.7 s) → **152 non-empty bins**. CheckM2: **50.60 % / 4.10 %** (HQ 35, MQ 60). CheckM v1: **46.36 % / 5.09 %** (HQ 37, MQ 60) — the strongest quality of any dataset so far (demo 25 %, human 35 %). | Evaluation attempt 1 had `checkm2_rc 1` — DIAMOND hit *No space left on device* (12.5 GB of orphaned `/tmp` intermediates from a CAMI III download attempt filled `/`); orphans removed, `run_eval.sh` re-run: CheckM2 rc 0 / 356 s, CheckM v1 rc 0 / 998 s. [aggregate CSV](../results/marine_v11_20260925.csv), [per-bin table](../runs/marine_v11_20260925/per_bin_results.csv). |
 | [`cami3_v11_20260926`](../runs/cami3_v11_20260926/comebin_run.log) — 2026-09-26 02:45:13 → 04:36:30 (6,677 s) | [95f5ea8](https://github.com/paulzierep/COMEBin/commit/95f5ea820f9a4e76f5c2911c0b5ed507ab67b015) | **Failed, exit 1, 0 bins — disk exhaustion, not a binning bug.** The CAMI III prep's leftover downloads `/tmp/url_anonymous_reads.fq` (9.1 G) + `.fq.gz` (4.7 G) had filled `/` to 100 % since 02:42; `get_result`'s CheckM marker pass then hit ENOSPC (21 hmmfetch fatals + 3 dead worker processes, 04:02–04:04) and the final selection died on `KeyError: '110'` (incomplete `checkm analyze` bacteria table). Training (200/200), Leiden 120/120 and KMeans had completed cleanly before the crash. Watchdog triaged 04:40:01 (terminal marker, no auto-retry). | Both /tmp leftovers verified already staged in the dataset (`logs/sample_{0,1}/*/anonymous_reads.fq.gz`, 5.0 G + 4.7 G; no process held them) and deleted → `/` 100 → 28 %; 68 orphaned HMM temp files (777 M) removed. Fresh-dir deterministic retry with seed 42 → `cami3_v11_20260926_rerun`. |
 | [`cami3_v11_20260926_rerun`](../runs/cami3_v11_20260926_rerun/comebin_run.log) — 2026-09-26 04:48:24 → 06:18:16 (5,392 s = 90 min) | [95f5ea8](https://github.com/paulzierep/COMEBin/commit/95f5ea820f9a4e76f5c2911c0b5ed507ab67b015) | **✅ Complete** (exit 0). CAMI III toy human gut: top-5,000 pooled-GSA contigs (1.1 Gbp), both samples' coverage BAMs (`MODE=cami3`), seed 42, 32 threads. Full **200/200 epochs** (final Top-1 74.95 %, no early stop), Leiden 120/120 → **492 non-empty bins**. CheckM2: **35.97 % / 11.42 %** (HQ 53, MQ 112). CheckM v1: **32.46 % / 13.38 %** (HQ 54, MQ 100) — most bins and most HQ/MQ bins of any run, but the highest mean contamination (strain-rich toy human gut). | Evaluation attempt 1: `checkm_rc 0` (2,514 s, pplacer over 492 bins) but `checkm2_rc 1` — CheckM2 1.1.0's 32-thread gene-calling race on 492 bins (*List of protein files does not match internal reference*); output preserved as `eval/checkm2.incomplete.*`, retry with 16 threads rc 0 (1,137 s). Report chain then ran clean: [aggregate CSV](../results/cami3_v11_20260926_rerun.csv), [per-bin table](../runs/cami3_v11_20260926_rerun/per_bin_results.csv), combined plot, Zenodo v3. |
+| [`human_v11_winner_20260930`](../runs/human_v11_winner_20260930/comebin_run.log) — 2026-09-30 00:41:57 → 02:04:32 (4,955 s = 82 min) | [95f5ea8](https://github.com/paulzierep/COMEBin/commit/95f5ea820f9a4e76f5c2911c0b5ed507ab67b015) (sweep worktree) | **✅ Complete.** Issue-#25 sweep winner (**temperature 0.05**) validated on CAMI II human: seed 42, 32 threads, `MODE=cami2-human`, `Tau(temperature): 0.05` confirmed in log. 200/200 epochs, Leiden 120/120 → **54 non-empty bins**. CheckM2: **61.70 % / 8.25 %** (HQ 22, MQ 26) vs ref `human_v11_20260925` 35.31 % / 5.13 % — **+26.4 pp completeness**. CheckM v1: 61.26 % / 14.71 %. **AMBER F1_bp 0.881** (ref 0.681); accuracy_bp 0.781 / ARI_bp 0.623 — fewer, richer bins (107→54). | Eval chain (`run_eval_chain.sh … human`) completed end-to-end: [aggregate CSV](../results/human_v11_winner_20260930.csv), [per-bin table](../runs/human_v11_winner_20260930/per_bin_results.csv), AMBER artifacts under `results/amber/human/`, biobox `human_sample0.binning` (v0.9.1, validated), Zenodo **v15**. CAMI III winner validation next (`cami3_v11_winner_20260930`). |
 
 ### Guard-only launches
 
@@ -60,7 +66,28 @@ Twelve launches stopped before COMEBin started. They are grouped by episode so r
 
 ## Data preservation and Zenodo
 
-The verified small release is published as **[10.5281/zenodo.22935025](https://doi.org/10.5281/zenodo.22935025)** (version 1, **MIT** since 2026-09-24). It contains the 95,216,539-byte release archive (SHA-256 `0c698d208639f4fadd4ac4477a67074320c975528b23dd61743c83ad1658b6d2`) and the 3,650-byte public manifest (SHA-256 `84131ae359d07a78db7ae7ca2005758f4f0ec9df67a33ec62f8af50ac1702f1b`). The archive was extracted and all 18 manifest entries were checked; the public record was independently verified through an unauthenticated Zenodo API request (HTTP 200), and the DOI resolves HTTP 200. The release checklist, provenance requirements, and future-version workflow are in `docs/10-data-preservation.md`. The watchdogs do not upload data automatically; the token is kept only in the mode-0600 local secret file. On 2026-09-24 the record metadata was **edited in place to the MIT license with an expanded description** (what the benchmark is used for, how to run, project links) — no new version was created; the record stays at 1.0.
+The concept DOI **[10.5281/zenodo.22935024](https://doi.org/10.5281/zenodo.22935024)**
+accumulates every evaluated run's artifacts as continuous versions (MIT since
+2026-09-24). Current state: **15 versions**, latest **v15**
+([10.5281/zenodo.23042028](https://doi.org/10.5281/zenodo.23042028),
+2026-09-30) — `comebin_benchmark_release_v15_20260930.tar.gz`,
+1,306,237,850 bytes, md5 `e5725cb216231275d9a48ee062c65429`, receipt
+`meta/zenodo_benchmark_release_v15.json` (state `published_verified`,
+doi.org → HTTP 200). It packages **32 runs**: all 24 sweep cells, the CAMI II
+human **sweep winner** (`human_v11_winner_20260930`), the CAMI II human/marine
+references, the CAMI III toy gut runs, and the baseline/fix/small/tiny gates —
+bins FASTA, CheckM2/CheckM outputs, per-bin tables, biobox exports and
+manifests (2,861,573,785 bytes / 1,926 files unpacked). Publishing is handled
+by `bin/zenodo_update.sh` (wired into `run_eval.sh`): it reuses the open draft
+or forks a new version, **streams** the tarball with `curl -T` (a `--data-binary`
+upload OOM'd on the 1.25 GB package on 2026-09-30 and was replaced), clears
+stale files from the reused draft, updates metadata, publishes, and verifies
+file md5 + doi.org resolution, writing a JSON receipt under `meta/`. The
+release checklist, provenance requirements, and future-version workflow are in
+`docs/10-data-preservation.md`. The watchdogs do not upload data automatically;
+the token is kept only in the mode-0600 local secret file. Version 1 was
+published 2026-09-24 with metadata later **edited in place to the MIT
+license** — superseded by v2+ as more runs accumulated.
 
 ## How to resume (for a human or a restarted agent)
 
