@@ -920,3 +920,35 @@ clears the flag (back to default). Rate limit 6 restarts / 6 h; stops when
   4. docs/15 (AMBER) + docs/11 + README + `results/sweep_rankings.md` updates
      with the winner numbers, then a #25 comment with the human/CAMI III
      comparison and the Zenodo bundle of sweep + AMBER + biobox artifacts.
+
+### 2026-09-30 01:20Z — AMBER completed for CAMI III (new deliverable, no overlap)
+
+While the winner run trains (epoch 80/200 at 01:20Z), the remaining AMBER gap
+was closed — this needed no benchmark slot, only a small download and one
+Python script.
+
+- **CAMI III gold standard built**: official `gsa_pooled_mapping.tsv.gz`
+  (117,169,291 B, md5 `34f5665129b081b905533c92388ad3a06`, 6,140,132 rows,
+  `@SampleID:cami3_toy_human_gut_short_read_pooled_assembly`) is keyed by
+  *anonymous* pooled ids (`PC0`…), our input by reference-derived headers
+  (`NZ_*_from_*_to_*`) → the two are joined on the reference contig id
+  (header prefix before `_from_` = mapping column `contig_id`). **New script
+  `scripts/make_cami3_gold_standard.py`** (deployed to `bin/`, md5-identical);
+  it parses the column declaration instead of assuming column order.
+  Output `/vol/data/datasets/cami_III/gold_standard/cami3_toy_binning_gs.tsv`:
+  **5,000/5,000 contigs, 100 % of bp (1,126,537,317 bp), 390 genomes, 0
+  unmapped**, CAMI/AMBER v0.9.1, `validate_binning.py` OK.
+- **AMBER scored the existing CAMI III run** `cami3_v11_20260926_rerun`
+  (492 bins, 4,957 contigs) with the same AMBER build as docs/14/15:
+  **F1_bp 0.743**, precision_avg 0.719, recall_avg 0.769, accuracy_bp 0.689,
+  ARI_bp 0.351, 99.6 % bp assigned, misclassification 0.308. Highest F1 of the
+  three datasets (marine 0.330 / human 0.681 / CAMI III 0.743); the low ARI is
+  over-splitting (492 bins vs 390 genomes), consistent with the CheckM2 numbers
+  for the same run (35.97 % comp, 53 HQ / 112 MQ).
+- `docs/16-amber-cami3-toy.md` written; `docs/01` ground-truth row, `docs/13`
+  AMBER item, `docs/14` + `docs/15` side-by-side tables updated; artifacts in
+  `results/amber/cami3/` (report, results, per-bin metrics, heatmap,
+  prediction, gold standard, AMBER log). Commit `16e5ce87` pushed.
+- #25 comment `5902189327` posted with the three-dataset AMBER table.
+- Winner run `human_v11_winner_20260930` at epoch 80/200 (01:20Z) — untouched;
+  the eval/AMBER/biobox chain is still waiting.
