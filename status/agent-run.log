@@ -138188,3 +138188,25 @@ CAMI3 at epoch 10/200 (~60 min of training left); Zenodo tarball building. While
 276M	/vol/data/benchmark/checkm_data_2015_01_16.tar.gz
 28M	/vol/data/benchmark/logs
 > build · mimo-v2.6-flash-free
+Disk plan is clear (to execute only after verified Zenodo publishes). Monitoring the v15 streaming upload now.
+[0m$ [0msleep 90; tail -5 /vol/data/benchmark/logs/zenodo_update_v15_rerun_20260930.log | cut -c1-150; echo "---curl---"; ps -eo pid,etime,pcpu,rss,args | grep '[c]url' | grep -v 'bash -c' | cut -c1-140; echo "---tarball---"; ls -la /vol/data/benchmark/releases/comebin_benchmark_release_v15_20260930.tar.gz
+[zenodo_update] package: /vol/data/benchmark/releases/comebin_benchmark_release_v15_20260930.tar.gz (1306237859 bytes, md5 2dd44769a66a7b0db7b698e2517
+[zenodo_update] uploading as Zenodo version 15
+Traceback (most recent call last):
+  File "<string>", line 4, in <module>
+AttributeError: 'list' object has no attribute 'get'
+---curl---
+---tarball---
+-rw-rw-r-- 1 ubuntu ubuntu 1306237859 Sep 30 02:38 /vol/data/benchmark/releases/comebin_benchmark_release_v15_20260930.tar.gz
+> build · mimo-v2.6-flash-free
+The stale-file check crashed: Zenodo's `/depositions/{id}/files` returns a **list**, not a dict — script died before the upload. Fixing and re-running.
+[0m$ [0mps -eo pid | grep -qx 1106282 && echo "still running" || echo "zenodo script exited"; tail -3 /vol/data/benchmark/logs/zenodo_update_v15_rerun_20260930.log | cut -c1-160; echo "---draft files state---"; TOK=$(tr -d '\n' < ~/.zenodo_token); curl -sS -H "Authorization: Bearer $TOK" "https://zenodo.org/api/deposit/depositions/23042028/files" | head -c 300; echo; curl -sS -H "Authorization: Bearer $TOK" "https://zenodo.org/api/deposit/depositions" | python3 -c "import json,sys
+for d in json.load(sys.stdin):
+    if str(d.get('conceptrecid'))=='22935024': print(d['id'], d.get('state'), d.get('submitted'))" | head -3
+zenodo script exited
+Traceback (most recent call last):
+  File "<string>", line 4, in <module>
+AttributeError: 'list' object has no attribute 'get'
+---draft files state---
+[{"id": "fe59c507-82fa-4ce1-aed3-3d9c671c1243", "filename": "comebin_benchmark_release_v6_20260929.tar.gz", "filesize": 1030343939.0, "checksum": "e141f8f9e7ee93dfd6a46a2030e29480", "links": {"self": "https://zenodo.org/api/deposit/depositions/23042028/files/fe59c507-82fa-4ce1-aed3-3d9c671c1243", "d
+23042028 unsubmitted False
