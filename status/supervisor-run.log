@@ -70110,3 +70110,143 @@ https://github.com/paulzierep/metagenomic-binning-benchmark/issues/27#issuecomme
 https://github.com/paulzierep/metagenomic-binning-benchmark/issues/28#issuecomment-5902396943
 https://github.com/paulzierep/metagenomic-binning-benchmark/issues/29#issuecomment-5902397115
 > build · big-pickle
+[0m$ [0mR=paulzierep/metagenomic-binning-benchmark; SEEN=/vol/data/benchmark/meta/.issues_seen; mkdir -p "$SEEN"; for n in 25 27 28 29; do u=$(gh issue view "$n" -R "$R" --json updatedAt --jq .updatedAt); e=$(date -d "$u" +%s); printf '%s\n' "$e" > "$SEEN/$n"; printf '#%-3s updatedAt=%s epoch=%s\n' "$n" "$u" "$e"; done; echo "--- seen dir ---"; for f in "$SEEN"/*; do echo "  $(basename $f)=$(cat $f)"; done; echo "--- issues_done (must stay empty) ---"; ls -A /vol/data/benchmark/meta/.issues_done/ 2>/dev/null || echo "  (empty)"
+#25  updatedAt=2026-09-30T01:21:06Z epoch=1790731266
+#27  updatedAt=2026-09-30T01:41:55Z epoch=1790732515
+#28  updatedAt=2026-09-30T01:41:56Z epoch=1790732516
+#29  updatedAt=2026-09-30T01:41:57Z epoch=1790732517
+--- seen dir ---
+  1=1790175193
+  10=1790226159
+  11=1790248362
+  12=1790389386
+  13=1790248368
+  14=1790300594
+  15=1790248372
+  16=1790248376
+  17=1790300597
+  18=1790308990
+  19=1790644191
+  2=1790300600
+  20=1790600533
+  21=1790600534
+  22=1790600405
+  23=1790600558
+  24=1790644194
+  25=1790731266
+  26=1790600408
+  27=1790732515
+  28=1790732516
+  29=1790732517
+  3=1790191550
+  4=1790191553
+  5=1790191557
+  6=1790409370
+  7=1790312587
+  8=1790389389
+  9=1790225924
+--- issues_done (must stay empty) ---
+> build · big-pickle
+[0m$ [0mtail -3 /vol/data/benchmark/logs/supervisor-actions.log | cut -c1-200
+2026-09-26T02:14:04+00:00 [supervisor] Escalation 02:03Z: only C8 broken (#12/#8 "updated" at 01:46:41Z/01:46:47Z by the automation own delivery comments, not owner input — self-inflicted alert, so 
+2026-09-28T13:05:04+00:00 [supervisor] Escalation 12:53Z: only C8 broken (new/updated #28,#27,#19-#26,#6). Resolved issue #28 (real COMEBin bug, fixed in /vol/data/repos/COMEBin-v11, NOT the benchmark
+2026-09-29T01:12:00Z [supervisor] Escalation 01:03Z: only C8 broken (new/updated #29,#28,#25,#24,#19); every other check ok and the escalation budget was at 3/3. Found and fixed one real defect the ch
+> build · big-pickle
+[0m$ [0mcd /vol/data/benchmark/logs && printf '%s [supervisor] Escalation 01:23Z: only C8 broken (#29,#28,#27,#25), all four "updated" by the automation own status comments (self-inflicted alert) - no issue verified complete, so no .issues_done markers. Fixed the real defect behind C1b: the blanket "any .active_run pid live => deploy nothing" rule held make_all_runs_table.py stale for the whole run; replaced with per-script /proc in-use detection (fd readlink + exact-argv match, self/ancestors skipped, one pass), deploys what is free and defers only what is executing. Deployed make_all_runs_table.py (10346->12498B) and meta-watchdog.sh to bin atomically; all 33 repo/scripts now byte-identical to bin. Cron NOT reinstalled (C1 ok). Posted one correction each on #27/#28/#29 (stale "cell 13/24" status; sweep is 24/24 since 00:43:24Z); nothing on #25 (comment 20 min old, accurate). Active run human_v11_winner_20260930 (pid 634536) untouched.\n' "$(date -u +%FT%TZ)" >> supervisor-actions.log && tail -1 supervisor-actions.log | cut -c1-120 && echo "... appended, lines=$(wc -l < supervisor-actions.log)"
+2026-09-30T01:42:16Z [supervisor] Escalation 01:23Z: only C8 broken (#29,#28,#27,#25), all four "updated" by the automat
+... appended, lines=18
+> build · big-pickle
+Now the final gated commit — holding the repo lock and staging only the watchdog change:
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && exec 8>/tmp/bench-repo.lock && flock -w 30 8 || { echo "LOCK TIMEOUT"; exit 1; }
+echo "--- staged before (must be empty) ---"; git diff --cached --name-only
+echo "--- worktree ---"; git status --porcelain
+git add -- scripts/meta-watchdog.sh
+echo "--- staged now ---"; git diff --cached --name-only
+git commit -q -m "meta-watchdog: deploy drifted scripts per-script instead of deferring all
+
+C1b refused to deploy anything while any .active_run pid was live, so a helper
+that nothing was executing kept its stale installed copy for the entire duration
+of every multi-hour run (make_all_runs_table.py sat pending for the whole
+human_v11_winner_20260930 run) and the feature it implements stayed disabled.
+
+In-use is now determined per script from a single /proc pass: an fd readlink
+pointing at the installed path, or an argv field that IS exactly that path,
+skipping this process and its ancestors. Whole-field matching matters because the
+escalation prompt names every drifted script in one argv field, so a substring
+match would report everything as in use forever. Drift that is not executing is
+deployed via cp+mv (atomic rename: a running reader keeps the old inode); drift
+that is executing is reported separately and is not treated as a failure." -- scripts/meta-watchdog.sh || echo "COMMIT FAILED"
+echo "--- HEAD ---"; git log --oneline -1 | cut -c1-90
+git push -q origin main 2>&1 | tail -2; echo "push rc=$?"
+sleep 1
+echo "--- verify ---"; echo "local  =$(git rev-parse HEAD)"; echo "remote =$(git rev-parse origin/main)"; git status --porcelain
+--- staged before (must be empty) ---
+--- worktree ---
+ M results/figures/comp_vs_cont_all-runs.png
+ M results/figures/comp_vs_cont_by_dataset.png
+ M scripts/meta-watchdog.sh
+--- staged now ---
+scripts/meta-watchdog.sh
+--- HEAD ---
+93ca178a meta-watchdog: deploy drifted scripts per-script instead of deferring all
+push rc=0
+--- verify ---
+local  =93ca178abeff0385e8e8f5b37c7cfcc228afddc6
+remote =93ca178abeff0385e8e8f5b37c7cfcc228afddc6
+ M results/figures/comp_vs_cont_all-runs.png
+ M results/figures/comp_vs_cont_by_dataset.png
+> build · big-pickle
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark; echo "--- repo/bin in sync (C1b will be ok) ---"; bad=0; for s in scripts/*; do b=$(basename "$s"); case "$b" in __pycache__|*.pyc|*.pyo) continue;; esac; cmp -s "$s" "/vol/data/benchmark/bin/$b" || { echo "DRIFT $b"; bad=1; }; done; [ $bad = 0 ] && echo "all in sync"; echo "--- active run untouched ---"; p=$(awk '{print $1}' /vol/data/benchmark/.active_run); ps -o pid,etime,stat,args -p "$p" 2>/dev/null | tail -1 | cut -c1-100; echo "log mtime: $(stat -c %y /vol/data/benchmark/runs/human_v11_winner_20260930/comebin_run.log | cut -c1-19)"; echo "--- driver ---"; flock -n /tmp/agent-watchdog.lock -c 'echo "agent-watchdog.lock FREE (driver dead)"' 2>/dev/null || echo "agent-watchdog.lock held = driver alive"; echo "--- disk ---"; df -h /vol | tail -1
+--- repo/bin in sync (C1b will be ok) ---
+all in sync
+--- active run untouched ---
+ 634536    01:02:04 S    bash /vol/data/benchmark/bin/run_comebin_fix.sh /vol/data/benchmark/runs/hu
+log mtime: 2026-09-30 01:42:32
+--- driver ---
+agent-watchdog.lock held = driver alive
+--- disk ---
+/dev/vda1        19G  5.7G   13G  31% /
+> build · big-pickle
+[0m$ [0mdf -h /vol/data | tail -1
+/dev/vdb        492G  179G  288G  39% /vol/data
+> build · big-pickle
+Supervisor tick complete.
+
+## What was actually wrong
+
+**C8 was self-inflicted.** All four flagged issues (#25, #27, #28, #29) were "updated" by the automation's *own* status comments, not by the owner. No owner input since. → **No `.issues_done` markers**; nothing is verified complete.
+
+**The real defect was C1b.** The old rule was a single global latch:
+
+```
+deploy deferred: benchmark run pid 634536 is live; pending: make_all_runs_table.py(stale)
+```
+
+Any live `.active_run` pid ⇒ deploy *nothing*. So `make_all_runs_table.py` sat stale (10346 B vs 12498 B in repo) for the **entire** duration of the 1-hour run, with the feature it implements silently disabled on every future run. Same trap, 4 ticks in a row.
+
+Replaced with per-script in-use detection: one `/proc` pass collecting an fd readlink into `$BENCH/bin/*` **or** an argv field that *is exactly* an installed path, skipping self and all ancestors. Whole-field matching is essential — the escalation prompt names every drifted script inside a *single* argv field, so a substring match would mark everything in-use forever. Drift that isn't executing now deploys; only what is actually executing is deferred, and a deferral reports **ok**, not broken.
+
+## Verification
+
+- 5-case sandbox harness (holder in a `setsid --fork` session — my first two attempts were false negatives because the holders were *ancestors* of the scanner, which the correct skip filtered out): in-sync → no-op; drifted+held → held file untouched, free file deployed; holder exits → deployed next tick; `.py` argv holder detected, unrelated helper deployed; in-sync+in-use → no false defer. All pass.
+- Live scan: correctly IN-USE for `run_comebin_fix.sh`, `run_eval_chain.sh`, `meta-watchdog.sh`, `agent-watchdog.sh`; free for the other 29.
+- `bash -n` clean; deployed via `cp`+`mv` (atomic rename — the running watchdog's `fd 255` confirmed as `...meta-watchdog.sh (deleted)`, i.e. it kept reading the old inode).
+- All 33 `repo/scripts` now byte-identical to `bin`.
+
+## Deliberately not done
+
+- **No cron reinstall** (C1 ok; the 5-line crontab is correct — `supervise-alive.sh` is preserved by design).
+- **Did not re-run the watchdog**: `META_WATCHDOG_NO_LLM=1` exits on `flock -n` because the 01:23 tick is *me* and holds the lock for this whole session. Verified equivalently by direct `cmp`; the 01:43 cron tick will report `C1b_deploy ok`.
+- **Active run untouched** — pid 634536, `human_v11_winner_20260930`, log still advancing, driver alive, 288 GiB free.
+
+## Issue triage
+
+Posted one correction each to **#27/#28/#29** (their latest comments were 12 h stale, claiming "cell 13/24" — the sweep finished **24/24 at 00:43:24Z**). Nothing on **#25** (its 01:21Z comment is accurate). Markers in `.issues_seen` advanced to current `updatedAt` epochs.
+
+**#28 remains open** — I re-verified the fix is local-only: `41606c8e` on `comebin-optimizations-v11` in `/vol/data/repos/COMEBin-v11-sweep`, 2 commits ahead of `origin/master`, no remote branch, no bioconda recipe. (Note: that commit is *not* in the benchmark repo, contrary to what one might assume from the diagnostics.) **#29 remains open** — no Galaxy/fixture run directory has ever been created.
+
+## Repo
+
+Committed **only** `scripts/meta-watchdog.sh` under `/tmp/bench-repo.lock` (index verified empty beforehand). `93ca178a` pushed; `HEAD == origin/main`. The two agent-generated PNGs in `results/figures/` were left uncommitted as unexpected paths.
+
+One cosmetic nit I did *not* touch: `make_all_runs_table.py` emits a `SyntaxWarning: invalid escape sequence '\`'` on import from an unescaped backtick in its module docstring. Harmless, pre-existing, unrelated to this tick.
