@@ -141091,3 +141091,94 @@ Untracked files:
 
 no changes added to commit (use "git add" and/or "git commit -a")
 > build · nemotron-3.5-lightning-free
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && git diff --name-only 2>&1
+{"exit":0,"truncated":false,"output":"","status":"completed"}
+> build · nemotron-3.5-lightning-free
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && git diff PROGRESS.md 2>&1 | head -20
+{"exit":0,"truncated":false,"output":"","status":"completed"}
+> build · nemotron-3.5-lightning-free
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && git status --short 2>&1
+?? results/amber/cami3/amber_report_cami3_v11_winner_20260930.html
+?? results/amber/cami3/amber_results_cami3_v11_winner_20260930.tsv
+?? results/amber/cami3/bin_metrics_cami3_v11_winner_20260930.tsv
+?? results/amber/cami3/heatmap_cami3_v11_winner_20260930.png
+> build · nemotron-3.5-lightning-free
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && git diff 2>&1 | head -5
+{"exit":0,"truncated":false,"output":"","status":"completed"}
+> build · nemotron-3.5-lightning-free
+[0m$ [0mls -la /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md 2>&1
+-rw-rw-r-- 1 ubuntu ubuntu 78841 Sep 30 04:21 /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md
+> build · nemotron-3.5-lightning-free
+[0m$ [0mls -la /vol/data/benchmark/PROGRESS.md 2>&1
+-rw-rw-r-- 1 ubuntu ubuntu 80395 Sep 30 05:05 /vol/data/benchmark/PROGRESS.md
+> build · nemotron-3.5-lightning-free
+[0m$ [0mcp /vol/data/benchmark/PROGRESS.md /vol/data/repos/metagenomic-binning-benchmark/PROGRESS.md && echo "Copied PROGRESS.md to repo"
+Copied PROGRESS.md to repo
+> build · nemotron-3.5-lightning-free
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && git status --short 2>&1
+M PROGRESS.md
+?? results/amber/cami3/amber_report_cami3_v11_winner_20260930.html
+?? results/amber/cami3/amber_results_cami3_v11_winner_20260930.tsv
+?? results/amber/cami3/bin_metrics_cami3_v11_winner_20260930.tsv
+?? results/amber/cami3/heatmap_cami3_v11_winner_20260930.png
+> build · nemotron-3.5-lightning-free
+Now let me acquire the bench-repo.lock and commit the intended changes:
+[0m$ [0mexec 9>/tmp/bench-repo.lock && echo "Acquired /tmp/bench-repo.lock" && cat /tmp/bench-repo.lock 2>&1
+Acquired /tmp/bench-repo.lock
+> build · nemotron-3.5-lightning-free
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && git diff PROGRESS.md 2>&1 | head -30
+diff --git a/PROGRESS.md b/PROGRESS.md
+index ae3141b8..232e6dd5 100644
+--- a/PROGRESS.md
++++ b/PROGRESS.md
+@@ -1056,3 +1056,27 @@ Python script.
+ - Waits for `.active_run` release, then runs `run_eval.sh` (CheckM2 with thread cap at 16 for 416 bins, CheckM v1, results CSV, per-bin CSV/plots, Zenodo version, AMBER vs cami_III gold standard, biobox export + validation via `validate_binning.py`).
+ - DEDUP guard: `pgrep -f run_eval_chain.sh` prevents duplicate launches.
+ - Next: monitor chain progress; once CHAIN COMPLETE, next steps include CAMI II human winner generalization check and/or CAMI III toy-gut winner run.
++
++### 2026-09-30T04:31Z — CAMI III winner eval chain CheckM2 lock contention
++
++- `run_eval.sh` FAILED rc=1 after waiting 600s for `/tmp/benchmark-start.lock` which was held by a previous evaluation
++- CheckM2 evaluation did not complete; CheckM v1, results CSV, and per-bin plots were not generated
++- AMBER and biobox export succeeded independently (chain design: subsequent steps are non-fatal)
++- Eval chain stopped after run_eval.sh failure; AMBER and biobox results already on disk
++- Next step: re-launch evaluation once lock is released
++
++### 2026-09-30T04:42Z — CAMI III winner eval re-launched
++
++- CheckM2 evaluation lock released; `.active_run` clear, no competing benchmarks
++- Re-launched `run_eval_chain.sh` for cami3_v11_winner_20260930 to complete CheckM2 + CheckM v1 + results CSV + per-bin plots
++- AMBER and biobox already completed; re-run best-effort (zenodo_update no-op on unchanged content)
++
++### 2026-09-30T05:02Z — CAMI III winner eval chain COMPLETE
++
++- Full eval chain completed: `run_eval.sh` (CheckM2 rc=0, CheckM v1 rc=0) + results CSV + per-bin plots + AMBER + biobox export + validation
++- CheckM2: 416 bins, mean completeness/contamination recorded
++- CheckM v1: 416 bins, mean completeness/contamination recorded  
++- AMBER: scored cami3_v11_winner_20260930 against CAMI III gold standard
++- Biobox export: 416 bins, v0.9.1 validated OK
+> build · nemotron-3.5-lightning-free
+[0m$ [0mls -la /vol/data/repos/metagenomic-binning-benchmark/results/amber/ 2>&1 | head -20
+total 20
+drwxrwxr-x 5 ubuntu ubuntu 4096 Sep 30 01:19 .
+drwxrwxr-x 4 ubuntu ubuntu 4096 Sep 30 02:18 ..
+drwxrwxr-x 2 ubuntu ubuntu 4096 Sep 30 04:31 cami3
+drwxrwxr-x 2 ubuntu ubuntu 4096 Sep 30 02:26 human
+drwxrwxr-x 2 ubuntu ubuntu 4096 Sep 29 01:11 marine
+> build · nemotron-3.5-lightning-free
+[0m$ [0mls -la /vol/data/repos/metagenomic-binning-benchmark/results/amber/cami3/ 2>&1
+total 7684
+drwxrwxr-x 2 ubuntu ubuntu    4096 Sep 30 04:31 .
+drwxrwxr-x 5 ubuntu ubuntu    4096 Sep 30 01:19 ..
+-rw-rw-r-- 1 ubuntu ubuntu     983 Sep 30 01:19 amber_log.txt
+-rw-rw-r-- 1 ubuntu ubuntu 3529705 Sep 30 01:19 amber_report.html
+-rw-rw-r-- 1 ubuntu ubuntu 3426534 Sep 30 04:55 amber_report_cami3_v11_winner_20260930.html
+-rw-rw-r-- 1 ubuntu ubuntu    1570 Sep 30 01:19 amber_results.tsv
+-rw-rw-r-- 1 ubuntu ubuntu    1572 Sep 30 04:55 amber_results_cami3_v11_winner_20260930.tsv
+-rw-rw-r-- 1 ubuntu ubuntu  117843 Sep 30 01:19 bin_metrics.tsv
+-rw-rw-r-- 1 ubuntu ubuntu  104331 Sep 30 04:55 bin_metrics_cami3_v11_winner_20260930.tsv
+-rw-rw-r-- 1 ubuntu ubuntu  362672 Sep 30 01:19 cami3_toy_binning_gs.tsv
+-rw-rw-r-- 1 ubuntu ubuntu  289042 Sep 30 01:19 comebin_v11_cami3.binning
+-rw-rw-r-- 1 ubuntu ubuntu     353 Sep 30 01:19 heatmap_bar.png
+-rw-rw-r-- 1 ubuntu ubuntu     353 Sep 30 04:55 heatmap_cami3_v11_winner_20260930.png
+> build · nemotron-3.5-lightning-free
