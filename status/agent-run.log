@@ -133495,3 +133495,30 @@ bins.fasta.gz
 tree
 unknown_sample.binning
 > build · big-pickle
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && ok=0; fail=0; for c in $(ls /vol/data/benchmark/runs/ | grep '^sweep_' | sort); do
+  if [ -d /vol/data/benchmark/runs/$c/comebin_out/comebin_res/comebin_res_bins ]; then
+    if bash scripts/export_biobox.sh /vol/data/benchmark/runs/$c >/dev/null 2>&1 && python3 scripts/validate_binning.py /vol/data/benchmark/runs/$c/biobox/unknown_sample.binning >/dev/null 2>&1; then ok=$((ok+1)); else fail=$((fail+1)); echo "FAIL: $c"; fi
+  fi
+done; echo "biobox OK=$ok FAIL=$fail"; echo "=== sample binning files ==="; for c in sweep_001_ref sweep_004_temp005 sweep_011_batch512 sweep_024_seed7; do echo "$c: $(ls /vol/data/benchmark/runs/$c/biobox/*.binning 2>/dev/null | xargs -r basename)"; done
+Command exceeded timeout of 120000 ms. Retry with a larger timeout if the command is expected to take longer.
+> build · big-pickle
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && done_run=""; for c in $(ls /vol/data/benchmark/runs/ | grep '^sweep_' | sort); do
+  if [ -d /vol/data/benchmark/runs/$c/comebin_out/comebin_res/comebin_res_bins ]; then
+    if [ ! -f /vol/data/benchmark/runs/$c/biobox/unknown_sample.binning ]; then
+      bash scripts/export_biobox.sh /vol/data/benchmark/runs/$c >/dev/null 2>&1 && python3 scripts/validate_binning.py /vol/data/benchmark/runs/$c/biobox/unknown_sample.binning >/dev/null 2>&1 && done_run="$done_run $c"
+    fi
+  fi
+done; echo "exported:$done_run"; echo "total with biobox:"; ls /vol/data/benchmark/runs/ | grep '^sweep_' | while read c; do [ -f /vol/data/benchmark/runs/$c/biobox/unknown_sample.binning ] && echo $c; done | wc -l
+exported:
+total with biobox:
+23
+> build · big-pickle
+All 23 sweep cells now have validated biobox exports. Let me confirm and log.
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && n=0; for c in $(ls /vol/data/benchmark/runs/ | grep '^sweep_'); do python3 scripts/validate_binning.py /vol/data/benchmark/runs/$c/biobox/unknown_sample.binning >/dev/null 2>&1 && n=$((n+1)); done; echo "validated: $n/24"; TS=$(date -u +"%Y-%m-%dT%H:%M:%SZ"); echo "$TS biobox exports + structural validation for all 23 evaluated sweep cells (bins.fasta.gz + .binning v0.9.1 + stats); sweep_002 has no bins (documented failure)" >> /vol/data/repos/metagenomic-binning-benchmark/status/agent-activity.log; touch /vol/data/benchmark/.heartbeat; echo "logged"
+validated: 23/24
+logged
+> build · big-pickle
+[0m$ [0mgrep -oE 'epoch=[0-9]+/200|Sequence 49|Final inference' /vol/data/benchmark/runs/human_v11_winner_20260930/comebin_run.log 2>/dev/null | tail -1; tail -1 /vol/data/benchmark/runs/human_v11_winner_20260930/comebin_run.log | cut -c1-90
+2026-09-30 00:42:21,521 - Coverage inputs: contigs=4900, views=6, BAMs=1, workers=1.
+> build · big-pickle
+Coverage still computing (~13 min in, 1 worker on 4.9 GB BAM). Let me keep monitoring in intervals.
