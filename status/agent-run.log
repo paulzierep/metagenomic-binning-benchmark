@@ -133446,3 +133446,52 @@ While coverage computes, let me test the biobox export on one sweep cell (light 
 real	0m5.222s
 user	0m5.063s
 sys	0m0.196s
+> build · big-pickle
+Fast — 5s/cell. Let me export biobox for all 23 evaluated sweep cells and validate them.
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && ok=0; fail=0; for c in $(ls /vol/data/benchmark/runs/ | grep '^sweep_' | sort); do
+  if [ -f /vol/data/benchmark/runs/$c/comebin_out/comebin_res/comebin_res_bins ]; then
+    if bash scripts/export_biobox.sh /vol/data/benchmark/runs/$c >/dev/null 2>&1 && python3 scripts/validate_binning.py /vol/data/benchmark/runs/$c/biobox/unknown_sample.binning >/dev/null 2>&1; then ok=$((ok+1)); else fail=$((fail+1)); echo "FAIL: $c"; fi
+  else
+    echo "SKIP (no bins): $c"
+  fi
+done; echo "biobox OK=$ok FAIL=$fail"
+SKIP (no bins): sweep_001_ref
+SKIP (no bins): sweep_002_master
+SKIP (no bins): sweep_003_issue28fix
+SKIP (no bins): sweep_004_temp005
+SKIP (no bins): sweep_005_temp030
+SKIP (no bins): sweep_006_temp050
+SKIP (no bins): sweep_007_emb1024
+SKIP (no bins): sweep_008_emb4096
+SKIP (no bins): sweep_009_embcov1024
+SKIP (no bins): sweep_010_embcov4096
+SKIP (no bins): sweep_011_batch512
+SKIP (no bins): sweep_012_batch2048
+SKIP (no bins): sweep_013_edges80
+SKIP (no bins): sweep_014_edges150
+SKIP (no bins): sweep_015_views4
+SKIP (no bins): sweep_016_views8
+SKIP (no bins): sweep_017_w4
+SKIP (no bins): sweep_018_w16
+SKIP (no bins): sweep_019_eval1e3
+SKIP (no bins): sweep_020_eval1e7
+SKIP (no bins): sweep_021_comboA
+SKIP (no bins): sweep_022_comboB
+SKIP (no bins): sweep_023_embcov512_batch512
+SKIP (no bins): sweep_024_seed7
+biobox OK=0 FAIL=0
+> build · big-pickle
+The `-f` check treated the symlink/dir wrong. Let me check where the bins live and adjust.
+[0m$ [0mls -ld /vol/data/benchmark/runs/sweep_001_ref/comebin_out/comebin_res/* 2>&1 | head -5; echo "=== after test export ==="; ls /vol/data/benchmark/runs/sweep_001_ref/biobox/ 2>&1
+-rw-rw-r-- 1 ubuntu ubuntu 214667731 Sep 28 13:55 /vol/data/benchmark/runs/sweep_001_ref/comebin_out/comebin_res/checkpoint_0200.pth.tar
+drwxrwxr-x 4 ubuntu ubuntu     20480 Sep 28 13:56 /vol/data/benchmark/runs/sweep_001_ref/comebin_out/comebin_res/cluster_res
+-rw-rw-r-- 1 ubuntu ubuntu     90374 Sep 28 13:56 /vol/data/benchmark/runs/sweep_001_ref/comebin_out/comebin_res/comebin.log
+-rw-rw-r-- 1 ubuntu ubuntu    122807 Sep 28 13:56 /vol/data/benchmark/runs/sweep_001_ref/comebin_out/comebin_res/comebin_res.tsv
+drwx------ 2 ubuntu ubuntu      4096 Sep 28 13:56 /vol/data/benchmark/runs/sweep_001_ref/comebin_out/comebin_res/comebin_res_bins
+=== after test export ===
+README.txt
+binning.tar.gz
+bins.fasta.gz
+tree
+unknown_sample.binning
+> build · big-pickle
