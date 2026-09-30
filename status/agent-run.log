@@ -132151,3 +132151,154 @@ not yet
 5
 no csv yet
 > build · big-pickle
+[0m$ [0mTS=$(date -u +"%Y-%m-%dT%H:%M:%SZ"); touch /vol/data/benchmark/.heartbeat; \
+echo "$TS waiting for cell 24 CheckM v1 eval to complete (15 bins, pplacer stage)" >> /vol/data/repos/metagenomic-binning-benchmark/status/agent-activity.log; \
+sleep 110; ps aux | grep -c '[c]heckm lineage_wf'; ls /vol/data/repos/metagenomic-binning-benchmark/results/sweep_024*.csv 2>/dev/null || echo "no csv"
+0
+/vol/data/repos/metagenomic-binning-benchmark/results/sweep_024_seed7.csv
+> build · big-pickle
+All 24 sweep cells are now complete. Cell 24's results CSV is generated. Let me verify the driver finished and check the driver exit.
+[0m$ [0mtail -4 /vol/data/benchmark/status/sweep_medium.log; echo "=== driver alive? ==="; ps aux | grep -c '[r]un_sweep_medium'; echo "=== all sweep csvs ==="; ls /vol/data/repos/metagenomic-binning-benchmark/results/sweep_*.csv | wc -l; echo "=== 024 row ==="; cat /vol/data/repos/metagenomic-binning-benchmark/results/sweep_024_seed7.csv
+[2026-09-29T23:30:24Z] RUN_DONE sweep_023_embcov512_batch512 exit=0
+[2026-09-29T23:42:47Z] DONE sweep_023_embcov512_batch512 (eval OK, results CSV + per-bin plots generated)
+[2026-09-29T23:42:47Z] START sweep_024_seed7 src=COMEBin-v11-sweep @ 95f5ea8 threads=8 seed=7 temp=ref emb=ref emb_cov=ref batch=ref max_edges=ref lw=ref heval=ref n_views=6
+[2026-09-30T00:29:24Z] RUN_DONE sweep_024_seed7 exit=0
+=== driver alive? ===
+1
+=== all sweep csvs ===
+23
+=== 024 row ===
+run,source_commit,dataset,threads,total_time_s,n_bins,checkm2_mean_completeness,checkm2_mean_contamination,checkm2_HQ,checkm2_MQ,checkm_mean_completeness,checkm_mean_contamination,checkm_HQ,checkm_MQ
+sweep_024_seed7,95f5ea820f9a4e76f5c2911c0b5ed507ab67b015,"comebin_medium (3,000 contigs)",8,2797,15,37.37,5.60,0,2,35.76,7.87,0,3
+> build · big-pickle
+All 23 evaluated cells present (1, 3–24; cell 2 documented failure). Driver still finishing cell 24's post-eval (Zenodo hook). Let me finalize the ranking.
+[0m$ [0mTS=$(date -u +"%Y-%m-%dT%H:%M%SZ"); \
+echo "$TS ALL 24 SWEEP CELLS COMPLETE. sweep_024_seed7 eval OK: 15 bins, CheckM2 37.37/5.60 (HQ0 MQ2), CheckM 35.76/7.87, wall 2797s. 23 results CSVs (cell 2 = documented stock-master failure, 0 bins)" >> /vol/data/repos/metagenomic-binning-benchmark/status/agent-activity.log; \
+echo "$TS sweep complete, generating final rankings" > /vol/data/benchmark/.activity; \
+touch /vol/data/benchmark/.heartbeat; \
+cd /vol/data/repos/metagenomic-binning-benchmark && python3 scripts/rank_sweep_medium.py 2>&1 | head -30
+| Rank | Cell | Commit | Seed | Params (non-ref) | Wall | Bins | CheckM2 comp | CheckM2 cont | HQ / MQ | F1 | CheckM1 comp / cont |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| 1 | `sweep_004_temp005` | `95f5ea8` | 42 | temp=0.05 | 2842 | 13 | 43.55 | 6.77 | 0 / 4 | 59.37 | 39.96 / 9.63 |
+| 2 | `sweep_023_embcov512_batch512` | `95f5ea8` | 42 | emb_cov=512 batch=512 | 1262 | 13 | 43.16 | 7.52 | 0 / 2 | 58.85 | 41.34 / 9.46 |
+| 3 | `sweep_011_batch512` | `95f5ea8` | 42 | batch=512 | 1583 | 14 | 41.56 | 6.34 | 0 / 2 | 57.57 | 37.94 / 7.60 |
+| 4 | `sweep_013_edges80` | `95f5ea8` | 42 | max_edges=80 | 2757 | 15 | 40.39 | 5.29 | 0 / 2 | 56.63 | 36.91 / 6.86 |
+| 5 | `sweep_007_emb1024` | `95f5ea8` | 42 | emb=1024 | 2381 | 15 | 38.40 | 4.76 | 0 / 2 | 54.73 | 34.76 / 5.18 |
+| 6 | `sweep_024_seed7` | `95f5ea8` | 7 | reference (defaults) | 2797 | 15 | 37.37 | 5.60 | 0 / 2 | 53.54 | 35.76 / 7.87 |
+| 7 | `sweep_008_emb4096` | `95f5ea8` | 42 | emb=4096 | 4196 | 16 | 36.33 | 4.81 | 0 / 2 | 52.59 | 32.58 / 4.95 |
+| 8 | `sweep_009_embcov1024` | `95f5ea8` | 42 | emb_cov=1024 | 2346 | 16 | 35.80 | 4.12 | 0 / 2 | 52.13 | 34.14 / 4.93 |
+| 9 | `sweep_012_batch2048` | `95f5ea8` | 42 | batch=2048 | 4183 | 18 | 34.68 | 4.12 | 0 / 3 | 50.94 | 30.12 / 3.98 |
+| 10 | `sweep_016_views8` | `95f5ea8` | 42 | n_views=8 | 4535 | 17 | 34.68 | 4.56 | 0 / 2 | 50.87 | 31.85 / 5.61 |
+| 11 | `sweep_006_temp050` | `95f5ea8` | 42 | temp=0.50 | 2799 | 17 | 34.33 | 3.92 | 0 / 3 | 50.59 | 29.49 / 5.18 |
+| 12 | `sweep_019_eval1e3` | `95f5ea8` | 42 | hmm_evalue=1e-3 | 2667 | 17 | 34.22 | 4.11 | 0 / 2 | 50.44 | 32.00 / 5.31 |
+| 13 | `sweep_020_eval1e7` | `95f5ea8` | 42 | hmm_evalue=1e-7 | 2686 | 17 | 34.22 | 4.11 | 0 / 2 | 50.44 | 32.00 / 5.31 |
+| 14 | `sweep_017_w4` | `95f5ea8` | 42 | leiden_workers=4 | 2722 | 17 | 34.22 | 4.11 | 0 / 2 | 50.44 | 32.00 / 5.31 |
+| 15 | `sweep_018_w16` | `95f5ea8` | 42 | leiden_workers=16 | 2736 | 17 | 34.22 | 4.11 | 0 / 2 | 50.44 | 32.00 / 5.31 |
+| 16 | `sweep_001_ref` | `95f5ea8` | 42 | reference (defaults) | 2827 | 17 | 34.22 | 4.11 | 0 / 2 | 50.44 | 32.00 / 5.31 |
+| 17 | `sweep_003_issue28fix` | `41606c8` | 42 | reference (defaults) | 2833 | 17 | 34.22 | 4.11 | 0 / 2 | 50.44 | 32.00 / 5.31 |
+| 18 | `sweep_022_comboB` | `95f5ea8` | 42 | temp=0.05 emb=4096 batch=2048 | 5325 | 17 | 34.10 | 4.22 | 0 / 2 | 50.29 | 30.90 / 4.92 |
+| 19 | `sweep_010_embcov4096` | `95f5ea8` | 42 | emb_cov=4096 | 4181 | 17 | 34.10 | 4.50 | 0 / 2 | 50.26 | 30.52 / 4.24 |
+| 20 | `sweep_015_views4` | `95f5ea8` | 42 | n_views=4 | 1506 | 17 | 33.84 | 4.84 | 0 / 2 | 49.93 | 33.08 / 5.66 |
+| 21 | `sweep_005_temp030` | `95f5ea8` | 42 | temp=0.30 | 2779 | 17 | 33.38 | 3.73 | 0 / 3 | 49.57 | 28.76 / 4.14 |
+| 22 | `sweep_014_edges150` | `95f5ea8` | 42 | max_edges=150 | 2687 | 18 | 32.15 | 3.97 | 0 / 2 | 48.17 | 30.20 / 5.16 |
+| 23 | `sweep_021_comboA` | `95f5ea8` | 42 | temp=0.30 emb=1024 batch=512 | 1951 | 20 | 30.30 | 3.21 | 0 / 2 | 46.15 | 27.65 / 2.92 |
+
+wrote /vol/data/repos/metagenomic-binning-benchmark/results/sweep_rankings.md
+> build · big-pickle
+Full 23-cell ranking complete. **Winner: `sweep_004_temp005` (temp=0.05)** — CheckM2 43.55% comp / F1 59.37, vs ref 34.22/50.44. Let me check the driver finished and update docs.
+[0m$ [0mtail -3 /vol/data/benchmark/status/sweep_medium.log; echo "=== driver ==="; ps aux | grep '[r]un_sweep_medium' | wc -l; echo "=== active ==="; cat /vol/data/benchmark/.active_run 2>&1 | head -1; echo "=== csv count ==="; ls /vol/data/repos/metagenomic-binning-benchmark/results/sweep_*.csv | wc -l
+[2026-09-29T23:42:47Z] DONE sweep_023_embcov512_batch512 (eval OK, results CSV + per-bin plots generated)
+[2026-09-29T23:42:47Z] START sweep_024_seed7 src=COMEBin-v11-sweep @ 95f5ea8 threads=8 seed=7 temp=ref emb=ref emb_cov=ref batch=ref max_edges=ref lw=ref heval=ref n_views=6
+[2026-09-30T00:29:24Z] RUN_DONE sweep_024_seed7 exit=0
+=== driver ===
+1
+=== active ===
+cat: /vol/data/benchmark/.active_run: No such file or directory
+=== csv count ===
+23
+> build · big-pickle
+Driver still alive post-eval (likely running the Zenodo hook). Let me check what it's doing.
+[0m$ [0mps aux | grep '[r]un_sweep_medium' | head -2; echo "=== children ==="; pgrep -P $(pgrep -f 'run_sweep_medium' | head -1) 2>/dev/null | head; echo "=== zenodo? ==="; ps aux | grep -c '[z]enodo_update'
+ubuntu    631604  0.0  0.0   7744  3400 ?        Ss   00:36   0:00 /bin/bash -c ps aux | grep '[r]un_sweep_medium' | head -2; echo "=== children ==="; pgrep -P $(pgrep -f 'run_sweep_medium' | head -1) 2>/dev/null | head; echo "=== zenodo? ==="; ps aux | grep -c '[z]enodo_update'
+ubuntu   3215945  0.0  0.0   7876  3688 ?        S    Sep29   0:00 bash /vol/data/benchmark/bin/run_sweep_medium.sh --from 9
+=== children ===
+631609
+=== zenodo? ===
+1
+> build · big-pickle
+[0m$ [0mps aux | grep '[z]enodo_update' | head -1 | cut -c1-150; echo "=== parent chain ==="; ps -o pid,ppid,cmd -p 3215945 2>/dev/null; pgrep -f 'zenodo_update' | while read p; do ps -o pid,ppid,cmd -p $p | tail -1; done
+ubuntu    628423  0.4  0.0   8412  4184 ?        S    00:34   0:00 bash /vol/data/benchmark/bin/zenodo_update.sh
+=== parent chain ===
+    PID    PPID CMD
+3215945       1 bash /vol/data/benchmark/bin/run_sweep_medium.sh --from 9
+ 628423  566996 bash /vol/data/benchmark/bin/zenodo_update.sh
+ 631615    5551 /bin/bash -c ps aux | grep '[z]enodo_update' | head -1 | cut -c1-150; echo "=== parent chain ==="; ps -o pid,ppid,cmd -p 3215945 2>/dev/null; pgrep -f 'zenodo_update' | while read p; do ps -o pid,ppid,cmd -p $p | tail -1; done
+ 631622  631615 /bin/bash -c ps aux | grep '[z]enodo_update' | head -1 | cut -c1-150; echo "=== parent chain ==="; ps -o pid,ppid,cmd -p 3215945 2>/dev/null; pgrep -f 'zenodo_update' | while read p; do ps -o pid,ppid,cmd -p $p | tail -1; done
+> build · big-pickle
+The Zenodo post-eval hook is running (expected — creates a draft version per successful eval). While it finishes, let me update the sweep docs. First, read the current docs/13.
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark && wc -l docs/13-optimization-sweep-medium.md && head -60 docs/13-optimization-sweep-medium.md
+133 docs/13-optimization-sweep-medium.md
+# Optimization sweep on the medium dataset (issue #25)
+
+Status: **LIVE** (2026-09-28 13:09Z – …). Driver `scripts/run_sweep_medium.sh`
+runs the 24 cells **serially, one at a time, never overlapping the registered
+run slot** (`.active_run` gate + wait-active_clear), is resumable (`--from N`
+skips completed cells, RESUME-evals orphaned rc=0 runs), and is a singleton
+(`pgrep` ancestor/child guard + `flock`). Each cell is a full medium run with
+seed 42, THREADS 8, registered via `run_comebin_fix.sh`.
+
+Cell status (2026-09-29 01:10Z):
+- `sweep_001_ref` (v11 `95f5ea8` reference) — ✅ done, eval'd: 2,827 s wall,
+  17 bins, CheckM2 34.22 / 4.11 (HQ 0 / MQ 2), CheckM 32.00 / 5.31 (0 / 3).
+- `sweep_002_master` (stock upstream `904f649`, unseeded) — ❌ documented
+  failure: stock master dies on the medium BAM/assembly mismatch (issue-#2
+  family; `KeyError: 'BATS_…_scaffold_22978'`), exit 1 after 108 s, 0 bins —
+  not retried, root cause in `runs/sweep_002_master/` + #28 thread.
+- `sweep_003_issue28fix` (v11 `41606c8`, issue-#28 fix) — 🟡 training
+  (2026-09-29 00:41Z…).
+- cells 4–24 — pending, in grid order below.
+
+Harness fixes landed while the sweep stalled (see #28 thread, commits
+`fa69730a 55ad99dd 57b9cb5d 20ca7e39`): `${TEMP:-}`-style `set -u` guards +
+`-l/-e/-b/-m/-w/-E` forwarding in `run_comebin_fix.sh`; singleton-guard
+self-match fix (ancestor/child walk, ≥5 s age, double probe).
+
+Owner's requirements (issue #25, verbatim intent):
+
+> Run at least 20 runs with different params or commits on the medium dataset
+> and take the best based on bin stats and if similar based on runtime before
+> running on larger data. Only take cami ii and iii human for the larger data
+> from now on. Archive the other benchmark data in zenodo and remove to get
+> disc space. Use amber for performance of cami II, use the gold standard if
+> available, do not trim the data if full assembly is there. Learn to export
+> binning results as biobox format (CAMI standard), also export each binning
+> result: bins in fasta, biobox output, stats.
+
+## Dataset
+
+- `comebin_medium` (3,000 contigs, 14.4 MB contigs.fa, real reads BAM):
+  `/vol/data/datasets/comebin_medium/` — provenance in `PROVENANCE.txt`.
+- Deterministic seed **42** for every run (issue #21).
+- Medium wall-time scale: ~39 min/run → 20 runs ≈ 13 h serial, one at a time
+  (never overlap the registered run; harness enforces via `.active_run`).
+
+## Harness
+
+- `/vol/data/benchmark/bin/run_comebin_fix.sh` with:
+  `DATA=/vol/data/datasets/comebin_medium \
+   CONTIGS=/vol/data/datasets/comebin_medium/contigs.fa \
+   BAMDIR=/vol/data/datasets/comebin_medium/bamfiles \
+   MODE=medium THREADS=8 SEED=42`
+- **Param forwarding**: upstream `run_comebin.sh` (v11) already accepts
+  `-l TEMP -e EMB_SZS -c EMB_SZS_FORCOV -b BATCH -m MAX_EDGES -w LEIDEN_WORKERS
+  -E HMM_EVALUE`. The fixed-flag wrapper only forwards `-a -p -o -n -t -d -s`
+  today. The sweep needs a small harness extension that maps env vars →
+  these flags (e.g. `TEMP=0.30 EMB=1024 BATCH=512 MAX_EDGES=80`) before
+  invoking `run_comebin.sh`. Keep the default values as the **reference run**
+  (current `medium_v11_20260924`: 16 bins, CheckM2 35.93/4.67).
+
+## Grid (24 cells — all seed 42, THREADS 8)
+> build · big-pickle
+[0m→ [0mRead /vol/data/repos/metagenomic-binning-benchmark/docs/13-optimization-sweep-medium.md [90m[offset=60][0m
+> build · big-pickle
+All 24 cells done. Now let me check the driver is winding down (Zenodo hook), then update the docs.
