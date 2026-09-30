@@ -162,6 +162,38 @@ Large data is reserved for post-major-commit runs. See
 CAMI II assemblies (downloads): see `docs/01-datasets.md` for the Zenodo/GigaDB
 records and md5 checksums.
 
+## AMBER (official CAMI scoring) and the follow-on eval chain
+
+```bash
+# CAMI III gold standard for our 5,000-contig subset (once, issue #25)
+python3 scripts/make_cami3_gold_standard.py \
+  --mapping /vol/data/datasets/cami_III/gold_standard/gsa_pooled_mapping.tsv.gz \
+  --contigs /vol/data/datasets/cami_III/toy_human_input_2samples/contigs.fa \
+  --sample cami3_toy_human_gut \
+  -o /vol/data/datasets/cami_III/gold_standard/cami3_toy_binning_gs.tsv
+
+# prediction + scoring (AMBER env = /vol/data/envs/amber, gold standard per dataset)
+python3 scripts/make_amber_prediction.py <run_dir> <marine|human|cami3_toy_human_gut> \
+  > /vol/data/benchmark/amber/<run>.binning
+cd /vol/data/benchmark/amber && micromamba run -p /vol/data/envs/amber \
+  python3 /vol/data/repos/CAMI-AMBER/amber.py <run>.binning \
+  -g <gold_standard.tsv> -o output_<run> -l comebin
+
+# one command for all of it (eval + AMBER + biobox), started detached so it can
+# never overlap the registered benchmark run
+cd /vol/data/benchmark && nohup setsid bash /vol/data/benchmark/bin/run_eval_chain.sh \
+  <run_dir> <marine|human|cami3|none> 28800 32 \
+  > /vol/data/benchmark/logs/<run>.chain.log 2>&1 &
+```
+
+`run_eval_chain.sh` waits until the run's `run_meta.txt` records `exit_code:`
+and the wrapper is released from `/vol/data/benchmark/.active_run`, then runs
+`run_eval.sh` (CheckM2 + CheckM v1 + results CSV + per-bin CSV/plots +
+Zenodo), AMBER (if a gold standard exists for that dataset) and the biobox
+export + `validate_binning.py`. Log: `status/<run>.eval_chain.log`.
+**Always `pgrep -f run_eval_chain.sh` first** — a restart turn must not start a
+second chain for the same run.
+
 ## Convention
 
 - Every run's `run_meta.txt` carries `cmd_wrapper:` (at launch) and
