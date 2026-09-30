@@ -68968,3 +68968,263 @@ sys	0m7.033s
 9s total now. But it scans unconditionally — let me make it lazy so healthy ticks stay fast.
 [0m→ [0mRead /vol/data/repos/metagenomic-binning-benchmark/scripts/meta-watchdog.sh [90m[limit=60, offset=196][0m
 > build · big-pickle
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/scripts/meta-watchdog.sh
+Index: /vol/data/repos/metagenomic-binning-benchmark/scripts/meta-watchdog.sh
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/scripts/meta-watchdog.sh
++++ /vol/data/repos/metagenomic-binning-benchmark/scripts/meta-watchdog.sh
+@@ -209,13 +209,9 @@
+   case " $IN_USE " in *" $1 "*) return 0 ;; esac
+   return 1
+ }
+ 
+-scan_in_use
+-
+ deploy_bad=""
+-deploy_safe=""
+-deploy_defer=""
+ for src in "$REPO"/scripts/*; do
+   [ -f "$src" ] || continue
+   job=$(basename "$src")
+   case "$job" in __pycache__|*.pyc|*.pyo) continue ;; esac
+@@ -223,21 +219,29 @@
+   if [ ! -f "$dst" ]; then
+     deploy_bad="$deploy_bad $job(missing)"
+   elif ! cmp -s "$src" "$dst"; then
+     deploy_bad="$deploy_bad $job(stale)"
+-  else
+-    continue
+   fi
+-  # Defer ONLY what is actually executing. A blanket "some run is live => deploy
+-  # nothing" rule accumulated drift for the entire duration of every multi-hour
+-  # run: helpers nothing was executing kept their stale installed copy, so the
+-  # feature they implement stayed off until the run happened to end.
+-  if script_in_use "$job"; then
+-    deploy_defer="$deploy_defer $job(in-use)"
+-  else
+-    deploy_safe="$deploy_safe $job"
+-  fi
+ done
++
++# Defer ONLY what is actually executing. A blanket "some run is live => deploy
++# nothing" rule accumulated drift for the entire duration of every multi-hour run:
++# helpers that nothing was executing kept their stale installed copy, so the
++# feature they implement stayed disabled until the run happened to end. The /proc
++# scan is only paid for when something has actually drifted.
++deploy_safe=""
++deploy_defer=""
++if [ -n "$deploy_bad" ]; then
++  scan_in_use
++  for entry in $deploy_bad; do
++    job=${entry%%(*}
++    if script_in_use "$job"; then
++      deploy_defer="$deploy_defer $entry(in-use)"
++    else
++      deploy_safe="$deploy_safe $job"
++    fi
++  done
++fi
+ if [ -n "$deploy_safe" ]; then
+   for job in $deploy_safe; do
+     src="$REPO/scripts/$job"
+     dst="$BENCH/bin/$job"
+
+> build · big-pickle
+[0m→ [0mRead /vol/data/repos/metagenomic-binning-benchmark/scripts/meta-watchdog.sh [90m[limit=50, offset=240][0m
+> build · big-pickle
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark/scripts && bash -n meta-watchdog.sh && echo "SYNTAX OK"; command -v shellcheck >/dev/null 2>&1 && shellcheck -S error meta-watchdog.sh && echo "SHELLCHECK OK" || echo "(shellcheck not installed)"
+SYNTAX OK
+(shellcheck not installed)
+> build · big-pickle
+[0m$ [0mmkdir -p /tmp/opencode/t/fakebin && cat > /tmp/opencode/t/harness.sh <<'HEOF'
+set -u
+BENCH=/tmp/opencode/t/bench
+REPO=/tmp/opencode/t/repo
+META=/tmp/opencode/t/meta
+mkdir -p "$BENCH/bin" "$REPO/scripts" "$META"
+echo "marker-v1" > "$REPO/scripts/tool_free.sh"
+echo "marker-v1" > "$REPO/scripts/tool_busy.sh"
+echo "marker-v1" > "$BENCH/bin/tool_free.sh"
+echo "marker-v1" > "$BENCH/bin/tool_busy.sh"
+check() { printf '%s\t%s\t%s\n' "$1" "$2" "$3"; }
+note_fix() { echo "AUTOFIX: $*" >&2; }
+# start a long-running process that HOLDS tool_busy.sh open (like bash reading a script)
+setsid bash -c 'exec 9<"$0"; sleep 300' "$BENCH/bin/tool_busy.sh" &
+busy=$!
+sleep 1
+echo "--- holder pid=$busy ---"
+HEOF
+# extract the real C1b block from meta-watchdog.sh
+cd /vol/data/repos/metagenomic-binning-benchmark/scripts && awk '/^# ---- C1b:/,/^# ---- C1c:/' meta-watchdog.sh | head -n -1 >> /tmp/opencode/t/harness.sh
+cat >> /tmp/opencode/t/harness.sh <<'HEOF'
+echo "RESULT: $(check_line 2>/dev/null)"
+HEOF
+echo "harness built"; grep -c '' /tmp/opencode/t/harness.sh
+harness built
+159
+> build · big-pickle
+[0m$ [0mcd /tmp/opencode/t && cat > run.sh <<'EOF'
+set -u
+BENCH=/tmp/opencode/t/bench
+REPO=/tmp/opencode/t/repo
+META=/tmp/opencode/t/meta
+rm -rf "$BENCH" "$REPO" "$META"; mkdir -p "$BENCH/bin" "$REPO/scripts" "$META"
+check() { printf 'C1b_deploy\t%s\t%s\n' "$1" "$2" > /tmp/opencode/t/out.txt; }
+note_fix() { echo "AUTOFIX: $*" >> /tmp/opencode/t/fixes.txt; }
+echo "v1" > "$REPO/scripts/tool_free.sh";  echo "v1" > "$BENCH/bin/tool_free.sh"
+echo "v1" > "$REPO/scripts/tool_busy.sh";  echo "v1" > "$BENCH/bin/tool_busy.sh"
+setsid bash -c 'exec 9<"$0"; sleep 120' "$BENCH/bin/tool_busy.sh" & busy=$!
+sleep 1
+# case 1: both in sync -> ok, no /proc scan
+sed -n '/^IN_USE=""$/,$p' /vol/data/repos/metagenomic-binning-benchmark/scripts/meta-watchdog.sh > /dev/null
+. /dev/stdin <<'BLOCK'
+BLOCK
+source <(awk '/^IN_USE=""$/,/^# ---- C1c:/' /vol/data/repos/metagenomic-binning-benchmark/scripts/meta-watchdog.sh | head -n -1)
+echo "CASE1 (in sync):     $(cat /tmp/opencode/t/out.txt 2>/dev/null || echo '(no check emitted)')"
+echo "v2" > "$REPO/scripts/tool_free.sh"; echo "v2" > "$REPO/scripts/tool_busy.sh"
+source <(awk '/^IN_USE=""$/,/^# ---- C1c:/' /vol/data/repos/metagenomic-binning-benchmark/scripts/meta-watchdog.sh | head -n -1)
+echo "CASE2 (one free, one held): $(cat /tmp/opencode/t/out.txt)"
+echo "  free content now: $(cat $BENCH/bin/tool_free.sh)  (expect v2)"
+echo "  busy content now: $(cat $BENCH/bin/tool_busy.sh)  (expect v1 = UNTOUCHED)"
+kill $busy 2>/dev/null; wait $busy 2>/dev/null
+source <(awk '/^IN_USE=""$/,/^# ---- C1c:/' /vol/data/repos/metagenomic-binning-benchmark/scripts/meta-watchdog.sh | head -n -1)
+echo "CASE3 (holder gone): $(cat /tmp/opencode/t/out.txt)"
+echo "  busy content now: $(cat $BENCH/bin/tool_busy.sh)  (expect v2)"
+echo "--- fixes ---"; cat /tmp/opencode/t/fixes.txt
+EOF
+bash run.sh 2>&1
+CASE1 (in sync):     C1b_deploy	C1b_deploy	ok
+CASE2 (one free, one held): C1b_deploy	C1b_deploy	ok
+  free content now: v2  (expect v2)
+  busy content now: v2  (expect v1 = UNTOUCHED)
+CASE3 (holder gone): C1b_deploy	C1b_deploy	ok
+  busy content now: v2  (expect v2)
+--- fixes ---
+AUTOFIX: deployed stale/missing pipeline scripts to bin: tool_busy.sh tool_free.sh
+> build · big-pickle
+[0m$ [0mcd /tmp/opencode/t && rm -rf dbg && mkdir -p dbg/bin && echo v1 > dbg/bin/held.sh
+setsid bash -c 'exec 9<"$0"; sleep 60' dbg/bin/held.sh & p=$!
+sleep 1
+echo "holder pid=$p"; echo "--- fds ---"; ls -l /proc/$p/fd 2>&1 | head; echo "--- readlinks ---"
+for fd in /proc/$p/fd/*; do echo "$fd -> $(readlink $fd 2>&1)"; done
+echo "--- cmdline fields ---"; tr '\0' '\n' < /proc/$p/cmdline
+kill $p 2>/dev/null
+holder pid=745965
+--- fds ---
+total 0
+lr-x------ 1 ubuntu ubuntu 64 Sep 30 01:30 0 -> /dev/null
+lrwx------ 1 ubuntu ubuntu 64 Sep 30 01:30 1 -> socket:[13359257]
+lrwx------ 1 ubuntu ubuntu 64 Sep 30 01:30 2 -> socket:[13359259]
+lr-x------ 1 ubuntu ubuntu 64 Sep 30 01:30 9 -> /tmp/opencode/t/dbg/bin/held.sh
+--- readlinks ---
+/proc/745965/fd/0 -> /dev/null
+/proc/745965/fd/1 -> socket:[13359257]
+/proc/745965/fd/2 -> socket:[13359259]
+/proc/745965/fd/9 -> /tmp/opencode/t/dbg/bin/held.sh
+--- cmdline fields ---
+sleep
+60
+> build · big-pickle
+[0m$ [0mcd /tmp/opencode/t && rm -rf dbg2 && mkdir -p dbg2/bin dbg2/meta && echo v1 > dbg2/bin/held.sh
+setsid bash -c 'exec 9<"$0"; sleep 60' /tmp/opencode/t/dbg2/bin/held.sh & p=$!
+sleep 1
+cat > t2.sh <<'EOF'
+set -u
+BENCH=/tmp/opencode/t/dbg2
+META=/tmp/opencode/t/dbg2/meta
+source <(awk '/^IN_USE=""$/,/^# ---- C1c:/' /vol/data/repos/metagenomic-binning-benchmark/scripts/meta-watchdog.sh | head -n -1)
+echo "IN_USE=[$IN_USE]"
+if script_in_use held.sh; then echo "DETECTED held.sh as in-use"; else echo "MISSED held.sh"; fi
+EOF
+bash t2.sh 2>&1
+kill $p 2>/dev/null
+/dev/fd/63: line 53: REPO: unbound variable
+> build · big-pickle
+[0m$ [0mcd /tmp/opencode/t && rm -rf dbg2 && mkdir -p dbg2/bin dbg2/meta dbg2/repo/scripts && echo v1 > dbg2/bin/held.sh
+setsid bash -c 'exec 9<"$0"; sleep 60' /tmp/opencode/t/dbg2/bin/held.sh & p=$!
+sleep 1
+cat > t2.sh <<'EOF'
+set -u
+BENCH=/tmp/opencode/t/dbg2
+META=/tmp/opencode/t/dbg2/meta
+REPO=/tmp/opencode/t/dbg2/repo
+source <(awk '/^IN_USE=""$/,/^# ---- C1c:/' /vol/data/repos/metagenomic-binning-benchmark/scripts/meta-watchdog.sh | head -n -1)
+echo "IN_USE=[$IN_USE]"
+if script_in_use held.sh; then echo "DETECTED held.sh"; else echo "MISSED held.sh"; fi
+EOF
+bash t2.sh 2>&1
+kill $p 2>/dev/null
+/dev/fd/63: line 117: check: command not found
+IN_USE=[]
+MISSED held.sh
+> build · big-pickle
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark/scripts && grep -n 'scan_in_use()\|^IN_USE=""\|^script_in_use()\|^scan_in_use$\|^deploy_bad=""$' meta-watchdog.sh | head
+162:IN_USE=""
+163:scan_in_use() {
+208:script_in_use() {
+213:deploy_bad=""
+> build · big-pickle
+[0m$ [0mcd /tmp/opencode/t && rm -rf dbg3 && mkdir -p dbg3/bin dbg3/meta && echo v1 > dbg3/bin/held.sh
+setsid bash -c 'exec 9<"$0"; sleep 60' /tmp/opencode/t/dbg3/bin/held.sh & p=$!
+sleep 1
+echo "holder=$p"
+cat > t3.sh <<'EOF'
+set -u
+BENCH=/tmp/opencode/t/dbg3
+META=/tmp/opencode/t/dbg3/meta
+for pid_dir in /proc/[0-9]*; do
+  pid=${pid_dir#/proc/}
+  [ -r "$pid_dir/cmdline" ] || continue
+  skip=""
+  walk=$pid
+  while [ -n "$walk" ] && [ "$walk" -gt 1 ] 2>/dev/null; do
+    [ "$walk" = "$$" ] && { skip=1; break; }
+    walk=$(sed 's/^.*) //' "/proc/$walk/stat" 2>/dev/null | awk '{print $2}')
+  done
+  if [ -n "$skip" ]; then continue; fi
+  for fd in "$pid_dir"/fd/*; do
+    [ -e "$fd" ] || { echo "  pid=$pid fd=$fd MISSING(skipped)"; continue; }
+    fdlink=$(readlink "$fd" 2>/dev/null) || { echo "  pid=$pid fd=$fd READLINK-FAIL"; continue; }
+    case "$fdlink" in "$BENCH/bin/"*) echo "  pid=$pid MATCH fdlink=[$fdlink]";; esac
+  done
+done
+EOF
+bash t3.sh 2>&1 | head -20
+kill $p 2>/dev/null
+holder=746478
+  pid=1 fd=/proc/1/fd/* MISSING(skipped)
+  pid=100 fd=/proc/100/fd/* MISSING(skipped)
+  pid=101 fd=/proc/101/fd/* MISSING(skipped)
+  pid=102 fd=/proc/102/fd/* MISSING(skipped)
+  pid=104 fd=/proc/104/fd/* MISSING(skipped)
+  pid=105 fd=/proc/105/fd/* MISSING(skipped)
+  pid=106 fd=/proc/106/fd/* MISSING(skipped)
+  pid=107 fd=/proc/107/fd/* MISSING(skipped)
+  pid=108 fd=/proc/108/fd/* MISSING(skipped)
+  pid=108754 fd=/proc/108754/fd/* MISSING(skipped)
+  pid=110 fd=/proc/110/fd/* MISSING(skipped)
+  pid=111 fd=/proc/111/fd/* MISSING(skipped)
+  pid=1118 fd=/proc/1118/fd/* MISSING(skipped)
+  pid=1119 fd=/proc/1119/fd/* MISSING(skipped)
+  pid=112 fd=/proc/112/fd/* MISSING(skipped)
+  pid=113 fd=/proc/113/fd/* MISSING(skipped)
+  pid=114 fd=/proc/114/fd/* MISSING(skipped)
+  pid=116 fd=/proc/116/fd/* MISSING(skipped)
+  pid=117 fd=/proc/117/fd/* MISSING(skipped)
+  pid=118 fd=/proc/118/fd/* MISSING(skipped)
+> build · big-pickle
+[0m$ [0mcd /tmp/opencode/t && rm -rf dbg4 && mkdir -p dbg4/bin && echo v1 > dbg4/bin/held.sh
+setsid bash -c 'exec 9<"$0"; sleep 60' /tmp/opencode/t/dbg4/bin/held.sh & p=$!
+sleep 1
+echo "holder=$p"
+echo "--- glob expansion test ---"
+shopt -s nullglob; fds=(/proc/$p/fd/*); echo "count=${#fds[@]}"; for f in "${fds[@]}"; do echo "  $f  -e? $([ -e "$f" ] && echo yes || echo no)  -> $(readlink $f 2>&1)"; done
+kill $p 2>/dev/null
+holder=746742
+--- glob expansion test ---
+count=4
+  /proc/746742/fd/0  -e? yes  -> /dev/null
+  /proc/746742/fd/1  -e? yes  -> socket:[13359293]
+  /proc/746742/fd/2  -e? yes  -> socket:[13359295]
+  /proc/746742/fd/9  -e? yes  -> /tmp/opencode/t/dbg4/bin/held.sh
+> build · big-pickle
