@@ -35,7 +35,7 @@ AXES = ["temp", "emb", "emb_cov", "batch", "max_edges",
 
 
 def read_meta(cell):
-    """Parse run_meta.txt -> dict of the sweep/seed/wall fields."""
+    """Parse run_meta.txt -> dict of the sweep/seed/wall/cmd fields."""
     meta = {}
     path = os.path.join(RUNS, cell, "run_meta.txt")
     if not os.path.isfile(path):
@@ -51,20 +51,77 @@ def read_meta(cell):
                 meta["seed"] = line.split(":", 1)[1].strip()
             elif line.startswith("wall_s:"):
                 meta["wall_s"] = line.split(":", 1)[1].strip()
+            elif line.startswith("cmd_wrapper:"):
+                meta["cmd"] = line.split(":", 1)[1].strip()
     return meta
 
 
-def coord_str(meta):
+# run_comebin.sh CLI flag -> sweep axis, as forwarded by run_comebin_fix.sh.
+FLAG_AXES = {
+    "-l": "temp",       # COMEBIN_TEMPERATURE (never TEMP: libmamba reads TEMP
+    "-e": "emb",        # as a temp-dir path, which aborted the temp cells)
+    "-c": "emb_cov",
+    "-b": "batch",
+    "-m": "max_edges",
+    "-w": "leiden_workers",
+    "-E": "hmm_evalue",
+    "-n": "n_views",
+}
+
+
+def parse_cmd_axes(cmd):
+    """Extract the actually-applied sweep axes from a `cmd_wrapper:` line.
+
+    This is the authoritative record of what COMEBin received: the `sweep:`
+    meta line is written by the driver and went stale for the temperature cells
+    (sweep_004/005/006 recorded `temp=ref` even though `-l 0.05/0.30/0.50` was
+    passed and the run log confirms `Tau(temperature): 0.05/0.30/0.50`).
+    """
+    axes = {}
+    if not cmd:
+        return axes
+    toks = cmd.split()
+    for i, tok in enumerate(toks):
+        axis = FLAG_AXES.get(tok)
+        if axis and i + 1 < len(toks):
+            axes[axis] = toks[i + 1]
+    return axes
+
+
+def resolve_axes(cell, meta):
+    """Applied axes from cmd_wrapper, cross-checked against the `sweep:` line.
+
+    Returns (axes, mismatches). `cmd_wrapper` wins; a `sweep:` value that
+    disagrees is reported so the doc can call the metadata bug out instead of
+    silently ranking a cell under the wrong coordinates.
+    """
+    cmd_axes = parse_cmd_axes(meta.get("cmd", ""))
+    axes = dict(cmd_axes)
+    mismatches = []
+    for axis in AXES:
+        declared = meta.get(axis, "ref")
+        applied = cmd_axes.get(axis)
+        if declared in (None, "ref"):
+            continue
+        if applied is None or applied == "ref":
+            # run_meta declares a value the command line does not carry.
+            axes.setdefault(axis, declared)
+            if applied is None:
+                mismatches.append(f"{axis}: meta={declared}, not in cmd")
+        elif applied != declared and not (
+            axis == "n_views" and (declared, applied) == ("6", "6")
+        ):
+            mismatches.append(f"{axis}: meta={declared}, cmd={applied}")
+            axes[axis] = applied
+    # n_views is always explicit (-n); the reference grid value is 6.
+    if axes.get("n_views") == "6":
+        axes["n_views"] = "ref"
+    return axes, mismatches
+
+
+def coord_str(axes):
     """'temp=ref emb=ref ...' but only the axes — matches docs/13 grid."""
-    parts = []
-    for ax in AXES:
-        value = meta.get(ax, "ref")
-        # run_meta records the *actual* n_views (reference grid value is 6),
-        # while every other axis records the literal token "ref".
-        if ax == "n_views" and value == "6":
-            value = "ref"
-        parts.append(f"{ax}={value}")
-    return " ".join(parts)
+    return " ".join(f"{ax}={axes.get(ax, 'ref')}" for ax in AXES)
 
 
 def f1(comp, cont):
@@ -97,12 +154,14 @@ def main():
             if not row:
                 continue
             meta = read_meta(cell)
+            axes, mismatches = resolve_axes(cell, meta)
             wall = row.get("total_time_s") or meta.get("wall_s") or "-"
             cells.append({
                 "cell": cell,
                 "commit": (row.get("source_commit") or "-")[:7],
                 "seed": meta.get("seed", "-"),
-                "params": coord_str(meta),
+                "params": coord_str(axes),
+                "mismatches": mismatches,
                 "wall": wall,
                 "n_bins": row.get("n_bins", "-"),
                 "c2c": row.get("checkm2_mean_completeness", "-"),
@@ -165,14 +224,37 @@ def main():
         )
 
     table = "\n".join(lines) + "\n"
+
+    meta_note = ""
+    flagged = [c for c in cells if c["mismatches"]]
+    if flagged:
+        meta_note = (
+            "\n## Parameter-provenance cross-check\n\n"
+            "Parameters are read from each run's `cmd_wrapper:` line — the "
+            "record of what COMEBin actually received — not from the driver's "
+            "`sweep:` meta line, which went stale for the temperature cells "
+            "(the driver was relaunched mid-sweep with a fixed meta writer, but "
+            "cells 4–6 had already been launched by the earlier version). "
+            "The runs themselves are unaffected: the command line carries "
+            "`-l 0.05 / 0.30 / 0.50` and each run log confirms "
+            "`Tau(temperature): 0.05 / 0.30 / 0.50`.\n\n"
+        )
+        for c in flagged:
+            meta_note += f"- `{c['cell']}`: {'; '.join(c['mismatches'])}\n"
+        meta_note += "\n"
+
     os.makedirs(os.path.dirname(OUT), exist_ok=True)
     with open(OUT, "w", encoding="utf-8") as f:
         f.write("# Issue #25 sweep — medium-dataset ranking\n\n"
                 "Rule: bin stats first (CheckM2 comp/cont + HQ/MQ + F1 = "
                 "2·c·p/(c+p), p = 100−cont), then wall time tiebreak. "
                 "Only the winning parameter set advances to CAMI II/III "
-                "human.\n\n" + table)
+                "human.\n\n" + table + meta_note)
     print(table)
+    if flagged:
+        print("parameter-provenance mismatches (cmd_wrapper is authoritative):")
+        for c in flagged:
+            print(f"  {c['cell']}: {'; '.join(c['mismatches'])}")
     print(f"wrote {OUT}")
 
 
