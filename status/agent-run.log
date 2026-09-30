@@ -137213,3 +137213,281 @@ Recv-Q Send-Q Local Address:Port    Peer Address:Port Process
 [zenodo_update] uploading as Zenodo version 15
 > build · big-pickle
 Upload to Zenodo as version 15 is in progress (curl at full tilt). Waiting for publish, then AMBER + biobox.
+[0m$ [0msleep 115; tail -4 /vol/data/benchmark/status/human_v11_winner_20260930.eval_chain.log | cut -c1-150; echo "---chain log zenodo lines---"; grep -E 'zenodo' /vol/data/benchmark/status/human_v11_winner_20260930.eval_chain.log | tail -3 | cut -c1-150
+2026-09-30T02:27:52Z chain[human_v11_winner_20260930]: biobox export OK
+OK  /vol/data/benchmark/runs/human_v11_winner_20260930/biobox/human_sample0.binning
+2026-09-30T02:27:52Z chain[human_v11_winner_20260930]: biobox .binning validation OK
+2026-09-30T02:27:52Z chain[human_v11_winner_20260930]: CHAIN COMPLETE run=/vol/data/benchmark/runs/human_v11_winner_20260930 dataset=human
+---chain log zenodo lines---
+[zenodo_update] package: /vol/data/benchmark/releases/comebin_benchmark_release_v15_20260930.tar.gz (1255653985 bytes, md5 715b3d4377106c4924010211af4
+[zenodo_update] uploading as Zenodo version 15
+WARNING: zenodo_update.sh failed (rc=2)
+> build · big-pickle
+Chain complete — AMBER + biobox OK, but **Zenodo v15 upload failed again (rc=2)**. Let me capture the AMBER results and diagnose the Zenodo failure.
+[0m$ [0mgrep -E 'AMBER' /vol/data/benchmark/status/human_v11_winner_20260930.eval_chain.log | tail -8 | cut -c1-160; echo "===amber files==="; ls -la /vol/data/repos/metagenomic-binning-benchmark/results/amber/human/ 2>/dev/null | tail -8; echo "===amber results tsv==="; ls /vol/data/benchmark/amber/output_human_v11_winner_20260930/ 2>/dev/null | head; cat /vol/data/benchmark/amber/output_human_v11_winner_20260930/results.tsv 2>/dev/null | cut -c1-120
+2026-09-30T02:26:41Z chain[human_v11_winner_20260930]: AMBER: scoring human_v11_winner_20260930 (out /vol/data/benchmark/amber/output_human_v11_winner_20260930)
+2026-09-30 02:26:47,256 INFO AMBER finished successfully. All results have been saved to /vol/data/benchmark/amber/output_human_v11_winner_20260930
+2026-09-30T02:26:47Z chain[human_v11_winner_20260930]: AMBER OK rc=0
+2026-09-30T02:26:47Z chain[human_v11_winner_20260930]: AMBER artifacts copied to /vol/data/repos/metagenomic-binning-benchmark/results/amber/human/human_v11_win
+===amber files===
+-rw-rw-r-- 1 ubuntu ubuntu 2207537 Sep 30 02:26 amber_report_human_v11_winner_20260930.html
+-rw-rw-r-- 1 ubuntu ubuntu    1577 Sep 29 01:22 amber_results.tsv
+-rw-rw-r-- 1 ubuntu ubuntu    1575 Sep 30 02:26 amber_results_human_v11_winner_20260930.tsv
+-rw-rw-r-- 1 ubuntu ubuntu   23212 Sep 29 01:22 bin_metrics.tsv
+-rw-rw-r-- 1 ubuntu ubuntu   14312 Sep 30 02:26 bin_metrics_human_v11_winner_20260930.tsv
+-rw-rw-r-- 1 ubuntu ubuntu   80436 Sep 29 01:22 comebin_v11_human.binning
+-rw-rw-r-- 1 ubuntu ubuntu     353 Sep 29 01:22 heatmap_bar.png
+-rw-rw-r-- 1 ubuntu ubuntu     353 Sep 30 02:26 heatmap_human_v11_winner_20260930.png
+===amber results tsv===
+bin_metrics.tsv
+genome
+genome_metrics_cami1.tsv
+heatmap_bar.png
+index.html
+log.txt
+results.tsv
+Sample	Tool	accuracy_bp	accuracy_seq	adjusted_rand_index_bp	adjusted_rand_index_seq	binning type	f1_score_bp	f1_score_bp
+human	Gold standard	1.0	1.0	1.0	1.0	genome	1.0	1.0	1.0	1.0	1.0	1.0	0.0	0.0	1.0	1.0	1.0	0.0	0.0	1.0	0.0	1.0	1.0	1.0	1.0	N
+human	comebin	0.7814791745740092	0.3306122448979592	0.6226497770643701	0.17639771375537716	genome	0.8812879487135388	0.5
+> build · big-pickle
+AMBER human winner: **F1_bp 0.8813**. Let me compare with the reference human run's AMBER (Sep 29 file) and read the full winner row.
+[0m$ [0mecho "=== prev human amber_results.tsv (Sep29) ==="; cat /vol/data/repos/metagenomic-binning-benchmark/results/amber/human/amber_results.tsv | cut -c1-200; echo; echo "=== winner amber_results_human_v11_winner (Sep30) ==="; cat /vol/data/repos/metagenomic-binning-benchmark/results/amber/human/amber_results_human_v11_winner_20260930.tsv | cut -c1-200; echo; echo "=== winner results.tsv full ==="; cat /vol/data/benchmark/amber/output_human_v11_winner_20260930/results.tsv | column -t -s$'\t' 2>/dev/null | cut -c1-220
+=== prev human amber_results.tsv (Sep29) ===
+Sample	Tool	accuracy_bp	accuracy_seq	adjusted_rand_index_bp	adjusted_rand_index_seq	binning type	f1_score_bp	f1_score_bp_cami1	f1_score_per_bp	f1_score_per_seq	f1_score_seq	f1_score_seq_cami1	misclass
+human	Gold standard	1.0	1.0	1.0	1.0	genome	1.0	1.0	1.0	1.0	1.0	1.0	0.0	0.0	1.0	1.0	1.0	0.0	0.0	1.0	0.0	1.0	1.0	1.0	1.0	NA	1.0	1.0	0.0	0.0	0.0	0.0	1.0	1.0	0.0	0.0	1.0	1.0
+human	comebin_v11	0.8139295799838323	0.5014285714285714	0.7687643589671295	0.45674482033451236	genome	0.6811954794754752	0.4311950292595752	0.767346043693498	0.5395454379094536	0.6372645915479507	0.40
+
+=== winner amber_results_human_v11_winner (Sep30) ===
+Sample	Tool	accuracy_bp	accuracy_seq	adjusted_rand_index_bp	adjusted_rand_index_seq	binning type	f1_score_bp	f1_score_bp_cami1	f1_score_per_bp	f1_score_per_seq	f1_score_seq	f1_score_seq_cami1	misclass
+human	Gold standard	1.0	1.0	1.0	1.0	genome	1.0	1.0	1.0	1.0	1.0	1.0	0.0	0.0	1.0	1.0	1.0	0.0	0.0	1.0	0.0	1.0	1.0	1.0	1.0	NA	1.0	1.0	0.0	0.0	0.0	0.0	1.0	1.0	0.0	0.0	1.0	1.0
+human	comebin	0.7814791745740092	0.3306122448979592	0.6226497770643701	0.17639771375537716	genome	0.8812879487135388	0.5447541556514525	0.8290307104968132	0.4916617127123682	0.8216535399834088	0.50450
+
+=== winner results.tsv full ===
+Sample  Tool           accuracy_bp         accuracy_seq        adjusted_rand_index_bp  adjusted_rand_index_seq  binning type  f1_score_bp         f1_score_bp_cami1   f1_score_per_bp     f1_score_per_seq    f1_score_seq  
+human   Gold standard  1.0                 1.0                 1.0                     1.0                      genome        1.0                 1.0                 1.0                 1.0                 1.0           
+human   comebin        0.7814791745740092  0.3306122448979592  0.6226497770643701      0.17639771375537716      genome        0.8812879487135388  0.5447541556514525  0.8290307104968132  0.4916617127123682  0.821653539983
+> build · big-pickle
+F1_bp 0.881 (vs ref 0.681) but accuracy_bp 0.781 (vs 0.814) — a real trade-off to characterize. Now diagnosing the Zenodo v15 failure.
+[0m$ [0mgrep -nB2 -A4 'zenodo_update.sh failed' /vol/data/benchmark/status/human_v11_winner_20260930.eval_chain.log | cut -c1-200; echo "===zenodo src upload part==="; sed -n '160,230p' /vol/data/benchmark/bin/zenodo_update.sh | grep -vE '^\s*#' | head -50
+161-curl: option --data-binary: out of memory
+162-curl: try 'curl --help' or 'curl --manual' for more information
+163:WARNING: zenodo_update.sh failed (rc=2)
+164-done (checkm2 rc=0, checkm rc=0)
+165-2026-09-30T02:26:41Z chain[human_v11_winner_20260930]: run_eval.sh OK
+166-# 54 bins, 4885 contigs mapped
+167-2026-09-30T02:26:41Z chain[human_v11_winner_20260930]: AMBER: scoring human_v11_winner_20260930 (out /vol/data/benchmark/amber/output_human_v11_winner_20260930)
+===zenodo src upload part===
+cp "$MANIFEST" "$STAGE/manifest.json"
+
+CONTENT_SHA=$(python3 - "$MANIFEST" <<'PY'
+import hashlib, json, sys
+m = json.load(open(sys.argv[1]))
+h = hashlib.sha256()
+for f in m["files"]:
+    if f["path"].startswith("status/"):
+        continue
+    h.update(f"{f['sha256']}  {f['path']}\n".encode())
+print(h.hexdigest())
+PY
+)
+LAST="$META/zenodo_last_content.sha256"
+if [ -f "$LAST" ] && [ "$(cat "$LAST")" = "$CONTENT_SHA" ]; then
+  skip "content unchanged since last upload (sha256 $CONTENT_SHA)"
+fi
+
+build_tar() {
+  tar --sort=name --owner=0 --group=0 --numeric-owner \
+      --mtime='2020-01-01 00:00:00Z' -cf - -C "$STAGE" . | gzip -n > "$1"
+}
+
+if [ "$DRY" -eq 1 ]; then
+  OUT="$RELEASES/comebin_benchmark_release_dryrun_$(date -u +%Y%m%d).tar.gz"
+  build_tar "$OUT"
+  log "package: $OUT ($(stat -c%s "$OUT") bytes, md5 $(md5sum "$OUT" | cut -d' ' -f1))"
+  log "dry-run: stopping before any network call"
+  exit 0
+fi
+
+WORK=$(mktemp -d "$RELEASES/api.XXXXXX")
+req() { # METHOD URL [curl args...] -> $CODE (body in $WORK/resp.json)
+  local method=$1 url=$2; shift 2
+  CODE=$(curl -sS -o "$WORK/resp.json" -w '%{http_code}' -X "$method" \
+    -H "Authorization: Bearer $TOK" "$@" "$url")
+}
+
+req GET "https://zenodo.org/api/deposit/depositions"
+[ "$CODE" = "200" ] || die "listing depositions failed (HTTP $CODE): $(head -c 300 "$WORK/resp.json")"
+DRAFT_ID=$(python3 - "$WORK/resp.json" <<'PY'
+import json, sys
+for d in json.load(open(sys.argv[1])):
+    if str(d.get("conceptrecid")) == "22935024" and d.get("state") == "unsubmitted":
+        print(d["id"]); break
+PY
+)
+if [ -z "$DRAFT_ID" ]; then
+  req GET "https://zenodo.org/api/records/$RECORD/versions"
+  [ "$CODE" = "200" ] || die "versions lookup failed (HTTP $CODE)"
+> build · big-pickle
+[0m$ [0msed -n '230,300p' /vol/data/benchmark/bin/zenodo_update.sh | grep -vE '^\s*#' | head -50; echo "===oom check==="; dmesg 2>/dev/null | grep -iE 'oom|killed process' | tail -3 || echo "dmesg not readable"
+req GET "https://zenodo.org/api/records/$RECORD/versions"
+[ "$CODE" = "200" ] || die "versions lookup failed (HTTP $CODE)"
+VERSION=$(python3 - "$WORK/resp.json" <<'PY'
+import json, sys
+print(len(json.load(open(sys.argv[1]))["hits"]["hits"]) + 1)
+PY
+)
+rm -rf "$WORK"; WORK=$(mktemp -d "$RELEASES/api.XXXXXX")
+
+OUT="$RELEASES/comebin_benchmark_release_v${VERSION}_$(date -u +%Y%m%d).tar.gz"
+build_tar "$OUT"
+OUT_MD5=$(md5sum "$OUT" | cut -d' ' -f1)
+log "package: $OUT ($(stat -c%s "$OUT") bytes, md5 $OUT_MD5)"
+log "uploading as Zenodo version $VERSION"
+
+req GET "https://zenodo.org/api/deposit/depositions/$DRAFT_ID"
+[ "$CODE" = "200" ] || die "reading draft failed (HTTP $CODE)"
+BUCKET=$(python3 -c "import json;print(json.load(open('$WORK/resp.json'))['links']['bucket'])")
+rm -rf "$WORK"; WORK=$(mktemp -d "$RELEASES/api.XXXXXX")
+
+FNAME=$(basename "$OUT")
+req PUT "$BUCKET/$FNAME" -H "Content-Type: application/octet-stream" \
+  --data-binary "@$OUT"
+[ "$CODE" = "201" ] || die "file upload failed (HTTP $CODE): $(head -c 300 "$WORK/resp.json")"
+UP_MD5=$(python3 -c "import json;print(json.load(open('$WORK/resp.json'))['checksum'].replace('md5:',''))")
+[ "$UP_MD5" = "$OUT_MD5" ] || die "uploaded md5 $UP_MD5 != local $OUT_MD5"
+log "uploaded $FNAME (md5 verified $OUT_MD5)"
+rm -rf "$WORK"; WORK=$(mktemp -d "$RELEASES/api.XXXXXX")
+
+req GET "https://zenodo.org/api/deposit/depositions/$DRAFT_ID"
+[ "$CODE" = "200" ] || die "reading draft metadata failed (HTTP $CODE)"
+python3 - "$WORK/resp.json" "$WORK/meta.json" "$VERSION" "${RUNS_INCLUDED[*]}" <<'PY'
+import json, sys, datetime
+draft, out, version, runs = json.load(open(sys.argv[1])), sys.argv[2], sys.argv[3], sys.argv[4]
+md = draft.get("metadata", {})
+md["version"] = f"{version}.0"
+md["publication_date"] = datetime.date.today().isoformat()
+md["title"] = "COMEBin metagenomic binning benchmark — datasets and run results"
+md["description"] = (
+    "Benchmark of metagenomic genome binners (starting with COMEBin v1.1.0) with a "
+    "repeatable harness: per-run parameters, datasets, wall time, and bin quality "
+    "scored with CheckM2 and CheckM (v1). Repository: "
+    "https://github.com/paulzierep/metagenomic-binning-benchmark (setup, datasets, "
+    "evaluation and run docs under docs/; resume state in PROGRESS.md).\n\n"
+    "This record accumulates ALL newly generated benchmark data that is not "
+    "publicly available otherwise, as continuous versions under the concept DOI "
+    "10.5281/zenodo.22935024 (each new evaluated run publishes a new version).\n\n"
+    f"Version {version}.0 (this version) contains the benchmark results of every "
+    f"evaluated run: {runs}. Each run contributes its bin FASTAs "
+    "(runs/<run>/comebin_res/comebin_res_bins/), per-bin and aggregate CheckM2 + "
+===oom check===
+> build · big-pickle
+The upload uses `curl --data-binary @file`, which buffers the whole 1.25 GB in memory — that's the failure (`out of memory`). Let me check ulimits and see the full script tail to fix it streamingly, then re-run just the Zenodo step.
+[0m$ [0mulimit -a | grep -E 'virtual|data|resident'; echo "---cgroup---"; cat /sys/fs/cgroup/memory.max 2>/dev/null || cat /sys/fs/cgroup/memory/memory.limit_in_bytes 2>/dev/null; echo "---script tail---"; sed -n '300,340p' /vol/data/benchmark/bin/zenodo_update.sh | grep -vE '^\s*#' | head -30
+data seg size               (kbytes, -d) unlimited
+virtual memory              (kbytes, -v) unlimited
+---cgroup---
+---script tail---
+  -H "Content-Type: application/json" --data-binary "@$WORK/meta.json"
+[ "$CODE" = "200" ] || die "metadata update failed (HTTP $CODE): $(head -c 300 "$WORK/resp.json")"
+log "metadata updated (version $VERSION.0, title/description refreshed)"
+rm -rf "$WORK"; WORK=$(mktemp -d "$RELEASES/api.XXXXXX")
+
+req POST "https://zenodo.org/api/deposit/depositions/$DRAFT_ID/actions/publish"
+case "$CODE" in
+  200|201|202) ;;
+  *) die "publish failed (HTTP $CODE): $(head -c 400 "$WORK/resp.json")" ;;
+esac
+NEW_ID=$(python3 -c "import json;print(json.load(open('$WORK/resp.json')).get('id') or '$DRAFT_ID')")
+NEW_DOI=$(python3 -c "
+import json;d=json.load(open('$WORK/resp.json'));print(d.get('doi') or d.get('metadata',{}).get('doi') or '')")
+for _ in 1 2 3 4 5 6 7 8 9 10; do
+  req GET "https://zenodo.org/api/deposit/depositions/$DRAFT_ID"
+  [ "$CODE" = "200" ] || die "polling draft state failed (HTTP $CODE)"
+  STATE=$(python3 -c "import json;print(json.load(open('$WORK/resp.json')).get('state',''))")
+  [ "$STATE" = "done" ] && break
+  sleep 3
+done
+[ "${STATE:-}" = "done" ] || die "deposition did not reach state=done (state=${STATE:-unknown})"
+log "published record $NEW_ID (doi $NEW_DOI)"
+rm -rf "$WORK"; WORK=$(mktemp -d "$RELEASES/api.XXXXXX")
+
+req GET "https://zenodo.org/api/records/$NEW_ID"
+[ "$CODE" = "200" ] || die "post-publish record lookup failed (HTTP $CODE)"
+python3 - "$WORK/resp.json" "$FNAME" "$(stat -c%s "$OUT")" "$OUT_MD5" <<'PY'
+import json, sys
+rec, fname, size, md5 = json.load(open(sys.argv[1])), sys.argv[2], int(sys.argv[3]), sys.argv[4]
+raw = rec.get("files", {})
+> build · big-pickle
+Memory limits are fine — curl's `--data-binary` just can't buffer 1.25 GB. The fix: stream via `-T`. Let me find all copies of the script and how `run_eval.sh` invokes it.
+[0m$ [0mfind /vol/data -name 'zenodo_update.sh' -not -path '*/stage.*' -not -path '*/api.*' 2>/dev/null | head; echo "---invoke---"; grep -n 'zenodo' /vol/data/benchmark/bin/run_eval.sh | head -10
+/vol/data/repos/metagenomic-binning-benchmark/scripts/zenodo_update.sh
+/vol/data/benchmark/bin/.bak-20260929T015501Z/zenodo_update.sh
+/vol/data/benchmark/bin/.bak-20260928/zenodo_update.sh
+/vol/data/benchmark/bin/zenodo_update.sh
+---invoke---
+163:  bash "$(dirname "$0")/zenodo_update.sh" 9>&- \
+164:    || echo "WARNING: zenodo_update.sh failed (rc=$?)" >&2
+> build · big-pickle
+Both copies must be fixed identically (bin/ ↔ repo scripts/), plus a pre-cleanup of any same-named file in the draft. Checking exact lines.
+[0m$ [0mgrep -n 'data-binary "@$OUT"\|FNAME=\|bucket' /vol/data/benchmark/bin/zenodo_update.sh | head; echo "---repo---"; grep -n 'data-binary "@$OUT"\|FNAME=\|bucket' /vol/data/repos/metagenomic-binning-benchmark/scripts/zenodo_update.sh | head; echo "---diff---"; diff /vol/data/benchmark/bin/zenodo_update.sh /vol/data/repos/metagenomic-binning-benchmark/scripts/zenodo_update.sh && echo IDENTICAL
+245:# --- Upload file via the record's file bucket ---------------------------------
+248:BUCKET=$(python3 -c "import json;print(json.load(open('$WORK/resp.json'))['links']['bucket'])")
+251:FNAME=$(basename "$OUT")
+253:  --data-binary "@$OUT"
+---repo---
+245:# --- Upload file via the record's file bucket ---------------------------------
+248:BUCKET=$(python3 -c "import json;print(json.load(open('$WORK/resp.json'))['links']['bucket'])")
+251:FNAME=$(basename "$OUT")
+253:  --data-binary "@$OUT"
+---diff---
+IDENTICAL
+> build · big-pickle
+Both copies identical. Applying the streaming-upload fix to both (plus stale-file cleanup in the draft).
+[0m← [0mEdit /vol/data/benchmark/bin/zenodo_update.sh
+Index: /vol/data/benchmark/bin/zenodo_update.sh
+===================================================================
+--- /vol/data/benchmark/bin/zenodo_update.sh
++++ /vol/data/benchmark/bin/zenodo_update.sh
+@@ -248,10 +248,25 @@
+ BUCKET=$(python3 -c "import json;print(json.load(open('$WORK/resp.json'))['links']['bucket'])")
+ rm -rf "$WORK"; WORK=$(mktemp -d "$RELEASES/api.XXXXXX")
+ 
+ FNAME=$(basename "$OUT")
+-req PUT "$BUCKET/$FNAME" -H "Content-Type: application/octet-stream" \
+-  --data-binary "@$OUT"
++# Stream the tarball with curl -T instead of --data-binary, which buffers the
++# whole file in memory and OOM'd on the ~1.25 GB release package (2026-09-30).
++rm -rf "$WORK"; WORK=$(mktemp -d "$RELEASES/api.XXXXXX")
++req GET "https://zenodo.org/api/deposit/depositions/$DRAFT_ID/files"
++if [ "$CODE" = "200" ]; then
++  EXISTING_ID=$(python3 -c "
++import json,sys
++d=json.load(open('$WORK/resp.json'))
++print(next((f['id'] for f in (d.get('files') or []) if f.get('key')=='$FNAME'), ''))")
++  if [ -n "$EXISTING_ID" ]; then
++    rm -rf "$WORK"; WORK=$(mktemp -d "$RELEASES/api.XXXXXX")
++    req DELETE "https://zenodo.org/api/deposit/depositions/$DRAFT_ID/files/$EXISTING_ID"
++    [ "$CODE" = "204" ] || log "WARNING: stale file entry delete returned HTTP $CODE"
++  fi
++fi
++rm -rf "$WORK"; WORK=$(mktemp -d "$RELEASES/api.XXXXXX")
++req PUT "$BUCKET/$FNAME" -H "Content-Type: application/octet-stream" -T "$OUT"
+ [ "$CODE" = "201" ] || die "file upload failed (HTTP $CODE): $(head -c 300 "$WORK/resp.json")"
+ UP_MD5=$(python3 -c "import json;print(json.load(open('$WORK/resp.json'))['checksum'].replace('md5:',''))")
+ [ "$UP_MD5" = "$OUT_MD5" ] || die "uploaded md5 $UP_MD5 != local $OUT_MD5"
+ log "uploaded $FNAME (md5 verified $OUT_MD5)"
+
+> build · big-pickle
+[0m$ [0mcp /vol/data/benchmark/bin/zenodo_update.sh /vol/data/repos/metagenomic-binning-benchmark/scripts/zenodo_update.sh && diff /vol/data/benchmark/bin/zenodo_update.sh /vol/data/repos/metagenomic-binning-benchmark/scripts/zenodo_update.sh && echo IDENTICAL; bash -n /vol/data/benchmark/bin/zenodo_update.sh && echo SYNTAX-OK
+IDENTICAL
+SYNTAX-OK
+> build · big-pickle
+Now relaunching the CAMI III winner run, its eval chain, and re-running the Zenodo v15 publish (streaming fix) — all detached. First confirming the lock is free.
+[0m$ [0mlslocks 2>/dev/null | grep -E 'benchmark-start' || echo "start lock FREE"; cat /vol/data/benchmark/.active_run 2>/dev/null | cut -c1-40; echo "(end active)"; ls /vol/data/benchmark/runs/cami3_v11_winner_20260930 2>/dev/null && echo "RUN DIR EXISTS!" || echo "run dir absent (good)"
+start lock FREE
+(end active)
+run dir absent (good)
+> build · big-pickle
+[0m$ [0mcd /vol/data/benchmark && SRC_COMEBIN=/vol/data/repos/COMEBin-v11-sweep CONTIGS=/vol/data/datasets/cami_III/toy_human_input_2samples/contigs.fa BAMDIR=/vol/data/datasets/cami_III/toy_human_input_2samples/bamfiles MODE=cami3 THREADS=32 SEED=42 COMEBIN_TEMPERATURE=0.05 TEMP=0.05 nohup setsid /vol/data/benchmark/bin/run_comebin_fix.sh /vol/data/benchmark/runs/cami3_v11_winner_20260930 > /vol/data/benchmark/logs/cami3_v11_winner_20260930.launch.log 2>&1 & echo "cami3 launcher pid $!"
+cami3 launcher pid 1104990
+> build · big-pickle
