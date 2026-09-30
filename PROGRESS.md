@@ -876,3 +876,47 @@ clears the flag (back to default). Rate limit 6 restarts / 6 h; stops when
 - **2026-09-30T00:XXZ**: sweep_024_seed7 active cell 24/24 (seed=7, temp=ref, medium dataset); cells 1-23 complete, cell 24 running epoch N/200; ETA ~1-2 h remaining. .heartbeat current; PROGRESS.md updated.
 
 - [x] **Issue triage (2026-09-29T10:35Z)**: new/updated issues #29 (small test data floor), #28 (marker seed generation), #27 (check-in) — triaged without duplicating existing responses; comment IDs recorded in agent-activity.log.
+### 2026-09-30 Agent Resume (01:13–01:17Z) — winner run active, eval chain queued
+
+- `TASK_COMPLETE` absent → continuing. PROGRESS.md read first; disk state verified.
+- **Sweep is COMPLETE (24/24)** per the 2026-09-30 section above (winner
+  `sweep_004_temp005`, temperature 0.05). `results/sweep_rankings.md` + 23 results
+  CSVs + biobox exports for 23/24 cells are on disk; #25 result comment
+  `5901812071` already posted 00:43Z.
+- **First unfinished step = advance the winner (temp=0.05) to CAMI II human.**
+  `runs/human_v11_winner_20260930` is REGISTERED and live: source
+  `COMEBin-v11-sweep@95f5ea8` (detached HEAD, clean), seed 42, 32 threads,
+  4,900 contigs, `-l 0.05`, started 2026-09-30T00:41:57Z, ~19 s/epoch,
+  epoch 65/200 at 01:15Z → training ETA ≈ 02:00Z + Leiden clustering
+  (reference `human_v11_20260925` took 4,912 s wall for the full 200 epochs).
+  `.active_run` pid 634536 — **do not launch anything that overlaps it.**
+- **Follow-on chain launched detached (no overlap):**
+  `/vol/data/benchmark/followups/winner_human_20260930.sh <run_dir> [max_wait]`
+  (pid 672031, log `/vol/data/benchmark/status/winner_human_chain.log`). It
+  (1) waits until `run_meta.txt` carries `exit_code:` AND the wrapper pid is
+  released from `.active_run` (8 h cap), (2) runs `bin/run_eval.sh` →
+  CheckM2 + CheckM v1 + results CSV + per-bin CSV/plots + Zenodo version,
+  (3) AMBER vs the CAMI II human gold standard
+  (`make_amber_prediction.py` → `amber.py`, artifacts copied to
+  `results/amber/human_winner/`), (4) `export_biobox.sh` (SAMPLE=human_sample0,
+  VERSION=v11_temp005) + `validate_binning.py`. Every step is logged and
+  non-fatal for the next. **DEDUP guard: `pgrep -f winner_human_20260930.sh`
+  before launching it again** (a restart turn must not start a second chain).
+- **Issue triage: nothing new to answer.** Open benchmark issues #29 #28 #27 #26
+  #25 #23 #22 #21 #20 #6 #1 — every issue's `updatedAt` equals the timestamp of
+  the agent's own last comment (#25 00:43:25Z sweep-complete, #29/#28/#27
+  13:08:45Z, #26 09-28T13:00:08Z); `paulzierep/COMEBin` has issues disabled
+  (`gh` refuses: "repository has disabled issues"). No duplicate comments posted.
+- **Next steps once the chain finishes** (next turn, do not overlap):
+  1. Read `status/winner_human_chain.log` + `results/human_v11_winner_20260930.csv`
+     and compare against `human_v11_20260925` (CheckM2 35.31/5.13, AMBER F1_bp
+     0.681) → decide whether temp=0.05 generalises off the medium set.
+  2. Launch the CAMI III toy-gut winner run (temp=0.05, `MODE=cami3`, source
+     `COMEBin-v11-sweep@95f5ea8`, seed 42, 32 threads) in a **fresh** run dir
+     once `.active_run` is clear; reference = `cami3_v11_20260926_rerun`
+     (492 bins, CheckM2 35.97/11.42).
+  3. Still queued from #29: Galaxy IUC fixture end-to-end run
+     (`scripts/run_galaxy_fixture_test.sh`, MAX_EDGES=20, 40×20 kb fixture).
+  4. docs/15 (AMBER) + docs/11 + README + `results/sweep_rankings.md` updates
+     with the winner numbers, then a #25 comment with the human/CAMI III
+     comparison and the Zenodo bundle of sweep + AMBER + biobox artifacts.
