@@ -138072,3 +138072,71 @@ runs/human_v11_winner_20260930/run_meta.txt
 All 17 staged files are mine (the run-dir metadata was already committed final by the supervisor). Committing + pushing under the lock.
 [0m
 > build · mimo-v2.6-flash-free
+[0m$ [0mtest -f /vol/data/benchmark/TASK_COMPLETE && echo "TASK_COMPLETE exists — EXIT" || echo "TASK_COMPLETE absent"; echo "=== now ==="; date -u +"%Y-%m-%dT%H:%M:%SZ"; echo "=== active_run ==="; cat /vol/data/benchmark/.active_run 2>/dev/null; echo "(end)"; echo "=== zenodo rerun ==="; tail -4 /vol/data/benchmark/logs/zenodo_update_v15_rerun_20260930.log 2>/dev/null | cut -c1-140; echo "=== zenodo procs ==="; ps -eo pid,etime,args | grep '[z]enodo_update' | grep -v 'bash -c' | cut -c1-80; echo "=== chains ==="; ps -eo pid,etime,args | grep '[r]un_eval_chain' | grep -v 'bash -c' | cut -c1-100
+TASK_COMPLETE absent
+=== now ===
+2026-09-30T02:34:05Z
+=== active_run ===
+1104991 1104991 /vol/data/benchmark/runs/cami3_v11_winner_20260930/comebin_run.log /vol/data/benchmark/runs/cami3_v11_winner_20260930 1790735398 cami3 /vol/data/repos/COMEBin-v11-sweep /vol/data/datasets/cami_III/toy_human_input_2samples/contigs.fa /vol/data/datasets/cami_III/toy_human_input_2samples/bamfiles
+(end)
+=== zenodo rerun ===
+[zenodo_update] staging benchmark data -> /vol/data/benchmark/releases/stage.LnhwBN
+[zenodo_update] runs in package: baseline_rerun_autorestart1 (60 bins) cami3_v11_20260926_rerun (492 bins) fix_v11_20260924 (71 bins) human_
+[zenodo_update] manifest: 1926 files, 2861567070 bytes
+[zenodo_update] reusing open draft 23042028
+=== zenodo procs ===
+1106282       03:12 bash bin/zenodo_update.sh
+=== chains ===
+1106263       03:17 bash /vol/data/benchmark/bin/run_eval_chain.sh /vol/data/benchmark/runs/cami3_v1
+> build · mimo-v2.6-flash-free
+[0m$ [0mtail -6 /vol/data/benchmark/PROGRESS.md | cut -c1-110; echo "=== issues benchmark ==="; gh issue list -R paulzierep/metagenomic-binning-benchmark --state open --json number,title,updatedAt 2>&1 | python3 -c "import json,sys
+for i in json.load(sys.stdin): print(i['number'], i['updatedAt'], i['title'])"; echo "=== issues COMEBin ==="; gh issue list -R paulzierep/COMEBin --state open --json number,title,updatedAt 2>&1 | head -3
+`sweep:` meta honestly records temp=0.05). Eval chain
+  `run_eval_chain.sh ... cami3 28800 32` (pid 1106263) waits and will run eval +
+  AMBER (gold `cami3_toy_binning_gs.tsv`) + biobox. Reference:
+  `cami3_v11_20260926_rerun` (492 bins, CheckM2 35.97/11.42, F1_bp 0.743).
+- Tables/docs refreshed: `scripts/make_all_runs_table.py` → README "All runs" +
+  `results/all_runs_table.md` now carry the winner row (F1 73.8).
+=== issues benchmark ===
+29 2026-09-30T01:41:57Z Small test data
+28 2026-09-30T01:41:56Z Fix this issue
+27 2026-09-30T01:41:55Z Are u ok ?
+26 2026-09-28T13:00:08Z Improve logging
+25 2026-09-30T01:21:06Z Improve optimization
+23 2026-09-28T13:02:38Z Where does the assembly for cami3 come from
+22 2026-09-28T13:00:05Z is there a summary table for all runs
+21 2026-09-28T13:02:14Z use a seed for all runs
+20 2026-09-28T13:02:13Z what are your ideas for further optimization ?
+6 2026-09-26T07:56:10Z Optimization
+1 2026-09-23T14:53:13Z Idea inbox: benchmark ideas, COMEBin fixes, dataset requests
+=== issues COMEBin ===
+the 'paulzierep/COMEBin' repository has disabled issues
+> build · mimo-v2.6-flash-free
+Issues #27, #28, #29 were updated at 01:41:5xZ — after my last triage. Checking those comments for actionable content.
+[0m$ [0mfor n in 27 28 29; do echo "=== #$n ==="; gh api repos/paulzierep/metagenomic-binning-benchmark/issues/$n/comments --paginate 2>/dev/null | python3 -c "
+import json,sys
+cs=json.load(sys.stdin)
+for c in cs[-2:]:
+    print('---', c['created_at'], 'user:', c['user']['login'])
+    print(c['body'][:400].replace(chr(10),' | '))
+"; done
+=== #27 ===
+--- 2026-09-29T13:08:46Z user: paulzierep
+Are u ok ?: Yes, the agent is operational. Sweep medium grid is progressing: sweep_013_edges80 is active (cell 13/24 of 24-cell medium grid, 8 threads, seed 42, temp=ref, max_edges=80). All prior cells 1-12 completed successfully. ETA ~2026-10-02 UTC. Heartbeat current, .activity updated, PROGRESS.md in sync.
+--- 2026-09-30T01:41:54Z user: paulzierep
+Check-in: agent healthy. Correction to the previous status — the 24-cell medium sweep is **complete (24/24, finished 2026-09-30T00:43Z)**, not "cell 13/24". Current work is the winning configuration on a real CAMI II human run (`human_v11_winner_20260930`); driver, eval chain and all watchdogs green, 287 GiB disk free.
+=== #28 ===
+--- 2026-09-29T13:08:45Z user: paulzierep
+Fix this issue: Marker seed generation failures are being addressed through the sweep optimization framework. All sweep runs use seed=42 for reproducibility. The current sweep_013_edges80 (cell 13/24, medium dataset, 8 threads, temp=ref, max_edges=80) is running with proper seed handling. If bins are produced, they will be reported; if not, the run exits gracefully without error, as validated in s
+--- 2026-09-30T01:41:56Z user: paulzierep
+Status: the marker-seed fix is **committed locally only** — `41606c8` on local branch `comebin-optimizations-v11` in the COMEBin repo, which is 2 commits ahead of `origin/master` and has no remote branch. It is therefore **not** merged to master and **not** in a bioconda recipe, so this issue stays open. Sweep completion no longer depends on it: the 24-cell medium sweep finished 24/24 at 2026-09-3
+=== #29 ===
+--- 2026-09-29T13:08:45Z user: paulzierep
+Small test data update: The functional dataset floor remains at ~101 contigs (tiny_test_n101 passes with 1 bin, CheckM2 63.89/9.05, CheckM v1 46.58/6.35). Current sweep_013_edges80 (cell 13/24, medium dataset, 8 threads, seed 42) is running normally. No regression observed. Full sweep ETA ~2026-10-02 UTC.
+--- 2026-09-30T01:41:57Z user: paulzierep
+Status: the ~101-contig floor is unchanged (`tiny_test_n101` passes, n100 fails) and seed reproducibility holds. The 24-cell medium sweep finished 24/24 at 2026-09-30T00:43Z, so the old "cell 13/24" status is outdated. Still outstanding for this issue: the **Galaxy / bioconda fixture end-to-end run has never been executed** (no `COMEBin-v11-sweep` fixture run directory exists) — that is the remain
+> build · mimo-v2.6-flash-free
+All recent comments (#27/#28/#29 at 01:41Z) are the agent's own check-ins — no owner action needed. Resuming: monitor Zenodo v15 re-run + CAMI III winner. Logging the resume first.
+[0m$ [0mTS=$(date -u +"%Y-%m-%dT%H:%M:%SZ"); echo "$TS resume: verified PROGRESS+disk (cami3 winner pid 1104991 training, zenodo v15 rerun pid 1106282 staging, cami3 chain 1106263 waiting); issues triaged — #27/28/29 01:41Z updates are agent check-ins, no owner action" >> /vol/data/repos/metagenomic-binning-benchmark/status/agent-activity.log; echo "$TS monitoring cami3 winner + zenodo v15 rerun" > /vol/data/benchmark/.activity; touch /vol/data/benchmark/.heartbeat; echo ok
+ok
+> build · mimo-v2.6-flash-free
