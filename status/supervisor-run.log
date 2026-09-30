@@ -68830,3 +68830,141 @@ Index: /vol/data/repos/metagenomic-binning-benchmark/scripts/meta-watchdog.sh
 SYNTAX OK
 25 /tmp/opencode/siu.sh
 > build · big-pickle
+[0m$ [0mcat > /tmp/opencode/test_siu.sh <<'EOF'
+set -u
+BENCH=/vol/data/benchmark
+source /tmp/opencode/siu.sh
+for j in run_comebin_fix.sh run_comebin_baseline.sh make_all_runs_table.py export_biobox.sh \
+         make_cami3_gold_standard.py run_eval_chain.sh meta-watchdog.sh run_galaxy_fixture_test.sh; do
+  if script_in_use "$j"; then echo "IN-USE  $j"; else echo "free     $j"; fi
+done
+EOF
+time bash /tmp/opencode/test_siu.sh 2>&1
+IN-USE  run_comebin_fix.sh
+free     run_comebin_baseline.sh
+free     make_all_runs_table.py
+free     export_biobox.sh
+free     make_cami3_gold_standard.py
+IN-USE  run_eval_chain.sh
+IN-USE  meta-watchdog.sh
+free     run_galaxy_fixture_test.sh
+
+real	1m9.723s
+user	0m17.206s
+sys	0m57.739s
+> build · big-pickle
+Correct detection, but 9s per script. Let me make it a single pass.
+[0m→ [0mRead /vol/data/repos/metagenomic-binning-benchmark/scripts/meta-watchdog.sh [90m[limit=70, offset=142][0m
+> build · big-pickle
+[0m← [0mEdit /vol/data/repos/metagenomic-binning-benchmark/scripts/meta-watchdog.sh
+Index: /vol/data/repos/metagenomic-binning-benchmark/scripts/meta-watchdog.sh
+===================================================================
+--- /vol/data/repos/metagenomic-binning-benchmark/scripts/meta-watchdog.sh
++++ /vol/data/repos/metagenomic-binning-benchmark/scripts/meta-watchdog.sh
+@@ -154,10 +154,16 @@
+ # supervisor is a single argv field naming every drifted script, so a substring
+ # match would report every script as "in use" forever and permanently disable
+ # auto-deploy. This process and its ancestors are skipped as well, for the same
+ # reason.
+-script_in_use() {
+-  local job=$1 pid ppid skip fdlink
++# One pass over /proc fills IN_USE with the basenames of installed scripts that a
++# live process is executing. Collected as a set rather than probed per job: the
++# per-job variant cost ~9 s each (a readlink per fd per pid), which would add
++# minutes to a tick whenever several helpers drifted.
++IN_USE=""
++scan_in_use() {
++  local pid_dir pid walk skip fd fdlink
++  IN_USE=""
+   for pid_dir in /proc/[0-9]*; do
+     pid=${pid_dir#/proc/}
+     [ -r "$pid_dir/cmdline" ] || continue
+     # skip self and every ancestor
+@@ -168,20 +174,45 @@
+       walk=$(sed 's/^.*) //' "/proc/$walk/stat" 2>/dev/null | awk '{print $2}')
+     done
+     [ -n "$skip" ] && continue
+     for fd in "$pid_dir"/fd/*; do
++      [ -e "$fd" ] || continue
+       fdlink=$(readlink "$fd" 2>/dev/null) || continue
+       case "$fdlink" in
+-        "$BENCH/bin/$job"|"$BENCH/bin/$job "*|"$BENCH/bin/$job (deleted)")
+-          return 0 ;;
++        "$BENCH/bin/"*)
++          fdlink=${fdlink#"$BENCH/bin/"}
++          case "$fdlink" in
++            " (deleted)") fdlink=${fdlink%" (deleted)"} ;;
++            *" "*)         continue ;;
++          esac
++          case "$fdlink" in */*) continue ;; esac
++          IN_USE="$IN_USE $fdlink"
++          ;;
+       esac
+     done
+-    tr '\0' '\n' < "$pid_dir/cmdline" 2>/dev/null \
+-      | grep -qxF -- "$BENCH/bin/$job" && return 0
++    tr '\0' '\n' < "$pid_dir/cmdline" 2>/dev/null | while IFS= read -r arg; do
++      case "$arg" in
++        "$BENCH/bin/"*)
++          arg=${arg#"$BENCH/bin/"}
++          case "$arg" in */*) continue ;; esac
++          printf '%s\n' "$arg" >> "$META/.in_use.$$"
++          ;;
++      esac
++    done
+   done
++  if [ -f "$META/.in_use.$$" ]; then
++    IN_USE="$IN_USE $(tr '\n' ' ' < "$META/.in_use.$$")"
++    rm -f "$META/.in_use.$$"
++  fi
++}
++
++script_in_use() {
++  case " $IN_USE " in *" $1 "*) return 0 ;; esac
+   return 1
+ }
+ 
++scan_in_use
++
+ deploy_bad=""
+ deploy_safe=""
+ deploy_defer=""
+ for src in "$REPO"/scripts/*; do
+
+> build · big-pickle
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark/scripts && bash -n meta-watchdog.sh && echo "SYNTAX OK"; sed -n '/^IN_USE=""$/,/^scan_in_use$/p' meta-watchdog.sh > /tmp/opencode/siu.sh; cat > /tmp/opencode/test_siu.sh <<'EOF'
+set -u
+BENCH=/vol/data/benchmark
+META=/tmp/opencode/siumeta; mkdir -p "$META"
+source /tmp/opencode/siu.sh
+echo "IN_USE set: $IN_USE"
+echo "---"
+for j in run_comebin_fix.sh run_comebin_baseline.sh make_all_runs_table.py export_biobox.sh \
+         make_cami3_gold_standard.py run_eval_chain.sh meta-watchdog.sh run_galaxy_fixture_test.sh \
+         agent-watchdog.sh benchmark-watchdog.sh status-heartbeat.sh; do
+  if script_in_use "$j"; then echo "IN-USE  $j"; else echo "free     $j"; fi
+done
+EOF
+time bash /tmp/opencode/test_siu.sh 2>&1
+SYNTAX OK
+IN_USE set:  run_comebin_fix.sh agent-watchdog.sh run_eval_chain.sh meta-watchdog.sh run_comebin_fix.sh run_comebin_fix.sh agent-watchdog.sh run_eval_chain.sh meta-watchdog.sh meta-watchdog.sh 
+---
+IN-USE  run_comebin_fix.sh
+free     run_comebin_baseline.sh
+free     make_all_runs_table.py
+free     export_biobox.sh
+free     make_cami3_gold_standard.py
+IN-USE  run_eval_chain.sh
+IN-USE  meta-watchdog.sh
+free     run_galaxy_fixture_test.sh
+IN-USE  agent-watchdog.sh
+free     benchmark-watchdog.sh
+free     status-heartbeat.sh
+
+real	0m8.995s
+user	0m2.262s
+sys	0m7.033s
+> build · big-pickle
+9s total now. But it scans unconditionally — let me make it lazy so healthy ticks stay fast.
+[0m→ [0mRead /vol/data/repos/metagenomic-binning-benchmark/scripts/meta-watchdog.sh [90m[limit=60, offset=196][0m
+> build · big-pickle
