@@ -144,6 +144,72 @@ fi
 # INSTALLED copies in $BENCH/bin (run_eval.sh calls its helpers via $(dirname $0)),
 # so a helper that exists in the repo but was never deployed silently disables that
 # feature on every future run. Mirror scripts/ -> bin/ and verify byte identity.
+
+# Is installed script $1 genuinely being executed right now?
+# A bash script is held open as a file descriptor for as long as it runs (bash
+# reads it incrementally), so an fd pointing at the installed path means "do not
+# touch it". A python helper does not keep its source open, so also match an argv
+# field that IS exactly the installed path.
+# The match is whole-field on purpose: the escalation prompt handed to the LLM
+# supervisor is a single argv field naming every drifted script, so a substring
+# match would report every script as "in use" forever and permanently disable
+# auto-deploy. This process and its ancestors are skipped as well, for the same
+# reason.
+# One pass over /proc fills IN_USE with the basenames of installed scripts that a
+# live process is executing. Collected as a set rather than probed per job: the
+# per-job variant cost ~9 s each (a readlink per fd per pid), which would add
+# minutes to a tick whenever several helpers drifted.
+IN_USE=""
+scan_in_use() {
+  local pid_dir pid walk skip fd fdlink
+  IN_USE=""
+  for pid_dir in /proc/[0-9]*; do
+    pid=${pid_dir#/proc/}
+    [ -r "$pid_dir/cmdline" ] || continue
+    # skip self and every ancestor
+    skip=""
+    walk=$pid
+    while [ -n "$walk" ] && [ "$walk" -gt 1 ] 2>/dev/null; do
+      [ "$walk" = "$$" ] && { skip=1; break; }
+      walk=$(sed 's/^.*) //' "/proc/$walk/stat" 2>/dev/null | awk '{print $2}')
+    done
+    [ -n "$skip" ] && continue
+    for fd in "$pid_dir"/fd/*; do
+      [ -e "$fd" ] || continue
+      fdlink=$(readlink "$fd" 2>/dev/null) || continue
+      case "$fdlink" in
+        "$BENCH/bin/"*)
+          fdlink=${fdlink#"$BENCH/bin/"}
+          case "$fdlink" in
+            " (deleted)") fdlink=${fdlink%" (deleted)"} ;;
+            *" "*)         continue ;;
+          esac
+          case "$fdlink" in */*) continue ;; esac
+          IN_USE="$IN_USE $fdlink"
+          ;;
+      esac
+    done
+    tr '\0' '\n' < "$pid_dir/cmdline" 2>/dev/null | while IFS= read -r arg; do
+      case "$arg" in
+        "$BENCH/bin/"*)
+          arg=${arg#"$BENCH/bin/"}
+          case "$arg" in */*) continue ;; esac
+          printf '%s\n' "$arg" >> "$META/.in_use.$$"
+          ;;
+      esac
+    done
+  done
+  if [ -f "$META/.in_use.$$" ]; then
+    IN_USE="$IN_USE $(tr '\n' ' ' < "$META/.in_use.$$")"
+    rm -f "$META/.in_use.$$"
+  fi
+}
+
+script_in_use() {
+  case " $IN_USE " in *" $1 "*) return 0 ;; esac
+  return 1
+}
+
 deploy_bad=""
 for src in "$REPO"/scripts/*; do
   [ -f "$src" ] || continue
@@ -156,50 +222,64 @@ for src in "$REPO"/scripts/*; do
     deploy_bad="$deploy_bad $job(stale)"
   fi
 done
+
+# Defer ONLY what is actually executing. A blanket "some run is live => deploy
+# nothing" rule accumulated drift for the entire duration of every multi-hour run:
+# helpers that nothing was executing kept their stale installed copy, so the
+# feature they implement stayed disabled until the run happened to end. The /proc
+# scan is only paid for when something has actually drifted.
+deploy_safe=""
+deploy_defer=""
 if [ -n "$deploy_bad" ]; then
-  # Never swap a script out from under a live run: bash reads scripts
-  # incrementally, so replacing one mid-execution can corrupt the run. Defer
-  # the deploy instead; the next tick after the run finishes applies it.
-  deploy_pid=""
-  if [ -f "$BENCH/.active_run" ]; then
-    read -r deploy_pid _ _ _ _ _ _ < "$BENCH/.active_run" || true
-  fi
-  deploy_pstat=$(ps -o stat= -p "${deploy_pid:-0}" 2>/dev/null | tr -d ' ' || true)
-  if [ -n "${deploy_pid:-}" ] && [ "${deploy_pid:-0}" -gt 0 ] 2>/dev/null \
-     && [ -n "$deploy_pstat" ] && [[ "$deploy_pstat" != Z* ]]; then
-    check C1b_deploy ok "deploy deferred: benchmark run pid $deploy_pid is live; pending:$deploy_bad"
-  else
-    for src in "$REPO"/scripts/*; do
-      [ -f "$src" ] || continue
-      job=$(basename "$src")
-      case "$job" in __pycache__|*.pyc|*.pyo) continue ;; esac
-      dst="$BENCH/bin/$job"
-      if [ ! -f "$dst" ] || ! cmp -s "$src" "$dst"; then
-        mkdir -p "$BENCH/bin"
-        cp "$src" "$BENCH/bin/.$job.deploy-new" || continue
-        case "$job" in
-          *.sh) chmod 755 "$BENCH/bin/.$job.deploy-new" ;;
-          *)    chmod 644 "$BENCH/bin/.$job.deploy-new" ;;
-        esac
-        mv "$BENCH/bin/.$job.deploy-new" "$dst" || continue
-      fi
-    done
-    # py helpers are invoked via `python3`, so they need read access but not +x.
-    chmod 755 "$BENCH/bin"/*.sh 2>/dev/null || true
-    deploy_still=""
-    for src in "$REPO"/scripts/*; do
-      [ -f "$src" ] || continue
-      job=$(basename "$src")
-      case "$job" in __pycache__|*.pyc|*.pyo) continue ;; esac
-      cmp -s "$src" "$BENCH/bin/$job" || deploy_still="$deploy_still $job(unfixed)"
-    done
-    if [ -z "$deploy_still" ]; then
-      note_fix "deployed stale/missing pipeline scripts to bin:$(printf '%s' "$deploy_bad" | tr -s ' ')"
-      check C1b_deploy ok "re-deployed:$deploy_bad"
+  scan_in_use
+  for entry in $deploy_bad; do
+    job=${entry%%(*}
+    if script_in_use "$job"; then
+      deploy_defer="$deploy_defer $entry(in-use)"
     else
-      check C1b_deploy broken "deploy failed, still stale:$deploy_still (was:$deploy_bad)"
+      deploy_safe="$deploy_safe $job"
     fi
+  done
+fi
+if [ -n "$deploy_safe" ]; then
+  for job in $deploy_safe; do
+    src="$REPO/scripts/$job"
+    dst="$BENCH/bin/$job"
+    mkdir -p "$BENCH/bin"
+    # Atomic rename: a process that already has the old file open keeps reading
+    # the old inode, so this can never corrupt a script mid-execution.
+    cp "$src" "$BENCH/bin/.$job.deploy-new" || continue
+    case "$job" in
+      *.sh) chmod 755 "$BENCH/bin/.$job.deploy-new" ;;
+      *)    chmod 644 "$BENCH/bin/.$job.deploy-new" ;;
+    esac
+    mv "$BENCH/bin/.$job.deploy-new" "$dst" || continue
+  done
+  # py helpers are invoked via `python3`, so they need read access but not +x.
+  chmod 755 "$BENCH/bin"/*.sh 2>/dev/null || true
+fi
+# A deferral is not a failure: the job is stale on purpose until nothing is running
+# it. So only re-verify what we were actually able to deploy, and report the
+# deliberately held jobs separately.
+deploy_still=""
+deploy_held=""
+for src in "$REPO"/scripts/*; do
+  [ -f "$src" ] || continue
+  job=$(basename "$src")
+  case "$job" in __pycache__|*.pyc|*.pyo) continue ;; esac
+  if script_in_use "$job"; then
+    cmp -s "$src" "$BENCH/bin/$job" || deploy_held="$deploy_held $job(in-use)"
+    continue
   fi
+  cmp -s "$src" "$BENCH/bin/$job" || deploy_still="$deploy_still $job(unfixed)"
+done
+if [ -n "$deploy_safe" ]; then
+  note_fix "deployed stale/missing pipeline scripts to bin:$(printf '%s' "$deploy_safe" | tr -s ' ')"
+fi
+if [ -n "$deploy_still" ]; then
+  check C1b_deploy broken "deploy failed, still stale:$deploy_still (was:$deploy_bad)"
+elif [ -n "$deploy_held" ]; then
+  check C1b_deploy ok "in sync except in-use scripts (deployed nothing onto a running script):$deploy_held"
 else
   check C1b_deploy ok "installed pipeline scripts identical to repo source"
 fi
