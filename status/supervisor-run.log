@@ -69985,3 +69985,128 @@ drwxrwxr-x  2 ubuntu ubuntu      4096 Sep 30 01:22 status
 === lock holders ===
 held by 681167: bash /vol/data/benchmark/bin/meta-watchdog.sh
 > build · big-pickle
+[0m$ [0mps -o pid,ppid,etime,stat,wchan:24,args -p 681167 2>/dev/null | cut -c1-150; echo '--- children ---'; for p in /proc/[0-9]*; do pp=$(sed 's/^.*) //' /proc/$p/stat 2>/dev/null | awk '{print $2}'); [ "$pp" = "681167" ] && echo "  ${p#/proc/}: $(tr '\0' ' ' < /proc/${p#/proc/}/cmdline | cut -c1-100)"; done; echo '--- fds of interest ---'; for f in /proc/681167/fd/*; do echo "  $(basename $f) -> $(readlink $f 2>/dev/null | cut -c1-90)"; done | grep -v 'pipe:\|socket:\|/dev/' | head
+PID    PPID     ELAPSED STAT WCHAN                    COMMAND
+ 681167  681165       17:03 S    do_wait                  bash /vol/data/benchmark/bin/meta-watchdog.sh
+--- children ---
+--- fds of interest ---
+  1 -> /tmp/#11941 (deleted)
+  2 -> /tmp/#11941 (deleted)
+  255 -> /vol/data/benchmark/bin/meta-watchdog.sh (deleted)
+  9 -> /tmp/meta-watchdog.lock
+> build · big-pickle
+[0m→ [0mRead /vol/data/repos/metagenomic-binning-benchmark/scripts/meta-watchdog.sh [90m[limit=75, offset=530][0m
+> build · big-pickle
+[0m→ [0mRead /vol/data/repos/metagenomic-binning-benchmark/scripts/meta-watchdog.sh [90m[limit=60, offset=605][0m
+> build · big-pickle
+The `META_WATCHDOG_NO_LLM=1` run exited instantly because the 01:23 tick is *me* — it holds the watchdog lock while awaiting this supervisor invocation (fd 255 shows the old inode as `(deleted)`, confirming the atomic deploy was safe). So C1b gets verified by the next cron tick; verifying directly instead:
+[0m$ [0mgrep -n 'SUPERVISOR_TIMEOUT_S\|MAX_ESCAL=' /vol/data/benchmark/bin/meta-watchdog.sh | head -5; echo '=== full repo/scripts vs bin cmp ==='; n=0; bad=0; for s in /vol/data/repos/metagenomic-binning-benchmark/scripts/*; do [ -f "$s" ] || continue; b=$(basename "$s"); case "$b" in __pycache__|*.pyc|*.pyo) continue;; esac; n=$((n+1)); if ! cmp -s "$s" "/vol/data/benchmark/bin/$b"; then echo "DRIFT: $b"; bad=$((bad+1)); fi; done; echo "checked=$n drift=$bad"; echo '=== stray temp files in bin ==='; ls -a /vol/data/benchmark/bin/ | grep -E 'deploy-new|in_use' || echo "none"
+29:MAX_ESCAL=3
+31:SUPERVISOR_TIMEOUT_S=${META_SUPERVISOR_TIMEOUT_S:-1800}
+623:  timeout --foreground --kill-after=30s "${SUPERVISOR_TIMEOUT_S}s" \
+=== full repo/scripts vs bin cmp ===
+checked=33 drift=0
+=== stray temp files in bin ===
+none
+> build · big-pickle
+All 33 scripts in sync, no drift, no stray temp files. Now the C8 triage — re-checking live issue state immediately before acting:
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark; R=$(gh repo view --json nameWithOwner --jq .nameWithOwner 2>/dev/null); echo "repo=$R"; for n in 25 27 28 29; do echo "=== #$n ==="; gh issue view "$n" -R "$R" --json number,title,state,updatedAt,comments --jq '"state=\(.state) updatedAt=\(.updatedAt) ncomments=\(.comments|length) last=\(.comments[-1].createdAt) by=\(.comments[-1].author.login) body=\(.body[0:120]|gsub("\n";" "))"'; done
+repo=paulzierep/metagenomic-binning-benchmark
+=== #25 ===
+match("\n"; "g") cannot be applied to: null
+=== #27 ===
+match("\n"; "g") cannot be applied to: null
+=== #28 ===
+match("\n"; "g") cannot be applied to: null
+=== #29 ===
+match("\n"; "g") cannot be applied to: null
+> build · big-pickle
+[0m$ [0mR=paulzierep/metagenomic-binning-benchmark; for n in 25 27 28 29; do echo "=== #$n ==="; gh issue view "$n" -R "$R" --json number,title,state,updatedAt,comments > /tmp/opencode/t/iss$n.json 2>&1 && python3 -c "
+import json,sys
+d=json.load(open('/tmp/opencode/t/iss$n.json'))
+c=d['comments']
+print(' title:',d['title'][:70],'| state:',d['state'],'| updatedAt:',d['updatedAt'],'| ncomments:',len(c))
+print(' body:',(d.get('body') or '')[:150].replace(chr(10),' '))
+for x in c[-2:]:
+    print('  -',x['createdAt'],x['author']['login'],':',x['body'][:200].replace(chr(10),' '))
+"; done
+=== #25 ===
+ title: Improve optimization | state: OPEN | updatedAt: 2026-09-30T01:21:06Z | ncomments: 9
+ body: 
+  - 2026-09-30T00:43:24Z paulzierep : Sweep complete — 24/24 cells, ranking delivered 🏁  The 24-cell medium-dataset sweep (issue #25) is **done** (2026-09-28 → 2026-09-30). 23 cells evaluated end-to-end (CheckM2 + CheckM v1 + per-bin plot
+  - 2026-09-30T01:21:06Z paulzierep : **AMBER now covers all three real datasets — CAMI III toy gut added (2026-09-30)** ✅  Your directive *"use amber for performance of cami II, use the gold standard if available"* is now satisfied end-t
+=== #27 ===
+ title: Are u ok ? | state: OPEN | updatedAt: 2026-09-29T13:08:46Z | ncomments: 11
+ body: 
+  - 2026-09-29T12:28:19Z paulzierep : Check-in response: Agent is active and processing sweep medium grid (24 cells, cells 1-12 complete, cells 13-24 pending). All benchmark runs previously completed successfully. #check-in
+  - 2026-09-29T13:08:46Z paulzierep : Are u ok ?: Yes, the agent is operational. Sweep medium grid is progressing: sweep_013_edges80 is active (cell 13/24 of 24-cell medium grid, 8 threads, seed 42, temp=ref, max_edges=80). All prior cell
+=== #28 ===
+ title: Fix this issue | state: OPEN | updatedAt: 2026-09-29T13:08:45Z | ncomments: 15
+ body: 
+  - 2026-09-29T12:28:19Z paulzierep : Triage: Marker seed generation failure (status 3) on reduced datasets — root cause is BAM @SQ list / assembly contig ID mismatch (issue #2 producer/consumer gap). Fix committed locally on comebin-opti
+  - 2026-09-29T13:08:45Z paulzierep : Fix this issue: Marker seed generation failures are being addressed through the sweep optimization framework. All sweep runs use seed=42 for reproducibility. The current sweep_013_edges80 (cell 13/24,
+=== #29 ===
+ title: Small test data | state: OPEN | updatedAt: 2026-09-29T13:08:45Z | ncomments: 14
+ body: 
+  - 2026-09-29T12:28:19Z paulzierep : Triage: Small test data floor confirmed at ~101 contigs (tiny_test_n101 passes, tiny_test_n100 fails). HNSW k-mer parameter constraint: max_edges must be < contig count. Seed reproducibility establish
+  - 2026-09-29T13:08:45Z paulzierep : Small test data update: The functional dataset floor remains at ~101 contigs (tiny_test_n101 passes with 1 bin, CheckM2 63.89/9.05, CheckM v1 46.58/6.35). Current sweep_013_edges80 (cell 13/24, medium
+> build · big-pickle
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark; echo "--- fix commit containment ---"; for r in origin/master origin/comebin-optimizations-v11; do printf '%-38s %s  has41606c8=%s\n' "$r" "$(git rev-parse --short $r 2>/dev/null)" "$(git merge-base --is-ancestor 41606c8 $r 2>/dev/null && echo YES || echo no)"; done; git log --oneline -1 41606c8 2>/dev/null | cut -c1-90; echo "--- local branches ahead of origin ---"; git for-each-ref --format='%(refname:short) %(objectname:short=8) %(upstream:short) %(upstream:track)' refs/heads | head -8; echo "--- bioconda recipe? ---"; ls /vol/data/benchmark/bin/run_galaxy_fixture_test.sh >/dev/null 2>&1 && echo fixture-script-present; ls -d /vol/data/benchmark/runs/*fixture* /vol/data/benchmark/runs/*galaxy* /vol/data/benchmark/runs/*COMEBin-v11-sweep* 2>/dev/null || echo "NO galaxy/fixture/sweep run dir"; echo "--- live run ---"; cat /vol/data/benchmark/.active_run
+--- fix commit containment ---
+origin/master                            has41606c8=no
+origin/comebin-optimizations-v11         has41606c8=no
+--- local branches ahead of origin ---
+main da8f5e69 origin/main 
+--- bioconda recipe? ---
+fixture-script-present
+NO galaxy/fixture/sweep run dir
+--- live run ---
+634536 634533 /vol/data/benchmark/runs/human_v11_winner_20260930/comebin_run.log /vol/data/benchmark/runs/human_v11_winner_20260930 1790728917 cami2-human /vol/data/repos/COMEBin-v11-sweep /vol/data/datasets/cami_II_human/human_sample0_input/contigs.fa /vol/data/datasets/cami_II_human/human_sample0_input/bamfiles
+> build · big-pickle
+[0m$ [0mcd /vol/data/repos/metagenomic-binning-benchmark; echo "--- does 41606c8 exist? ---"; git cat-file -t 41606c8 2>&1 | head -2; git log --oneline -1 41606c8 2>&1 | cut -c1-100; echo "--- all refs containing it ---"; git branch -a --contains 41606c8 2>&1 | head; echo "--- remote branches ---"; git branch -r 2>/dev/null | head -10; echo "--- HEAD vs origin/main ---"; git rev-parse --short HEAD; git rev-parse --short origin/main; git status --porcelain | head
+--- does 41606c8 exist? ---
+fatal: Not a valid object name 41606c8
+fatal: ambiguous argument '41606c8': unknown revision or path not in the working tree.
+Use '--' to separate paths from revisions, like this:
+'git <command> [<revision>...] -- [<file>...]'
+--- all refs containing it ---
+error: malformed object name 41606c8
+--- remote branches ---
+  origin/main
+--- HEAD vs origin/main ---
+da8f5e69
+da8f5e69
+ M results/figures/comp_vs_cont_all-runs.png
+ M results/figures/comp_vs_cont_by_dataset.png
+ M scripts/meta-watchdog.sh
+> build · big-pickle
+[0m$ [0mcd /vol/data/repos/COMEBin-v11-sweep 2>/dev/null && { echo "COMEBin repo:"; git log --oneline -6 | cut -c1-95; echo "--- branches ---"; git for-each-ref --format='%(refname:short) %(objectname:short=8) %(upstream:short) %(upstream:track)' refs/heads refs/remotes | head -8; echo "--- 41606c8 here? ---"; git cat-file -t 41606c8 2>&1 | head -1; git branch -a --contains 41606c8 2>/dev/null | head -5; } || echo "COMEBin-v11-sweep repo not found"
+COMEBin repo:
+95f5ea8 batch1 (v1.1.0 base): sequential bin numbering, drop empty/missing bins
+1b476a4 Clarify PyTorch installation options
+fd7ff06 Update Bioconda CUDA installation example
+ad6ceb3 Release v1.1.0
+987db95 Improve thread usage in cluster.py
+236b986 control thread usage better; support the datasets with fewer than 1024 contigs;
+--- branches ---
+archive/pre-v11-master-20260928 358ddd85 origin/archive/pre-v11-master-20260928 
+comebin-optimizations 03670d6a origin/comebin-optimizations 
+comebin-optimizations-v11 41606c8e origin/master [ahead 2]
+comebin-small-fix c8f22e49 origin/comebin-small-fix 
+master 1b476a41 origin/master 
+origin 1b476a41  
+origin/archive/pre-v11-master-20260928 358ddd85  
+origin/comebin-optimizations 03670d6a  
+--- 41606c8 here? ---
+commit
++ comebin-optimizations-v11
+> build · big-pickle
+Facts confirmed. Posting one concise correction to each of the three stale issues (nothing on #25, whose 01:21Z comment is accurate):
+[0m$ [0mR=paulzierep/metagenomic-binning-benchmark
+gh issue comment 27 -R "$R" --body "Check-in: agent healthy. Correction to the previous status — the 24-cell medium sweep is **complete (24/24, finished 2026-09-30T00:43Z)**, not \"cell 13/24\". Current work is the winning configuration on a real CAMI II human run (\`human_v11_winner_20260930\`); driver, eval chain and all watchdogs green, 287 GiB disk free." 2>&1 | tail -1
+gh issue comment 28 -R "$R" --body "Status: the marker-seed fix is **committed locally only** — \`41606c8\` on local branch \`comebin-optimizations-v11\` in the COMEBin repo, which is 2 commits ahead of \`origin/master\` and has no remote branch. It is therefore **not** merged to master and **not** in a bioconda recipe, so this issue stays open. Sweep completion no longer depends on it: the 24-cell medium sweep finished 24/24 at 2026-09-30T00:43Z. Remaining work = push the branch, merge to master, add the bioconda recipe." 2>&1 | tail -1
+gh issue comment 29 -R "$R" --body "Status: the ~101-contig floor is unchanged (\`tiny_test_n101\` passes, n100 fails) and seed reproducibility holds. The 24-cell medium sweep finished 24/24 at 2026-09-30T00:43Z, so the old \"cell 13/24\" status is outdated. Still outstanding for this issue: the **Galaxy / bioconda fixture end-to-end run has never been executed** (no \`COMEBin-v11-sweep\` fixture run directory exists) — that is the remaining deliverable." 2>&1 | tail -1
+https://github.com/paulzierep/metagenomic-binning-benchmark/issues/27#issuecomment-5902396759
+https://github.com/paulzierep/metagenomic-binning-benchmark/issues/28#issuecomment-5902396943
+https://github.com/paulzierep/metagenomic-binning-benchmark/issues/29#issuecomment-5902397115
+> build · big-pickle
