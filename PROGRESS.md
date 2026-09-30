@@ -1056,3 +1056,27 @@ Python script.
 - Waits for `.active_run` release, then runs `run_eval.sh` (CheckM2 with thread cap at 16 for 416 bins, CheckM v1, results CSV, per-bin CSV/plots, Zenodo version, AMBER vs cami_III gold standard, biobox export + validation via `validate_binning.py`).
 - DEDUP guard: `pgrep -f run_eval_chain.sh` prevents duplicate launches.
 - Next: monitor chain progress; once CHAIN COMPLETE, next steps include CAMI II human winner generalization check and/or CAMI III toy-gut winner run.
+
+### 2026-09-30T04:31Z — CAMI III winner eval chain CheckM2 lock contention
+
+- `run_eval.sh` FAILED rc=1 after waiting 600s for `/tmp/benchmark-start.lock` which was held by a previous evaluation
+- CheckM2 evaluation did not complete; CheckM v1, results CSV, and per-bin plots were not generated
+- AMBER and biobox export succeeded independently (chain design: subsequent steps are non-fatal)
+- Eval chain stopped after run_eval.sh failure; AMBER and biobox results already on disk
+- Next step: re-launch evaluation once lock is released
+
+### 2026-09-30T04:42Z — CAMI III winner eval re-launched
+
+- CheckM2 evaluation lock released; `.active_run` clear, no competing benchmarks
+- Re-launched `run_eval_chain.sh` for cami3_v11_winner_20260930 to complete CheckM2 + CheckM v1 + results CSV + per-bin plots
+- AMBER and biobox already completed; re-run best-effort (zenodo_update no-op on unchanged content)
+
+### 2026-09-30T05:02Z — CAMI III winner eval chain COMPLETE
+
+- Full eval chain completed: `run_eval.sh` (CheckM2 rc=0, CheckM v1 rc=0) + results CSV + per-bin plots + AMBER + biobox export + validation
+- CheckM2: 416 bins, mean completeness/contamination recorded
+- CheckM v1: 416 bins, mean completeness/contamination recorded  
+- AMBER: scored cami3_v11_winner_20260930 against CAMI III gold standard
+- Biobox export: 416 bins, v0.9.1 validated OK
+- Artifacts: `results/cami3_v11_winner_20260930.csv`, `runs/cami3_v11_winner_20260930/per_bin_results.csv`, `results/figures/...`
+- Zenodo update: best-effort, content unchanged (v15 retained)
