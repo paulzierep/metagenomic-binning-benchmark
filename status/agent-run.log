@@ -136988,3 +136988,196 @@ CAMI III reference for comparison: `cami3_v11_20260926_rerun` = 492 bins, CheckM
 [0m$ [0mTS=$(date -u +"%Y-%m-%dT%H:%M:%SZ"); echo "$TS human_v11_winner eval: CheckM2 61.70/8.25 (HQ22/MQ26), CheckM1 61.26/14.71 (21/27), 54 bins 1h22m; Zenodo v16 staging (1918 files 2.8GB); AMBER+biobox pending; cami3 ref=492 bins 35.97/11.42" >> /vol/data/repos/metagenomic-binning-benchmark/status/agent-activity.log; echo "$TS human winner eval done (61.70/8.25); zenodo v16 uploading; cami3 relaunch queued" > /vol/data/benchmark/.activity; touch /vol/data/benchmark/.heartbeat; echo ok
 ok
 > build · big-pickle
+[0m$ [0msleep 110; tail -6 /vol/data/benchmark/status/human_v11_winner_20260930.eval_chain.log | cut -c1-150; echo "---zenodo pub tail---"; grep -E 'zenodo' /vol/data/benchmark/status/human_v11_winner_20260930.eval_chain.log | tail -5 | cut -c1-150
+| `cami3_v11_20260926_rerun` | CAMI III toy human gut (5,000 contigs) | `95f5ea8` (comebin-optimizations-v11) | 42 | 1h29m | 492 | 35.97 / 11.42 | 53 
+
+[zenodo_update] staging benchmark data -> /vol/data/benchmark/releases/stage.PbUshD
+[zenodo_update] runs in package: baseline_rerun_autorestart1 (60 bins) cami3_v11_20260926_rerun (492 bins) fix_v11_20260924 (71 bins) human_v11_202609
+[zenodo_update] manifest: 1918 files, 2809202226 bytes
+[zenodo_update] reusing open draft 23042028
+---zenodo pub tail---
+[zenodo_update] staging benchmark data -> /vol/data/benchmark/releases/stage.PbUshD
+[zenodo_update] runs in package: baseline_rerun_autorestart1 (60 bins) cami3_v11_20260926_rerun (492 bins) fix_v11_20260924 (71 bins) human_v11_202609
+[zenodo_update] manifest: 1918 files, 2809202226 bytes
+[zenodo_update] reusing open draft 23042028
+> build · big-pickle
+[0m$ [0mps aux | grep -E '[z]enodo|[p]ublish' | head -5; echo "---releases---"; ls -lt /vol/data/benchmark/releases/ | head -5; echo "---du stage---"; du -sh /vol/data/benchmark/releases/stage.PbUshD 2>/dev/null; echo "---zenodo script---"; ls /vol/data/benchmark/bin/ | grep -i zenodo
+ubuntu   1094878  0.3  0.0   8412  4096 ?        S    02:19   0:00 bash /vol/data/benchmark/bin/zenodo_update.sh
+ubuntu   1099626  0.0  0.0   7744  3408 ?        Ss   02:22   0:00 /bin/bash -c ps aux | grep -E '[z]enodo|[p]ublish' | head -5; echo "---releases---"; ls -lt /vol/data/benchmark/releases/ | head -5; echo "---du stage---"; du -sh /vol/data/benchmark/releases/stage.PbUshD 2>/dev/null; echo "---zenodo script---"; ls /vol/data/benchmark/bin/ | grep -i zenodo
+---releases---
+total 13631876
+-rw-rw-r-- 1 ubuntu ubuntu  639107072 Sep 30 02:22 comebin_benchmark_release_v15_20260930.tar.gz
+drwx------ 2 ubuntu ubuntu       4096 Sep 30 02:19 api.q6yZ1P
+drwx------ 6 ubuntu ubuntu       4096 Sep 30 02:19 stage.PbUshD
+-rw-rw-r-- 1 ubuntu ubuntu     371072 Sep 30 02:19 manifest.20260930T021903Z.json
+---du stage---
+2.7G	/vol/data/benchmark/releases/stage.PbUshD
+---zenodo script---
+zenodo_update.sh
+> build · big-pickle
+[0m$ [0mgrep -vE '^\s*#' /vol/data/benchmark/bin/zenodo_update.sh | sed -n '1,80p'
+set -euo pipefail
+
+REPO=${BENCH_REPO:-}
+if [ -z "$REPO" ] || [ ! -f "$REPO/README.md" ]; then
+  _here=$(cd "$(dirname "$0")" && pwd)
+  for _cand in "$_here/.." /vol/data/repos/metagenomic-binning-benchmark; do
+    if [ -f "$_cand/README.md" ] && [ -d "$_cand/results" ]; then REPO=$(cd "$_cand" && pwd); break; fi
+  done
+fi
+[ -n "$REPO" ] || die "cannot locate repository root (set BENCH_REPO)"
+RUNS_ROOT=${RUNS_ROOT:-/vol/data/benchmark/runs}
+RELEASES=${RELEASES:-/vol/data/benchmark/releases}
+META=${META:-/vol/data/benchmark/meta}
+TOKEN_FILE=${ZENODO_TOKEN_FILE:-$HOME/.zenodo_token}
+RECORD=${ZENODO_RECORD:-22935025}
+DRY=0
+[ "${1:-}" = "--dry-run" ] && DRY=1
+
+log() { echo "[zenodo_update] $*"; }
+skip() { log "skip: $*"; exit 0; }
+die() { log "ERROR: $*" >&2; exit 1; }
+
+[ "${ZENODO_UPDATE:-1}" = "0" ] && skip "ZENODO_UPDATE=0"
+command -v curl >/dev/null || skip "curl not available"
+if [ "$DRY" -eq 0 ]; then
+  [ -r "$TOKEN_FILE" ] || skip "no token file at $TOKEN_FILE"
+  TOK=$(tr -d '\n' < "$TOKEN_FILE")
+fi
+command -v python3 >/dev/null || die "python3 not available"
+mkdir -p "$RELEASES" "$META"
+
+STAMP=$(date -u +%Y%m%dT%H%M%SZ)
+STAGE=$(mktemp -d "$RELEASES/stage.XXXXXX")
+WORK=""
+cleanup() { rm -rf "$STAGE" ${WORK:+"$WORK"}; }
+trap cleanup EXIT
+
+log "staging benchmark data -> $STAGE"
+cp -a "$REPO/results" "$REPO/runs" "$REPO/docs" "$STAGE/"
+cp -a "$REPO/README.md" "$REPO/PROGRESS.md" "$STAGE/"
+mkdir -p "$STAGE/status"
+[ -f "$REPO/status/agent-activity.log" ] && \
+  cp -a "$REPO/status/agent-activity.log" "$STAGE/status/"
+
+RUNS_INCLUDED=()
+for rd in "$RUNS_ROOT"/*/; do
+  [ -d "$rd" ] || continue
+  name=$(basename "$rd")
+  bins="$rd/comebin_out/comebin_res/comebin_res_bins"
+  n_bins=0
+  if [ -d "$bins" ]; then
+    dst="$STAGE/runs/$name/comebin_res/comebin_res_bins"
+    mkdir -p "$dst"
+    while IFS= read -r f; do
+      cp -L "$f" "$dst/" && n_bins=$((n_bins + 1))
+    done < <(find -L "$bins" -maxdepth 1 -type f -size +0c 2>/dev/null)
+  fi
+  for rel in eval/checkm2/quality_report.tsv \
+             eval/checkm/out/storage/bin_stats_ext.tsv \
+             eval/checkm/out/checkm.log; do
+    if [ -f "$rd$rel" ]; then
+      mkdir -p "$STAGE/runs/$name/$(dirname "$rel")"
+      cp -a "$rd$rel" "$STAGE/runs/$name/$rel"
+    fi
+  done
+  if [ -s "$rd/biobox/binning.tar.gz" ] && [ -s "$rd/biobox/README.txt" ] && \
+     gzip -t "$rd/biobox/binning.tar.gz" 2>/dev/null; then
+    mkdir -p "$STAGE/runs/$name/biobox"
+    cp -L "$rd/biobox/binning.tar.gz" "$rd/biobox/README.txt" \
+         "$STAGE/runs/$name/biobox/"
+    for bf in "$rd"/biobox/*.binning; do
+      [ -s "$bf" ] && cp -L "$bf" "$STAGE/runs/$name/biobox/$(basename "$bf")"
+    done
+    for sf in "$rd"/biobox/tree/*/*/binning_summary.tsv; do
+      [ -s "$sf" ] && cp -L "$sf" "$STAGE/runs/$name/biobox/binning_summary.tsv"
+    done
+    if [ "${INCLUDE_BINS_FASTA:-0}" = "1" ] && [ -s "$rd/biobox/bins.fasta.gz" ]; then
+      cp -L "$rd/biobox/bins.fasta.gz" "$STAGE/runs/$name/biobox/bins.fasta.gz"
+    fi
+  fi
+> build · big-pickle
+[0m$ [0mgrep -vE '^\s*#' /vol/data/benchmark/bin/zenodo_update.sh | sed -n '80,160p'
+fi
+  if [ -f "$STAGE/runs/$name/run_meta.txt" ] && \
+     { [ "$n_bins" -gt 0 ] || [ -f "$STAGE/runs/$name/per_bin_results.csv" ]; }; then
+    RUNS_INCLUDED+=("$name ($n_bins bins)")
+  else
+    rm -rf "$STAGE/runs/$name"
+  fi
+done
+[ "${#RUNS_INCLUDED[@]}" -gt 0 ] || die "no evaluated runs found under $RUNS_ROOT"
+log "runs in package: ${RUNS_INCLUDED[*]}"
+
+MANIFEST="$RELEASES/manifest.$STAMP.json"
+python3 "$REPO/scripts/make_release_manifest.py" "$STAGE" "$MANIFEST" \
+  --omit-local-path \
+  --metadata source_repo="https://github.com/paulzierep/metagenomic-binning-benchmark" \
+  --metadata source_commit="$(git -C "$REPO" rev-parse HEAD 2>/dev/null || echo unknown)" \
+  --metadata kind="benchmark-results" \
+  --metadata runs="$(IFS=,; echo "${RUNS_INCLUDED[*]}")" \
+  --metadata created_utc="$STAMP" >/dev/null
+log "manifest: $(python3 -c "import json,sys;d=json.load(open('$MANIFEST'));print(len(d['files']),'files,',sum(f['bytes'] for f in d['files']),'bytes')")"
+cp "$MANIFEST" "$STAGE/manifest.json"
+
+CONTENT_SHA=$(python3 - "$MANIFEST" <<'PY'
+import hashlib, json, sys
+m = json.load(open(sys.argv[1]))
+h = hashlib.sha256()
+for f in m["files"]:
+    if f["path"].startswith("status/"):
+        continue
+    h.update(f"{f['sha256']}  {f['path']}\n".encode())
+print(h.hexdigest())
+PY
+)
+LAST="$META/zenodo_last_content.sha256"
+if [ -f "$LAST" ] && [ "$(cat "$LAST")" = "$CONTENT_SHA" ]; then
+  skip "content unchanged since last upload (sha256 $CONTENT_SHA)"
+fi
+
+build_tar() {
+  tar --sort=name --owner=0 --group=0 --numeric-owner \
+      --mtime='2020-01-01 00:00:00Z' -cf - -C "$STAGE" . | gzip -n > "$1"
+}
+
+if [ "$DRY" -eq 1 ]; then
+  OUT="$RELEASES/comebin_benchmark_release_dryrun_$(date -u +%Y%m%d).tar.gz"
+  build_tar "$OUT"
+  log "package: $OUT ($(stat -c%s "$OUT") bytes, md5 $(md5sum "$OUT" | cut -d' ' -f1))"
+  log "dry-run: stopping before any network call"
+  exit 0
+fi
+
+WORK=$(mktemp -d "$RELEASES/api.XXXXXX")
+req() { # METHOD URL [curl args...] -> $CODE (body in $WORK/resp.json)
+  local method=$1 url=$2; shift 2
+  CODE=$(curl -sS -o "$WORK/resp.json" -w '%{http_code}' -X "$method" \
+    -H "Authorization: Bearer $TOK" "$@" "$url")
+}
+
+req GET "https://zenodo.org/api/deposit/depositions"
+[ "$CODE" = "200" ] || die "listing depositions failed (HTTP $CODE): $(head -c 300 "$WORK/resp.json")"
+DRAFT_ID=$(python3 - "$WORK/resp.json" <<'PY'
+import json, sys
+for d in json.load(open(sys.argv[1])):
+    if str(d.get("conceptrecid")) == "22935024" and d.get("state") == "unsubmitted":
+        print(d["id"]); break
+PY
+)
+if [ -z "$DRAFT_ID" ]; then
+  req GET "https://zenodo.org/api/records/$RECORD/versions"
+  [ "$CODE" = "200" ] || die "versions lookup failed (HTTP $CODE)"
+  LATEST_ID=$(python3 - "$WORK/resp.json" <<'PY'
+import json, sys
+hits = json.load(open(sys.argv[1]))["hits"]["hits"]
+print(max(int(h["id"]) for h in hits))
+PY
+)
+  req POST "https://zenodo.org/api/deposit/depositions/$LATEST_ID/actions/newversion"
+  [ "$CODE" = "201" ] || die "creating new version failed (HTTP $CODE): $(head -c 300 "$WORK/resp.json")"
+  DRAFT_ID=$(python3 -c "import json;print(json.load(open('$WORK/resp.json'))['id'])")
+  log "created new version draft $DRAFT_ID (from record $LATEST_ID)"
+else
+> build · big-pickle
+The hook is reusing the dead v15 draft (23042028) and re-uploading the rebuilt tarball (639 MB) — so the human winner will land as Zenodo **v15** once published. Monitoring the upload.
