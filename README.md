@@ -1,6 +1,6 @@
 <!--AGENT-STATUS-->
 
-> 🟢 **Agent status:** `running` · ⏱ `2026-09-30T05:50 CEST` · 🏃 train cami3_v11_winner_20260930: epoch 199/200 · loss 0.9393923282623291 · top1 77.705078125 · 🧠 `muse-spark-1.3-contributor-free` · [status.log](status/status.log)
+> 🔴 **Agent status:** `stopped (watchdog will restart)` · ⏱ `2026-09-30T05:52 CEST` · 🏃 train cami3_v11_winner_20260930: epoch 199/200 · loss 0.9393923282623291 · top1 77.705078125 · 🧠 `muse-spark-1.3-contributor-free` · [status.log](status/status.log)
 
 # Metagenomic binning benchmark
 
