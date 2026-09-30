@@ -3,13 +3,13 @@
 | | |
 |---|---|
 | Status | 🟢 `running` |
-| ⏱ Updated (Europe/Berlin) | `2026-09-30T05:32 CEST` |
-| 🏃 Live benchmark | `cami3_v11_winner_20260930` — **epoch 162/200** · loss `1.1209280490875244` · top1 acc `73.04035949707031` (log 14s fresh) |
+| ⏱ Updated (Europe/Berlin) | `2026-09-30T05:34 CEST` |
+| 🏃 Live benchmark | `cami3_v11_winner_20260930` — **epoch 168/200** · loss `1.0265299081802368` · top1 acc `75.99934387207031` (log 5s fresh) |
 | 🧠 Model (last turn) | `mimo-v2.6-flash-free` (watchdog rotates to free models on quota) |
-| 📌 Agent note · **36 min old** | agent driver alive; transcript fresh (297s) while heartbeat is stale (2211s) |
-| ⚙️ Load · uptime | `29.57 30.36 29.71` · 6 days, 13 hours, 56 minutes — 32 cores, 62 GiB, no GPU |
-| 💾 RAM used/total | `7200/64295 MB` |
+| 📌 Agent note · **38 min old** | agent driver alive; transcript fresh (416s) while heartbeat is stale (2330s) |
+| ⚙️ Load · uptime | `28.99 29.76 29.57` · 6 days, 13 hours, 58 minutes — 32 cores, 62 GiB, no GPU |
+| 💾 RAM used/total | `5626/64295 MB` |
 | 🔗 Session | `ses_f31799c77ffeTq9gcYgqc4hBhg` |
-| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `7ace690c status: yes — cami3_v11_winner_20260930 epoch 156/200 loss 1.19720637` |
+| 📄 Full state | [PROGRESS.md](PROGRESS.md) · last push `c7ac0da7 meta: supervise tick 2026-09-30T03:33:01Z — 0 fix(es)` |
 | 📜 Agent transcript | [status/agent-run.log](status/agent-run.log) · `14389595 B` — every run, command & tool result |
 | 📈 Timeline | [status/status.log](status/status.log) |
