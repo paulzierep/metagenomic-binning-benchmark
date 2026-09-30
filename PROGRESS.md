@@ -987,3 +987,23 @@ Python script.
   /vol/data/benchmark/runs/cami3_v11_winner_20260930 cami3 28800 32` (AMBER now
   possible thanks to the new CAMI III gold standard). Reference for comparison:
   `cami3_v11_20260926_rerun` (492 bins, CheckM2 35.97/11.42, AMBER F1_bp 0.743).
+
+### 2026-09-30 01:24Z — launch-safety note for the next turn
+
+- `run_eval.sh` **reads** `/vol/data/benchmark/.active_run` but does not
+  register itself there, so a CheckM2/CheckM v1 evaluation is invisible to the
+  `.active_run` check. It does hold `/tmp/benchmark-start.lock` for its whole
+  duration, so a benchmark launcher started at that moment waits up to 300 s
+  (`flock -w`) and then fails — CPU contention with the eval plus a confusing
+  error. **Before launching the CAMI III winner run, confirm the human chain
+  has printed `CHAIN COMPLETE` in
+  `status/human_v11_winner_20260930.eval_chain.log`** (and that
+  `pgrep -f 'run_eval.sh|checkm'` is empty), not just that `.active_run` is
+  clear.
+- Reference numbers for the winner comparison, same dataset / seed / threads:
+  `human_v11_20260925` → 107 bins, CheckM2 35.31/5.13 (HQ 20/MQ 29), CheckM v1
+  32.64/4.65, AMBER F1_bp **0.681**; `cami3_v11_20260926_rerun` → 492 bins,
+  CheckM2 35.97/11.42 (HQ 53/MQ 112), CheckM v1 32.46/13.38, AMBER F1_bp
+  **0.743**.
+- Docs/06 now carries the AMBER + `run_eval_chain.sh` command reference
+  (commit `8318137d`).
