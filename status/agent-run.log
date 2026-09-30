@@ -146167,3 +146167,375 @@ Available fields:
 [0m$ [0mgh issue view 25 -R paulzierep/metagenomic-binning-benchmark --json number,title,body,state,comments 2>&1
 {"body":"Run at least 20 runs with different params or commits on the medium dataset and take the best based on bin stats and if similar based on runtime before running on larger data. Only take cami ii and iii human for the larger data from now on - archive the other benchmark data in zenodo and remove to get disc space, make use of the cami infrastructure, use amber for performace of cami II, use the gold standart if available, do not trim the data if full assembly is there, learn to export binning results as biobox format - cami standard, also export each binning result, bins in fasta, biobox output, stats as csv to zenodo","comments":[{"id":"IC_kwDOUndL2c8AAAABXGzd7g","author":{"login":"paulzierep"},"authorAssociation":"OWNER","body":"Thank you for the optimization ideas. I'm currently working on fix batches for COMEBin (see the optimization strategy in docs/09). Each fix batch is tested with the benchmark workflow (small → medium → large) before integration. What specific optimization areas are you most interested in? Current candidates include k-mer counting, coverage computation, clustering performance, and Leiden parameter sweeps.","createdAt":"2026-09-26T10:49:14Z","includesCreatedEdit":false,"isMinimized":false,"minimizedReason":"","reactionGroups":[],"url":"https://github.com/paulzierep/metagenomic-binning-benchmark/issues/25#issuecomment-5845605870","viewerDidAuthor":true},{"id":"IC_kwDOUndL2c8AAAABXHdDEw","author":{"login":"paulzierep"},"authorAssociation":"OWNER","body":"Optimization batch workflow confirmed: small → medium → large validation before integration, per docs/09-optimization-strategy.md. Current fix batches address: sequential bin numbering, float64 coverage depth consistency, sklearn KMeans compatibility, DataLoader drop_last edge case, and RNG seed reproducibility. Next candidates from code review: vectorized k-mer counting, closed-form covariance computation, set-based membership scans, and Leiden pool pruning (120 unseeded runs). Measuring per-stage wall time and peak RAM will guide priority ordering.","createdAt":"2026-09-26T12:31:03Z","includesCreatedEdit":false,"isMinimized":false,"minimizedReason":"","reactionGroups":[],"url":"https://github.com/paulzierep/metagenomic-binning-benchmark/issues/25#issuecomment-5846287123","viewerDidAuthor":true},{"id":"IC_kwDOUndL2c8AAAABXeb3dQ","author":{"login":"paulzierep"},"authorAssociation":"OWNER","body":"## Optimization sweep — designed (plan + harness ready, launch pending run slot) ✅\n\nCommit `596a5536`:\n\n**Plan:** [docs/13-optimization-sweep-medium.md](https://github.com/paulzierep/metagenomic-binning-benchmark/blob/main/docs/13-optimization-sweep-medium.md)\n- **24 runs** on the medium dataset (3,000 contigs, ~39 min each, seed 42): one-factor-at-a-time around the reference params (temperature, embedding sizes, batch size, HNSW max_edges, n_views, Leiden workers, HMM evalue) + 3 commit pins (master `904f649`, current v11 `95f5ea8`, the #28-fix `41606c8`) + 2 combos + seed sanity.\n- **Ranking**: bin stats first (CheckM2 comp/cont + HQ/MQ + F1, CheckM v1 cross-check), runtime as tiebreak — exactly as you asked.\n- **Then larger data = CAMI II & III human only**; demo/marine/medium/small/tiny archived to Zenodo and removed locally to free disk.\n- **AMBER** against the CAMI II gold standard (needs `setup.tar.gz`/GT import — flagged in docs/01) and no trimming of full assemblies.\n- **Biobox export**: new `scripts/export_biobox.sh` produces the CAMI-standard tarball (engine/version/binning/<sample>/<bin_id>.fna + binning_summary.tsv), concat bins.fasta.gz and a per-bin stats snapshot — validated on `medium_v11_20260924` (16 bins → 4.1 MB tarball).\n\n**Harness:** `scripts/run_comebin_fix.sh` now forwards optional params (TEMP / EMB / EMB_COV / BATCH / MAX_EDGES / LEIDEN_WORKERS / HMM_EVALUE) only when the invoked `run_comebin.sh` supports them, and records them in run_meta.\n\n⚠️ Launch is **blocked** until the current registered run (`small_v11_prepatch_baseline`) finishes — the harness refuses to overlap registered runs, per policy. Will launch the sweep as soon as the slot is free.","createdAt":"2026-09-28T13:01:40Z","includesCreatedEdit":false,"isMinimized":false,"minimizedReason":"","reactionGroups":[],"url":"https://github.com/paulzierep/metagenomic-binning-benchmark/issues/25#issuecomment-5870385013","viewerDidAuthor":true},{"id":"IC_kwDOUndL2c8AAAABXemB3Q","author":{"login":"paulzierep"},"authorAssociation":"OWNER","body":"**Sweep is live** (2026-09-28 13:12 UTC) — the 24-cell medium grid is running.\n\n- Driver: [`scripts/run_sweep_medium.sh`](https://github.com/paulzierep/metagenomic-binning-benchmark/blob/main/scripts/run_sweep_medium.sh) — detached, resumable (skips done cells, evals orphaned ones), never overlaps the registered run slot, one cell at a time.\n- Sources: v11 @ `95f5ea8` (reference base, matches `medium_v11_20260924`), unmodified upstream master @ `904f649` (unseeded, as in the original baselines), v11 @ `41606c8` (issue #28 fix → doubles as a no-regression check).\n- Params: THREADS=8, seed 42 (cell 24 = seed 7 reproducibility check), one-factor-at-a-time on temp / emb / embcov / batch / max_edges / n_views / leiden_workers / hmm_evalue + 2 combos. Cell 23 adjusted: early-stop is hardcoded in `run_comebin.sh` (not a CLI flag), so it's `emb_cov 512 + batch 512` instead of `noearly`.\n- Harness: added `N_VIEWS` forwarding + a `set -u` fix; every sweep flag is gated on the source's flag support, so neither the old master nor the v11 base is disturbed.\n\nCell 1 `sweep_001_ref` is in training (epoch ~few/200). Progress log: `status/sweep_medium.log`; I'll rank the finished cells by bin stats (CheckM2 completeness/contamination, HQ/MQ) then runtime when the grid completes.","createdAt":"2026-09-28T13:11:51Z","includesCreatedEdit":false,"isMinimized":false,"minimizedReason":"","reactionGroups":[],"url":"https://github.com/paulzierep/metagenomic-binning-benchmark/issues/25#issuecomment-5870551517","viewerDidAuthor":true},{"id":"IC_kwDOUndL2c8AAAABXpQOnQ","author":{"login":"paulzierep"},"authorAssociation":"OWNER","body":"**AMBER deliverable — CAMI II marine scored against the official gold standard** (2026-09-29).\n\nAs your owner note says *\"use amber for performance of cami II, use the gold standard if available\"* — done for the existing marine full run, and the tooling is now a one-liner for the human/CAMI III runs after the sweep.\n\n- **Scored**: `marine_v11_20260925` (152 final bins, COMEBin v11 `95f5ea8`).\n- **Gold standard**: official CAMI II marine `binning_gs.tsv` (v0.9.1, 1,475,976 rows, `S0C*`→`Otu*`) shipped with the dataset.\n- **Tool**: [CAMI-challenge/AMBER](https://github.com/CAMI-challenge/AMBER) in a dedicated env (`/vol/data/envs/amber`, py3.11).\n\nbp-weighted results:\n\n| metric | value |\n|---|---|\n| F1 score | **0.330** |\n| precision_avg / weighted | 0.735 / 0.862 |\n| recall_avg / weighted | 0.213 / 0.296 |\n| adjusted Rand index | 0.844 |\n| accuracy_bp | 0.294 |\n| misclassification_bp | 0.138 |\n| fraction of bp assigned | 34.1 % |\n\nCaveat worth knowing: COMEBin keeps the large contigs, so only **2.7 % of sequences** (34 % of bp) are binned at sequence level — that's what the `accuracy_seq 0.019` number reflects. The bp-weighted column is the meaningful one.\n\nArtifacts now in the repo:\n- `docs/14-amber-cami2-marine.md` — full write-up (what/why/command/provenance).\n- `results/amber/marine/` — `amber_results.tsv`, `bin_metrics.tsv`, `amber_report.html` (full interactive report), `heatmap_bar.png`, and the regenerable prediction `comebin_v11_marine.binning`.\n- `scripts/make_amber_prediction.py` — builds the AMBER `@@SEQUENCEID BINID` prediction from any COMEBin run dir, so human/CAMI III evaluations are one command each once the sweep winner is picked.\n\nSweep status: `sweep_003_issue28fix` (your fix `41606c8`) is training (epoch ~120/200); cells 4–24 then run serially — grid + ranking rules unchanged (docs/13).","createdAt":"2026-09-29T01:12:28Z","includesCreatedEdit":false,"isMinimized":false,"minimizedReason":"","reactionGroups":[],"url":"https://github.com/paulzierep/metagenomic-binning-benchmark/issues/25#issuecomment-5881728669","viewerDidAuthor":true},{"id":"IC_kwDOUndL2c8AAAABXpXPlg","author":{"login":"paulzierep"},"authorAssociation":"OWNER","body":"**AMBER addendum — CAMI II human now imported and scored too** (2026-09-29 01:22Z).\n\nSame day, same follow-on: the missing human gold standard is now in.\n\n- **Gold standard imported**: `setup.tar.gz` (1.9 GB, from the CAMI II gastrooral block) had no per-sample `binning_gs.tsv`, but its `gsa_mapping.tsv.gz` (`S0C*`→`OTU`) does map our subset — filtered to the 4,900 contigs: **4,900/4,900 mapped, 64 genomes**. (The pooled `PC*` mapping is a different assembly and is *not* used.) Stored at `datasets/cami_II_human/gold_standard/human_binning_gs.tsv`.\n- **Scored**: `human_v11_20260925` (107 bins).\n\n| dataset | assigned bp | F1_bp | prec_avg | recall_avg | ARI_bp | missclass. |\n|---|---|---|---|---|---|---|\n| CAMI II marine | 34.1 % | 0.330 | 0.735 | 0.213 | 0.844 | 0.138 |\n| **CAMI II human** | **99.3 %** | **0.681** | 0.626 | 0.747 | 0.769 | 0.181 |\n\nMarine recall is structurally low (COMEBin only bins the large contigs → 34 % of bp), whereas the human 4,900-contig selection is binned almost completely (99 % of bp and seqs).\n\n- New: `docs/15-amber-cami2-human.md`, `results/amber/human/` (results.tsv, bin_metrics.tsv, interactive report, heatmap, prediction). docs/01 human ground-truth TODO cleared.\n- **Biobox exports** generated for `marine_v11_20260925` (152 bins), `human_v11_20260925` (107) and `cami3_v11_20260926_rerun` (492) via `scripts/export_biobox.sh` → `runs/<run>/biobox/{tree/comebin/v11/binning/<sample>, binning.tar.gz, binning_summary.tsv}` (kept out of git by .gitignore; destined for the Zenodo release).\n- Sweep: `sweep_003_issue28fix` at epoch **183/200**, cells 4–24 queued.","createdAt":"2026-09-29T01:23:54Z","includesCreatedEdit":false,"isMinimized":false,"minimizedReason":"","reactionGroups":[],"url":"https://github.com/paulzierep/metagenomic-binning-benchmark/issues/25#issuecomment-5881843606","viewerDidAuthor":true},{"id":"IC_kwDOUndL2c8AAAABXqFruA","author":{"login":"paulzierep"},"authorAssociation":"OWNER","body":"Hi - the #25 sweep is currently running cells 4-24 on the medium dataset (24-cell grid with seed 42, 8 threads starting point). Cells 1-3 are complete (sweep_001_ref with 17 bins, sweep_002_master with root cause identified, sweep_003_issue28fix completed). The driver was relaunched at 01:35Z with fd leak fixes and flock -w waits. Progress can be followed in status/sweep_medium.log. Let me know if you need specific cell results!","createdAt":"2026-09-29T02:40:01Z","includesCreatedEdit":false,"isMinimized":false,"minimizedReason":"","reactionGroups":[],"url":"https://github.com/paulzierep/metagenomic-binning-benchmark/issues/25#issuecomment-5882604472","viewerDidAuthor":true},{"id":"IC_kwDOUndL2c8AAAABX8aBZw","author":{"login":"paulzierep"},"authorAssociation":"OWNER","body":"Sweep complete — 24/24 cells, ranking delivered 🏁\n\nThe 24-cell medium-dataset sweep (issue #25) is **done** (2026-09-28 → 2026-09-30). 23 cells evaluated end-to-end (CheckM2 + CheckM v1 + per-bin plots); cell 2 (`sweep_002_master`, stock upstream `904f649`) is the one documented failure — it dies on the medium BAM/assembly mismatch (`KeyError: 'BATS_…_scaffold_22978'`, exit 1 after 108 s, 0 bins), same root cause as #2, not retried.\n\n**Winner (your rule: bin stats first) → `sweep_004_temp005`: temperature 0.05**\n- CheckM2 **43.55 % completeness / 6.77 % contamination**, F1 **59.37** (13 bins)\n- vs reference run (defaults): 34.22 / 4.11, F1 50.44 → **+9.3 pp completeness, +8.9 F1**\n\nTop 5 (full table in `results/sweep_rankings.md`, also in docs/13):\n\n| Rank | Cell | Param | Wall | Bins | CheckM2 comp/cont | F1 |\n|---|---|---|---|---|---|---|\n| 1 | sweep_004_temp005 | temp 0.05 | 47m | 13 | 43.55 / 6.77 | 59.37 |\n| 2 | sweep_023_embcov512_batch512 | emb_cov 512, batch 512 | 21m | 13 | 43.16 / 7.52 | 58.85 |\n| 3 | sweep_011_batch512 | batch 512 | 26m | 14 | 41.56 / 6.34 | 57.57 |\n| 4 | sweep_013_edges80 | max_edges 80 | 46m | 15 | 40.39 / 5.29 | 56.63 |\n| 5 | sweep_007_emb1024 | emb 1024 | 40m | 15 | 38.40 / 4.76 | 54.73 |\n\nTakeaways:\n- **Low temperature is the single strongest lever** for completeness.\n- **batch ≤ 512** is the cheapest strong change (~2× faster AND +~7 pp completeness) — runner-up confirms it as an independent axis (emb_cov 512).\n- **Seed sensitivity is real**: same reference config with seed 7 (cell 24) gives 37.37 vs 34.22 completeness — relevant to #21.\n- All params verified against the actual command line (`cmd_wrapper`), so the ranking is not affected by the old stale `sweep:` meta text (documented in docs/13 + sweep_rankings.md).\n\n**Next steps (following your \"only cami ii/iii human for larger data\" rule):**\n- ✅ Winner **temp 0.05** launched on **CAMI II human** (4,900 contigs, `95f5ea8`, seed 42, 32 threads) — running now.\n- After it finishes: AMBER scoring vs the CAMI II human gold standard, biobox v0.9.1 export (bins FASTA + `<sample>.binning` + stats), then CAMI III toy human with the winner.\n- Medium/other datasets get archived to Zenodo + freed (v15 release already staged).","createdAt":"2026-09-30T00:43:24Z","includesCreatedEdit":false,"isMinimized":false,"minimizedReason":"","reactionGroups":[],"url":"https://github.com/paulzierep/metagenomic-binning-benchmark/issues/25#issuecomment-5901812071","viewerDidAuthor":true},{"id":"IC_kwDOUndL2c8AAAABX8xDDw","author":{"login":"paulzierep"},"authorAssociation":"OWNER","body":"**AMBER now covers all three real datasets — CAMI III toy gut added (2026-09-30)** ✅\n\nYour directive *\"use amber for performance of cami II, use the gold standard if available\"* is now satisfied end-to-end, including CAMI III, which needed a gold standard built for our input.\n\n**New:** [`docs/16-amber-cami3-toy.md`](https://github.com/paulzierep/metagenomic-binning-benchmark/blob/main/docs/16-amber-cami3-toy.md)\n\n- **Gold standard built for our subset** — the official `gsa_pooled_mapping.tsv.gz` (117,169,291 B, md5 `34f56651…`, 6,140,132 rows) is keyed by *anonymous* pooled ids (`PC0`, `PC1`, …), while our input FASTA is keyed by reference-derived headers (`NZ_*_from_*_to_*`). New script [`scripts/make_cami3_gold_standard.py`](https://github.com/paulzierep/metagenomic-binning-benchmark/blob/main/scripts/make_cami3_gold_standard.py) joins them on the reference contig id: **5,000/5,000 contigs mapped (100 % of bp, 1,126,537,317 bp) to 390 genomes**, CAMI/AMBER v0.9.1 format, structurally validated.\n- **Scored the existing CAMI III run** `cami3_v11_20260926_rerun` (492 bins) with the same AMBER version as docs/14/15.\n\n**All three datasets — official CAMI AMBER, bp-weighted**\n\n| dataset | assigned bp | **F1_bp** | prec_avg | recall_avg | ARI_bp | missclass. | bins / genomes |\n|---|---|---|---|---|---|---|---|\n| CAMI II marine | 34.1 % | 0.330 | 0.735 | 0.213 | 0.844 | 0.138 | 152 / ~1000+ |\n| CAMI II human | 99.3 % | 0.681 | 0.626 | 0.747 | 0.769 | 0.181 | 107 / 64 |\n| **CAMI III toy gut** | 99.6 % | **0.743** | 0.719 | 0.769 | 0.351 | 0.308 | 492 / 390 |\n\nCAMI III has the **highest F1** of the three. Its lower ARI is over-splitting (492 bins for 390 genomes), not wrong assignment — consistent with the CheckM2 read-out for the same run (35.97 % completeness, 53 HQ / 112 MQ, highest contamination of any run because the toy set is strain-rich).\n\nArtifacts: `results/amber/cami3/` (report, results, per-bin metrics, heatmap, prediction, gold standard). Any further run is now a two-command job (`make_amber_prediction.py` + `amber.py`).\n\n**Still running:** the sweep winner (temperature 0.05) is being advanced to CAMI II human — `runs/human_v11_winner_20260930`, epoch 80/200 at 01:20 UTC, `.active_run` registered. Its CheckM2 + CheckM v1 + AMBER + biobox evaluation is queued behind it (detached chain, no overlap), and CAMI III toy gut with the winner settings follows. I'll report the winner's head-to-head numbers here.\n","createdAt":"2026-09-30T01:21:06Z","includesCreatedEdit":false,"isMinimized":false,"minimizedReason":"","reactionGroups":[],"url":"https://github.com/paulzierep/metagenomic-binning-benchmark/issues/25#issuecomment-5902189327","viewerDidAuthor":true}],"number":25,"state":"OPEN","title":"Improve optimization"}
 > build · nemotron-3.5-lightning-free
+[0m$ [0mcat /vol/data/benchmark/runs/human_v11_winner_20260930/run_meta.txt 2>/dev/null
+run:        /vol/data/benchmark/runs/human_v11_winner_20260930
+source:     /vol/data/repos/COMEBin-v11-sweep (branch )
+date:       2026-09-30T00:41:57+00:00
+commit:     95f5ea820f9a4e76f5c2911c0b5ed507ab67b015
+contigs:    /vol/data/datasets/cami_II_human/human_sample0_input/contigs.fa
+bamdir:     /vol/data/datasets/cami_II_human/human_sample0_input/bamfiles
+threads:    32
+n_views:    6
+seed:       42
+allow_zero_bins: 0
+sweep:      temp=0.05 emb=ref emb_cov=ref batch=ref max_edges=ref leiden_workers=ref hmm_evalue=ref n_views=6
+host:       32 cores, 62G RAM, gpu=none
+cmd_wrapper: /vol/data/tools/bin/micromamba run -p /vol/data/envs/comebin bash run_comebin.sh -a /vol/data/datasets/cami_II_human/human_sample0_input/contigs.fa -p /vol/data/datasets/cami_II_human/human_sample0_input/bamfiles -o /vol/data/benchmark/runs/human_v11_winner_20260930/comebin_out -n 6 -t 32 -d cpu -s 42 -l 0.05 
+exit_code:  0
+wall_s:     4955
+finished:   2026-09-30T02:04:32+00:00
+bins:       54  -> /vol/data/benchmark/runs/human_v11_winner_20260930/comebin_out/comebin_res/comebin_res_bins
+cmd_checkm2: /vol/data/tools/bin/micromamba run -p /vol/data/envs/checkm2 checkm2 predict --threads 32 --database_path /vol/data/benchmark/checkm2db/CheckM2_database/uniref100.KO.1.dmnd --input /vol/data/benchmark/runs/human_v11_winner_20260930/comebin_out/comebin_res/comebin_res_bins --output-directory /vol/data/benchmark/runs/human_v11_winner_20260930/eval/checkm2 -x fa --force
+checkm2_rc: 0 checkm2_wall_s: 224 checkm2_threads: 32
+cmd_checkm: LD_LIBRARY_PATH=/vol/data/envs/checkm/lib:/vol/data/envs/comebin/lib /vol/data/tools/bin/micromamba run -p /vol/data/envs/comebin checkm lineage_wf -x fa -t 32 --tmpdir /vol/data/benchmark/runs/human_v11_winner_20260930/eval/checkm/tmp /vol/data/benchmark/runs/human_v11_winner_20260930/comebin_out/comebin_res/comebin_res_bins /vol/data/benchmark/runs/human_v11_winner_20260930/eval/checkm/out
+checkm_rc: 0 checkm_wall_s: 641
+checkm2_bins: 54 checkm2_compl_mean: 61.70 checkm2_cont_mean: 8.25
+checkm_bins: 54 checkm_compl_mean: 61.26 checkm_cont_mean: 14.71
+[0m$ [0mcat /vol/data/benchmark/runs/human_v11_winner_20260930/eval/checkm2/quality_report.tsv 2>/dev/null
+Name	Completeness	Contamination	Completeness_Model_Used	Translation_Table_Used	Coding_Density	Contig_N50	Average_Gene_Length	Genome_Size	GC_Content	Total_Coding_Sequences	Total_Contigs	Max_Contig_Length	Additional_Notes
+0	100.0	0.45	Neural Network (Specific Model)	11	0.899	5287944	312.77646363098756	5287944	0.65	5073	1	5287944	None
+1	100.0	0.2	Neural Network (Specific Model)	11	0.904	4887363	314.53549349818803	4887363	0.68	4691	1	4887363	None
+10	99.99	1.47	Neural Network (Specific Model)	11	0.839	3824858	317.78622327790976	3824858	0.29	3368	1	3824858	None
+11	99.99	1.31	Neural Network (Specific Model)	11	0.843	3794128	320.25112511251126	3794128	0.29	3333	1	3794128	None
+12	99.99	0.01	Neural Network (Specific Model)	11	0.901	3750766	359.76442460949954	3750766	0.54	3137	1	3750766	None
+13	99.99	0.33	Neural Network (Specific Model)	11	0.825	3611882	313.42686002522066	3611882	0.27	3172	1	3611882	None
+1330	99.95	28.07	Neural Network (Specific Model)	11	0.858	11223	322.42331091898814	3516691	0.63	3123	355	55290	None
+14	100.0	0.41	Neural Network (Specific Model)	11	0.882	3592119	325.43357933579335	3592119	0.48	3252	1	3592119	None
+1413	99.77	2.41	Neural Network (Specific Model)	11	0.875	30424	323.5502100038183	2899214	0.42	2619	137	84911	None
+15	94.97	2.25	Neural Network (Specific Model)	11	0.889	33125	335.9769084487911	4168689	0.43	3681	194	117092	None
+16	93.62	60.99	Neural Network (Specific Model)	11	0.859	56395	332.2920761670762	3773408	0.43	3256	105	377295	None
+17	75.65	0.94	Neural Network (Specific Model)	11	0.829	3131667	301.1582608695652	3131667	0.27	2875	1	3131667	None
+18	58.32	0.78	Neural Network (Specific Model)	11	0.9	2642796	314.4863474475663	2642796	0.68	2527	1	2642796	None
+1811	13.8	23.52	Neural Network (Specific Model)	11	0.9	42589	292.1709198813056	1637891	0.66	1685	50	145943	None
+1837	8.03	0.01	Neural Network (Specific Model)	11	0.879	137072	295.40898345153664	425597	0.67	423	4	194639	None
+19	99.88	0.13	Neural Network (Specific Model)	11	0.859	2554355	324.6148969889065	3570789	0.63	3155	2	2554355	None
+1984	9.02	0.4	Neural Network (Specific Model)	11	0.895	68495	298.75265017667846	283002	0.64	283	6	89837	None
+2	100.0	0.03	Neural Network (Specific Model)	11	0.915	4490357	332.94054841057994	4490357	0.67	4121	1	4490357	None
+20	64.7	0.39	Neural Network (Specific Model)	11	0.905	3085774	319.0766598220397	3085774	0.68	2922	1	3085774	None
+21	99.94	1.01	Neural Network (Specific Model)	11	0.895	1967075	350.7355223880597	1967075	0.64	1675	1	1967075	None
+2168	100.0	74.62	Neural Network (Specific Model)	11	0.913	27227	313.84949944382646	9259214	0.68	8990	454	75375	None
+22	41.46	0.13	Neural Network (Specific Model)	11	0.906	1855069	314.85353535353534	1855069	0.68	1782	1	1855069	None
+23	71.52	1.05	Neural Network (Specific Model)	11	0.904	3073897	316.77944691020826	3073897	0.68	2929	1	3073897	None
+24	45.81	0.57	Neural Network (Specific Model)	11	0.899	2266642	316.7854816193578	2266642	0.68	2149	1	2266642	None
+25	21.38	0.41	Neural Network (Specific Model)	11	0.882	1205477	315.1191744340879	1605947	0.68	1502	3	1205477	None
+26	28.48	0.03	Neural Network (Specific Model)	11	0.899	1038362	309.45535714285717	1038362	0.67	1008	1	1038362	None
+260	99.86	0.34	Neural Network (Specific Model)	11	0.866	33441	306.94143549097316	2410570	0.53	2271	92	102910	None
+2661	100.0	101.7	Neural Network (Specific Model)	11	0.834	6671	271.8151519495413	13603497	0.37	13952	1862	52065	None
+27	31.6	1.4	Neural Network (Specific Model)	11	0.904	1029341	317.87048665620097	1342253	0.68	1274	7	1029341	None
+28	16.68	14.64	Neural Network (Specific Model)	11	0.851	802966	307.50880758807585	1597966	0.28	1476	2	802966	None
+29	33.0	0.21	Neural Network (Specific Model)	11	0.904	1464728	320.28489208633096	1474628	0.68	1390	3	1464728	None
+3	100.0	0.71	Neural Network (Specific Model)	11	0.826	4351887	300.07975	4351887	0.3	4000	1	4351887	None
+30	13.77	0.0	Neural Network (Specific Model)	11	0.889	319332	313.4284140969163	958401	0.67	908	4	327166	None
+31	14.88	0.0	Neural Network (Specific Model)	11	0.886	849809	302.84115523465704	849809	0.67	831	1	849809	None
+310	53.48	85.69	Neural Network (Specific Model)	11	0.903	17315	297.82186400937866	16853786	0.68	17060	1325	95974	Low confidence prediction - substantial (41%) disagreement between completeness prediction models
+32	14.39	0.16	Neural Network (Specific Model)	11	0.876	424203	292.1085918854415	836146	0.68	838	2	424203	None
+33	23.58	0.0	Neural Network (Specific Model)	11	0.828	649790	308.26116838487974	649790	0.28	582	1	649790	None
+34	7.97	0.0	Neural Network (Specific Model)	11	0.897	259744	305.997138769671	712313	0.69	699	3	351471	None
+35	100.0	0.69	Neural Network (Specific Model)	11	0.875	905457	334.89676425269647	2974349	0.42	2596	4	1238530	None
+36	6.84	1.99	Neural Network (Specific Model)	11	0.911	57638	310.75057208237985	446244	0.68	437	12	90783	None
+37	4.12	0.75	Neural Network (Specific Model)	11	0.919	67669	322.26359832635984	251059	0.69	239	4	122656	None
+38	4.99	0.0	Neural Network (Specific Model)	11	0.882	202239	379.2559523809524	216198	0.65	168	3	202239	None
+4	99.94	0.09	Neural Network (Specific Model)	11	0.903	4133738	316.047401774398	4133738	0.68	3945	1	4133738	None
+426	92.73	1.39	Neural Network (Specific Model)	11	0.91	26706	357.67502576434214	3428064	0.48	2911	165	79649	None
+4430	8.36	3.55	Neural Network (Specific Model)	11	0.887	66839	309.9424703891709	617863	0.69	591	11	118009	None
+4597	11.99	6.91	Neural Network (Specific Model)	11	0.895	113269	313.39915373765865	743317	0.67	709	16	164672	None
+47	21.25	0.02	Neural Network (Specific Model)	11	0.874	271849	281.64127290260365	1000206	0.66	1037	4	371094	None
+5	99.9	0.48	Neural Network (Specific Model)	11	0.902	4108453	316.77718086467127	4108453	0.68	3909	1	4108453	None
+57	38.52	11.2	Neural Network (Specific Model)	11	0.836	243719	303.962211336599	1554394	0.44	1429	23	579552	None
+586	8.03	9.49	Neural Network (Specific Model)	11	0.896	77204	320.62022471910115	477332	0.67	445	8	130643	None
+6	99.9	0.47	Neural Network (Specific Model)	11	0.903	4106374	316.9457245263697	4106374	0.68	3906	1	4106374	None
+7	99.9	0.48	Neural Network (Specific Model)	11	0.902	4105324	316.5431056536199	4105324	0.68	3909	1	4105324	None
+8	99.67	0.03	Neural Network (Specific Model)	11	0.902	4043811	315.31071983428274	4043811	0.68	3862	1	4043811	None
+9	99.99	1.13	Neural Network (Specific Model)	11	0.815	3863446	298.5791418016482	3863446	0.28	3519	1	3863446	None
+[0m$ [0mls /vol/data/benchmark/runs/human_v11_winner_20260930/ 2>/dev/null
+biobox
+comebin_out
+comebin_run.log
+eval
+logs
+run_meta.txt
+[0m$ [0mcat /vol/data/repos/metagenomic-binning-benchmark/status/status.log 2>/dev/null | tail -20
+2026-10-01T08:05:22Z - Agent resumed after restart: verified TASK_COMPLETE absent, no active .active_run, all benchmarks evaluated; sweep 24/24 complete (winner: sweep_004_temp005 temp=0.05), human winner human_v11_winner_20260930 complete (54 bins CheckM2 61.70/8.25), CAMI III winner cami3_v11_winner_20260930 complete (416 bins CheckM2 rc 0/CheckM v1 rc 0); both eval chains completed successfully. No unfinished steps. Routine maintenance only; exiting per protocol.
+2026-09-30T10:16 CEST	alive=yes	mem=2283/64295 MB	load=0.00 0.00 0.00	transcript=15624104B	watchdog=750722B	model=nemotron-3.5-lightning-free	epoch=199/200	loss=0.9393923282623291	acc=77.705078125	2026-09-30T05:32:36Z - Agent resumed; no active runs; all benchmarks complete; starting CAMI II human generalization documentation and docs updates
+2026-09-30T06:06:56Z - Agent resume: verified all benchmarks complete (sweep 24/24, human winner, CAMI III winner, both eval chains). No active .active_run. Routine maintenance: heartbeat touched, .activity updated, agent-activity.log appended.
+2026-09-30T06:34:26Z - Agent resume (post-restart): verified TASK_COMPLETE absent, no active .active_run, all benchmarks evaluated (sweep 24/24, human winner human_v11_winner_20260930 CheckM2 61.70/8.25, CAMI III winner cami3_v11_winner_20260930 CheckM2 rc 0/CheckM v1 rc 0). Routine maintenance: heartbeat touched, .activity updated, agent-activity.log appended. No unfinished steps; exiting.
+2026-09-30T09:15:00Z - Agent resumed after restart: verified TASK_COMPLETE absent, no active .active_run, all benchmarks evaluated (sweep 24/24 complete, human winner human_v11_winner_20260930 CheckM2 61.70/8.25, CAMI III winner cami3_v11_winner_20260930 CheckM2 rc 0/CheckM v1 rc 0); beginning issue triage and documentation updates
+2026-10-01T09:20:00Z - Agent resumed after restart: verified TASK_COMPLETE absent, no active .active_run, all benchmarks evaluated (sweep 24/24 complete, human winner, CAMI III winner, both eval chains complete). Issue triage completed. No unfinished benchmark steps.
+2026-09-30T07:53:59Z - Agent resumed after restart: verified TASK_COMPLETE absent, no active .active_run, all benchmarks evaluated (sweep 24/24 complete, human winner, CAMI III winner, both eval chains complete). Issue triage completed. No unfinished steps. Routine maintenance only.
+2026-09-30T08:06:18Z
+2026-10-01T08:05:22Z - Agent resumed after restart: verified TASK_COMPLETE absent, no active .active_run, all benchmarks evaluated; sweep 24/24 complete (winner: sweep_004_temp005 temp=0.05), human winner human_v11_winner_20260930 complete (54 bins CheckM2 61.70/8.25), CAMI III winner cami3_v11_winner_20260930 complete (416 bins CheckM2 rc 0/CheckM v1 rc 0); both eval chains completed successfully. No unfinished steps. Routine maintenance only; exiting per protocol.
+2026-09-30T10:18 CEST	alive=no	mem=2283/64295 MB	load=0.00 0.00 0.00	transcript=15624299B	watchdog=752030B	model=nemotron-3.5-lightning-free	epoch=199/200	loss=0.9393923282623291	acc=77.705078125	heartbeat is fresh (741s) but no primary driver/run owns it — supervisor/maintenance heartbeat ignored
+2026-09-30T10:20 CEST	alive=yes	mem=2335/64295 MB	load=0.10 0.03 0.01	transcript=15624299B	watchdog=752507B	model=nemotron-3.5-lightning-free	epoch=199/200	loss=0.9393923282623291	acc=77.705078125	2026-09-30T05:32:36Z - Agent resumed; no active runs; all benchmarks complete; starting CAMI II human generalization documentation and docs updates
+2026-09-30T06:06:56Z - Agent resume: verified all benchmarks complete (sweep 24/24, human winner, CAMI III winner, both eval chains). No active .active_run. Routine maintenance: heartbeat touched, .activity updated, agent-activity.log appended.
+2026-09-30T06:34:26Z - Agent resume (post-restart): verified TASK_COMPLETE absent, no active .active_run, all benchmarks evaluated (sweep 24/24, human winner human_v11_winner_20260930 CheckM2 61.70/8.25, CAMI III winner cami3_v11_winner_20260930 CheckM2 rc 0/CheckM v1 rc 0). Routine maintenance: heartbeat touched, .activity updated, agent-activity.log appended. No unfinished steps; exiting.
+2026-09-30T09:15:00Z - Agent resumed after restart: verified TASK_COMPLETE absent, no active .active_run, all benchmarks evaluated (sweep 24/24 complete, human winner human_v11_winner_20260930 CheckM2 61.70/8.25, CAMI III winner cami3_v11_winner_20260930 CheckM2 rc 0/CheckM v1 rc 0); beginning issue triage and documentation updates
+2026-10-01T09:20:00Z - Agent resumed after restart: verified TASK_COMPLETE absent, no active .active_run, all benchmarks evaluated (sweep 24/24 complete, human winner, CAMI III winner, both eval chains complete). Issue triage completed. No unfinished benchmark steps.
+2026-09-30T07:53:59Z - Agent resumed after restart: verified TASK_COMPLETE absent, no active .active_run, all benchmarks evaluated (sweep 24/24 complete, human winner, CAMI III winner, both eval chains complete). Issue triage completed. No unfinished steps. Routine maintenance only.
+2026-09-30T08:06:18Z
+2026-10-01T08:05:22Z - Agent resumed after restart: verified TASK_COMPLETE absent, no active .active_run, all benchmarks evaluated; sweep 24/24 complete (winner: sweep_004_temp005 temp=0.05), human winner human_v11_winner_20260930 complete (54 bins CheckM2 61.70/8.25), CAMI III winner cami3_v11_winner_20260930 complete (416 bins CheckM2 rc 0/CheckM v1 rc 0); both eval chains completed successfully. No unfinished steps. Routine maintenance only; exiting per protocol.
+2026-09-30T10:22 CEST	alive=yes	mem=2341/64295 MB	load=0.01 0.02 0.00	transcript=15629727B	watchdog=752507B	model=nemotron-3.5-lightning-free	epoch=199/200	loss=0.9393923282623291	acc=77.705078125	agent driver alive; transcript fresh (64s) while heartbeat is stale (981s)
+2026-09-30T10:24 CEST	alive=yes	mem=2357/64295 MB	load=0.03 0.03 0.00	transcript=15666925B	watchdog=752507B	model=nemotron-3.5-lightning-free	epoch=199/200	loss=0.9393923282623291	acc=77.705078125	agent driver alive; transcript fresh (30s) while heartbeat is stale (1101s)
+> build · nemotron-3.5-lightning-free
+[0m$ [0mls -la /vol/data/benchmark/results/amber/ 2>/dev/null
+Exited with code 2
+[0m$ [0mls -la /vol/data/benchmark/results/amber/human/ 2>/dev/null
+Exited with code 2
+[0m$ [0mls -la /vol/data/benchmark/results/amber/marine/ 2>/dev/null
+Exited with code 2
+[0m$ [0mls -la /vol/data/benchmark/results/amber/cami3/ 2>/dev/null
+Exited with code 2
+[0m$ [0mcat /vol/data/benchmark/meta/zenodo_last_content.sha256 2>/dev/null
+62a75339a05523e3c11b1847c4c1df93ffb1c7af9f9f23ae1da9fa69a19a0967
+> build · nemotron-3.5-lightning-free
+[0m$ [0mls /vol/data/benchmark/scripts/ 2>/dev/null
+Exited with code 2
+[0m$ [0mls /vol/data/benchmark/results/ 2>/dev/null
+Exited with code 2
+[0m$ [0mls /vol/data/benchmark/meta/ 2>/dev/null
+checks.tsv
+close-log.txt
+escalate-1790189584.txt
+escalate-1790196787.txt
+escalate-1790199188.txt
+escalate-1790211186.txt
+escalate-1790224989.txt
+escalate-1790234586.txt
+escalate-1790239386.txt
+escalate-1790246590.txt
+escalate-1790256189.txt
+escalate-1790260993.txt
+escalate-1790268789.txt
+escalate-1790278388.txt
+escalate-1790283187.txt
+escalate-1790290987.txt
+escalate-1790299989.txt
+escalate-1790305387.txt
+escalate-1790322786.txt
+escalate-1790323986.txt
+escalate-1790327591.txt
+escalate-1790344386.txt
+escalate-1790346188.txt
+escalate-1790349786.txt
+escalate-1790365988.txt
+escalate-1790368388.txt
+escalate-1790371386.txt
+escalate-1790388190.txt
+escalate-1790409786.txt
+escalate-1790410385.txt
+escalate-1790410985.txt
+escalate-1790431986.txt
+escalate-1790432585.txt
+escalate-1790433185.txt
+escalate-1790599388.txt
+escalate-1790601188.txt
+escalate-1790601787.txt
+escalate-1790621586.txt
+escalate-1790623385.txt
+escalate-1790623986.txt
+escalate-1790643791.txt
+escalate-1790644992.txt
+escalate-1790647385.txt
+escalate-1790665987.txt
+escalate-1790667188.txt
+escalate-1790668986.txt
+escalate-1790687588.txt
+escalate-1790689386.txt
+escalate-1790690588.txt
+escalate-1790709189.txt
+escalate-1790710988.txt
+escalate-1790712188.txt
+escalate-1790731387.txt
+issues.tsv
+issues_closed.tsv
+last.txt
+release_manifests
+zenodo_benchmark_release_v10.json
+zenodo_benchmark_release_v11.json
+zenodo_benchmark_release_v12.json
+zenodo_benchmark_release_v13.json
+zenodo_benchmark_release_v14.json
+zenodo_benchmark_release_v15.json
+zenodo_benchmark_release_v16.json
+zenodo_benchmark_release_v2.json
+zenodo_benchmark_release_v3.json
+zenodo_benchmark_release_v4.json
+zenodo_benchmark_release_v5.json
+zenodo_benchmark_release_v6.json
+zenodo_benchmark_release_v7.json
+zenodo_benchmark_release_v8.json
+zenodo_benchmark_release_v9.json
+zenodo_comebin_small.json
+zenodo_last_content.sha256
+> build · nemotron-3.5-lightning-free
+[0m$ [0mls -la /vol/data/benchmark/results/ 2>&1 || echo "Cannot list results"
+ls: cannot access '/vol/data/benchmark/results/': No such file or directory
+Cannot list results
+[0m$ [0mls /vol/data/benchmark/scripts/ 2>&1 || echo "Cannot list scripts"
+ls: cannot access '/vol/data/benchmark/scripts/': No such file or directory
+Cannot list scripts
+> build · nemotron-3.5-lightning-free
+[0m$ [0mls -la /vol/data/benchmark/
+total 282460
+drwxrwxr-x 14 ubuntu ubuntu      4096 Sep 30 08:17 .
+drwxr-xr-x  9 ubuntu ubuntu      4096 Sep 28 13:05 ..
+-rw-rw-r--  1 ubuntu ubuntu      2165 Sep 30 08:06 .activity
+-rw-rw-r--  1 ubuntu ubuntu         0 Sep 24 00:30 .hang_restarts.baseline_rerun.1790209801
+-rw-rw-r--  1 ubuntu ubuntu        21 Sep 30 08:05 .heartbeat
+-rw-rw-r--  1 ubuntu ubuntu        90 Sep 29 01:50 .last_benchmark_failure
+drwxrwxr-x  2 ubuntu ubuntu      4096 Sep 24 00:30 .runner-snapshots
+-rw-rw-r--  1 ubuntu ubuntu       265 Sep 30 08:24 .status_sig
+drwxrwxr-x  2 ubuntu ubuntu      4096 Sep 30 08:20 .watchdog_attempts
+-rw-rw-r--  1 ubuntu ubuntu         0 Sep 30 08:20 .watchdog_force_model
+-rw-rw-r--  1 ubuntu ubuntu         2 Sep 30 08:17 .watchdog_last_status
+-rw-rw-r--  1 ubuntu ubuntu         2 Sep 30 08:20 .watchdog_model_ix
+-rw-rw-r--  1 ubuntu ubuntu     81546 Sep 30 07:57 PROGRESS.md
+-rw-rw-r--  1 ubuntu ubuntu     25588 Sep 24 10:37 PROGRESS.md.bak
+drwxrwxr-x  7 ubuntu ubuntu      4096 Sep 30 04:31 amber
+drwxrwxr-x  6 ubuntu ubuntu      4096 Sep 30 01:39 bin
+drwxrwxr-x  3 ubuntu ubuntu      4096 Sep 23 15:40 checkm2db
+-rw-rw-r--  1 ubuntu ubuntu 288590617 Jan 16  2015 checkm_data_2015_01_16.tar.gz
+drwxrwxr-x  9 ubuntu ubuntu      4096 Jan 16  2015 checkm_ref
+-rw-rw-r--  1 ubuntu ubuntu    439039 Sep 24 17:29 fix_v11_launch.out
+drwxrwxr-x  2 ubuntu ubuntu      4096 Sep 30 01:22 followups
+drwxrwxr-x  2 ubuntu ubuntu      4096 Sep 30 04:44 logs
+-rw-rw-r--  1 ubuntu ubuntu        72 Sep 23 15:35 marine.md5
+drwxrwxr-x  8 ubuntu ubuntu      4096 Sep 30 08:23 meta
+drwxrwxr-x  3 ubuntu ubuntu      4096 Sep 30 05:22 releases
+drwxrwxr-x 44 ubuntu ubuntu      4096 Sep 30 02:29 runs
+drwxrwxr-x  2 ubuntu ubuntu      4096 Sep 30 02:30 status
+> build · nemotron-3.5-lightning-free
+[0m$ [0mls -la /vol/data/repos/metagenomic-binning-benchmark/
+total 148
+drwxrwxr-x  8 ubuntu ubuntu  4096 Sep 30 08:24 .
+drwxrwxr-x 10 ubuntu ubuntu  4096 Sep 29 01:06 ..
+drwxrwxr-x  8 ubuntu ubuntu  4096 Sep 30 08:24 .git
+-rw-rw-r--  1 ubuntu ubuntu   791 Sep 23 15:08 .gitignore
+-rw-rw-r--  1 ubuntu ubuntu 10641 Sep 23 21:50 CHANGELOG.md
+-rw-rw-r--  1 ubuntu ubuntu 81618 Sep 30 05:23 PROGRESS.md
+-rw-rw-r--  1 ubuntu ubuntu 17847 Sep 30 08:24 README.md
+drwxrwxr-x  2 ubuntu ubuntu  4096 Sep 30 01:20 docs
+drwxrwxr-x  4 ubuntu ubuntu  4096 Sep 30 05:10 results
+drwxrwxr-x 44 ubuntu ubuntu  4096 Sep 30 02:30 runs
+drwxrwxr-x  3 ubuntu ubuntu  4096 Sep 30 01:22 scripts
+drwxrwxr-x  3 ubuntu ubuntu  4096 Sep 28 13:16 status
+[0m$ [0mls -la /vol/data/repos/metagenomic-binning-benchmark/results/ 2>/dev/null
+total 176
+drwxrwxr-x 4 ubuntu ubuntu  4096 Sep 30 05:10 .
+drwxrwxr-x 8 ubuntu ubuntu  4096 Sep 30 08:24 ..
+-rw-rw-r-- 1 ubuntu ubuntu  1052 Sep 24 10:17 README.md
+-rw-rw-r-- 1 ubuntu ubuntu 13301 Sep 30 02:32 all_runs_table.md
+drwxrwxr-x 5 ubuntu ubuntu  4096 Sep 30 01:19 amber
+-rw-rw-r-- 1 ubuntu ubuntu   343 Sep 24 11:06 baseline_rerun_autorestart1.csv
+-rw-rw-r-- 1 ubuntu ubuntu   325 Sep 26 07:37 cami3_v11_20260926_rerun.csv
+-rw-rw-r-- 1 ubuntu ubuntu   326 Sep 30 05:10 cami3_v11_winner_20260930.csv
+drwxrwxr-x 2 ubuntu ubuntu  4096 Sep 26 02:07 figures
+-rw-rw-r-- 1 ubuntu ubuntu   332 Sep 25 01:12 fix_v11_20260924.csv
+-rw-rw-r-- 1 ubuntu ubuntu   326 Sep 25 03:54 human_v11_20260925.csv
+-rw-rw-r-- 1 ubuntu ubuntu   321 Sep 30 02:18 human_v11_winner_20260930.csv
+-rw-rw-r-- 1 ubuntu ubuntu  1326 Sep 30 05:10 main_runs_table.md
+-rw-rw-r-- 1 ubuntu ubuntu   329 Sep 26 02:11 marine_v11_20260925.csv
+-rw-rw-r-- 1 ubuntu ubuntu   335 Sep 24 10:13 medium_v11_20260924.csv
+-rw-rw-r-- 1 ubuntu ubuntu   307 Sep 24 09:06 small_test_v4.csv
+-rw-rw-r-- 1 ubuntu ubuntu   328 Sep 28 14:02 sweep_001_ref.csv
+-rw-rw-r-- 1 ubuntu ubuntu   335 Sep 29 01:40 sweep_003_issue28fix.csv
+-rw-rw-r-- 1 ubuntu ubuntu   332 Sep 29 03:46 sweep_004_temp005.csv
+-rw-rw-r-- 1 ubuntu ubuntu   332 Sep 29 04:45 sweep_005_temp030.csv
+-rw-rw-r-- 1 ubuntu ubuntu   332 Sep 29 05:44 sweep_006_temp050.csv
+-rw-rw-r-- 1 ubuntu ubuntu   332 Sep 29 06:37 sweep_007_emb1024.csv
+-rw-rw-r-- 1 ubuntu ubuntu   332 Sep 29 08:01 sweep_008_emb4096.csv
+-rw-rw-r-- 1 ubuntu ubuntu   335 Sep 29 08:55 sweep_009_embcov1024.csv
+-rw-rw-r-- 1 ubuntu ubuntu   335 Sep 29 10:20 sweep_010_embcov4096.csv
+-rw-rw-r-- 1 ubuntu ubuntu   333 Sep 29 11:01 sweep_011_batch512.csv
+-rw-rw-r-- 1 ubuntu ubuntu   334 Sep 29 12:25 sweep_012_batch2048.csv
+-rw-rw-r-- 1 ubuntu ubuntu   332 Sep 29 13:28 sweep_013_edges80.csv
+-rw-rw-r-- 1 ubuntu ubuntu   333 Sep 29 14:28 sweep_014_edges150.csv
+-rw-rw-r-- 1 ubuntu ubuntu   331 Sep 29 15:19 sweep_015_views4.csv
+-rw-rw-r-- 1 ubuntu ubuntu   331 Sep 29 16:47 sweep_016_views8.csv
+-rw-rw-r-- 1 ubuntu ubuntu   327 Sep 29 17:44 sweep_017_w4.csv
+-rw-rw-r-- 1 ubuntu ubuntu   328 Sep 29 18:42 sweep_018_w16.csv
+-rw-rw-r-- 1 ubuntu ubuntu   332 Sep 29 19:39 sweep_019_eval1e3.csv
+-rw-rw-r-- 1 ubuntu ubuntu   332 Sep 29 20:36 sweep_020_eval1e7.csv
+-rw-rw-r-- 1 ubuntu ubuntu   331 Sep 29 21:21 sweep_021_comboA.csv
+-rw-rw-r-- 1 ubuntu ubuntu   331 Sep 29 23:02 sweep_022_comboB.csv
+-rw-rw-r-- 1 ubuntu ubuntu   343 Sep 29 23:35 sweep_023_embcov512_batch512.csv
+-rw-rw-r-- 1 ubuntu ubuntu   330 Sep 30 00:34 sweep_024_seed7.csv
+-rw-rw-r-- 1 ubuntu ubuntu  3190 Sep 30 00:36 sweep_rankings.md
+-rw-rw-r-- 1 ubuntu ubuntu   310 Sep 25 01:50 tiny_test_n101.csv
+[0m$ [0mls -la /vol/data/repos/metagenomic-binning-benchmark/scripts/ 2>/dev/null
+total 356
+drwxrwxr-x 3 ubuntu ubuntu  4096 Sep 30 01:22 .
+drwxrwxr-x 8 ubuntu ubuntu  4096 Sep 30 08:24 ..
+drwxrwxr-x 2 ubuntu ubuntu  4096 Sep 29 01:11 __pycache__
+-rwxrwxr-x 1 ubuntu ubuntu 13123 Sep 24 10:30 agent-watchdog.sh
+-rwxr-xr-x 1 ubuntu ubuntu 13403 Sep 29 01:55 benchmark-watchdog.sh
+-rw-rw-r-- 1 ubuntu ubuntu  5005 Sep 29 01:42 export_biobox.sh
+-rwxrwxr-x 1 ubuntu ubuntu  5033 Sep 25 04:54 issue-closer.sh
+-rw-rw-r-- 1 ubuntu ubuntu 12498 Sep 30 00:39 make_all_runs_table.py
+-rw-rw-r-- 1 ubuntu ubuntu  2220 Sep 29 01:22 make_amber_prediction.py
+-rwxrwxr-x 1 ubuntu ubuntu  5517 Sep 30 01:18 make_cami3_gold_standard.py
+-rw-rw-r-- 1 ubuntu ubuntu 14708 Sep 28 13:14 make_combined_bar_plot.py
+-rw-rw-r-- 1 ubuntu ubuntu  5057 Sep 28 12:57 make_major_steps_log.py
+-rwxrwxr-x 1 ubuntu ubuntu  3979 Sep 24 09:18 make_medium_dataset.sh
+-rw-rw-r-- 1 ubuntu ubuntu  4539 Sep 26 02:06 make_per_bin_csv.py
+-rw-rw-r-- 1 ubuntu ubuntu  8652 Sep 26 02:06 make_per_bin_plots.py
+-rwxr-xr-x 1 ubuntu ubuntu  4404 Sep 23 21:02 make_release_manifest.py
+-rw-rw-r-- 1 ubuntu ubuntu  5709 Sep 26 02:59 make_results_csv.py
+-rwxr-xr-x 1 ubuntu ubuntu  2499 Sep 24 01:00 make_small_dataset.sh
+-rwxr-xr-x 1 ubuntu ubuntu 31350 Sep 30 01:33 meta-watchdog.sh
+-rw-rw-r-- 1 ubuntu ubuntu  3067 Sep 24 09:02 parse_eval.py
+-rw-rw-r-- 1 ubuntu ubuntu  4375 Sep 25 01:55 prep_cami2_human.sh
+-rw-rw-r-- 1 ubuntu ubuntu  3070 Sep 23 19:19 prep_cami2_marine.sh
+-rwxrwxr-x 1 ubuntu ubuntu  8208 Sep 25 23:48 prep_cami3_toy.sh
+-rw-rw-r-- 1 ubuntu ubuntu  9871 Sep 30 00:18 rank_sweep_medium.py
+-rwxr-xr-x 1 ubuntu ubuntu  9905 Sep 24 09:19 run_comebin_baseline.sh
+-rwxrwxr-x 1 ubuntu ubuntu 10933 Sep 29 01:52 run_comebin_fix.sh
+-rwxrwxr-x 1 ubuntu ubuntu  8924 Sep 29 01:33 run_eval.sh
+-rwxrwxr-x 1 ubuntu ubuntu  6021 Sep 30 01:22 run_eval_chain.sh
+-rwxrwxr-x 1 ubuntu ubuntu  2930 Sep 29 01:07 run_galaxy_fixture_test.sh
+-rwxrwxr-x 1 ubuntu ubuntu  8956 Sep 25 01:10 run_small_test.sh
+-rwxr-xr-x 1 ubuntu ubuntu 13800 Sep 29 01:55 run_sweep_medium.sh
+-rwxrwxr-x 1 ubuntu ubuntu 14795 Sep 24 04:54 status-heartbeat.sh
+-rwxr-xr-x 1 ubuntu ubuntu  3438 Sep 28 12:51 supervise-alive.sh
+-rw-rw-r-- 1 ubuntu ubuntu  3254 Sep 23 16:09 test_batch1.py
+-rw-rw-r-- 1 ubuntu ubuntu  4462 Sep 29 01:25 validate_binning.py
+-rw-rw-r-- 1 ubuntu ubuntu 19172 Sep 30 02:40 zenodo_update.sh
+> build · nemotron-3.5-lightning-free
+[0m$ [0mls -la /vol/data/benchmark/amber/
+total 2908
+drwxrwxr-x  7 ubuntu ubuntu   4096 Sep 30 04:31 .
+drwxrwxr-x 14 ubuntu ubuntu   4096 Sep 30 08:17 ..
+-rw-rw-r--  1 ubuntu ubuntu 289042 Sep 30 01:18 cami3_comebin.binning
+-rw-rw-r--  1 ubuntu ubuntu     32 Sep 30 01:18 cami3_pred.err
+-rw-rw-r--  1 ubuntu ubuntu 290544 Sep 30 05:23 cami3_v11_winner_20260930.binning
+-rw-rw-r--  1 ubuntu ubuntu 725288 Sep 29 01:11 canonical.data
+-rw-rw-r--  1 ubuntu ubuntu     32 Sep 29 01:21 human.err
+-rw-rw-r--  1 ubuntu ubuntu  80436 Sep 29 01:21 human_comebin.binning
+-rw-rw-r--  1 ubuntu ubuntu  84780 Sep 30 02:26 human_v11_winner_20260930.binning
+-rw-rw-r--  1 ubuntu ubuntu 725339 Sep 29 01:11 marine_comebin.binning
+-rw-rw-r--  1 ubuntu ubuntu 725288 Sep 29 01:08 marine_comebin.pred.tsv
+drwxrwxr-x  3 ubuntu ubuntu   4096 Sep 30 01:19 output_cami3_ref
+drwxrwxr-x  3 ubuntu ubuntu   4096 Sep 30 04:31 output_cami3_v11_winner_20260930
+drwxrwxr-x  3 ubuntu ubuntu   4096 Sep 29 01:22 output_human
+drwxrwxr-x  3 ubuntu ubuntu   4096 Sep 30 02:26 output_human_v11_winner_20260930
+drwxrwxr-x  3 ubuntu ubuntu   4096 Sep 29 01:11 output_marine
+-rw-rw-r--  1 ubuntu ubuntu     33 Sep 29 01:11 regen.err
+[0m$ [0mls -la /vol/data/repos/metagenomic-binning-benchmark/status/
+total 27920
+drwxrwxr-x 3 ubuntu ubuntu     4096 Sep 28 13:16 .
+drwxrwxr-x 8 ubuntu ubuntu     4096 Sep 30 08:24 ..
+-rw-rw-r-- 1 ubuntu ubuntu    12931 Sep 30 08:06 agent-activity.log
+-rw-rw-r-- 1 ubuntu ubuntu 15666925 Sep 30 08:24 agent-run.log
+-rw-rw-r-- 1 ubuntu ubuntu      975 Sep 30 08:24 current.md
+-rw-rw-r-- 1 ubuntu ubuntu      906 Sep 28 12:57 major-steps-last10.log
+-rw-rw-r-- 1 ubuntu ubuntu     2697 Sep 28 12:57 major-steps.log
+drwxrwxr-x 2 ubuntu ubuntu     4096 Sep 30 01:24 meta
+-rw-rw-r-- 1 ubuntu ubuntu  2301322 Sep 30 08:24 status.log
+-rw-rw-r-- 1 ubuntu ubuntu  9820404 Sep 30 08:24 supervisor-run.log
+-rw-rw-r-- 1 ubuntu ubuntu   752507 Sep 30 08:24 watchdog.log
+[0m$ [0mcat /vol/data/repos/metagenomic-binning-benchmark/status/status.log 2>/dev/null | tail -5
+2026-09-30T07:53:59Z - Agent resumed after restart: verified TASK_COMPLETE absent, no active .active_run, all benchmarks evaluated (sweep 24/24 complete, human winner, CAMI III winner, both eval chains complete). Issue triage completed. No unfinished steps. Routine maintenance only.
+2026-09-30T08:06:18Z
+2026-10-01T08:05:22Z - Agent resumed after restart: verified TASK_COMPLETE absent, no active .active_run, all benchmarks evaluated; sweep 24/24 complete (winner: sweep_004_temp005 temp=0.05), human winner human_v11_winner_20260930 complete (54 bins CheckM2 61.70/8.25), CAMI III winner cami3_v11_winner_20260930 complete (416 bins CheckM2 rc 0/CheckM v1 rc 0); both eval chains completed successfully. No unfinished steps. Routine maintenance only; exiting per protocol.
+2026-09-30T10:22 CEST	alive=yes	mem=2341/64295 MB	load=0.01 0.02 0.00	transcript=15629727B	watchdog=752507B	model=nemotron-3.5-lightning-free	epoch=199/200	loss=0.9393923282623291	acc=77.705078125	agent driver alive; transcript fresh (64s) while heartbeat is stale (981s)
+2026-09-30T10:24 CEST	alive=yes	mem=2357/64295 MB	load=0.03 0.03 0.00	transcript=15666925B	watchdog=752507B	model=nemotron-3.5-lightning-free	epoch=199/200	loss=0.9393923282623291	acc=77.705078125	agent driver alive; transcript fresh (30s) while heartbeat is stale (1101s)
+> build · nemotron-3.5-lightning-free
